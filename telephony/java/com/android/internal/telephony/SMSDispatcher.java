@@ -161,8 +161,13 @@ public abstract class SMSDispatcher extends Handler {
 
     /** Maximum number of times to retry sending a failed SMS. */
     private static final int MAX_SEND_RETRIES = 3;
-    /** Delay before next send attempt on a failed SMS, in milliseconds. */
-    private static final int SEND_RETRY_DELAY = 2000;
+    /** Default for delay before next send attempt on a failed SMS, in milliseconds. */
+    private static final int DEFAULT_SEND_RETRY_DELAY = 2000;
+    /** Currently used delay for sms sending retries. */
+    private static int mSendRetryDelay = SystemProperties.getInt(
+            TelephonyProperties.PROPERTY_SMS_RETRY_DELAY,
+            DEFAULT_SEND_RETRY_DELAY);
+
     /** single part SMS */
     private static final int SINGLE_PART_SMS = 1;
     /** Message sending queue limit */
@@ -512,7 +517,7 @@ public abstract class SMSDispatcher extends Handler {
                 //       implementations this retry is handled by the baseband.
                 tracker.mRetryCount++;
                 Message retryMsg = obtainMessage(EVENT_SEND_RETRY, tracker);
-                sendMessageDelayed(retryMsg, SEND_RETRY_DELAY);
+                sendMessageDelayed(retryMsg, mSendRetryDelay);
             } else if (tracker.mSentIntent != null) {
                 int error = RESULT_ERROR_GENERIC_FAILURE;
 
