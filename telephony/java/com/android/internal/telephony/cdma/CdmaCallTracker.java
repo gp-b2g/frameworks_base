@@ -1088,10 +1088,12 @@ public final class CdmaCallTracker extends CallTracker {
 
             case EVENT_THREE_WAY_DIAL_L2_RESULT_CDMA:
                 ar = (AsyncResult)msg.obj;
-                if (ar.exception == null) {
+                if (ar.exception == null && pendingMO != null) {
                     // Assume 3 way call is connected
                     pendingMO.onConnectedInOrOut();
-                    pendingMO = null;
+                    if(!PhoneNumberUtils.isEmergencyNumber(pendingMO.address)) {
+                        pendingMO = null;
+                    }
                 }
             break;
 
