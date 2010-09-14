@@ -82,7 +82,6 @@ public final class RuimRecords extends IccRecords {
 
     // ***** Event Constants
     private static final int EVENT_APP_READY = 1;
-    private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 2;
     private static final int EVENT_GET_IMSI_DONE = 3;
     private static final int EVENT_GET_DEVICE_IDENTITY_DONE = 4;
     private static final int EVENT_GET_ICCID_DONE = 5;
@@ -107,12 +106,12 @@ public final class RuimRecords extends IccRecords {
         // recordsToLoad is set to 0 because no requests are made yet
         recordsToLoad = 0;
 
-        mCi.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         // NOTE the EVENT_SMS_ON_RUIM is not registered
         mCi.registerForIccRefresh(this, EVENT_RUIM_REFRESH, null);
 
         // Start off by setting empty state
-        onRadioOffOrNotAvailable();
+        resetRecords();
+
         mParentApp.registerForReady(this, EVENT_APP_READY, null);
     }
 
@@ -120,8 +119,9 @@ public final class RuimRecords extends IccRecords {
     public void dispose() {
         Log.d(LOG_TAG, "Disposing RuimRecords " + this);
         //Unregister for all events
-        mCi.unregisterForOffOrNotAvailable( this);
         mCi.unregisterForIccRefresh(this);
+        mParentApp.unregisterForReady(this);
+        resetRecords();
         super.dispose();
     }
 
@@ -130,8 +130,7 @@ public final class RuimRecords extends IccRecords {
         if(DBG) Log.d(LOG_TAG, "RuimRecords finalized");
     }
 
-    @Override
-    protected void onRadioOffOrNotAvailable() {
+    protected void resetRecords() {
         countVoiceMessages = 0;
         mncLength = UNINITIALIZED;
         iccid = null;
@@ -432,10 +431,6 @@ public final class RuimRecords extends IccRecords {
             case EVENT_APP_READY:
                 onReady();
                 break;
-
-            case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:
-                onRadioOffOrNotAvailable();
-            break;
 
             case EVENT_GET_DEVICE_IDENTITY_DONE:
                 Log.d(LOG_TAG, "Event EVENT_GET_DEVICE_IDENTITY_DONE Received");

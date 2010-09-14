@@ -122,7 +122,6 @@ public class SIMRecords extends IccRecords {
     // ***** Event Constants
 
     private static final int EVENT_APP_READY = 1;
-    private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 2;
     private static final int EVENT_GET_IMSI_DONE = 3;
     private static final int EVENT_GET_ICCID_DONE = 4;
     private static final int EVENT_GET_MBI_DONE = 5;
@@ -184,13 +183,11 @@ public class SIMRecords extends IccRecords {
         // recordsToLoad is set to 0 because no requests are made yet
         recordsToLoad = 0;
 
-        mCi.registerForOffOrNotAvailable(
-                        this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         mCi.setOnSmsOnSim(this, EVENT_SMS_ON_SIM, null);
         mCi.registerForIccRefresh(this, EVENT_SIM_REFRESH, null);
 
         // Start off by setting empty state
-        onRadioOffOrNotAvailable();
+        resetRecords();
         mParentApp.registerForReady(this, EVENT_APP_READY, null);
     }
 
@@ -198,9 +195,10 @@ public class SIMRecords extends IccRecords {
     public void dispose() {
         Log.d(LOG_TAG, "Disposing SIMRecords " + this);
         //Unregister for all events
-        mCi.unregisterForOffOrNotAvailable( this);
         mCi.unregisterForIccRefresh(this);
         mCi.unSetOnSmsOnSim(this);
+        mParentApp.unregisterForReady(this);
+        resetRecords();
         super.dispose();
     }
 
@@ -208,7 +206,7 @@ public class SIMRecords extends IccRecords {
         if(DBG) Log.d(LOG_TAG, "SIMRecords finalized");
     }
 
-    protected void onRadioOffOrNotAvailable() {
+    protected void resetRecords() {
         imsi = null;
         msisdn = null;
         voiceMailNum = null;
@@ -523,10 +521,6 @@ public class SIMRecords extends IccRecords {
             case EVENT_APP_READY:
                 onReady();
                 break;
-
-            case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:
-                onRadioOffOrNotAvailable();
-            break;
 
             /* IO events */
             case EVENT_GET_IMSI_DONE:
