@@ -198,4 +198,19 @@ public interface TelephonyProperties
      * Indicates whether Out Of Service is considered as data call disconnect.
      */
     static final String PROPERTY_OOS_IS_DISCONNECT = "persist.telephony.oosisdc";
+
+    /**
+     * Property that shows the status of the OMH feature
+     */
+    static final String PROPERTY_OMH_ENABLED = "persist.omh.enabled";
+
+    /**
+     * Property that can be used to set the IP version for CDMA
+     */
+    static final String PROPERTY_CDMA_IPPROTOCOL = "persist.telephony.cdma.protocol";
+
+    /**
+     * Property that can be used to set the IP version for CDMA when roaming
+     */
+    static final String PROPERTY_CDMA_ROAMING_IPPROTOCOL = "persist.telephony.cdma.rproto";
 }

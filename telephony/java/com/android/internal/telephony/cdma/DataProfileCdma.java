@@ -23,6 +23,7 @@ import java.util.Arrays;
 
 public class DataProfileCdma extends DataProfile {
 
+    /* ID of the profile in the modem */
     private static String PROFILE_TYPE = "CdmaNai";
 
     private int mProfileId = 0;
@@ -43,6 +44,7 @@ public class DataProfileCdma extends DataProfile {
         return DataProfileType.PROFILE_TYPE_CDMA;
     }
 
+    @Override
     public int getProfileId() {
         return mProfileId;
     }

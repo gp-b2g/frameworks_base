@@ -1539,6 +1539,11 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message response) {
+        unimplemented(response);
+    }
+
+    public void getDataCallProfile(int appType, Message response){
+        unimplemented(response);
     }
 
     public void setTransmitPower(int powerLevel, Message result) {
