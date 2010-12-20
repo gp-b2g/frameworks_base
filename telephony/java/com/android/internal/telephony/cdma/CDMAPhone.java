@@ -51,7 +51,6 @@ import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccException;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
-import com.android.internal.telephony.IccSmsInterfaceManager;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.OperatorInfo;
@@ -88,7 +87,7 @@ public class CDMAPhone extends PhoneBase {
     // Default Emergency Callback Mode exit timer
     private static final int DEFAULT_ECM_EXIT_TIMER_VALUE = 300000;
 
-    static final String VM_COUNT_CDMA = "vm_count_key_cdma";
+    public static final String VM_COUNT_CDMA = "vm_count_key_cdma";
     private static final String VM_NUMBER_CDMA = "vm_number_key_cdma";
     private String mVmNumber = null;
 
@@ -101,7 +100,6 @@ public class CDMAPhone extends PhoneBase {
     CdmaSubscriptionSourceManager mCdmaSSM;
     ArrayList <CdmaMmiCode> mPendingMmis = new ArrayList<CdmaMmiCode>();
     RuimPhoneBookInterfaceManager mRuimPhoneBookInterfaceManager;
-    RuimSmsInterfaceManager mRuimSmsInterfaceManager;
     int mCdmaSubscriptionSource = CDMA_SUBSCRIPTION_NV;
     PhoneSubInfo mSubInfo;
     EriManager mEriManager;
@@ -165,10 +163,8 @@ public class CDMAPhone extends PhoneBase {
         mCT = new CdmaCallTracker(this);
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context, mCM, this,
                 EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
-        mSMS = new CdmaSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
         mDataConnectionTracker = new CdmaDataConnectionTracker (this);
         mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
-        mRuimSmsInterfaceManager = new RuimSmsInterfaceManager(this, mSMS);
         mSubInfo = new PhoneSubInfo(this);
         mEriManager = new EriManager(this, context, EriManager.ERI_FROM_XML);
 
@@ -240,9 +236,7 @@ public class CDMAPhone extends PhoneBase {
             mDataConnectionTracker.dispose();
             mSST.dispose();
             mCdmaSSM.dispose(this);
-            mSMS.dispose();
             mRuimPhoneBookInterfaceManager.dispose();
-            mRuimSmsInterfaceManager.dispose();
             mSubInfo.dispose();
             mEriManager.dispose();
         }
@@ -252,7 +246,6 @@ public class CDMAPhone extends PhoneBase {
     public void removeReferences() {
         log("removeReferences");
         mRuimPhoneBookInterfaceManager = null;
-        mRuimSmsInterfaceManager = null;
         mSubInfo = null;
         mCT = null;
         mSST = null;
@@ -1138,13 +1131,6 @@ public class CDMAPhone extends PhoneBase {
      */
     public PhoneSubInfo getPhoneSubInfo() {
         return mSubInfo;
-    }
-
-    /**
-     * Retrieves the IccSmsInterfaceManager of the CDMAPhone
-     */
-    public IccSmsInterfaceManager getIccSmsInterfaceManager() {
-        return mRuimSmsInterfaceManager;
     }
 
     /**

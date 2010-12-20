@@ -32,11 +32,9 @@ import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
-import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.UiccManager;
 import com.android.internal.telephony.UiccManager.AppFamily;
-import com.android.internal.telephony.gsm.GsmSMSDispatcher;
 import com.android.internal.telephony.gsm.SIMRecords;
 import com.android.internal.telephony.gsm.SmsMessage;
 import com.android.internal.telephony.ims.IsimRecords;
@@ -46,9 +44,6 @@ public class CDMALTEPhone extends CDMAPhone {
     static final String LOG_TAG = "CDMA";
 
     private static final boolean DBG = true;
-
-    /** Secondary SMSDispatcher for 3GPP format messages. */
-    SMSDispatcher m3gppSMS;
 
     /** CdmaLtePhone in addition to RuimRecords available from
      * PhoneBase needs access to SIMRecords and IsimUiccRecords
@@ -71,7 +66,6 @@ public class CDMALTEPhone extends CDMAPhone {
     // Constructors
     public CDMALTEPhone(Context context, CommandsInterface ci, PhoneNotifier notifier) {
         super(context, ci, notifier, false);
-        m3gppSMS = new GsmSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
     }
 
     @Override
@@ -83,10 +77,6 @@ public class CDMALTEPhone extends CDMAPhone {
             case EVENT_SET_NETWORK_MANUAL_COMPLETE:
                 handleSetSelectNetwork((AsyncResult) msg.obj);
                 break;
-            case EVENT_NEW_ICC_SMS:
-                ar = (AsyncResult)msg.obj;
-                m3gppSMS.dispatchMessage((SmsMessage)ar.result);
-                break;
             default:
                 super.handleMessage(msg);
         }
@@ -97,20 +87,6 @@ public class CDMALTEPhone extends CDMAPhone {
         mUiccManager = UiccManager.getInstance(mContext, mCM);
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mSST = new CdmaLteServiceStateTracker(this);
-    }
-
-    @Override
-    public void dispose() {
-        synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            super.dispose();
-            m3gppSMS.dispose();
-        }
-    }
-
-    @Override
-    public void removeReferences() {
-        super.removeReferences();
-        m3gppSMS = null;
     }
 
     @Override
@@ -284,13 +260,11 @@ public class CDMALTEPhone extends CDMAPhone {
         if (mSimRecords != newSimRecords) {
             if (mSimRecords != null) {
                 log("Removing stale SIMRecords object.");
-                mSimRecords.unregisterForNewSms(this);
                 mSimRecords = null;
             }
             if (newSimRecords != null) {
                 log("New SIMRecords found");
                 mSimRecords = newSimRecords;
-                mSimRecords.registerForNewSms(this, EVENT_NEW_ICC_SMS, null);
             }
         }
 
