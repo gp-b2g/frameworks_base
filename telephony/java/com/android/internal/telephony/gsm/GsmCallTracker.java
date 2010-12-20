@@ -764,6 +764,37 @@ public final class GsmCallTracker extends CallTracker {
         phone.notifyPreciseCallStateChanged();
     }
 
+    void hangupAllCalls () throws CallStateException {
+        boolean hungUp = false;
+        if (!ringingCall.isIdle()) {
+             // Do not hangup waiting call
+             // as per 3GPP TS 22.030, 6.5.5.1.
+             if (ringingCall.getState() != GsmCall.State.WAITING) {
+                 log("hangupAllCalls: hang up ringing call");
+                 cm.hangupWaitingOrBackground(obtainCompleteMessage());
+                 ringingCall.onHangupLocal();
+                 hungUp = true;
+             }
+        }
+        if (!foregroundCall.isIdle()) {
+            log("hangupAllCalls: hang up active call");
+            hangupAllConnections(foregroundCall);
+            foregroundCall.onHangupLocal();
+            hungUp = true;
+        }
+        if (!backgroundCall.isIdle()) {
+            log("hangupAllCalls: hang up held call");
+            hangupAllConnections(backgroundCall);
+            backgroundCall.onHangupLocal();
+            hungUp = true;
+        }
+        if (hungUp) {
+            phone.notifyPreciseCallStateChanged();
+        } else {
+            throw new CallStateException("no active connections to hangup");
+        }
+    }
+
     /* package */
     void hangupWaitingOrBackground() {
         if (Phone.DEBUG_PHONE) log("hangupWaitingOrBackground");

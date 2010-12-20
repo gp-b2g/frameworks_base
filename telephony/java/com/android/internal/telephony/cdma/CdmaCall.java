@@ -91,6 +91,11 @@ public final class CdmaCall extends Call {
         owner.hangup(this);
     }
 
+    public void
+    hangupAllCalls() throws CallStateException {
+        throw new CallStateException ("hangupAllCalls: Unsupported Action");
+    }
+
     public String
     toString() {
         return state.toString();

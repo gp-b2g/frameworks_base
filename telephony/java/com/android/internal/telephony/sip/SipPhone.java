@@ -428,6 +428,10 @@ public class SipPhone extends SipPhoneBase {
             }
         }
 
+        public void
+        hangupAllCalls() throws CallStateException {
+            throw new CallStateException("hangupAllCalls: Unimplemented Action");
+        }
         void initIncomingCall(SipAudioCall sipAudioCall, boolean makeCallWait) {
             SipProfile callee = sipAudioCall.getPeerProfile();
             SipConnection c = new SipConnection(this, callee);
