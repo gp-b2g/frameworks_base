@@ -174,6 +174,9 @@ public final class GsmCallTracker extends CallTracker {
         // note that this triggers call state changed notif
         clearDisconnected();
 
+        // flag used to determine if cm.dial needs to be sent now or later
+        boolean isDialRequestPending = false;
+
         if (!canDial()) {
             throw new CallStateException("cannot dial in current state");
         }
@@ -186,13 +189,14 @@ public final class GsmCallTracker extends CallTracker {
             // but the dial might fail before this happens
             // and we need to make sure the foreground call is clear
             // for the newly dialed connection
-            switchWaitingOrHoldingAndActive();
+            switchWaitingOrHoldingAndActive(clirMode);
 
             // Fake local state so that
             // a) foregroundCall is empty for the newly dialed connection
             // b) hasNonHangupStateChanged remains false in the
             // next poll, so that we don't clear a failed dialing call
             fakeHoldForegroundBeforeDial();
+            isDialRequestPending = true;
         }
 
         if (foregroundCall.getState() != GsmCall.State.IDLE) {
@@ -213,10 +217,15 @@ public final class GsmCallTracker extends CallTracker {
             // and will mark it as dropped.
             pollCallsWhenSafe();
         } else {
-            // Always unmute when initiating a new call
-            setMute(false);
+            // if isDialRequestPending is true, we would postpone the dial
+            // request for the second call till we get the hold confirmation
+            // for the first call.
+            if (false == isDialRequestPending) {
+                // Always unmute when initiating a new call
+                setMute(false);
 
-            cm.dial(pendingMO.address, clirMode, uusInfo, obtainCompleteMessage());
+                cm.dial(pendingMO.address, clirMode, uusInfo, obtainCompleteMessage());
+            }
         }
 
         updatePhoneState();
@@ -238,6 +247,27 @@ public final class GsmCallTracker extends CallTracker {
     Connection
     dial(String dialString, int clirMode) throws CallStateException {
         return dial(dialString, clirMode, null);
+    }
+
+
+    void
+    dialPendingCall (int clirMode) {
+        if (pendingMO.address == null || pendingMO.address.length() == 0
+            || pendingMO.address.indexOf(PhoneNumberUtils.WILD) >= 0) {
+            // Phone number is invalid
+            pendingMO.cause = Connection.DisconnectCause.INVALID_NUMBER;
+
+            // handlePollCalls() will notice this call not present
+            // and will mark it as dropped.
+            pollCallsWhenSafe();
+        } else {
+            // Always unmute when initiating a new call
+            setMute(false);
+
+            cm.dial(pendingMO.address, clirMode, obtainCompleteMessage());
+        }
+        updatePhoneState();
+        phone.notifyPreciseCallStateChanged();
     }
 
     void
@@ -281,6 +311,17 @@ public final class GsmCallTracker extends CallTracker {
             callSwitchPending = true;
         } else {
             Log.w(LOG_TAG, "Call Switch request ignored due to pending response");
+        }
+    }
+
+    void
+    switchWaitingOrHoldingAndActive(int clirMode) throws CallStateException {
+        if (ringingCall.getState() == GsmCall.State.INCOMING) {
+            throw new CallStateException("cannot be in the incoming state");
+        } else {
+            cm.switchWaitingOrHoldingAndActive(
+                    obtainCompleteMessage(EVENT_SWITCH_RESULT, clirMode));
+            callSwitchPending = true;
         }
     }
 
@@ -366,6 +407,20 @@ public final class GsmCallTracker extends CallTracker {
 
         return obtainMessage(what);
     }
+
+
+    private Message
+    obtainCompleteMessage(int what, int clirMode) {
+        pendingOperations++;
+        lastRelevantPoll = null;
+        needsPoll = true;
+
+        if (DBG_POLL) log("obtainCompleteMessage: pendingOperations=" +
+                pendingOperations + ", needsPoll=" + needsPoll);
+
+        return obtainMessage(what, clirMode);
+    }
+
 
     private void
     operationComplete() {
@@ -890,8 +945,24 @@ public final class GsmCallTracker extends CallTracker {
                 operationComplete();
             break;
 
+            // This event will also be called when the call is placed
+            // on hold while there is another dialed call. If Hold succeeds,
+            // dialPendingCall would be invoked.Else getCurrentCalls is anyways
+            // invoked through operationComplete,which will get the new
+            // call states depending on which UI would be updated.
             case EVENT_SWITCH_RESULT:
                 callSwitchPending = false;
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception != null) {
+                    phone.notifySuppServiceFailed(getFailedService(msg.what));
+                } else {
+                    if (ar.userObj != null) {
+                        dialPendingCall((Integer) ar.userObj);
+                    }
+                }
+                operationComplete();
+            break;
+
             case EVENT_CONFERENCE_RESULT:
             case EVENT_SEPARATE_RESULT:
             case EVENT_ECT_RESULT:
