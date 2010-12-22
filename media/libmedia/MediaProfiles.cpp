@@ -640,22 +640,29 @@ MediaProfiles::getInstance()
 MediaProfiles::createDefaultH263VideoEncoderCap()
 {
     return new MediaProfiles::VideoEncoderCap(
-        VIDEO_ENCODER_H263, 192000, 420000, 176, 352, 144, 288, 1, 20);
+        VIDEO_ENCODER_H263, 192000, 6000000, 176, 800, 144, 480, 1, 30);
 }
 
 /*static*/ MediaProfiles::VideoEncoderCap*
 MediaProfiles::createDefaultM4vVideoEncoderCap()
 {
     return new MediaProfiles::VideoEncoderCap(
-        VIDEO_ENCODER_MPEG_4_SP, 192000, 420000, 176, 352, 144, 288, 1, 20);
+        VIDEO_ENCODER_MPEG_4_SP, 192000, 20 * 1000 * 1000, 176, 1920, 144, 1088, 1, 30);
 }
 
+/*static*/ MediaProfiles::VideoEncoderCap*
+MediaProfiles::createDefaultH264VideoEncoderCap()
+{
+    return new MediaProfiles::VideoEncoderCap(
+        VIDEO_ENCODER_H264, 192000, 20 * 1000 * 1000, 176, 1920, 144, 1088, 1, 30);
+}
 
 /*static*/ void
 MediaProfiles::createDefaultVideoEncoders(MediaProfiles *profiles)
 {
     profiles->mVideoEncoders.add(createDefaultH263VideoEncoderCap());
     profiles->mVideoEncoders.add(createDefaultM4vVideoEncoderCap());
+    profiles->mVideoEncoders.add(createDefaultH264VideoEncoderCap());
 }
 
 /*static*/ MediaProfiles::CamcorderProfile*
