@@ -1116,6 +1116,24 @@ public class SIMRecords extends IccRecords {
                 mFh.loadEFTransparent(EF_CSP_CPHS,
                         obtainMessage(EVENT_GET_CSP_CPHS_DONE));
                 break;
+            case EF_MSISDN:
+                recordsToLoad++;
+                Log.i(LOG_TAG,"SIM Refresh called for EF_MSISDN");
+                new AdnRecordLoader(mFh).loadFromEF(EF_MSISDN, EF_EXT1, 1,
+                      obtainMessage(EVENT_GET_MSISDN_DONE));
+                break;
+            case EF_CFIS:
+                recordsToLoad++;
+                Log.i(LOG_TAG,"SIM Refresh called for EF_CFIS");
+                mFh.loadEFLinearFixed(EF_CFIS,
+                      1, obtainMessage(EVENT_GET_CFIS_DONE));
+                break;
+            case EF_CFF_CPHS:
+                recordsToLoad++;
+                Log.i(LOG_TAG,"SIM Refresh called for EF_CFF_CPHS");
+                mFh.loadEFTransparent(EF_CFF_CPHS,
+                      obtainMessage(EVENT_GET_CFF_DONE));
+                break;
             default:
                 // For now, fetch all records if this is not a
                 // voicemail number.

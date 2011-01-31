@@ -749,6 +749,11 @@ public class CatService extends Handler implements AppInterface {
                 return;
             }
             break;
+        case TERMINAL_CRNTLY_UNABLE_TO_PROCESS:
+            //For screenbusy case there will be addtional information in the terminal
+            //response. And the value of the additional information byte is 0x01.
+            resMsg.includeAdditionalInfo = true;
+            resMsg.additionalInfo = 0x01;
         case NO_RESPONSE_FROM_USER:
         case UICC_SESSION_TERM_BY_USER:
         case BACKWARD_MOVE_BY_USER:
