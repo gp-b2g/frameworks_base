@@ -166,10 +166,10 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 new LoadLinearFixedContext(IccConstants.EF_IMG, recordNum,
                         onLoaded));
 
-        // TODO(): Verify when path changes are done.
-        mCi.iccIOForApp(COMMAND_GET_RESPONSE, IccConstants.EF_IMG, "img",
-                recordNum, READ_RECORD_MODE_ABSOLUTE,
-                GET_RESPONSE_EF_IMG_SIZE_BYTES, null, null, mAid, response);
+        mCi.iccIOForApp(COMMAND_GET_RESPONSE, IccConstants.EF_IMG,
+                         getEFPath(IccConstants.EF_IMG), recordNum,
+          READ_RECORD_MODE_ABSOLUTE, GET_RESPONSE_EF_IMG_SIZE_BYTES,
+                                           null, null,mAid,response);
     }
 
     /**
@@ -257,8 +257,18 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
         Message response = obtainMessage(EVENT_READ_ICON_DONE, fileid, 0,
                 onLoaded);
 
-        mCi.iccIOForApp(COMMAND_READ_BINARY, fileid, "img", highOffset, lowOffset,
-                length, null, null, mAid, response);
+        logd("IccFileHandler: loadEFImgTransparent fileid = "
+               + fileid + " filePath = " + getEFPath(fileid) +
+               " highOffset = " + highOffset + " lowOffset = "
+               + lowOffset + " length = " + length);
+        /*
+         * Per TS 31.102, for displaying of Icon, under
+         * DF Telecom and DF Graphics , EF instance(s) (4FXX,transparent files)
+         * are present. The possible image file identifiers (EF instance) for
+         * EF img ( 4F20, linear fixed file) are : 4F01 ... 4F05.
+         */
+        mCi.iccIOForApp(COMMAND_READ_BINARY, fileid, getEFPath(fileid),
+                highOffset, lowOffset,length, null, null,mAid,response);
     }
 
     /**
@@ -556,6 +566,11 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
             // we only support global phonebook.
             return MF_SIM + DF_TELECOM + DF_PHONEBOOK;
         case EF_IMG:
+        case EF_IIDF1:
+        case EF_IIDF2:
+        case EF_IIDF3:
+        case EF_IIDF4:
+        case EF_IIDF5:
             return MF_SIM + DF_TELECOM + DF_GRAPHICS;
         }
         return null;

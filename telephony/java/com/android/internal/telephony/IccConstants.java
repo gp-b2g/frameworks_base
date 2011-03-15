@@ -76,6 +76,13 @@ public interface IccConstants {
     static final int EF_IST = 0x6f07;
     static final int EF_PCSCF = 0x6f09;
 
+    // Image Instance Data Files (for EF_IMG) from TS 31.102
+    static final int EF_IIDF1 = 0x4f01;
+    static final int EF_IIDF2 = 0x4f02;
+    static final int EF_IIDF3 = 0x4f03;
+    static final int EF_IIDF4 = 0x4f04;
+    static final int EF_IIDF5 = 0x4f05;
+
     // SMS record length from TS 51.011 10.5.3
     static public final int SMS_RECORD_LENGTH = 176;
 
