@@ -9424,6 +9424,7 @@ package android.hardware {
     method public java.util.List<java.lang.String> getSupportedFaceDetectionModes();
     method public java.util.List<java.lang.String> getSupportedFlashModes();
     method public java.util.List<java.lang.String> getSupportedFocusModes();
+    method public java.util.List<android.hardware.Camera.Size> getSupportedHfrSizes();
     method public java.util.List<java.lang.String> getSupportedHistogramModes();
     method public java.util.List<java.lang.String> getSupportedIsoValues();
     method public java.util.List<android.hardware.Camera.Size> getSupportedJpegThumbnailSizes();
@@ -9442,6 +9443,7 @@ package android.hardware {
     method public java.util.List<java.lang.String> getSupportedSelectableZoneAf();
     method public java.util.List<java.lang.String> getSupportedSkinToneEnhancementModes();
     method public java.util.List<java.lang.String> getSupportedTouchAfAec();
+    method public java.util.List<java.lang.String> getSupportedVideoHighFrameRateModes();
     method public java.util.List<android.hardware.Camera.Size> getSupportedVideoSizes();
     method public java.util.List<java.lang.String> getSupportedWhiteBalance();
     method public java.util.List<java.lang.String> getSupportedZSLModes();
@@ -9449,6 +9451,7 @@ package android.hardware {
     method public android.hardware.Camera.Coordinate getTouchIndexAec();
     method public android.hardware.Camera.Coordinate getTouchIndexAf();
     method public float getVerticalViewAngle();
+    method public java.lang.String getVideoHighFrameRate();
     method public java.lang.String getWhiteBalance();
     method public java.lang.String getZSLMode();
     method public int getZoom();
@@ -9511,6 +9514,7 @@ package android.hardware {
     method public void setTouchAfAec(java.lang.String);
     method public void setTouchIndexAec(int, int);
     method public void setTouchIndexAf(int, int);
+    method public void setVideoHighFrameRate(java.lang.String);
     method public void setWhiteBalance(java.lang.String);
     method public void setZSLMode(java.lang.String);
     method public void setZoom(int);
@@ -9598,6 +9602,10 @@ package android.hardware {
     field public static final java.lang.String SKIN_TONE_ENHANCEMENT_ENABLE = "enable";
     field public static final java.lang.String TOUCH_AF_AEC_OFF = "touch-off";
     field public static final java.lang.String TOUCH_AF_AEC_ON = "touch-on";
+    field public static final java.lang.String VIDEO_HFR_2X = "60";
+    field public static final java.lang.String VIDEO_HFR_3X = "90";
+    field public static final java.lang.String VIDEO_HFR_4X = "120";
+    field public static final java.lang.String VIDEO_HFR_OFF = "off";
     field public static final java.lang.String WHITE_BALANCE_AUTO = "auto";
     field public static final java.lang.String WHITE_BALANCE_CLOUDY_DAYLIGHT = "cloudy-daylight";
     field public static final java.lang.String WHITE_BALANCE_DAYLIGHT = "daylight";

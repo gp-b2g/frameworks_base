@@ -1579,6 +1579,7 @@ public class Camera {
     public class Parameters {
         // Parameter keys to communicate with the camera driver.
         private static final String KEY_PREVIEW_SIZE = "preview-size";
+	private static final String KEY_HFR_SIZE = "hfr-size";
         private static final String KEY_PREVIEW_FORMAT = "preview-format";
         private static final String KEY_PREVIEW_FRAME_RATE = "preview-frame-rate";
         private static final String KEY_PREVIEW_FPS_RANGE = "preview-fps-range";
@@ -1660,9 +1661,9 @@ public class Camera {
         private static final String KEY_FACE_DETECTION = "face-detection";
         private static final String KEY_MEMORY_COLOR_ENHANCEMENT = "mce";
 	private static final String KEY_REDEYE_REDUCTION = "redeye-reduction";
-
         private static final String KEY_ZSL = "zsl";
         private static final String KEY_CAMERA_MODE = "camera-mode";
+        private static final String KEY_VIDEO_HIGH_FRAME_RATE = "video-hfr";
 
         // Parameter key suffix for supported values.
         private static final String SUPPORTED_VALUES_SUFFIX = "-values";
@@ -1732,6 +1733,12 @@ public class Camera {
         // Values for ZSL settings.
         public static final String ZSL_ON = "on";
         public static final String ZSL_OFF = "off";
+
+        // Values for HFR settings.
+        public static final String VIDEO_HFR_OFF = "off";
+        public static final String VIDEO_HFR_2X = "60";
+        public static final String VIDEO_HFR_3X = "90";
+        public static final String VIDEO_HFR_4X = "120";
 
         // Values for flash mode settings.
         /**
@@ -2188,6 +2195,17 @@ public class Camera {
          */
         public List<Size> getSupportedPreviewSizes() {
             String str = get(KEY_PREVIEW_SIZE + SUPPORTED_VALUES_SUFFIX);
+            return splitSize(str);
+        }
+
+	/**
+         * Gets the supported preview sizes in high frame rate recording mode.
+         *
+         * @return a list of Size object. This method will always return a list
+         *         with at least one element.
+         */
+        public List<Size> getSupportedHfrSizes() {
+            String str = get(KEY_HFR_SIZE + SUPPORTED_VALUES_SUFFIX);
             return splitSize(str);
         }
 
@@ -3768,6 +3786,35 @@ public class Camera {
          public void setCameraMode(int cameraMode) {
             set(KEY_CAMERA_MODE, cameraMode);
          }
+
+         /**
+         * Gets the current HFR Mode.
+         *
+         * @return VIDEO_HFR_XXX string constants
+         */
+        public String getVideoHighFrameRate() {
+            return get(KEY_VIDEO_HIGH_FRAME_RATE);
+        }
+
+        /**
+         * Sets the current HFR Mode.
+         *
+         * @param hfr VIDEO_HFR_XXX string constants
+         */
+        public void setVideoHighFrameRate(String hfr) {
+            set(KEY_VIDEO_HIGH_FRAME_RATE, hfr);
+        }
+
+         /**
+         * Gets the supported HFR modes.
+         *
+         * @return a List of VIDEO_HFR_XXX string constants. null if hfr mode
+         *         setting is not supported.
+         */
+        public List<String> getSupportedVideoHighFrameRateModes() {
+            String str = get(KEY_VIDEO_HIGH_FRAME_RATE + SUPPORTED_VALUES_SUFFIX);
+            return split(str);
+        }
 
         /**
          * Gets the distances from the camera to where an object appears to be
