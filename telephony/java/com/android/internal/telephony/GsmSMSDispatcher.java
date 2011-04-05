@@ -51,6 +51,7 @@ import static android.telephony.SmsMessage.MessageClass;
 
 final class GsmSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "GSM";
+    private ImsSMSDispatcher mImsSMSDispatcher;
 
     /** Status report received */
     private static final int EVENT_NEW_SMS_STATUS_REPORT = 100;
@@ -65,8 +66,9 @@ final class GsmSMSDispatcher extends SMSDispatcher {
     private final UsimDataDownloadHandler mDataDownloadHandler;
 
     public GsmSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
-            SmsUsageMonitor usageMonitor) {
+            SmsUsageMonitor usageMonitor, ImsSMSDispatcher imsSMSDispatcher) {
         super(phone, storageMonitor, usageMonitor);
+        mImsSMSDispatcher = imsSMSDispatcher;
         mDataDownloadHandler = new UsimDataDownloadHandler(mCm);
         mCm.setOnNewGsmSms(this, EVENT_NEW_SMS, null);
         mCm.setOnSmsOnSim(this, EVENT_SMS_ON_ICC, null);
@@ -330,6 +332,11 @@ final class GsmSMSDispatcher extends SMSDispatcher {
             // next retry will be sent using IMS request again.
             tracker.mImsRetry++;
         }
+    }
+
+    protected void sendRetrySms(SmsTracker tracker) {
+        //re-routing to ImsSMSDispatcher
+        mImsSMSDispatcher.sendRetrySms(tracker);
     }
 
     /** {@inheritDoc} */

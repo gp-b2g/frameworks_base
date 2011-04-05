@@ -41,12 +41,11 @@ final class ImsSMSDispatcher extends SMSDispatcher {
     public ImsSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
         super(phone, storageMonitor, usageMonitor);
-        mCdmaDispatcher = new CdmaSMSDispatcher(phone, storageMonitor, usageMonitor);
-        mGsmDispatcher = new GsmSMSDispatcher(phone, storageMonitor, usageMonitor);
+        mCdmaDispatcher = new CdmaSMSDispatcher(phone, storageMonitor, usageMonitor, this);
+        mGsmDispatcher = new GsmSMSDispatcher(phone, storageMonitor, usageMonitor, this);
 
         mCm.registerForOn(this, EVENT_RADIO_ON, null);
         mCm.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
-        registerSendRetry(this, EVENT_PROCESS_SEND_RETRY, null);
     }
 
     /* Updates the voice phoneobject when there is a change in a phone object*/
@@ -62,7 +61,6 @@ final class ImsSMSDispatcher extends SMSDispatcher {
         mCm.unSetOnIccSmsFull(this);
         mCm.unregisterForOn(this);
         mCm.unregisterForImsNetworkStateChanged(this);
-        unregisterSendRetry(this);
         super.dispose();
     }
 
@@ -91,17 +89,6 @@ final class ImsSMSDispatcher extends SMSDispatcher {
             } else {
                 Log.e(TAG, "IMS State query failed!");
             }
-            break;
-
-        case EVENT_PROCESS_SEND_RETRY:
-            Log.d(TAG, "EVENT_PROCESS_SEND_RETRY received");
-
-            ar = (AsyncResult) msg.obj;
-            if (ar.exception != null) {
-                Log.e(TAG, "Exception processing send retry request. Exception:" + ar.exception);
-                return;
-            }
-            sendRetrySms((SmsTracker) ar.result);
             break;
         }
     }
