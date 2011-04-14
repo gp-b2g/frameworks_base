@@ -118,6 +118,7 @@
         <item>"mobile_ims,11,0,2,60000,true"</item>
         <item>"mobile_cbs,12,0,2,60000,true"</item>
         <item>"wifi_p2p,13,1,0,-1,true"</item>
+        <item>"bluetooth,7,7,2,-1,true"</item>
     </string-array>
 
     <!-- Array of ConnectivityManager.TYPE_xxxx constants for networks that may only
@@ -136,6 +137,7 @@
     <string-array translatable="false" name="radioAttributes">
         <item>"1,1"</item>
         <item>"0,1"</item>
+        <item>"7,1"</item>
     </string-array>
 
     <!-- Set of NetworkInfo.getType() that reflect data usage. -->
@@ -172,6 +174,7 @@
          bluetooth interfaces.  If the device doesn't want to support tethering over bluetooth this
          should be empty. -->
     <string-array translatable="false" name="config_tether_bluetooth_regexs">
+            <item>"bnep\\d"</item>
     </string-array>
 
     <!-- Max number of Bluetooth tethering connections allowed. If this is
