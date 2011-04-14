@@ -4424,7 +4424,6 @@ package android.bluetooth {
     field public static final int IMAGING_DISPLAY = 1552; // 0x610
     field public static final int IMAGING_PRINTER = 1664; // 0x680
     field public static final int IMAGING_SCANNER = 1600; // 0x640
-
     field public static final int PHONE_CELLULAR = 516; // 0x204
     field public static final int PHONE_CORDLESS = 520; // 0x208
     field public static final int PHONE_ISDN = 532; // 0x214
@@ -4597,6 +4596,35 @@ package android.bluetooth {
     method public java.io.OutputStream getOutputStream() throws java.io.IOException;
     method public android.bluetooth.BluetoothDevice getRemoteDevice();
     method public boolean isConnected();
+  }
+
+  public abstract interface IBluetoothThermometerCallBack implements android.os.IInterface {
+    method public abstract void sendResult(android.os.Bundle) throws android.os.RemoteException;
+  }
+
+  public static abstract class IBluetoothThermometerCallBack.Stub extends android.os.Binder implements android.bluetooth.IBluetoothThermometerCallBack {
+    ctor public IBluetoothThermometerCallBack.Stub();
+    method public android.os.IBinder asBinder();
+    method public static android.bluetooth.IBluetoothThermometerCallBack asInterface(android.os.IBinder);
+    method public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
+  }
+
+  public abstract interface IBluetoothThermometerServices implements android.os.IInterface {
+    method public abstract boolean clearNotifyIndicate(android.os.ParcelUuid) throws android.os.RemoteException;
+    method public abstract boolean closeThermometerService(android.bluetooth.BluetoothDevice, android.os.ParcelUuid) throws android.os.RemoteException;
+    method public abstract java.lang.String getServiceName() throws android.os.RemoteException;
+    method public abstract boolean notifyIndicateValue(android.os.ParcelUuid) throws android.os.RemoteException;
+    method public abstract void readCharacteristicsValue(android.os.ParcelUuid) throws android.os.RemoteException;
+    method public abstract int readClientCharConf(android.os.ParcelUuid) throws android.os.RemoteException;
+    method public abstract boolean startThermometerService(android.bluetooth.BluetoothDevice, android.os.ParcelUuid, android.bluetooth.IBluetoothThermometerCallBack) throws android.os.RemoteException;
+    method public abstract boolean writeCharacteristicsValue(android.os.ParcelUuid, java.lang.String) throws android.os.RemoteException;
+  }
+
+  public static abstract class IBluetoothThermometerServices.Stub extends android.os.Binder implements android.bluetooth.IBluetoothThermometerServices {
+    ctor public IBluetoothThermometerServices.Stub();
+    method public android.os.IBinder asBinder();
+    method public static android.bluetooth.IBluetoothThermometerServices asInterface(android.os.IBinder);
+    method public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
   }
 
 }

@@ -18,7 +18,14 @@
 #define ANDROID_BLUETOOTH_COMMON_H
 
 // Set to 0 to enable verbose bluetooth logging
-#define LOG_NDEBUG 1
+//#define LOG_NDEBUG 1
+
+
+//#undef NDEBUG
+
+//#define LOG_NIDEBUG 0
+//#define LOG_NDEBUG 0
+//#define LOG_NDDEBUG 0
 
 #include "jni.h"
 #include "utils/Log.h"
@@ -99,6 +106,18 @@ struct _Properties {
 };
 typedef struct _Properties Properties;
 
+typedef struct {
+    void (*user_cb)(DBusMessage *, void *, void *);
+    void *user;
+    void *nat;
+    JNIEnv *env;
+} dbus_async_call_t;
+
+struct set_characteristic_property_t {
+    char * path;
+    char * property;
+};
+
 dbus_bool_t dbus_func_args_async(JNIEnv *env,
                                  DBusConnection *conn,
                                  int timeout_ms,
@@ -147,6 +166,8 @@ DBusMessage * dbus_func_args_timeout_valist(JNIEnv *env,
                                             int first_arg_type,
                                             va_list args);
 
+void dbus_func_args_async_callback(DBusPendingCall *call, void *data);
+
 jint dbus_returns_int32(JNIEnv *env, DBusMessage *reply);
 jint dbus_returns_uint32(JNIEnv *env, DBusMessage *reply);
 jint dbus_returns_unixfd(JNIEnv *env, DBusMessage *reply);
@@ -162,6 +183,8 @@ jobjectArray parse_property_change(JNIEnv *env, DBusMessage *msg,
                                    Properties *properties, int max_num_properties);
 jobjectArray parse_adapter_properties(JNIEnv *env, DBusMessageIter *iter);
 jobjectArray parse_remote_device_properties(JNIEnv *env, DBusMessageIter *iter);
+jobjectArray parse_gatt_service_properties(JNIEnv *env, DBusMessageIter *iter);
+jobjectArray parse_gatt_characteristic_properties(JNIEnv *env, DBusMessageIter *iter);
 jobjectArray parse_remote_device_property_change(JNIEnv *env, DBusMessage *msg);
 jobjectArray parse_adapter_property_change(JNIEnv *env, DBusMessage *msg);
 jobjectArray parse_input_properties(JNIEnv *env, DBusMessageIter *iter);
@@ -173,6 +196,7 @@ jobjectArray parse_health_device_property_change(JNIEnv *env, DBusMessage *msg);
 
 void append_dict_args(DBusMessage *reply, const char *first_key, ...);
 void append_variant(DBusMessageIter *iter, int type, void *val);
+void append_array_variant(DBusMessageIter *iter, int type, void *val, int n_elements);
 int get_bdaddr(const char *str, bdaddr_t *ba);
 void get_bdaddr_as_string(const bdaddr_t *ba, char *str);
 

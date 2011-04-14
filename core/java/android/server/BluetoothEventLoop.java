@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010, 2011 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ import java.util.List;
  */
 class BluetoothEventLoop {
     private static final String TAG = "BluetoothEventLoop";
-    private static final boolean DBG = false;
+    private static final boolean DBG = true;
 
     private int mNativeData;
     private Thread mThread;
@@ -211,18 +211,16 @@ class BluetoothEventLoop {
             intent.putExtra(BluetoothDevice.EXTRA_NAME, name);
 
             mContext.sendBroadcast(intent, BLUETOOTH_PERM);
-        } else if (devType != null)  {
+        } else if (devType != null) {
             if (DBG) log("Device type: " + devType);
-            if ("LE".equals(devType)){
+            if ("LE".equals(devType)) {
                 Intent intent = new Intent(BluetoothDevice.ACTION_FOUND);
                 intent.putExtra(BluetoothDevice.EXTRA_DEVICE, mAdapter.getRemoteDevice(address));
                 intent.putExtra(BluetoothDevice.EXTRA_RSSI, rssiValue);
                 intent.putExtra(BluetoothDevice.EXTRA_NAME, name);
 
                 mContext.sendBroadcast(intent, BLUETOOTH_PERM);
-
             }
-
         } else {
             log ("ClassValue: " + classValue + " for remote device: " + address + " is null");
         }
@@ -299,6 +297,7 @@ class BluetoothEventLoop {
         String address = mBluetoothService.getAddressFromObjectPath(deviceObjectPath);
         if (!mBluetoothService.isRemoteDeviceInCache(address)) {
             // Incoming connection, we haven't seen this device, add to cache.
+
             String[] properties = mBluetoothService.getRemoteDeviceProperties(address);
             if (properties != null) {
                 addDevice(address, properties);
@@ -342,6 +341,7 @@ class BluetoothEventLoop {
         }
         log("Property Changed: " + propValues[0] + " : " + propValues[1]);
         String name = propValues[0];
+
         if (name.equals("Name")) {
             adapterProperties.setProperty(name, propValues[1]);
             Intent intent = new Intent(BluetoothAdapter.ACTION_LOCAL_NAME_CHANGED);
@@ -488,6 +488,21 @@ class BluetoothEventLoop {
             mBluetoothService.updateDeviceServiceChannelCache(address);
 
             mBluetoothService.sendUuidIntent(address);
+        } else if (name.equals("Services")) {
+            String services = null;
+            int len = Integer.valueOf(propValues[1]);
+            if (len > 0) {
+                StringBuilder str = new StringBuilder();
+                for (int i = 2; i < propValues.length; i++) {
+                    str.append(propValues[i]);
+                    str.append(",");
+                }
+                services = str.toString();
+            }
+            mBluetoothService.setRemoteDeviceProperty(address, name, services);
+
+            mBluetoothService.sendGattIntent(address);
+
         } else if (name.equals("Paired")) {
             if (propValues[1].equals("true")) {
                 // If locally initiated pairing, we will
@@ -1120,6 +1135,32 @@ class BluetoothEventLoop {
         log("Health Device : devicePath: " + devicePath + ":channelPath:" + channelPath +
                 ":exists" + exists);
         mBluetoothService.onHealthDeviceChannelChanged(devicePath, channelPath, exists);
+    }
+
+    private void onDiscoverCharacteristicsResult(String serviceObjectPath, boolean result) {
+
+        if (result) {
+            mBluetoothService.updateGattServicePropertiesCache(serviceObjectPath);
+        }
+        mBluetoothService.makeDiscoverCharacteristicsCallback(serviceObjectPath);
+    }
+
+    private void onSetCharacteristicPropertyResult(String path, String property, boolean result) {
+
+        Log.d(TAG, "onSetCharPropResult path " + path + " property = " + property);
+        Log.d(TAG, "Result = " + result);
+        mBluetoothService.makeSetCharacteristicPropertyCallback(path, property, result);
+    }
+
+    private void onWatcherValueChanged(String characteristicPath, String value) {
+        // TODO: Send this to upper layer
+        mBluetoothService.makeWatcherValueChangedCallback(characteristicPath, value);
+
+    }
+
+    private void onUpdateCharacteristicValueResult(String charObjectPath, boolean result) {
+
+        mBluetoothService.makeUpdateCharacteristicValueCallback(charObjectPath, result);
     }
 
     private static void log(String msg) {

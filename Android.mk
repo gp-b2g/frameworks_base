@@ -90,6 +90,10 @@ LOCAL_SRC_FILES += \
 	core/java/android/bluetooth/IBluetooth.aidl \
 	core/java/android/bluetooth/IBluetoothA2dp.aidl \
 	core/java/android/bluetooth/IBluetoothCallback.aidl \
+	core/java/android/bluetooth/IBluetoothGattService.aidl \
+	core/java/android/bluetooth/IBluetoothGattProfile.aidl \
+	core/java/android/bluetooth/IBluetoothThermometerCallBack.aidl \
+	core/java/android/bluetooth/IBluetoothThermometerServices.aidl \
 	core/java/android/bluetooth/IBluetoothHeadset.aidl \
 	core/java/android/bluetooth/IBluetoothHealthCallback.aidl \
 	core/java/android/bluetooth/IBluetoothPbap.aidl \

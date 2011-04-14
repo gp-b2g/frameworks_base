@@ -24,6 +24,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothHealthAppConfiguration;
 import android.os.ParcelUuid;
 import android.os.ParcelFileDescriptor;
+import android.bluetooth.IBluetoothGattService;
 
 /**
  * System private API for talking with the Bluetooth service.
@@ -132,4 +133,15 @@ interface IBluetooth
     int getEffectiveAmpPolicy(in int policy);
     boolean setDesiredAmpPolicy(in int handle, in int policy);
     void setUseWifiForBtTransfers(in boolean useWifi);
+
+    boolean getGattServices(in String address, in ParcelUuid uuid);
+    String getGattServiceName(in String path);
+    boolean discoverCharacteristics(in String path);
+    String[] getCharacteristicProperties(in String path);
+    boolean setCharacteristicProperty(in String path, in String key, in byte[] value);
+    boolean registerCharacteristicsWatcher(in String path, in IBluetoothGattService gattCallback);
+    boolean updateCharacteristicValue(in String path);
+    boolean deregisterCharacteristicsWatcher(in String path);
+    boolean startRemoteGattService(in String path, IBluetoothGattService gattCallback);
+    void closeRemoteGattService(in String path);
 }

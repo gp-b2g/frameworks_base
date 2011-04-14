@@ -30,6 +30,7 @@ import android.util.Log;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.UUID;
+import java.util.Vector;
 
 /**
  * Represents a remote Bluetooth device. A {@link BluetoothDevice} lets you
@@ -357,6 +358,11 @@ public final class BluetoothDevice implements Parcelable {
      * A bond attempt succeeded
      * @hide
      */
+    public static final String ACTION_GATT =
+            "android.bluetooth.device.action.GATT";
+
+    /** A bond attempt succeeded
+     * @hide */
     public static final int BOND_SUCCESS = 0;
 
     /**
@@ -467,6 +473,12 @@ public final class BluetoothDevice implements Parcelable {
      * @hide
      */
     public static final String EXTRA_UUID = "android.bluetooth.device.extra.UUID";
+    /**
+     * Used as an extra field in ACTION_GATT intent.
+     * Contains the object paths of the GATT based services on remote device.
+     * @hide
+     */
+    public static final String EXTRA_GATT = "android.bluetooth.device.extra.GATT";
 
     /**
      * Lazy initialization. Guaranteed final after first object constructed, or
@@ -1137,4 +1149,62 @@ public final class BluetoothDevice implements Parcelable {
         return pinBytes;
     }
 
+   /**
+     * Broadcast Action
+     * Always contains the extra field {EXTRA_DEVICE}
+     * Always contains the extra field {EXTRA_UUID}
+     * Always contains the extra filed {EXTRA_PATH}
+     * Requires BLUETOOTH to receive.
+     * @hide
+     */
+    @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+    public static final String ACTION_GATT_SERVICE =
+            "android.bleutooth.device.action.GATT_SERVICE";
+
+  /**
+     * Broadcast Action
+     * Requires BLUETOOTH to receive.
+     * @hide
+     */
+    @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+    public static final String ACTION_GATT_SERVICE_CHANGED =
+            "android.bleutooth.device.action.GATT_SERVICES_CHANGED";
+
+   /**
+     * Get GATT-based service for a given UUID.
+     *
+     *
+     * @param uuid GATT service UUID
+     * @return False, if internal checks fail; True if the process of
+     *             retrieving information about GATT services was started.
+     *
+     * @hide
+     */
+    public boolean getGattServices(UUID uuid) {
+
+        ParcelUuid convertUuid = new ParcelUuid(uuid);
+
+        try {
+            return sService.getGattServices(mAddress, convertUuid);
+        } catch (RemoteException e) {Log.e(TAG, "", e);}
+
+        return false;
+    }
+
+    /**
+     * Get all GATT-based services on the remote device..
+     *
+     * @return False, if internal checks fail; True if the process of
+     *             retrieving information about GATT services was started.
+     *
+     * @hide
+     */
+    public boolean getGattServices() {
+
+        try {
+            return sService.getGattServices(mAddress, null);
+        } catch (RemoteException e) {Log.e(TAG, "", e);}
+
+        return false;
+    }
 }
