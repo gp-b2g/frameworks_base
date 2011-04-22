@@ -1442,6 +1442,46 @@ void OMXCodec::setVideoInputFormat(
             CHECK(!"Support for this compressionFormat to be implemented.");
             break;
     }
+
+    //If compression is AVC and 3D encoding is requested, we'll inform the encoder
+    int32_t want3D = 0;
+    if (meta->findInt32(kKey3D, &want3D) && want3D) {
+        if (compressionFormat == OMX_VIDEO_CodingAVC) {
+            OMX_QCOM_FRAME_PACK_ARRANGEMENT fpa;
+
+            fpa.id = 0;
+            fpa.cancel_flag = 0;
+            fpa.type = 3; //Left-Right arrangement
+            fpa.quincunx_sampling_flag = 0;
+            fpa.content_interpretation_type = 0;
+            fpa.spatial_flipping_flag = 0;
+            fpa.frame0_flipped_flag = 0;
+            fpa.field_views_flag = 0;
+            fpa.current_frame_is_frame0_flag = 0;
+            fpa.frame0_self_contained_flag = 0;
+            fpa.frame1_self_contained_flag = 0;
+            fpa.frame0_grid_position_x = 0;
+            fpa.frame0_grid_position_y = 0;
+            fpa.frame1_grid_position_x = 0;
+            fpa.frame1_grid_position_y = 0;
+            fpa.reserved_byte = 0;
+            fpa.repetition_period = 0;
+            fpa.extension_flag = 0;
+
+            err = mOMX->setConfig(mNode,
+                    (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoFramePackingArrangement,
+                    &fpa, (size_t)sizeof(fpa));
+        } else {
+            LOGE("Only H264 supports SEI info, setting 3d failed");
+            err = ERROR_UNSUPPORTED;
+        }
+
+        if (err != OMX_ErrorNone)
+            LOGE("Enabling fpa for 3d failed");
+        else
+            LOGI("Enabled 3d");
+
+    }
 }
 
 static OMX_U32 setPFramesSpacing(int32_t iFramesInterval, int32_t frameRate) {
@@ -1816,6 +1856,21 @@ status_t OMXCodec::setVideoOutputFormat(
         return err;
     }
 
+    //Enable decoder to report if there is any SEI data
+    //(supported only by H264)
+    if (compressionFormat == OMX_VIDEO_CodingAVC)
+    {
+        QOMX_ENABLETYPE enable_sei_reporting;
+        enable_sei_reporting.bEnable = OMX_TRUE;
+
+        err = mOMX->setParameter(
+                mNode, (OMX_INDEXTYPE)OMX_QcomIndexParamFrameInfoExtraData,
+                &enable_sei_reporting, (size_t)sizeof(enable_sei_reporting));
+
+        if (err != OK)
+            LOGV("Not supported parameter OMX_QcomIndexParamFrameInfoExtraData");
+    }
+
 #if 1
     {
         OMX_VIDEO_PARAM_PORTFORMATTYPE format;
@@ -1952,6 +2007,7 @@ OMXCodec::OMXCodec(
       latenessUs(0),
       LC_level(0),
       mThumbnailMode(false),
+      m3DVideoDetected(false),
       mNativeWindow(
               (!strncmp(componentName, "OMX.google.", 11)
               || !strcmp(componentName, "OMX.Nvidia.mpeg2v.decode"))
@@ -2811,6 +2867,14 @@ void OMXCodec::on_message(const omx_message &msg) {
                  flags,
                  msg.u.extended_buffer_data.timestamp,
                  msg.u.extended_buffer_data.timestamp / 1E6);
+
+            if (!strncasecmp(mMIME, "video/", 6) && mOMXLivesLocally
+               && msg.u.extended_buffer_data.range_length > 0) {
+
+              CODEC_LOGV("Calling processSEIData");
+              if (!mThumbnailMode)
+                  processSEIData();
+            }
 
             Vector<BufferInfo> *buffers = &mPortBuffers[kPortIndexOutput];
             size_t i = 0;
@@ -5779,4 +5843,63 @@ void OMXCodec::setQCELPFormat(int32_t numChannels, int32_t sampleRate, int32_t b
     }
 }
 
-}  // namespace android
+status_t OMXCodec::processSEIData() {
+    if (!m3DVideoDetected)
+    {
+        CODEC_LOGI("In processSEIData");
+        //We don't want to continue checking every buffer, so we mark as 3D detected
+        //regardless. We only take action by xoring the 3d flag when cancel_flag is set
+        m3DVideoDetected = true;
+
+
+        OMX_QCOM_FRAME_PACK_ARRANGEMENT arrangementInfo;
+        arrangementInfo.cancel_flag = 1; //Need to initialize to 1, because the core doesn't touch this
+                                         //struct if video is not H264
+        status_t err = mOMX->getConfig(mNode, (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoFramePackingArrangement,
+                                       &arrangementInfo, (size_t)sizeof(arrangementInfo));
+        if (err != OK)
+        {
+            LOGV("Not supported config OMX_QcomIndexConfigVideoFramePackingArrangement");
+            return OK;
+        }
+
+        if (arrangementInfo.cancel_flag != 1)
+        {
+            int width, height, colorFormat;
+            CHECK(mOutputFormat->findInt32(kKeyWidth, &width));
+            CHECK(mOutputFormat->findInt32(kKeyHeight, &height));
+            CHECK(mOutputFormat->findInt32(kKeyColorFormat, &colorFormat));
+
+            colorFormat = (colorFormat == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka) ?
+                HAL_PIXEL_FORMAT_YCbCr_420_SP_TILED : colorFormat;
+
+            bool flip = (arrangementInfo.content_interpretation_type == 2); //LR should be treated as RL
+
+            if (arrangementInfo.type == 3) //side-by-side
+            {
+                if (flip)
+                    colorFormat |= HAL_3D_OUT_SIDE_BY_SIDE | HAL_3D_IN_SIDE_BY_SIDE_R_L;
+                else
+                    colorFormat |= HAL_3D_OUT_SIDE_BY_SIDE | HAL_3D_IN_SIDE_BY_SIDE_L_R;
+            }
+            else if (arrangementInfo.type == 4) //top-bottom
+            {
+                if (flip)
+                    LOGE("flipping top-bottom 3d video not supported, continuing to display as top bottom");
+                colorFormat |= HAL_3D_OUT_TOP_BOTTOM | HAL_3D_IN_TOP_BOTTOM;
+            }
+            else
+                LOGW("This is supposedly a 3d video but the frame arragement [%d] is not supported", (int)arrangementInfo.type);
+            err = mNativeWindow.get()->perform(mNativeWindow.get(), NATIVE_WINDOW_UPDATE_BUFFERS_GEOMETRY, width, height, colorFormat);
+            if (err != 0) {
+                LOGE("native_window_update_buffers_geometry failed: %s (%d)",
+                        strerror(-err), -err);
+                return err;
+            }
+
+            LOGW("Is a 3D video");
+        }
+    }
+    return OK;
+}
+}

@@ -235,6 +235,7 @@ private:
     // Used to record the decoding time for an output picture from
     // a video encoder.
     List<int64_t> mDecodingTimeList;
+    bool m3DVideoDetected;
 
     //Used to indicate if the AAC container has ADIF format
     int32_t mIsAacFormatAdif;
@@ -366,6 +367,8 @@ private:
     status_t parseAVCCodecSpecificData(
             const void *data, size_t size,
             unsigned *profile, unsigned *level, const sp<MetaData> &meta);
+
+    status_t processSEIData();
 
     OMXCodec(const OMXCodec &);
     OMXCodec &operator=(const OMXCodec &);
