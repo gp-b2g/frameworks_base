@@ -161,6 +161,12 @@ public abstract class SMSDispatcher extends Handler {
 
     protected int mRemainingMessages = -1;
 
+    /** List of messages awaiting to be sent.
+     * Message at index 0 is the one currently being sent
+     */
+    private ArrayList<SmsTracker> mPendingMessagesList;
+    private boolean mSyncronousSending;
+
     protected static int getNextConcatenatedRef() {
         sConcatenatedRef += 1;
         return sConcatenatedRef;
@@ -190,6 +196,10 @@ public abstract class SMSDispatcher extends Handler {
                                 TelephonyProperties.PROPERTY_SMS_RECEIVE, mSmsCapable);
         mSmsSendDisabled = !SystemProperties.getBoolean(
                                 TelephonyProperties.PROPERTY_SMS_SEND, mSmsCapable);
+        mPendingMessagesList = new ArrayList<SmsTracker>();
+        mSyncronousSending = SystemProperties.getBoolean(
+                TelephonyProperties.SMS_SYNCHRONOUS_SENDING,
+                false);
         Log.d(TAG, "SMSDispatcher: ctor mSmsCapable=" + mSmsCapable + " format=" + getFormat()
                 + " mSmsReceiveDisabled=" + mSmsReceiveDisabled
                 + " mSmsSendDisabled=" + mSmsSendDisabled);
@@ -388,6 +398,11 @@ public abstract class SMSDispatcher extends Handler {
                     }
                 } catch (CanceledException ex) {}
             }
+
+            if (mSyncronousSending) {
+                processNextPendingMessage();
+            }
+
         } else {
             if (false) {
                 Log.d(TAG, "SMS send failed");
@@ -434,6 +449,10 @@ public abstract class SMSDispatcher extends Handler {
 
                     tracker.mSentIntent.send(mContext, error, fillIn);
                 } catch (CanceledException ex) {}
+
+                if (mSyncronousSending) {
+                    processNextPendingMessage();
+                }
             }
         }
     }
@@ -899,7 +918,11 @@ public abstract class SMSDispatcher extends Handler {
         } else {
             String appName = getAppNameByIntent(sentIntent);
             if (mUsageMonitor.check(appName, SINGLE_PART_SMS)) {
-                sendSms(tracker);
+                if (mSyncronousSending) {
+                    enqueueMessageForSending(tracker);
+                } else {
+                    sendSms(tracker);
+                }
             } else {
                 sendMessage(obtainMessage(EVENT_POST_ALERT, tracker));
             }
@@ -1089,6 +1112,35 @@ public abstract class SMSDispatcher extends Handler {
             intent.putExtra("pdus", pdus);
             Log.d(TAG, "Dispatching " + pdus.length + " SMS CB pdus");
             dispatch(intent, RECEIVE_SMS_PERMISSION);
+        }
+    }
+
+    private void processNextPendingMessage() {
+        synchronized (mPendingMessagesList) {
+            // Remove sent message from the list
+            if (mPendingMessagesList.size() > 0) {
+                mPendingMessagesList.remove(0);
+                Log.d(TAG, "Removed message from pending queue. " + mPendingMessagesList.size() + " left");
+            } else {
+                Log.e(TAG, "Pending messages list consistency failure detected!");
+            }
+
+            // If there are more messages waiting to be sent - send next one
+            if (mPendingMessagesList.size() > 0) {
+                sendSms(mPendingMessagesList.get(0));
+            }
+        }
+    }
+
+    private void enqueueMessageForSending(SmsTracker tracker) {
+        synchronized (mPendingMessagesList) {
+            mPendingMessagesList.add(tracker);
+            Log.d(TAG, "Added message to the pending queue. Queue size is " + mPendingMessagesList.size());
+            //Trigger sending only if there are no other messages being sent right now
+            //i.e. the queue was empty before we added this message to it
+            if (mPendingMessagesList.size() == 1) {
+                sendSms(tracker);
+            }
         }
     }
 }

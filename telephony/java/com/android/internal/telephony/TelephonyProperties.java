@@ -187,4 +187,10 @@ public interface TelephonyProperties
      * Set to true to indicates support for simultaneous voice and data.
      */
     static final String PROPERTY_SVDATA = "ro.config.svlte1x";
+
+    /**
+     * Indicates whether sms should be sent in synchronous manner.
+     * Type: boolean ( false = asynchronous, true = send next queued sms after
+     * making sure previous sms was sent) */
+    static final String SMS_SYNCHRONOUS_SENDING = "persist.radio.sms_sync_sending";
 }
