@@ -237,9 +237,12 @@ public abstract class ServiceStateTracker extends Handler {
 
     public void
     setRadioPower(boolean power) {
-        mDesiredPowerState = power;
-
-        setPowerStateToDesired();
+        if (power != mDesiredPowerState) {
+            mDesiredPowerState = power;
+            setPowerStateToDesired();
+        } else {
+            log("Power state " + power + " is already the desired power state");
+        }
     }
 
     /**
