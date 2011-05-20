@@ -102,6 +102,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_SET_ENHANCED_VP                = 24;
     protected static final int EVENT_EMERGENCY_CALLBACK_MODE_ENTER  = 25;
     protected static final int EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE = 26;
+    protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 27;
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
@@ -261,6 +262,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void removeReferences() {
         mSmsStorageMonitor = null;
         mSmsUsageMonitor = null;
+        this.mSMS = null;
+        this.mIccRecords = null;
+        this.mIccCard = null;
+        this.mDataConnectionTracker = null;
     }
 
     /**

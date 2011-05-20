@@ -20,80 +20,76 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 
 import android.os.Message;
 import android.os.Handler;
+import android.os.SystemProperties;
+import android.util.Log;
 
 /**
  * {@hide}
  */
 public interface CommandsInterface {
     enum RadioState {
-        RADIO_OFF(0),         /* Radio explictly powered off (eg CFUN=0) */
-        RADIO_UNAVAILABLE(0), /* Radio unavailable (eg, resetting or not booted) */
-        SIM_NOT_READY(1),     /* Radio is on, but the SIM interface is not ready */
-        SIM_LOCKED_OR_ABSENT(1),  /* SIM PIN locked, PUK required, network
-                                     personalization, or SIM absent */
-        SIM_READY(1),         /* Radio is on and SIM interface is available */
-        RUIM_NOT_READY(2),    /* Radio is on, but the RUIM interface is not ready */
-        RUIM_READY(2),        /* Radio is on and the RUIM interface is available */
-        RUIM_LOCKED_OR_ABSENT(2), /* RUIM PIN locked, PUK required, network
-                                     personalization locked, or RUIM absent */
-        NV_NOT_READY(3),      /* Radio is on, but the NV interface is not available */
-        NV_READY(3);          /* Radio is on and the NV interface is available */
+        RADIO_OFF,         /* Radio explictly powered off (eg CFUN=0) */
+        RADIO_UNAVAILABLE, /* Radio unavailable (eg, resetting or not booted) */
+        RADIO_ON;          /* Radio is */
 
         public boolean isOn() /* and available...*/ {
-            return this == SIM_NOT_READY
-                    || this == SIM_LOCKED_OR_ABSENT
-                    || this == SIM_READY
-                    || this == RUIM_NOT_READY
-                    || this == RUIM_READY
-                    || this == RUIM_LOCKED_OR_ABSENT
-                    || this == NV_NOT_READY
-                    || this == NV_READY;
-        }
-        private int stateType;
-        private RadioState (int type) {
-            stateType = type;
-        }
-
-        public int getType() {
-            return stateType;
+            return this == RADIO_ON;
         }
 
         public boolean isAvailable() {
             return this != RADIO_UNAVAILABLE;
         }
+    }
 
-        public boolean isSIMReady() {
-            return this == SIM_READY;
-        }
+    public enum RadioTechnology {
+        RADIO_TECH_UNKNOWN,
+        RADIO_TECH_GPRS,
+        RADIO_TECH_EDGE,
+        RADIO_TECH_UMTS,
+        RADIO_TECH_IS95A,
+        RADIO_TECH_IS95B,
+        RADIO_TECH_1xRTT,
+        RADIO_TECH_EVDO_0,
+        RADIO_TECH_EVDO_A,
+        RADIO_TECH_HSDPA,
+        RADIO_TECH_HSUPA,
+        RADIO_TECH_HSPA,
+        RADIO_TECH_EVDO_B,
+        RADIO_TECH_EHRPD,
+        RADIO_TECH_LTE,
+        RADIO_TECH_HSPAP,
+        RADIO_TECH_GSM;
 
-        public boolean isRUIMReady() {
-            return this == RUIM_READY;
-        }
-
-        public boolean isNVReady() {
-            return this == NV_READY;
+        public boolean isUnknown() {
+            return this == RADIO_TECH_UNKNOWN;
         }
 
         public boolean isGsm() {
-            if (BaseCommands.getLteOnCdmaModeStatic() == Phone.LTE_ON_CDMA_TRUE) {
-                return false;
-            } else {
-                return this == SIM_NOT_READY
-                        || this == SIM_LOCKED_OR_ABSENT
-                        || this == SIM_READY;
-            }
+            return this == RADIO_TECH_GPRS || this == RADIO_TECH_EDGE || this == RADIO_TECH_UMTS
+                    || this == RADIO_TECH_HSDPA || this == RADIO_TECH_HSUPA
+                    || this == RADIO_TECH_HSPA || this == RADIO_TECH_LTE
+                    || this == RADIO_TECH_HSPAP || this == RADIO_TECH_GSM;
         }
 
         public boolean isCdma() {
-            if (BaseCommands.getLteOnCdmaModeStatic() == Phone.LTE_ON_CDMA_TRUE) {
-                return true;
-            } else {
-                return this ==  RUIM_NOT_READY
-                        || this == RUIM_READY
-                        || this == RUIM_LOCKED_OR_ABSENT
-                        || this == NV_NOT_READY
-                        || this == NV_READY;
+            return this == RADIO_TECH_IS95A || this == RADIO_TECH_IS95B || this == RADIO_TECH_1xRTT
+                    || this == RADIO_TECH_EVDO_0 || this == RADIO_TECH_EVDO_A
+                    || this == RADIO_TECH_EVDO_B || this == RADIO_TECH_EHRPD;
+        }
+
+        public boolean isEvdo() {
+            return this == RADIO_TECH_EVDO_0 || this == RADIO_TECH_EVDO_A
+                    || this == RADIO_TECH_EVDO_B;
+        }
+
+        public static RadioTechnology getRadioTechFromInt(int techInt) {
+            RadioTechnology rt = RADIO_TECH_UNKNOWN;
+            try {
+                rt = values()[techInt];
+            } catch (IndexOutOfBoundsException e) {
+                Log.e("RIL", "Invalid radio technology : " + techInt);
             }
+            return rt;
         }
     }
 
@@ -166,11 +162,9 @@ public interface CommandsInterface {
     static final int CDMA_SMS_FAIL_CAUSE_ENCODING_PROBLEM           = 96;
 
     //***** Methods
-
     RadioState getRadioState();
-    RadioState getSimState();
-    RadioState getRuimState();
-    RadioState getNvState();
+
+    void getVoiceRadioTechnology(Message result);
 
     /**
      * Fires on any RadioState transition
@@ -182,6 +176,9 @@ public interface CommandsInterface {
      */
     void registerForRadioStateChanged(Handler h, int what, Object obj);
     void unregisterForRadioStateChanged(Handler h);
+
+    void registerForVoiceRadioTechChanged(Handler h, int what, Object obj);
+    void unregisterForVoiceRadioTechChanged(Handler h);
 
     /**
      * Fires on any transition into RadioState.isOn()
@@ -220,18 +217,8 @@ public interface CommandsInterface {
     void unregisterForOffOrNotAvailable(Handler h);
 
     /**
-     * Fires on any transition into SIM_READY
-     * Fires immediately if if currently in that state
-     * In general, actions should be idempotent. State may change
-     * before event is received.
+     * Fires on any change in ICC status
      */
-    void registerForSIMReady(Handler h, int what, Object obj);
-    void unregisterForSIMReady(Handler h);
-
-    /** Any transition into SIM_LOCKED_OR_ABSENT */
-    void registerForSIMLockedOrAbsent(Handler h, int what, Object obj);
-    void unregisterForSIMLockedOrAbsent(Handler h);
-
     void registerForIccStatusChanged(Handler h, int what, Object obj);
     void unregisterForIccStatusChanged(Handler h);
 
@@ -242,13 +229,6 @@ public interface CommandsInterface {
     void registerForDataNetworkStateChanged(Handler h, int what, Object obj);
     void unregisterForDataNetworkStateChanged(Handler h);
 
-    void registerForRadioTechnologyChanged(Handler h, int what, Object obj);
-    void unregisterForRadioTechnologyChanged(Handler h);
-    void registerForNVReady(Handler h, int what, Object obj);
-    void unregisterForNVReady(Handler h);
-    void registerForRUIMLockedOrAbsent(Handler h, int what, Object obj);
-    void unregisterForRUIMLockedOrAbsent(Handler h);
-
     /** InCall voice privacy notifications */
     void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj);
     void unregisterForInCallVoicePrivacyOn(Handler h);
@@ -256,16 +236,7 @@ public interface CommandsInterface {
     void unregisterForInCallVoicePrivacyOff(Handler h);
 
     /**
-     * Fires on any transition into RUIM_READY
-     * Fires immediately if if currently in that state
-     * In general, actions should be idempotent. State may change
-     * before event is received.
-     */
-    void registerForRUIMReady(Handler h, int what, Object obj);
-    void unregisterForRUIMReady(Handler h);
-
-    /**
-     * unlike the register* methods, there's only one new 3GPP format SMS handler.
+     * unlike the register* methods, there's only one new SMS handler
      * if you need to unregister, you should also tell the radio to stop
      * sending SMS's to you (via AT+CNMI)
      *

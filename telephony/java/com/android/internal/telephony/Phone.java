@@ -1765,4 +1765,15 @@ public interface Phone {
      *                      messages are waiting
      */
     void setVoiceMessageWaiting(int line, int countWaiting);
+
+    /**
+     * Unregister from all events it registered for and dispose objects
+     * created by this object.
+     */
+    void dispose();
+
+    /**
+     * Remove references to external object stored in this object.
+     */
+    void removeReferences();
 }

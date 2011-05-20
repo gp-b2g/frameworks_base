@@ -182,7 +182,7 @@ public class SIMRecords extends IccRecords {
         // recordsToLoad is set to 0 because no requests are made yet
         recordsToLoad = 0;
 
-        p.mCM.registerForSIMReady(this, EVENT_SIM_READY, null);
+        p.mIccCard.registerForReady(this, EVENT_SIM_READY, null);
         p.mCM.registerForOffOrNotAvailable(
                         this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         p.mCM.setOnSmsOnSim(this, EVENT_SMS_ON_SIM, null);
@@ -196,7 +196,7 @@ public class SIMRecords extends IccRecords {
     @Override
     public void dispose() {
         //Unregister for all events
-        phone.mCM.unregisterForSIMReady(this);
+        phone.mIccCard.unregisterForReady(this);
         phone.mCM.unregisterForOffOrNotAvailable( this);
         phone.mCM.unregisterForIccRefresh(this);
     }
@@ -509,6 +509,12 @@ public class SIMRecords extends IccRecords {
         byte data[];
 
         boolean isRecordLoadResponse = false;
+
+        if (!phone.mIsTheCurrentActivePhone) {
+            Log.e(LOG_TAG, "Received message " + msg +
+                    "[" + msg.what + "] while being destroyed. Ignoring.");
+            return;
+        }
 
         try { switch (msg.what) {
             case EVENT_SIM_READY:
