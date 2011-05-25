@@ -431,7 +431,7 @@ public class CdmaConnection extends Connection {
                         || serviceState == ServiceState.STATE_EMERGENCY_ONLY) {
                     return DisconnectCause.OUT_OF_SERVICE;
                 } else if (phone.mCdmaSubscriptionSource == RILConstants.SUBSCRIPTION_FROM_RUIM
-                        && phone.getIccCard().getState() != RuimCard.State.READY) {
+                        && phone.getIccCard().getState() != IccCard.State.READY) {
                     return DisconnectCause.ICC_ERROR;
                 } else if (causeCode==CallFailCause.NORMAL_CLEARING) {
                     return DisconnectCause.NORMAL;

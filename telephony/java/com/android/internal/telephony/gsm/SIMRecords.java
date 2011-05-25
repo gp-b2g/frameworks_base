@@ -30,6 +30,7 @@ import com.android.internal.telephony.AdnRecordCache;
 import com.android.internal.telephony.AdnRecordLoader;
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.IccUtils;
@@ -576,7 +577,7 @@ public class SIMRecords extends IccRecords {
                     MccTable.updateMccMncConfiguration(phone, imsi.substring(0, 3 + mncLength));
                 }
                 phone.mIccCard.broadcastIccStateChangedIntent(
-                        SimCard.INTENT_VALUE_ICC_IMSI, null);
+                        IccCard.INTENT_VALUE_ICC_IMSI, null);
             break;
 
             case EVENT_GET_MBI_DONE:
@@ -1274,7 +1275,7 @@ public class SIMRecords extends IccRecords {
         recordsLoadedRegistrants.notifyRegistrants(
             new AsyncResult(null, null, null));
         phone.mIccCard.broadcastIccStateChangedIntent(
-                SimCard.INTENT_VALUE_ICC_LOADED, null);
+                IccCard.INTENT_VALUE_ICC_LOADED, null);
     }
 
     //***** Private methods
@@ -1299,7 +1300,7 @@ public class SIMRecords extends IccRecords {
           READY is sent before IMSI ready
         */
         phone.mIccCard.broadcastIccStateChangedIntent(
-                SimCard.INTENT_VALUE_ICC_READY, null);
+                IccCard.INTENT_VALUE_ICC_READY, null);
 
         fetchSimRecords();
     }
