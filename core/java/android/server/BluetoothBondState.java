@@ -119,11 +119,21 @@ class BluetoothBondState {
         if (bonds == null) {
             return;
         }
+        String address = null;
         mState.clear();
         if (DBG) Log.d(TAG, "found " + bonds.length + " bonded devices");
         for (String device : bonds) {
-            mState.put(mService.getAddressFromObjectPath(device).toUpperCase(),
-                    BluetoothDevice.BOND_BONDED);
+            address = mService.getAddressFromObjectPath(device);
+            if (address == null) {
+                Log.e(TAG, "error! address is null");
+                continue;
+            }
+            String pairState = mService.getUpdatedRemoteDeviceProperty(address, "Paired");
+            Log.d(TAG, "The paired state of the remote device is " + pairState);
+            if(pairState.equals("true")) {
+                Log.d(TAG, "The paired state of the remote device is true");
+                mState.put(address.toUpperCase(), BluetoothDevice.BOND_BONDED);
+            }
         }
     }
 

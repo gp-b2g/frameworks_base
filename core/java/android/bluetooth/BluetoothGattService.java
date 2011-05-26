@@ -45,7 +45,12 @@ public class BluetoothGattService {
 
     private final HashMap<String, Map<String, String>> mCharacteristicProperties;
     private String[] characteristicPaths = null;
-    private boolean discoveryDone = false;
+
+    private static final int DISCOVERY_NONE = 0;
+    private static final int DISCOVERY_FINISHED = 1;
+    private static final int DISCOVERY_IN_PROGRESS = 2;
+
+    private int discoveryState;
 
     private boolean mClosed;
     private final ReentrantReadWriteLock mLock;
@@ -89,21 +94,43 @@ public class BluetoothGattService {
     }
 
     public String[] getCharacteristics() {
-        if (!discoveryDone)
-            mHelper.waitDiscoveryDone();
+        if (!mHelper.discoveryDone())
+            return null;
+
         return characteristicPaths;
     }
 
-    public boolean isCharacteristicDiscoveryDone() {
-        return discoveryDone;
+    public boolean discoverCharacteristics() {
+        return mHelper.doDiscovery();
+    }
+
+    public String[] getCharacteristicPaths() {
+
+            String value = "";
+            String[] paths = null;
+            try {
+                value = mService.getGattServiceProperty(mObjPath, "Characteristics");
+                if (value == null) {
+                    Log.d(TAG, "value is null");
+                    return null;
+                }
+                Log.d(TAG, "value is : " + value);
+
+                // The Charateristic paths are stored as a "," separated string.
+                paths = value.split(",");
+
+            } catch (Exception e) {
+                Log.e(TAG, "!!!Error while calling getGattServiceProperty");
+            }
+            return paths;
     }
 
     public ParcelUuid[] getCharacteristicUuids() {
 
         ArrayList<ParcelUuid>  uuidList = new ArrayList<ParcelUuid>();
 
-        if (!discoveryDone)
-            mHelper.waitDiscoveryDone();
+        if (!mHelper.discoveryDone())
+            return null;
 
         if (characteristicPaths == null)
             return null;
@@ -133,8 +160,8 @@ public class BluetoothGattService {
 
         ParcelUuid uuid = null;
 
-        if (!discoveryDone)
-            mHelper.waitDiscoveryDone();
+        if (!mHelper.discoveryDone())
+            return null;
 
         String value = getCharacteristicProperty(path, "UUID");
 
@@ -147,8 +174,9 @@ public class BluetoothGattService {
     }
 
     public String getCharacteristicDescription(String path) {
-        if (!discoveryDone)
-            mHelper.waitDiscoveryDone();
+        if (!mHelper.discoveryDone())
+            return null;
+
         return getCharacteristicProperty(path, "Description");
 
     }
@@ -157,8 +185,8 @@ public class BluetoothGattService {
     {
         Log.d (TAG, "readCharacteristicValue for " + path);
 
-        if (!discoveryDone)
-            mHelper.waitDiscoveryDone();
+        if (!mHelper.discoveryDone())
+            return null;
 
         if (characteristicPaths == null)
             return null;
@@ -175,8 +203,8 @@ public class BluetoothGattService {
     public boolean updateCharacteristicValue(String path) throws Exception {
         Log.d (TAG, "updateCharacteristicValue for " + path);
 
-        if (!discoveryDone)
-            mHelper.waitDiscoveryDone();
+        if (!mHelper.discoveryDone())
+            return false;
 
         if (characteristicPaths == null)
             return false;
@@ -192,8 +220,8 @@ public class BluetoothGattService {
 
     public String getCharacteristicClientConf(String path)
     {
-        if (!discoveryDone)
-            mHelper.waitDiscoveryDone();
+        if (!mHelper.discoveryDone())
+            return null;
 
         if (characteristicPaths == null)
             return null;
@@ -207,10 +235,13 @@ public class BluetoothGattService {
         return value;
     }
 
-    public boolean writeCharacteristicRaw(String path, byte[] value) throws Exception {
+    public boolean writeCharacteristicRaw(String path, byte[] value,
+                                          boolean reliable) throws Exception {
 
-        if (!discoveryDone)
-            mHelper.waitDiscoveryDone();
+        Log.d (TAG, "writeCharacteristicRaw " + path);
+
+        if (!mHelper.discoveryDone())
+            return false;
 
         if (characteristicPaths == null)
             return false;
@@ -218,7 +249,7 @@ public class BluetoothGattService {
         mLock.readLock().lock();
         try {
             if (mClosed) throw new Exception ("GATT service closed");
-            return mHelper.setCharacteristicProperty(path, "Value", value);
+            return mHelper.setCharacteristicProperty(path, "Value", value, reliable);
         }  finally {
             mLock.readLock().unlock();
         }
@@ -226,8 +257,8 @@ public class BluetoothGattService {
 
     public boolean setCharacteristicClientConf(String path, int config) throws Exception {
 
-        if (!discoveryDone)
-            mHelper.waitDiscoveryDone();
+        if (!mHelper.discoveryDone())
+            return false;
 
         if (characteristicPaths == null)
             return false;
@@ -240,7 +271,7 @@ public class BluetoothGattService {
         mLock.readLock().lock();
         try {
             if (mClosed) throw new Exception ("GATT service closed");
-            return mHelper.setCharacteristicProperty(path, "ClientConfiguration", value);
+            return mHelper.setCharacteristicProperty(path, "ClientConfiguration", value, true);
         }  finally {
             mLock.readLock().unlock();
         }
@@ -355,12 +386,28 @@ public class BluetoothGattService {
      */
     private class ServiceHelper extends IBluetoothGattService.Stub {
 
+        private void setDiscoveryState(int state) {
+            Log.d(TAG, "Discovery State " + discoveryState + " to " + state);
+            discoveryState = state;
+        }
+
+        public boolean discoveryDone() {
+            return (discoveryState == DISCOVERY_FINISHED);
+        }
+
         /**
          * Throws IOException on failure.
          */
         public boolean doDiscovery() {
 
             Log.d(TAG, "doDiscovery " + mObjPath);
+
+            if(discoveryState == DISCOVERY_IN_PROGRESS) {
+                Log.d(TAG, "Characteristic discovery is already in progress for " + mObjPath);
+                return true;
+            }
+
+            setDiscoveryState(DISCOVERY_IN_PROGRESS);
 
             try {
                 return mService.discoverCharacteristics(mObjPath);
@@ -371,17 +418,41 @@ public class BluetoothGattService {
         }
 
         public void startRemoteGattService() {
+            setDiscoveryState(DISCOVERY_NONE);
+
             try {
                 mService.startRemoteGattService(mObjPath, this);
-            } catch (RemoteException e) {Log.e(TAG, "", e);}
 
-            doDiscovery();
+                int state = mService.getBondState(mDevice.getAddress());
+                Log.d(TAG, "Bond state of remote device : " + mDevice.getAddress() + " is " + state);
+                if(state == BluetoothDevice.BOND_BONDED) {
+                    characteristicPaths =  getCharacteristicPaths();
+                    if(characteristicPaths != null) {
+                       Log.d(TAG, "retrieved characteristic Paths from the cache");
+                       onCharacteristicsDiscovered(characteristicPaths, true);
+
+                       for(int i = 0; i< characteristicPaths.length; i++) {
+                           Log.d(TAG, "Update value for characteristics path : " +
+                                 characteristicPaths[i]);
+                           try {
+                               updateCharacteristicValue(characteristicPaths[i]);
+                           } catch (Exception e) {Log.e(TAG, "", e);}
+                       }
+
+                    } else {
+                        Log.d(TAG, "doDiscovery for bonded device");
+                        doDiscovery();
+                    }
+                } else {
+                    Log.d(TAG, "doDiscovery as device is not bonded");
+                    doDiscovery();
+                }
+            } catch (RemoteException e) {Log.e(TAG, "", e);}
         }
 
-        public synchronized void onCharacteristicsDiscovered(String[] paths)
+        public synchronized void onCharacteristicsDiscovered(String[] paths, boolean result)
         {
             Log.d(TAG, "onCharacteristicsDiscovered: " + paths);
-            boolean result = false;
 
             if (paths !=null) {
 
@@ -403,11 +474,9 @@ public class BluetoothGattService {
                         addCharacteristicProperties(paths[i], properties);
                     }
                 }
-                result = true;
-
             }
 
-            discoveryDone = true;
+            setDiscoveryState(DISCOVERY_FINISHED);
 
             if (profileCallback != null) {
                 try {
@@ -461,10 +530,11 @@ public class BluetoothGattService {
             } catch (RemoteException e) {Log.e(TAG, "", e);}
         }
 
-        public synchronized boolean setCharacteristicProperty(String path, String key, byte[] value) {
+        public synchronized boolean setCharacteristicProperty(String path, String key,
+                byte[] value, boolean reliable) {
             Log.d(TAG, "setCharacteristicProperty");
             try {
-                return mService.setCharacteristicProperty(path, key, value);
+                return mService.setCharacteristicProperty(path, key, value, reliable);
             } catch (RemoteException e) {Log.e(TAG, "", e);}
 
             return false;

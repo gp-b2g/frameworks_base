@@ -33,14 +33,14 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.IBluetoothThermometerCallBack;
 
 interface IBluetoothThermometerServices {
-    boolean startThermometerService(in BluetoothDevice btDevice, in ParcelUuid uuid, in IBluetoothThermometerCallBack callBack);
-    String getServiceName();
+    boolean startThermometerService(in BluetoothDevice btDevice, in ParcelUuid serviceUuid, in IBluetoothThermometerCallBack callBack);
+    String getServiceName(in ParcelUuid serviceUuid);
     /** The value is available through the IBluetoothThermometerCallBack */
-    void readCharacteristicsValue(in ParcelUuid uuid);
-    int readClientCharConf(in ParcelUuid uuid);
+    void readCharacteristicsValue(in ParcelUuid charUuid);
+    int readClientCharConf(in ParcelUuid charUuid);
     /** The date value should be in java ISO format string "yyyy-MM-dd HH:mm:ss" */
-    boolean writeCharacteristicsValue(in ParcelUuid uuid, String value);
-    boolean notifyIndicateValue(in ParcelUuid uuid);
-    boolean clearNotifyIndicate(in ParcelUuid uuid);
-    boolean closeThermometerService(in BluetoothDevice btDevice, in ParcelUuid uuid);
+    boolean writeCharacteristicsValue(in ParcelUuid charUuuid, String value);
+    boolean notifyIndicateValue(in ParcelUuid charUuid);
+    boolean clearNotifyIndicate(in ParcelUuid charUuid);
+    boolean closeThermometerService(in BluetoothDevice btDevice, in ParcelUuid serviceUuid);
 }
