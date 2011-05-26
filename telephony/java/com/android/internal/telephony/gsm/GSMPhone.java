@@ -71,6 +71,7 @@ import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
+import com.android.internal.telephony.UiccManager;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.IccVmNotSupportedException;
 import com.android.internal.telephony.ServiceStateTracker;
@@ -138,12 +139,12 @@ public class GSMPhone extends PhoneBase {
         }
 
         mCM.setPhoneType(Phone.PHONE_TYPE_GSM);
-        mIccCard = new IccCard(this, LOG_TAG, true, true);
+        mIccCard = UiccManager.getInstance(this).getIccCard();
         mCT = new GsmCallTracker(this);
         mSST = new GsmServiceStateTracker (this);
         mSMS = new GsmSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
-        mIccFileHandler = new SIMFileHandler(this);
-        mIccRecords = new SIMRecords(this);
+        mIccFileHandler = mIccCard.getIccFileHandler();
+        mIccRecords = mIccCard.getIccRecords();
         mDataConnectionTracker = new GsmDataConnectionTracker (this);
         if (!unitTestMode) {
             mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
@@ -222,7 +223,6 @@ public class GSMPhone extends PhoneBase {
             mSST.dispose();
             mIccFileHandler.dispose(); // instance of SimFileHandler
             mIccRecords.dispose();
-            mIccCard.dispose();
             mSimPhoneBookIntManager.dispose();
             mSimSmsIntManager.dispose();
             mSubInfo.dispose();

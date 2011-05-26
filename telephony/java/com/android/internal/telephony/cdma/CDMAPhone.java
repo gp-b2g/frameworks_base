@@ -62,6 +62,7 @@ import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.UiccManager;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cat.CatService;
 
@@ -152,10 +153,10 @@ public class CDMAPhone extends PhoneBase {
     }
 
     protected void initSstIcc() {
-        mIccCard = new IccCard(this, LOG_TAG, false, DBG);
+        mIccCard = UiccManager.getInstance(this).getIccCard();
         mSST = new CdmaServiceStateTracker(this);
-        mIccRecords = new RuimRecords(this);
-        mIccFileHandler = new RuimFileHandler(this);
+        mIccRecords = mIccCard.getIccRecords();
+        mIccFileHandler = mIccCard.getIccFileHandler();
     }
 
     protected void init(Context context, PhoneNotifier notifier) {
@@ -243,7 +244,6 @@ public class CDMAPhone extends PhoneBase {
             mSMS.dispose();
             mIccFileHandler.dispose(); // instance of RuimFileHandler
             mIccRecords.dispose();
-            mIccCard.dispose();
             mRuimPhoneBookInterfaceManager.dispose();
             mRuimSmsInterfaceManager.dispose();
             mSubInfo.dispose();

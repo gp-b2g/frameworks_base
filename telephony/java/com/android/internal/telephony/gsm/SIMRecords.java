@@ -121,7 +121,6 @@ public class SIMRecords extends IccRecords {
 
     // ***** Event Constants
 
-    private static final int EVENT_SIM_READY = 1;
     private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 2;
     protected static final int EVENT_GET_IMSI_DONE = 3;
     protected static final int EVENT_GET_ICCID_DONE = 4;
@@ -184,7 +183,6 @@ public class SIMRecords extends IccRecords {
         // recordsToLoad is set to 0 because no requests are made yet
         recordsToLoad = 0;
 
-        p.mIccCard.registerForReady(this, EVENT_SIM_READY, null);
         p.mCM.registerForOffOrNotAvailable(
                         this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         p.mCM.setOnSmsOnSim(this, EVENT_SMS_ON_SIM, null);
@@ -198,7 +196,6 @@ public class SIMRecords extends IccRecords {
     @Override
     public void dispose() {
         //Unregister for all events
-        phone.mIccCard.unregisterForReady(this);
         phone.mCM.unregisterForOffOrNotAvailable( this);
         phone.mCM.unregisterForIccRefresh(this);
     }
@@ -519,10 +516,6 @@ public class SIMRecords extends IccRecords {
         }
 
         try { switch (msg.what) {
-            case EVENT_SIM_READY:
-                onSimReady();
-            break;
-
             case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:
                 onRadioOffOrNotAvailable();
             break;
@@ -1295,7 +1288,8 @@ public class SIMRecords extends IccRecords {
         }
     }
 
-    public void onSimReady() {
+    @Override
+    public void onReady() {
         /* broadcast intent SIM_READY here so that we can make sure
           READY is sent before IMSI ready
         */

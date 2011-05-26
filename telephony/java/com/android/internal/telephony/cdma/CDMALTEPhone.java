@@ -34,6 +34,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.SMSDispatcher;
+import com.android.internal.telephony.UiccManager;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
 import com.android.internal.telephony.ims.IsimRecords;
 
@@ -79,10 +80,10 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     protected void initSstIcc() {
-        mIccCard = new IccCard(this, LOG_TAG, true, DBG);
+        mIccCard = UiccManager.getInstance(this).getIccCard();
         mSST = new CdmaLteServiceStateTracker(this);
-        mIccRecords = new CdmaLteUiccRecords(this);
-        mIccFileHandler = new CdmaLteUiccFileHandler(this);
+        mIccRecords = mIccCard.getIccRecords();
+        mIccFileHandler = mIccCard.getIccFileHandler();
     }
 
     @Override
