@@ -36,6 +36,7 @@ import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.UiccManager;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
+import com.android.internal.telephony.gsm.SmsMessage;
 import com.android.internal.telephony.ims.IsimRecords;
 
 public class CDMALTEPhone extends CDMAPhone {
@@ -62,6 +63,7 @@ public class CDMALTEPhone extends CDMAPhone {
     public CDMALTEPhone(Context context, CommandsInterface ci, PhoneNotifier notifier) {
         super(context, ci, notifier, false);
         m3gppSMS = new GsmSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
+        mIccRecords.registerForNewSms(this, EVENT_NEW_ICC_SMS, null);
     }
 
     @Override
@@ -72,6 +74,10 @@ public class CDMALTEPhone extends CDMAPhone {
             // handle the select network completion callbacks.
             case EVENT_SET_NETWORK_MANUAL_COMPLETE:
                 handleSetSelectNetwork((AsyncResult) msg.obj);
+                break;
+            case EVENT_NEW_ICC_SMS:
+                ar = (AsyncResult)msg.obj;
+                m3gppSMS.dispatchMessage((SmsMessage)ar.result);
                 break;
             default:
                 super.handleMessage(msg);
@@ -91,6 +97,7 @@ public class CDMALTEPhone extends CDMAPhone {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
             super.dispose();
             m3gppSMS.dispose();
+            mIccRecords.unregisterForNewSms(this);
         }
     }
 
@@ -209,15 +216,6 @@ public class CDMALTEPhone extends CDMAPhone {
             log("updateCurrentCarrierInProvider mIccRecords == null ret false");
         }
         return false;
-    }
-
-    @Override
-    public void setSystemLocale(String language, String country, boolean fromMcc) {
-        // Avoid system locale is set from MCC table if CDMALTEPhone is used.
-        // The locale will be picked up based on EFpl/EFli once CSIM records are loaded.
-        if (fromMcc) return;
-
-        super.setSystemLocale(language, country, false);
     }
 
     // return IMSI from USIM as subscriber ID.

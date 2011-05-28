@@ -174,7 +174,7 @@ public class CDMAPhone extends PhoneBase {
                 mIccFileHandler, mIccCard);
 
         mCM.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
-        mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
+        registerForRuimRecordEvents();
         mCM.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         mCM.registerForOn(this, EVENT_RADIO_ON, null);
         mCM.setOnSuppServiceNotification(this, EVENT_SSN, null);
@@ -226,7 +226,7 @@ public class CDMAPhone extends PhoneBase {
             log("dispose");
 
             //Unregister from all former registered events
-            mIccRecords.unregisterForRecordsLoaded(this); //EVENT_RUIM_RECORDS_LOADED
+            unregisterForRuimRecordEvents();
             mCM.unregisterForAvailable(this); //EVENT_RADIO_AVAILABLE
             mCM.unregisterForOffOrNotAvailable(this); //EVENT_RADIO_OFF_OR_NOT_AVAILABLE
             mCM.unregisterForOn(this); //EVENT_RADIO_ON
@@ -242,8 +242,6 @@ public class CDMAPhone extends PhoneBase {
             mSST.dispose();
             mCdmaSSM.dispose(this);
             mSMS.dispose();
-            mIccFileHandler.dispose(); // instance of RuimFileHandler
-            mIccRecords.dispose();
             mRuimPhoneBookInterfaceManager.dispose();
             mRuimSmsInterfaceManager.dispose();
             mSubInfo.dispose();
@@ -1008,9 +1006,16 @@ public class CDMAPhone extends PhoneBase {
             break;
 
             case EVENT_EMERGENCY_CALLBACK_MODE_ENTER:{
+
                 handleEnterEmergencyCallbackMode(msg);
             }
             break;
+
+            case EVENT_ICC_RECORD_EVENTS:
+                ar = (AsyncResult)msg.obj;
+                processIccRecordEvents((Integer)ar.result);
+                break;
+
 
             case  EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE:{
                 handleExitEmergencyCallbackMode(msg);
@@ -1075,6 +1080,14 @@ public class CDMAPhone extends PhoneBase {
             default:{
                 super.handleMessage(msg);
             }
+        }
+    }
+
+    private void processIccRecordEvents(int eventCode) {
+        switch (eventCode) {
+            case RuimRecords.EVENT_MWI:
+                notifyMessageWaitingIndicator();
+                break;
         }
     }
 
@@ -1447,7 +1460,7 @@ public class CDMAPhone extends PhoneBase {
                 getContext().getContentResolver().insert(uri, map);
 
                 // Updates MCC MNC device configuration information
-                MccTable.updateMccMncConfiguration(this, operatorNumeric);
+                MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
 
                 return true;
             } catch (SQLException e) {
@@ -1478,6 +1491,16 @@ public class CDMAPhone extends PhoneBase {
 
     public boolean isEriFileLoaded() {
         return mEriManager.isEriFileLoaded();
+    }
+    
+    private void registerForRuimRecordEvents() {
+        mIccRecords.registerForRecordsEvents(this, EVENT_ICC_RECORD_EVENTS, null);
+        mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
+    }
+
+    private void unregisterForRuimRecordEvents() {
+        mIccRecords.unregisterForRecordsEvents(this);
+        mIccRecords.unregisterForRecordsLoaded(this);
     }
 
     protected void log(String s) {

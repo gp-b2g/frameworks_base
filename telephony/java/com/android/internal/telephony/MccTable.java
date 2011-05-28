@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.app.ActivityManagerNative;
 import android.app.AlarmManager;
+import android.app.IActivityManager;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.net.wifi.WifiManager;
@@ -170,7 +171,7 @@ public final class MccTable
      * @param phone PhoneBae to act on.
      * @param mccmnc truncated imsi with just the MCC and MNC - MNC assumed to be from 4th to end
      */
-    public static void updateMccMncConfiguration(PhoneBase phone, String mccmnc) {
+    public static void updateMccMncConfiguration(Context context, String mccmnc) {
         if (!TextUtils.isEmpty(mccmnc)) {
             int mcc, mnc;
 
@@ -185,9 +186,9 @@ public final class MccTable
             Log.d(LOG_TAG, "updateMccMncConfiguration: mcc=" + mcc + ", mnc=" + mnc);
 
             if (mcc != 0) {
-                setTimezoneFromMccIfNeeded(phone, mcc);
-                setLocaleFromMccIfNeeded(phone, mcc);
-                setWifiCountryCodeFromMcc(phone, mcc);
+                setTimezoneFromMccIfNeeded(context, mcc);
+                setLocaleFromMccIfNeeded(context, mcc);
+                setWifiCountryCodeFromMcc(context, mcc);
             }
             try {
                 Configuration config = ActivityManagerNative.getDefault().getConfiguration();
@@ -205,16 +206,71 @@ public final class MccTable
     }
 
     /**
+     * Utility code to set the system locale if it's not set already
+     * @param language Two character language code desired
+     * @param country Two character country code desired
+     * @param fromMcc Indicating whether the locale is set according to MCC table.
+     *                This flag wil be ignored by default implementation.
+     *                TODO: Use a source enumeration so that source of the locale
+     *                      can be prioritized.
+     *
+     *  {@hide}
+     */
+    public static void setSystemLocale(Context context, String language, String country, boolean fromMcc) {
+        String l = SystemProperties.get("persist.sys.language");
+        String c = SystemProperties.get("persist.sys.country");
+
+        if (null == language) {
+            return; // no match possible
+        }
+        language = language.toLowerCase();
+        if (null == country) {
+            country = "";
+        }
+        country = country.toUpperCase();
+
+        if((null == l || 0 == l.length()) && (null == c || 0 == c.length())) {
+            try {
+                // try to find a good match
+                String[] locales = context.getAssets().getLocales();
+                final int N = locales.length;
+                String bestMatch = null;
+                for(int i = 0; i < N; i++) {
+                    // only match full (lang + country) locales
+                    if (locales[i]!=null && locales[i].length() >= 5 &&
+                            locales[i].substring(0,2).equals(language)) {
+                        if (locales[i].substring(3,5).equals(country)) {
+                            bestMatch = locales[i];
+                            break;
+                        } else if (null == bestMatch) {
+                            bestMatch = locales[i];
+                        }
+                    }
+                }
+                if (null != bestMatch) {
+                    IActivityManager am = ActivityManagerNative.getDefault();
+                    Configuration config = am.getConfiguration();
+                    config.locale = new Locale(bestMatch.substring(0,2),
+                                               bestMatch.substring(3,5));
+                    config.userSetLocale = true;
+                    am.updateConfiguration(config);
+                }
+            } catch (Exception e) {
+                // Intentionally left blank
+            }
+        }
+    }
+
+    /**
      * If the timezone is not already set, set it based on the MCC of the SIM.
      * @param phone PhoneBase to act on (get context from).
      * @param mcc Mobile Country Code of the SIM or SIM-like entity (build prop on CDMA)
      */
-    private static void setTimezoneFromMccIfNeeded(PhoneBase phone, int mcc) {
+    private static void setTimezoneFromMccIfNeeded(Context context, int mcc) {
         String timezone = SystemProperties.get(ServiceStateTracker.TIMEZONE_PROPERTY);
         if (timezone == null || timezone.length() == 0) {
             String zoneId = defaultTimeZoneForMcc(mcc);
             if (zoneId != null && zoneId.length() > 0) {
-                Context context = phone.getContext();
                 // Set time zone based on MCC
                 AlarmManager alarm =
                         (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
@@ -229,12 +285,17 @@ public final class MccTable
      * @param phone PhoneBase to act on.
      * @param mcc Mobile Country Code of the SIM or SIM-like entity (build prop on CDMA)
      */
-    private static void setLocaleFromMccIfNeeded(PhoneBase phone, int mcc) {
+    private static void setLocaleFromMccIfNeeded(Context context, int mcc) {
+        if (BaseCommands.getLteOnCdmaModeStatic() == Phone.LTE_ON_CDMA_TRUE) {
+            // Avoid system locale is set from MCC table if CDMALTEPhone is used.
+            // The locale will be picked up based on EFpl/EFli once CSIM records are loaded.
+            return;
+        }
         String language = MccTable.defaultLanguageForMcc(mcc);
         String country = MccTable.countryCodeForMcc(mcc);
 
         Log.d(LOG_TAG, "locale set to "+language+"_"+country);
-        phone.setSystemLocale(language, country, true);
+        setSystemLocale(context, language, country, true);
     }
 
     /**
@@ -243,10 +304,9 @@ public final class MccTable
      * @param phone PhoneBase to act on (get context from).
      * @param mcc Mobile Country Code of the SIM or SIM-like entity (build prop on CDMA)
      */
-    private static void setWifiCountryCodeFromMcc(PhoneBase phone, int mcc) {
+    private static void setWifiCountryCodeFromMcc(Context context, int mcc) {
         String country = MccTable.countryCodeForMcc(mcc);
         if (!country.isEmpty()) {
-            Context context = phone.getContext();
             Log.d(LOG_TAG, "WIFI_COUNTRY_CODE set to " + country);
             WifiManager wM = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
             //persist
