@@ -718,4 +718,8 @@
     <!-- Default network policy warning threshold, in megabytes. -->
     <integer name="config_networkPolicyDefaultWarning">2048</integer>
 
+    <!-- Boolean indicating if RADIO POWER OFF should be skipped on receiving SIM
+         REFRESH with RESET-->
+    <!-- This will be handled by modem if it is true-->
+    <bool translatable="false" name="skip_radio_power_off_on_sim_refresh_reset">true</bool>
 </resources>

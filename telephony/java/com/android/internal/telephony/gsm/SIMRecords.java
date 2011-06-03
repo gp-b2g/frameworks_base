@@ -39,6 +39,7 @@ import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SmsMessageBase;
+import com.android.internal.telephony.IccRefreshResponse;
 
 import java.util.ArrayList;
 
@@ -1048,7 +1049,7 @@ public class SIMRecords extends IccRecords {
                 ar = (AsyncResult)msg.obj;
 		if (DBG) log("Sim REFRESH with exception: " + ar.exception);
                 if (ar.exception == null) {
-                    handleSimRefresh((int[])(ar.result));
+                    handleSimRefresh(ar);
                 }
                 break;
             case EVENT_GET_CFIS_DONE:
@@ -1130,39 +1131,44 @@ public class SIMRecords extends IccRecords {
         }
     }
 
-    private void handleSimRefresh(int[] result) {
-        if (result == null || result.length == 0) {
-	    if (DBG) log("handleSimRefresh without input");
+    private void handleSimRefresh(AsyncResult ar){
+
+        IccRefreshResponse refreshResponse = (IccRefreshResponse)ar.result;
+        if (refreshResponse == null) {
+            if (DBG) log("handleSimRefresh received without input");
             return;
         }
 
-        switch ((result[0])) {
-            case CommandsInterface.SIM_REFRESH_FILE_UPDATED:
- 		if (DBG) log("handleSimRefresh with SIM_REFRESH_FILE_UPDATED");
-                // result[1] contains the EFID of the updated file.
-                int efid = result[1];
-                handleFileUpdate(efid);
+        switch (refreshResponse.refreshResult) {
+            case ICC_FILE_UPDATE:
+                if (DBG) log("handleSimRefresh with SIM_FILE_UPDATED");
+                handleFileUpdate(refreshResponse.efId);
                 break;
-            case CommandsInterface.SIM_REFRESH_INIT:
-		if (DBG) log("handleSimRefresh with SIM_REFRESH_INIT");
+            case ICC_INIT:
+                if (DBG) log("handleSimRefresh with SIM_REFRESH_INIT");
                 // need to reload all files (that we care about)
                 adnCache.reset();
                 fetchSimRecords();
                 break;
-            case CommandsInterface.SIM_REFRESH_RESET:
-		if (DBG) log("handleSimRefresh with SIM_REFRESH_RESET");
-                phone.mCM.setRadioPower(false, null);
-                /* Note: no need to call setRadioPower(true).  Assuming the desired
-                * radio power state is still ON (as tracked by ServiceStateTracker),
-                * ServiceStateTracker will call setRadioPower when it receives the
-                * RADIO_STATE_CHANGED notification for the power off.  And if the
-                * desired power state has changed in the interim, we don't want to
-                * override it with an unconditional power on.
-                */
+            case ICC_RESET:
+                if (DBG) log("handleSimRefresh with SIM_REFRESH_RESET");
+                boolean skipRadioPowerOff = mContext.getResources().getBoolean(
+                        com.android.internal.R.bool.skip_radio_power_off_on_sim_refresh_reset);
+
+                if (!skipRadioPowerOff) {
+                    phone.mCM.setRadioPower(false, null);
+                    /* Note: no need to call setRadioPower(true).  Assuming the desired
+                     * radio power state is still ON (as tracked by ServiceStateTracker),
+                     * ServiceStateTracker will call setRadioPower when it receives the
+                     * RADIO_STATE_CHANGED notification for the power off.  And if the
+                     * desired power state has changed in the interim, we don't want to
+                     * override it with an unconditional power on.
+                     */
+                }
                 break;
             default:
                 // unknown refresh operation
-		if (DBG) log("handleSimRefresh with unknown operation");
+                if (DBG) log("handleSimRefresh with unknown operation");
                 break;
         }
     }

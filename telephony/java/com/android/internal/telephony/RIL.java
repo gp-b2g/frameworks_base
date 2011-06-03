@@ -55,6 +55,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
+import com.android.internal.telephony.IccRefreshResponse;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -2403,7 +2404,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_STK_EVENT_NOTIFY: ret = responseString(p); break;
             case RIL_UNSOL_STK_CALL_SETUP: ret = responseInts(p); break;
             case RIL_UNSOL_SIM_SMS_STORAGE_FULL: ret =  responseVoid(p); break;
-            case RIL_UNSOL_SIM_REFRESH: ret =  responseInts(p); break;
+            case RIL_UNSOL_SIM_REFRESH: ret =  responseSimRefresh(p); break;
             case RIL_UNSOL_CALL_RING: ret =  responseCallRing(p); break;
             case RIL_UNSOL_RESTRICTED_STATE_CHANGED: ret = responseInts(p); break;
             case RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED:  ret =  responseVoid(p); break;
@@ -3065,6 +3066,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             status.addApplication(ca);
         }
         return status;
+    }
+
+    private Object
+    responseSimRefresh(Parcel p) {
+        IccRefreshResponse response = new IccRefreshResponse();
+
+        response.refreshResult = IccRefreshResponse.Result.values()[p.readInt()];
+        response.efId   = p.readInt();
+        response.aidPtr = p.readString();
+        return response;
     }
 
     private Object
