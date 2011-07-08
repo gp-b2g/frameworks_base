@@ -85,6 +85,10 @@ public class TelephonyManager {
         return sInstance;
     }
 
+    /** @hide */
+    public static boolean isMultiSimEnabled() {
+        return false;
+    }
 
     //
     // Broadcast Intent actions

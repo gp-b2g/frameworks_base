@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2009, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1245,6 +1246,22 @@ public interface Phone {
      * @see #invokeOemRilRequestStrings(java.lang.String[], android.os.Message)
      */
     void invokeOemRilRequestStrings(String[] strings, Message response);
+
+    /**
+     * Register for RIL_UNSOL_OEM_HOOK_EXT_APP responses from RIL
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    void setOnUnsolOemHookExtApp(Handler h, int what, Object obj);
+
+    /**
+     * Unregister a RIL_UNSOL_OEM_HOOK_EXT_APP response handler
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    void unSetOnUnsolOemHookExtApp(Handler h);
 
     /**
      * Get the current active Data Call list

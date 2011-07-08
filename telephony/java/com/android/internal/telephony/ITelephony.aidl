@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2009, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -229,6 +230,12 @@ interface ITelephony {
      * and TelephonyManager.PHONE_TYPE_GSM if RILConstants.GSM_PHONE
      */
     int getActivePhoneType();
+
+    /**
+     * Sends a OEM request to the RIL and returns the response back to the
+     * Caller. The returnValue is negative on failure. 0 or length of response on SUCCESS
+     */
+    int sendOemRilRequestRaw(in byte[] request, out byte[] response);
 
     /**
      * Returns the CDMA ERI icon index to display

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -647,6 +648,14 @@ public class PhoneProxy extends Handler implements Phone {
 
     public void invokeOemRilRequestStrings(String[] strings, Message response) {
         mActivePhone.invokeOemRilRequestStrings(strings, response);
+    }
+
+    public void setOnUnsolOemHookExtApp(Handler h, int what, Object obj) {
+        mActivePhone.setOnUnsolOemHookExtApp(h, what, obj);
+    }
+
+    public void unSetOnUnsolOemHookExtApp(Handler h) {
+        mActivePhone.unSetOnUnsolOemHookExtApp(h);
     }
 
     public void getDataCallList(Message response) {

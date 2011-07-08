@@ -1352,6 +1352,9 @@ public interface CommandsInterface {
 
     void invokeOemRilRequestStrings(String[] strings, Message response);
 
+    void setOnUnsolOemHookExtApp(Handler h, int what, Object obj);
+
+    void unSetOnUnsolOemHookExtApp(Handler h);
 
     /**
      * Send TERMINAL RESPONSE to the SIM, after processing a proactive command
