@@ -751,6 +751,7 @@ public abstract class BaseCommands implements CommandsInterface {
             }
         }
 
+        retVal = Phone.LTE_ON_CDMA_TRUE; // HACK to always use CDMA LTE phone
         Log.d(LOG_TAG, "getLteOnCdmaMode=" + retVal + " curVal=" + curVal +
                 " product_type='" + productType +
                 "' lteOnCdmaProductType='" + sLteOnCdmaProductType + "'");
