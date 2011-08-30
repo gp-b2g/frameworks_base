@@ -142,7 +142,6 @@ public class GSMPhone extends PhoneBase {
         mCT = new GsmCallTracker(this);
         mSST = new GsmServiceStateTracker (this);
         mSMS = new GsmSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
-        mIccFileHandler = mIccCard.getIccFileHandler();
         mIccRecords = mIccCard.getIccRecords();
         mDataConnectionTracker = new GsmDataConnectionTracker (this);
         if (!unitTestMode) {
@@ -231,7 +230,6 @@ public class GSMPhone extends PhoneBase {
         mSimPhoneBookIntManager = null;
         mSimSmsIntManager = null;
         mSubInfo = null;
-        mIccFileHandler = null;
         mCT = null;
         mSST = null;
         super.removeReferences();
@@ -1441,13 +1439,6 @@ public class GSMPhone extends PhoneBase {
      */
     public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager(){
         return mSimPhoneBookIntManager;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public IccFileHandler getIccFileHandler(){
-        return this.mIccFileHandler;
     }
 
     /**

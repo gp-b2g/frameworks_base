@@ -89,7 +89,6 @@ public class CDMALTEPhone extends CDMAPhone {
         mIccCard = UiccManager.getInstance(this).getIccCard();
         mSST = new CdmaLteServiceStateTracker(this);
         mIccRecords = mIccCard.getIccRecords();
-        mIccFileHandler = mIccCard.getIccFileHandler();
     }
 
     @Override

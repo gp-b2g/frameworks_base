@@ -116,7 +116,6 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     /* Instance Variables */
     public CommandsInterface mCM;
-    protected IccFileHandler mIccFileHandler;
     boolean mDnsCheckDisabled;
     public DataConnectionTracker mDataConnectionTracker;
     boolean mDoesRilSendMultipleCallRing;
@@ -643,7 +642,12 @@ public abstract class PhoneBase extends Handler implements Phone {
     /**
      * Retrieves the IccFileHandler of the Phone instance
      */
-    public abstract IccFileHandler getIccFileHandler();
+    public IccFileHandler getIccFileHandler(){
+        if (mIccCard != null) {
+            return mIccCard.getIccFileHandler();
+        }
+        return null;
+    }
 
     /*
      * Retrieves the Handler of the Phone instance

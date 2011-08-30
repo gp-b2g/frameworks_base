@@ -155,7 +155,6 @@ public class CDMAPhone extends PhoneBase {
         mIccCard = UiccManager.getInstance(this).getIccCard();
         mSST = new CdmaServiceStateTracker(this);
         mIccRecords = mIccCard.getIccRecords();
-        mIccFileHandler = mIccCard.getIccFileHandler();
     }
 
     protected void init(Context context, PhoneNotifier notifier) {
@@ -252,7 +251,6 @@ public class CDMAPhone extends PhoneBase {
         mRuimPhoneBookInterfaceManager = null;
         mRuimSmsInterfaceManager = null;
         mSubInfo = null;
-        mIccFileHandler = null;
         mCT = null;
         mSST = null;
         mEriManager = null;
@@ -1146,13 +1144,6 @@ public class CDMAPhone extends PhoneBase {
      */
     public final void setSystemProperty(String property, String value) {
         super.setSystemProperty(property, value);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public IccFileHandler getIccFileHandler() {
-        return this.mIccFileHandler;
     }
 
     /**
