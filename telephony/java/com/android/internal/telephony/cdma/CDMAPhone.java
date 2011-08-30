@@ -103,7 +103,6 @@ public class CDMAPhone extends PhoneBase {
     PhoneSubInfo mSubInfo;
     EriManager mEriManager;
     WakeLock mWakeLock;
-    CatService mCcatService;
 
     // mNvLoadedRegistrants are informed after the EVENT_NV_READY
     private final RegistrantList mNvLoadedRegistrants = new RegistrantList();
@@ -170,8 +169,6 @@ public class CDMAPhone extends PhoneBase {
         mRuimSmsInterfaceManager = new RuimSmsInterfaceManager(this, mSMS);
         mSubInfo = new PhoneSubInfo(this);
         mEriManager = new EriManager(this, context, EriManager.ERI_FROM_XML);
-        mCcatService = CatService.getInstance(mCM, mIccRecords, mContext,
-                mIccFileHandler, mIccCard);
 
         mCM.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
         registerForRuimRecordEvents();
@@ -246,14 +243,12 @@ public class CDMAPhone extends PhoneBase {
             mRuimSmsInterfaceManager.dispose();
             mSubInfo.dispose();
             mEriManager.dispose();
-            mCcatService.dispose();
         }
     }
 
     @Override
     public void removeReferences() {
         log("removeReferences");
-        super.removeReferences();
         mRuimPhoneBookInterfaceManager = null;
         mRuimSmsInterfaceManager = null;
         mSubInfo = null;
@@ -261,8 +256,8 @@ public class CDMAPhone extends PhoneBase {
         mCT = null;
         mSST = null;
         mEriManager = null;
-        mCcatService = null;
         mExitEcmRunnable = null;
+        super.removeReferences();
     }
 
     @Override
