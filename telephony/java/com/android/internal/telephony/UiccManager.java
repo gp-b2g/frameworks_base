@@ -16,28 +16,37 @@
 
 package com.android.internal.telephony;
 
+import com.android.internal.telephony.IccCardStatus.CardState;
 import com.android.internal.telephony.cdma.CDMALTEPhone;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.gsm.GSMPhone;
 
+import android.os.AsyncResult;
+import android.os.Handler;
+import android.os.Message;
+import android.os.Registrant;
+import android.os.RegistrantList;
 import android.util.Log;
 
 /* This class is responsible for keeping all knowledge about
  * ICCs in the system. It is also used as API to get appropriate
  * applications to pass them to phone and service trackers.
  */
-public class UiccManager {
+public class UiccManager extends Handler {
     private final static String LOG_TAG = "RIL_UiccManager";
     public enum AppFamily {
         APP_FAM_3GPP,
         APP_FAM_3GPP2;
     }
-
+    private static final int EVENT_ICC_STATUS_CHANGED = 1;
+    private static final int EVENT_GET_ICC_STATUS_DONE = 2;
     private static UiccManager mInstance;
 
     private PhoneBase mCurrentPhone;
-    private AppFamily mCurrentCardType;
+    private CommandsInterface mCi;
     private IccCard mIccCard;
+
+    private RegistrantList mIccChangedRegistrants = new RegistrantList();
 
     public static UiccManager getInstance(PhoneBase phone) {
         if (mInstance == null) {
@@ -59,43 +68,90 @@ public class UiccManager {
     private UiccManager(PhoneBase phone) {
         Log.d(LOG_TAG, "Creating UiccManager");
         setNewPhone(phone);
+        mCi = mCurrentPhone.mCM;
+        mCi.registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, null);
+        // TODO remove this once modem correctly notifies the unsols
+        mCi.registerForOn(this, EVENT_ICC_STATUS_CHANGED, null);
     }
 
-    private void setNewPhone(PhoneBase phone) {
-        mCurrentPhone = phone;
-        if (phone instanceof GSMPhone) {
-            Log.d(LOG_TAG, "New phone is GSMPhone");
-            updateCurrentCard(AppFamily.APP_FAM_3GPP);
-        } else if (phone instanceof CDMALTEPhone){
-            Log.d(LOG_TAG, "New phone type is CDMALTEPhone");
-            updateCurrentCard(AppFamily.APP_FAM_3GPP);
-        } else if (phone instanceof CDMAPhone){
-            Log.d(LOG_TAG, "New phone type is CDMAPhone");
-            updateCurrentCard(AppFamily.APP_FAM_3GPP2);
-        } else {
-            Log.e(LOG_TAG, "Unhandled phone type. Critical error!");
+    @Override
+    public void handleMessage (Message msg) {
+        switch (msg.what) {
+            case EVENT_ICC_STATUS_CHANGED:
+                Log.d(LOG_TAG, "Received EVENT_ICC_STATUS_CHANGED, calling getIccCardStatus");
+                mCi.getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE));
+                break;
+            case EVENT_GET_ICC_STATUS_DONE:
+                Log.d(LOG_TAG, "Received EVENT_GET_ICC_STATUS_DONE");
+                AsyncResult ar = (AsyncResult)msg.obj;
+                onGetIccCardStatusDone(ar);
+                break;
+            default:
+                Log.e(LOG_TAG, " Unknown Event " + msg.what);
         }
     }
-    private void updateCurrentCard(AppFamily cardType) {
-        if (mCurrentCardType == cardType && mIccCard != null) {
+
+    private synchronized void onGetIccCardStatusDone(AsyncResult ar) {
+        if (ar.exception != null) {
+            Log.e(LOG_TAG,"Error getting ICC status. "
+                    + "RIL_REQUEST_GET_ICC_STATUS should "
+                    + "never return an error", ar.exception);
             return;
         }
 
-        if (mIccCard != null) {
+        IccCardStatus status = (IccCardStatus)ar.result;
+
+        //Update already existing card
+        if (mIccCard != null && status.getCardState() == CardState.CARDSTATE_PRESENT) {
+            mIccCard.update(mCurrentPhone, status);
+        }
+
+        //Dispose of removed card
+        if (mIccCard != null && status.getCardState() != CardState.CARDSTATE_PRESENT) {
             mIccCard.dispose();
             mIccCard = null;
         }
 
-        mCurrentCardType = cardType;
-
-        if (cardType == AppFamily.APP_FAM_3GPP) {
-            mIccCard = new IccCard(mCurrentPhone, mCurrentPhone.getPhoneName(), true, true);
-        } else if (cardType == AppFamily.APP_FAM_3GPP2){
-            mIccCard = new IccCard(mCurrentPhone, mCurrentPhone.getPhoneName(), false, true);
+        //Create new card
+        if (mIccCard == null && status.getCardState() == CardState.CARDSTATE_PRESENT) {
+            mIccCard = new IccCard(mCurrentPhone, status, mCurrentPhone.getPhoneName(), true);
         }
+
+        Log.d(LOG_TAG, "Notifying IccChangedRegistrants");
+        mIccChangedRegistrants.notifyRegistrants();
+    }
+
+    private void setNewPhone(PhoneBase phone) {
+        Log.d(LOG_TAG, "setNewPhone");
+        if (mCurrentPhone != phone) {
+            if (mIccCard != null) {
+                // Refresh card if phone changed
+                // TODO: Remove once card is simplified
+                Log.d(LOG_TAG, "Disposing card since phone object changed");
+                mIccCard.dispose();
+                mIccCard = null;
+            }
+            sendMessage(obtainMessage(EVENT_ICC_STATUS_CHANGED));
+        }
+        mCurrentPhone = phone;
     }
 
     public IccCard getIccCard() {
         return mIccCard;
+    }
+    //Notifies when card status changes
+    public void registerForIccChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        synchronized (mIccChangedRegistrants) {
+            mIccChangedRegistrants.add(r);
+        }
+        //Notify registrant right after registering, so that it will get the latest ICC status,
+        //otherwise which may not happen until there is an actual change in ICC status.
+        r.notifyRegistrant();
+    }
+    public void unregisterForIccChanged(Handler h) {
+        synchronized (mIccChangedRegistrants) {
+            mIccChangedRegistrants.remove(h);
+        }
     }
 }

@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import com.android.internal.telephony.cdma.RuimRecords;
+
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -30,6 +32,9 @@ import android.telephony.SignalStrength;
 public abstract class ServiceStateTracker extends Handler {
 
     protected CommandsInterface cm;
+    protected UiccManager mUiccManager = null;
+    protected IccCard mIccCard = null;
+    protected IccRecords mIccRecords = null;
 
     public ServiceState ss;
     protected ServiceState newSS;
@@ -127,7 +132,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED  = 39;
     protected static final int EVENT_CDMA_PRL_VERSION_CHANGED          = 40;
     protected static final int EVENT_RADIO_ON                          = 41;
-
+    protected static final int EVENT_ICC_CHANGED                       = 42;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -164,7 +169,10 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final String REGISTRATION_DENIED_GEN  = "General";
     protected static final String REGISTRATION_DENIED_AUTH = "Authentication Failure";
 
-    public ServiceStateTracker() {
+    public ServiceStateTracker(CommandsInterface ci) {
+        cm = ci;
+        mUiccManager = UiccManager.getInstance();
+        mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
     }
 
     public boolean getDesiredPowerState() {
@@ -291,6 +299,10 @@ public abstract class ServiceStateTracker extends Handler {
                 }
                 break;
 
+            case EVENT_ICC_CHANGED:
+                updateIccAvailability();
+                break;
+
             default:
                 log("Unhandled message with number: " + msg.what);
                 break;
@@ -301,6 +313,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected abstract void handlePollStateResult(int what, AsyncResult ar);
     protected abstract void updateSpnDisplay();
     protected abstract void setPowerStateToDesired();
+    protected abstract void updateIccAvailability();
     protected abstract void log(String s);
     protected abstract void loge(String s);
 

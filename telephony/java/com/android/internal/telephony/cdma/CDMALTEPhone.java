@@ -86,9 +86,9 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     protected void initSstIcc() {
-        mIccCard = UiccManager.getInstance(this).getIccCard();
+        mUiccManager = UiccManager.getInstance(this);
+        mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mSST = new CdmaLteServiceStateTracker(this);
-        mIccRecords = mIccCard.getIccRecords();
     }
 
     @Override
@@ -220,7 +220,7 @@ public class CDMALTEPhone extends CDMAPhone {
     // return IMSI from USIM as subscriber ID.
     @Override
     public String getSubscriberId() {
-        return mIccRecords.getIMSI();
+        return (mIccRecords != null) ? mIccRecords.getIMSI() : "";
     }
 
     @Override

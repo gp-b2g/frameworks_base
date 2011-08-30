@@ -152,9 +152,9 @@ public class CDMAPhone extends PhoneBase {
     }
 
     protected void initSstIcc() {
-        mIccCard = UiccManager.getInstance(this).getIccCard();
+        mUiccManager = UiccManager.getInstance(this);
+        mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mSST = new CdmaServiceStateTracker(this);
-        mIccRecords = mIccCard.getIccRecords();
     }
 
     protected void init(Context context, PhoneNotifier notifier) {
@@ -170,7 +170,6 @@ public class CDMAPhone extends PhoneBase {
         mEriManager = new EriManager(this, context, EriManager.ERI_FROM_XML);
 
         mCM.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
-        registerForRuimRecordEvents();
         mCM.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         mCM.registerForOn(this, EVENT_RADIO_ON, null);
         mCM.setOnSuppServiceNotification(this, EVENT_SSN, null);
@@ -223,6 +222,7 @@ public class CDMAPhone extends PhoneBase {
 
             //Unregister from all former registered events
             unregisterForRuimRecordEvents();
+            mUiccManager.unregisterForIccChanged(this);
             mCM.unregisterForAvailable(this); //EVENT_RADIO_AVAILABLE
             mCM.unregisterForOffOrNotAvailable(this); //EVENT_RADIO_OFF_OR_NOT_AVAILABLE
             mCM.unregisterForOn(this); //EVENT_RADIO_ON
@@ -735,7 +735,9 @@ public class CDMAPhone extends PhoneBase {
         Message resp;
         mVmNumber = voiceMailNumber;
         resp = obtainMessage(EVENT_SET_VM_NUMBER_DONE, 0, 0, onComplete);
-        mIccRecords.setVoiceMailNumber(alphaTag, mVmNumber, resp);
+        if (mIccRecords != null) {
+            mIccRecords.setVoiceMailNumber(alphaTag, mVmNumber, resp);
+        }
     }
 
     public String getVoiceMailNumber() {
@@ -757,7 +759,7 @@ public class CDMAPhone extends PhoneBase {
      * @hide
      */
     public int getVoiceMessageCount() {
-        int voicemailCount =  mIccRecords.getVoiceMessageCount();
+        int voicemailCount =  (mIccRecords != null) ? mIccRecords.getVoiceMessageCount() : 0;
         // If mRuimRecords.getVoiceMessageCount returns zero, then there is possibility
         // that phone was power cycled and would have lost the voicemail count.
         // So get the count from preferences.
@@ -1072,6 +1074,38 @@ public class CDMAPhone extends PhoneBase {
 
             default:{
                 super.handleMessage(msg);
+            }
+        }
+    }
+
+    protected void updateIccAvailability() {
+        if (mUiccManager == null ) {
+            return;
+        }
+
+        IccCard newIccCard = mUiccManager.getIccCard();
+
+        if (mIccCard != newIccCard) {
+            if (mIccCard != null) {
+                log("Removing stale icc objects.");
+                if (mIccRecords != null) {
+                    unregisterForRuimRecordEvents();
+                    mIccRecords = null;
+                    if (mRuimPhoneBookInterfaceManager != null) {
+                        mRuimPhoneBookInterfaceManager.updateIccRecords(null);
+                    }
+                }
+                mIccRecords = null;
+                mIccCard = null;
+            }
+            if (newIccCard != null) {
+                log("New card found");
+                mIccCard = newIccCard;
+                mIccRecords = mIccCard.getIccRecords();
+                registerForRuimRecordEvents();
+                if (mRuimPhoneBookInterfaceManager != null) {
+                    mRuimPhoneBookInterfaceManager.updateIccRecords(mIccRecords);
+                }
             }
         }
     }
@@ -1480,11 +1514,17 @@ public class CDMAPhone extends PhoneBase {
     }
     
     private void registerForRuimRecordEvents() {
+        if (mIccRecords == null) {
+            return;
+        }
         mIccRecords.registerForRecordsEvents(this, EVENT_ICC_RECORD_EVENTS, null);
         mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
     }
 
     private void unregisterForRuimRecordEvents() {
+        if (mIccRecords == null) {
+            return;
+        }
         mIccRecords.unregisterForRecordsEvents(this);
         mIccRecords.unregisterForRecordsLoaded(this);
     }

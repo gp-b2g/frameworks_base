@@ -107,6 +107,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_SET_NETWORK_AUTOMATIC          = 28;
     protected static final int EVENT_NEW_ICC_SMS                    = 29;
     protected static final int EVENT_ICC_RECORD_EVENTS              = 30;
+    protected static final int EVENT_ICC_CHANGED                    = 31;
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
@@ -123,6 +124,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     int mCallRingDelay;
     public boolean mIsTheCurrentActivePhone = true;
     boolean mIsVoiceCapable = true;
+    protected UiccManager mUiccManager = null;
     public IccRecords mIccRecords;
     public IccCard mIccCard;
     public SmsStorageMonitor mSmsStorageMonitor;
@@ -265,10 +267,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void removeReferences() {
         mSmsStorageMonitor = null;
         mSmsUsageMonitor = null;
-        this.mSMS = null;
-        this.mIccRecords = null;
-        this.mIccCard = null;
-        this.mDataConnectionTracker = null;
+        mSMS = null;
+        mIccRecords = null;
+        mIccCard = null;
+        mDataConnectionTracker = null;
+        mUiccManager = null;
     }
 
     /**
@@ -305,6 +308,10 @@ public abstract class PhoneBase extends Handler implements Phone {
                 }
                 break;
 
+            case EVENT_ICC_CHANGED:
+                updateIccAvailability();
+                break;
+
             default:
                 throw new RuntimeException("unexpected event not handled");
         }
@@ -314,6 +321,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     public Context getContext() {
         return mContext;
     }
+
+    // Will be called when icc changed
+    protected abstract void updateIccAvailability();
 
     /**
      * Disables the DNS check (i.e., allows "0.0.0.0").
@@ -677,22 +687,22 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public String getIccSerialNumber() {
-        return mIccRecords.iccid;
+        return (mIccRecords != null) ? mIccRecords.iccid : "";
     }
 
     @Override
     public boolean getIccRecordsLoaded() {
-        return mIccRecords.getRecordsLoaded();
+        return (mIccRecords != null) ? mIccRecords.getRecordsLoaded() : false;
     }
 
     @Override
     public boolean getMessageWaitingIndicator() {
-        return mIccRecords.getVoiceMessageWaiting();
+        return (mIccRecords != null) ? mIccRecords.getVoiceMessageWaiting() : false;
     }
 
     @Override
     public boolean getCallForwardingIndicator() {
-        return mIccRecords.getVoiceCallForwardingFlag();
+        return (mIccRecords != null) ? mIccRecords.getVoiceCallForwardingFlag() : false;
     }
 
     /**

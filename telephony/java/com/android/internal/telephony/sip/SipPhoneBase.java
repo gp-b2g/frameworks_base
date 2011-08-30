@@ -461,4 +461,7 @@ abstract class SipPhoneBase extends PhoneBase {
             notifyPhoneStateChanged();
         }
     }
+
+    protected void updateIccAvailability() {
+    }
 }

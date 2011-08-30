@@ -348,13 +348,6 @@ public final class RuimRecords extends IccRecords {
 
     @Override
     public void onReady() {
-        /* broadcast intent ICC_READY here so that we can make sure
-          READY is sent before IMSI ready
-        */
-
-        mParentCard.broadcastIccStateChangedIntent(
-                IccCard.INTENT_VALUE_ICC_READY, null);
-
         fetchRuimRecords();
 
         mCi.getCDMASubscription(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_DONE));
