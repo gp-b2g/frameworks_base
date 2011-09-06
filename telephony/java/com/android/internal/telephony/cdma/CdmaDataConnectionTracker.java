@@ -341,8 +341,11 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
             types = mDefaultApnTypes;
             apnId = mDefaultApnId;
         }
+
+        String ipProto = SystemProperties.get("persist.telephony.cdma.protocol", "IP");
+        String roamingIpProto = SystemProperties.get("persist.telephony.cdma.rproto", "IP");
         mActiveApn = new ApnSetting(apnId, "", "", "", "", "", "", "", "", "",
-                                    "", 0, types, "IP", "IP", true, 0);
+                                    "", 0, types, ipProto, roamingIpProto, true, 0);
         if (DBG) log("call conn.bringUp mActiveApn=" + mActiveApn);
 
         Message msg = obtainMessage();

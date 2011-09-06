@@ -87,7 +87,7 @@ public class CdmaDataConnection extends DataConnection {
                 Integer.toString(dataProfile),
                 null, null, null,
                 Integer.toString(RILConstants.SETUP_DATA_AUTH_PAP_CHAP),
-                RILConstants.SETUP_DATA_PROTOCOL_IP, msg);
+                mApn.protocol, msg);
     }
 
     @Override
