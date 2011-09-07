@@ -126,7 +126,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     boolean mIsVoiceCapable = true;
     protected UiccManager mUiccManager = null;
     public IccRecords mIccRecords;
-    public IccCard mIccCard;
+    protected IccCard mIccCard;
     public SmsStorageMonitor mSmsStorageMonitor;
     public SmsUsageMonitor mSmsUsageMonitor;
     public SMSDispatcher mSMS;

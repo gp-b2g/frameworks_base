@@ -110,6 +110,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     GSMPhone phone;
     Context context;
+    IccCard mIccCard;
+    IccRecords mIccRecords;
 
     String action;              // One of ACTION_*
     String sc;                  // Service Code
@@ -173,7 +175,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
      */
 
     static GsmMmiCode
-    newFromDialString(String dialString, GSMPhone phone) {
+    newFromDialString(String dialString, GSMPhone phone, IccCard card) {
         Matcher m;
         GsmMmiCode ret = null;
 
@@ -181,7 +183,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
         // Is this formatted like a standard supplementary service code?
         if (m.matches()) {
-            ret = new GsmMmiCode(phone);
+            ret = new GsmMmiCode(phone, card);
             ret.poundString = makeEmptyNull(m.group(MATCH_GROUP_POUND_STRING));
             ret.action = makeEmptyNull(m.group(MATCH_GROUP_ACTION));
             ret.sc = makeEmptyNull(m.group(MATCH_GROUP_SERVICE_CODE));
@@ -196,14 +198,14 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             // "Entry of any characters defined in the 3GPP TS 23.038 [8] Default Alphabet
             // (up to the maximum defined in 3GPP TS 24.080 [10]), followed by #SEND".
 
-            ret = new GsmMmiCode(phone);
+            ret = new GsmMmiCode(phone, card);
             ret.poundString = dialString;
         } else if (isTwoDigitShortCode(phone.getContext(), dialString)) {
             //Is a country-specific exception to short codes as defined in TS 22.030, 6.5.3.2
             ret = null;
         } else if (isShortCode(dialString, phone)) {
             // this may be a short code, as defined in TS 22.030, 6.5.3.2
-            ret = new GsmMmiCode(phone);
+            ret = new GsmMmiCode(phone, card);
             ret.dialingNumber = dialString;
         }
 
@@ -212,10 +214,10 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     static GsmMmiCode
     newNetworkInitiatedUssd (String ussdMessage,
-                                boolean isUssdRequest, GSMPhone phone) {
+                                boolean isUssdRequest, GSMPhone phone, IccCard card) {
         GsmMmiCode ret;
 
-        ret = new GsmMmiCode(phone);
+        ret = new GsmMmiCode(phone, card);
 
         ret.message = ussdMessage;
         ret.isUssdRequest = isUssdRequest;
@@ -231,8 +233,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         return ret;
     }
 
-    static GsmMmiCode newFromUssdUserInput(String ussdMessge, GSMPhone phone) {
-        GsmMmiCode ret = new GsmMmiCode(phone);
+    static GsmMmiCode newFromUssdUserInput(String ussdMessge, GSMPhone phone, IccCard card) {
+        GsmMmiCode ret = new GsmMmiCode(phone, card);
 
         ret.message = ussdMessge;
         ret.state = State.PENDING;
@@ -383,12 +385,16 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     //***** Constructor
 
-    GsmMmiCode (GSMPhone phone) {
+    GsmMmiCode (GSMPhone phone, IccCard card) {
         // The telephony unit-test cases may create GsmMmiCode's
         // in secondary threads
         super(phone.getHandler().getLooper());
         this.phone = phone;
         this.context = phone.getContext();
+        mIccCard = card;
+        if (card != null) {
+            mIccRecords = card.getIccRecords();
+        }
     }
 
     //***** MmiCode implementation
@@ -765,7 +771,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                         // invalid length
                         handlePasswordError(com.android.internal.R.string.invalidPin);
                     } else if (sc.equals(SC_PIN) &&
-                               phone.mIccCard.getState() == IccCard.State.PUK_REQUIRED ) {
+                               mIccCard.getState() == IccCard.State.PUK_REQUIRED ) {
                         // Sim is puk-locked
                         handlePasswordError(com.android.internal.R.string.needPuk);
                     } else {
@@ -885,8 +891,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 */
                 if ((ar.exception == null) && (msg.arg1 == 1)) {
                     boolean cffEnabled = (msg.arg2 == 1);
-                    if (phone.mIccRecords != null) {
-                        phone.mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled);
+                    if (mIccRecords != null) {
+                        mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled);
                     }
                 }
 
@@ -1205,8 +1211,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 (info.serviceClass & serviceClassMask)
                         == CommandsInterface.SERVICE_CLASS_VOICE) {
             boolean cffEnabled = (info.status == 1);
-            if (phone.mIccRecords != null) {
-                phone.mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled);
+            if (mIccRecords != null) {
+                mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled);
             }
         }
 
@@ -1232,8 +1238,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 sb.append(context.getText(com.android.internal.R.string.serviceDisabled));
 
                 // Set unconditional CFF in SIM to false
-                if (phone.mIccRecords != null) {
-                    phone.mIccRecords.setVoiceCallForwardingFlag(1, false);
+                if (mIccRecords != null) {
+                    mIccRecords.setVoiceCallForwardingFlag(1, false);
                 }
             } else {
 
