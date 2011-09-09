@@ -45,6 +45,7 @@ import com.android.internal.R;
 import com.android.internal.telephony.DataConnection.FailCause;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
+import com.android.internal.telephony.DataProfile;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -285,13 +286,13 @@ public abstract class DataConnectionTracker extends Handler {
     protected ConcurrentHashMap<String, ApnContext> mApnContexts;
 
     /* Currently active APN */
-    protected ApnSetting mActiveApn;
+    protected DataProfile mActiveApn;
 
     /** allApns holds all apns */
-    protected ArrayList<ApnSetting> mAllApns = null;
+    protected ArrayList<DataProfile> mAllApns = null;
 
     /** preferred apn */
-    protected ApnSetting mPreferredApn = null;
+    protected DataProfile mPreferredApn = null;
 
     /** Is packet service restricted by network */
     protected boolean mIsPsRestricted = false;
@@ -467,23 +468,12 @@ public abstract class DataConnectionTracker extends Handler {
     public boolean isApnTypeActive(String type) {
         // TODO: support simultaneous with List instead
         if (Phone.APN_TYPE_DUN.equals(type)) {
-            ApnSetting dunApn = fetchDunApn();
+            DataProfile dunApn = fetchDunApn();
             if (dunApn != null) {
-                return ((mActiveApn != null) && (dunApn.toString().equals(mActiveApn.toString())));
+                return ((mActiveApn != null) && (dunApn.toHash().equals(mActiveApn.toHash())));
             }
         }
         return mActiveApn != null && mActiveApn.canHandleType(type);
-    }
-
-    protected ApnSetting fetchDunApn() {
-        Context c = mPhone.getContext();
-        String apnData = Settings.Secure.getString(c.getContentResolver(),
-                Settings.Secure.TETHER_DUN_APN);
-        ApnSetting dunSetting = ApnSetting.fromString(apnData);
-        if (dunSetting != null) return dunSetting;
-
-        apnData = c.getResources().getString(R.string.config_tether_apndata);
-        return ApnSetting.fromString(apnData);
     }
 
     public String[] getActiveApnTypes() {
@@ -564,6 +554,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected abstract void onCleanUpAllConnections(String cause);
     protected abstract boolean isDataPossible(String apnType);
     protected abstract void updateIccAvailability();
+    protected abstract DataProfile fetchDunApn();
 
     @Override
     public void handleMessage(Message msg) {

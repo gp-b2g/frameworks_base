@@ -26,6 +26,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
+import com.android.internal.telephony.ApnSetting;
 
 /**
  * {@hide}
@@ -72,9 +73,9 @@ public class GsmDataConnection extends DataConnection {
     void onConnect(ConnectionParams cp) {
         mApn = cp.apn;
 
-        if (DBG) log("Connecting to carrier: '" + mApn.carrier
+        if (DBG) log("Connecting to carrier: '" + ((ApnSetting)mApn).carrier
                 + "' APN: '" + mApn.apn
-                + "' proxy: '" + mApn.proxy + "' port: '" + mApn.port);
+                + "' proxy: '" + ((ApnSetting)mApn).proxy + "' port: '" + ((ApnSetting)mApn).port);
 
         createTime = -1;
         lastFailTime = -1;
@@ -134,11 +135,11 @@ public class GsmDataConnection extends DataConnection {
             // if Proxy is an IP-address.
             // Otherwise, the default APN will not be restored anymore.
             if (!mApn.types[0].equals(Phone.APN_TYPE_MMS)
-                || !isIpAddress(mApn.mmsProxy)) {
+                || !isIpAddress(((ApnSetting)mApn).mmsProxy)) {
                 log(String.format(
                         "isDnsOk: return false apn.types[0]=%s APN_TYPE_MMS=%s isIpAddress(%s)=%s",
-                        mApn.types[0], Phone.APN_TYPE_MMS, mApn.mmsProxy,
-                        isIpAddress(mApn.mmsProxy)));
+                        mApn.types[0], Phone.APN_TYPE_MMS, ((ApnSetting)mApn).mmsProxy,
+                        isIpAddress(((ApnSetting)mApn).mmsProxy)));
                 return false;
             }
         }

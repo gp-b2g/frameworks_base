@@ -32,7 +32,8 @@ import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.Log;
 
-import com.android.internal.telephony.ApnSetting;
+import com.android.internal.telephony.DataProfile;
+import com.android.internal.telephony.cdma.DataProfileCdma;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.DataCallState;
 import com.android.internal.telephony.DataConnection.FailCause;
@@ -315,7 +316,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
     private CdmaDataConnection findFreeDataConnection() {
         for (DataConnectionAc dcac : mDataConnectionAsyncChannels.values()) {
             if (dcac.isInactiveSync()) {
-                log("found free GsmDataConnection");
+                log("found free CdmaDataConnection");
                 return (CdmaDataConnection) dcac.dataConnection;
             }
         }
@@ -346,8 +347,11 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
 
         String ipProto = SystemProperties.get("persist.telephony.cdma.protocol", "IP");
         String roamingIpProto = SystemProperties.get("persist.telephony.cdma.rproto", "IP");
-        mActiveApn = new ApnSetting(apnId, "", "", "", "", "", "", "", "", "",
-                                    "", 0, types, ipProto, roamingIpProto, true, 0);
+
+        // TODO: home operator numeric! 
+        mActiveApn = (DataProfile)new DataProfileCdma(apnId, null, null, null, null,
+                RILConstants.SETUP_DATA_AUTH_PAP_CHAP, types, ipProto, roamingIpProto,
+                mPhone.getServiceState().getRadioTechnology());
         if (DBG) log("call conn.bringUp mActiveApn=" + mActiveApn);
 
         Message msg = obtainMessage();
@@ -559,6 +563,10 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
         if (mState == State.FAILED) {
             cleanUpAllConnections(null);
         }
+        
+        // TODO: Request for OMH Data Profiles here and follow up with EVENT_TRY_SETUP_DATA
+        // Add arbitration logic etc in CdmaDCT.
+        
         sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, Phone.REASON_SIM_LOADED));
     }
 
@@ -954,6 +962,12 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
                 super.handleMessage(msg);
                 break;
         }
+    }
+    
+    @Override
+    protected DataProfile fetchDunApn() {
+        // TODO: TBD
+        return null;
     }
 
     protected void updateIccAvailability() {
