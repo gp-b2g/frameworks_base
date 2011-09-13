@@ -20,11 +20,11 @@ import android.os.Message;
 import android.util.Log;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardApplication;
 import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.UiccCard;
 
 /**
  * {@hide}
@@ -36,7 +36,7 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
 
     //***** Constructor
 
-    public SIMFileHandler(IccCard card, String aid, CommandsInterface ci) {
+    public SIMFileHandler(UiccCard card, String aid, CommandsInterface ci) {
         super(card, aid, ci);
     }
 

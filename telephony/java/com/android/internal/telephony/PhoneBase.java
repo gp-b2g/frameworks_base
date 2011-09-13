@@ -126,7 +126,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     boolean mIsVoiceCapable = true;
     protected UiccManager mUiccManager = null;
     public IccRecords mIccRecords;
-    protected IccCard mIccCard;
+    protected UiccCard mUiccCard;
     public SmsStorageMonitor mSmsStorageMonitor;
     public SmsUsageMonitor mSmsUsageMonitor;
     public SMSDispatcher mSMS;
@@ -269,7 +269,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         mSmsUsageMonitor = null;
         mSMS = null;
         mIccRecords = null;
-        mIccCard = null;
+        mUiccCard = null;
         mDataConnectionTracker = null;
         mUiccManager = null;
     }
@@ -653,8 +653,8 @@ public abstract class PhoneBase extends Handler implements Phone {
      * Retrieves the IccFileHandler of the Phone instance
      */
     public IccFileHandler getIccFileHandler(){
-        if (mIccCard != null) {
-            return mIccCard.getIccFileHandler();
+        if (mUiccCard != null) {
+            return mUiccCard.getIccFileHandler();
         }
         return null;
     }
@@ -682,7 +682,8 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public IccCard getIccCard() {
-        return mIccCard;
+        return null;
+        //throw new Exception("getIccCard Shouldn't be called from PhoneBase");
     }
 
     @Override

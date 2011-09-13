@@ -20,7 +20,6 @@ import android.os.*;
 import android.util.Log;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.IccException;
 import com.android.internal.telephony.IccFileHandler;
@@ -29,6 +28,7 @@ import com.android.internal.telephony.IccIoResult;
 import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneProxy;
+import com.android.internal.telephony.UiccCard;
 
 import java.util.ArrayList;
 
@@ -41,7 +41,7 @@ public final class RuimFileHandler extends IccFileHandler {
     //***** Instance Variables
 
     //***** Constructor
-    public RuimFileHandler(IccCard card, String aid, CommandsInterface ci) {
+    public RuimFileHandler(UiccCard card, String aid, CommandsInterface ci) {
         super(card, aid, ci);
     }
 

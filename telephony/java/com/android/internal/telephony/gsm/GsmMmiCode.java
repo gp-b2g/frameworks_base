@@ -110,7 +110,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     GSMPhone phone;
     Context context;
-    IccCard mIccCard;
+    UiccCard mUiccCard;
     IccRecords mIccRecords;
 
     String action;              // One of ACTION_*
@@ -175,7 +175,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
      */
 
     static GsmMmiCode
-    newFromDialString(String dialString, GSMPhone phone, IccCard card) {
+    newFromDialString(String dialString, GSMPhone phone, UiccCard card) {
         Matcher m;
         GsmMmiCode ret = null;
 
@@ -214,7 +214,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     static GsmMmiCode
     newNetworkInitiatedUssd (String ussdMessage,
-                                boolean isUssdRequest, GSMPhone phone, IccCard card) {
+                                boolean isUssdRequest, GSMPhone phone, UiccCard card) {
         GsmMmiCode ret;
 
         ret = new GsmMmiCode(phone, card);
@@ -233,7 +233,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         return ret;
     }
 
-    static GsmMmiCode newFromUssdUserInput(String ussdMessge, GSMPhone phone, IccCard card) {
+    static GsmMmiCode newFromUssdUserInput(String ussdMessge, GSMPhone phone, UiccCard card) {
         GsmMmiCode ret = new GsmMmiCode(phone, card);
 
         ret.message = ussdMessge;
@@ -385,13 +385,13 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     //***** Constructor
 
-    GsmMmiCode (GSMPhone phone, IccCard card) {
+    GsmMmiCode (GSMPhone phone, UiccCard card) {
         // The telephony unit-test cases may create GsmMmiCode's
         // in secondary threads
         super(phone.getHandler().getLooper());
         this.phone = phone;
         this.context = phone.getContext();
-        mIccCard = card;
+        mUiccCard = card;
         if (card != null) {
             mIccRecords = card.getIccRecords();
         }
@@ -771,7 +771,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                         // invalid length
                         handlePasswordError(com.android.internal.R.string.invalidPin);
                     } else if (sc.equals(SC_PIN) &&
-                               mIccCard.getState() == IccCard.State.PUK_REQUIRED ) {
+                               mUiccCard.getState() == IccCard.State.PUK_REQUIRED ) {
                         // Sim is puk-locked
                         handlePasswordError(com.android.internal.R.string.needPuk);
                     } else {

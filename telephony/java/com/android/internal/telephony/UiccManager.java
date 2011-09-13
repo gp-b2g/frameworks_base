@@ -44,7 +44,7 @@ public class UiccManager extends Handler {
 
     private PhoneBase mCurrentPhone;
     private CommandsInterface mCi;
-    private IccCard mIccCard;
+    private UiccCard mUiccCard;
 
     private RegistrantList mIccChangedRegistrants = new RegistrantList();
 
@@ -102,19 +102,19 @@ public class UiccManager extends Handler {
         IccCardStatus status = (IccCardStatus)ar.result;
 
         //Update already existing card
-        if (mIccCard != null && status.getCardState() == CardState.CARDSTATE_PRESENT) {
-            mIccCard.update(mCurrentPhone, status);
+        if (mUiccCard != null && status.getCardState() == CardState.CARDSTATE_PRESENT) {
+            mUiccCard.update(mCurrentPhone, status);
         }
 
         //Dispose of removed card
-        if (mIccCard != null && status.getCardState() != CardState.CARDSTATE_PRESENT) {
-            mIccCard.dispose();
-            mIccCard = null;
+        if (mUiccCard != null && status.getCardState() != CardState.CARDSTATE_PRESENT) {
+            mUiccCard.dispose();
+            mUiccCard = null;
         }
 
         //Create new card
-        if (mIccCard == null && status.getCardState() == CardState.CARDSTATE_PRESENT) {
-            mIccCard = new IccCard(mCurrentPhone, status, mCurrentPhone.getPhoneName(), true);
+        if (mUiccCard == null && status.getCardState() == CardState.CARDSTATE_PRESENT) {
+            mUiccCard = new UiccCard(mCurrentPhone, status, mCurrentPhone.getPhoneName(), true);
         }
 
         Log.d(LOG_TAG, "Notifying IccChangedRegistrants");
@@ -124,20 +124,20 @@ public class UiccManager extends Handler {
     private void setNewPhone(PhoneBase phone) {
         Log.d(LOG_TAG, "setNewPhone");
         if (mCurrentPhone != phone) {
-            if (mIccCard != null) {
+            if (mUiccCard != null) {
                 // Refresh card if phone changed
                 // TODO: Remove once card is simplified
                 Log.d(LOG_TAG, "Disposing card since phone object changed");
-                mIccCard.dispose();
-                mIccCard = null;
+                mUiccCard.dispose();
+                mUiccCard = null;
             }
             sendMessage(obtainMessage(EVENT_ICC_STATUS_CHANGED));
         }
         mCurrentPhone = phone;
     }
 
-    public IccCard getIccCard() {
-        return mIccCard;
+    public UiccCard getUiccCard() {
+        return mUiccCard;
     }
     //Notifies when card status changes
     public void registerForIccChanged(Handler h, int what, Object obj) {

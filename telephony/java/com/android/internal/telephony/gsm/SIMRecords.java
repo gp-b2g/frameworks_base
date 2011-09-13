@@ -31,7 +31,6 @@ import com.android.internal.telephony.AdnRecordCache;
 import com.android.internal.telephony.AdnRecordLoader;
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.IccUtils;
@@ -42,6 +41,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.IccRefreshResponse;
+import com.android.internal.telephony.UiccCard;
 
 import java.util.ArrayList;
 
@@ -65,7 +65,6 @@ public class SIMRecords extends IccRecords {
 
     // ***** Cached SIM State; cleared on channel close
 
-    private String imsi;
     private boolean callForwardingEnabled;
 
 
@@ -171,7 +170,7 @@ public class SIMRecords extends IccRecords {
 
     // ***** Constructor
 
-    public SIMRecords(IccCard card, Context c, CommandsInterface ci) {
+    public SIMRecords(UiccCard card, Context c, CommandsInterface ci) {
         super(card, c, ci);
 
         adnCache = new AdnRecordCache(mFh);
@@ -573,8 +572,7 @@ public class SIMRecords extends IccRecords {
                     // finally have both the imsi and the mncLength and can parse the imsi properly
                     MccTable.updateMccMncConfiguration(mContext, imsi.substring(0, 3 + mncLength));
                 }
-                mParentCard.broadcastIccStateChangedIntent(
-                        IccCard.INTENT_VALUE_ICC_IMSI, null);
+                mImsiReadyRegistrants.notifyRegistrants();
             break;
 
             case EVENT_GET_MBI_DONE:
@@ -1273,8 +1271,6 @@ public class SIMRecords extends IccRecords {
 
         recordsLoadedRegistrants.notifyRegistrants(
             new AsyncResult(null, null, null));
-        mParentCard.broadcastIccStateChangedIntent(
-                IccCard.INTENT_VALUE_ICC_LOADED, null);
     }
 
     //***** Private methods

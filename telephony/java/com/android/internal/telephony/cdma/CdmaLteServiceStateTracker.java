@@ -347,7 +347,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 ss.setOperatorAlphaLong(eriText);
             }
 
-            if (mIccCard != null && mIccCard.getState() == IccCard.State.READY &&
+            if (mUiccCard != null && mUiccCard.getState() == IccCard.State.READY &&
                     mIccRecords != null) {
                 // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
                 // one configfured in SIM, use operator name  from CSIM record.

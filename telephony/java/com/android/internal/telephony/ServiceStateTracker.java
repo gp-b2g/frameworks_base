@@ -33,7 +33,7 @@ public abstract class ServiceStateTracker extends Handler {
 
     protected CommandsInterface cm;
     protected UiccManager mUiccManager = null;
-    protected IccCard mIccCard = null;
+    protected UiccCard mUiccCard = null;
     protected IccRecords mIccRecords = null;
 
     public ServiceState ss;

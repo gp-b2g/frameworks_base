@@ -19,9 +19,10 @@ package com.android.internal.telephony.cdma;
 import android.util.Log;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.IccFileHandler;
+import com.android.internal.telephony.UiccCard;
+
 import android.os.Message;
 
 /**
@@ -30,8 +31,7 @@ import android.os.Message;
 public final class CdmaLteUiccFileHandler extends IccFileHandler {
     static final String LOG_TAG = "CDMA";
 
-    public CdmaLteUiccFileHandler(IccCard card, String aid, CommandsInterface ci) {
-        
+    public CdmaLteUiccFileHandler(UiccCard card, String aid, CommandsInterface ci) {
         super(card, aid, ci);
     }
 

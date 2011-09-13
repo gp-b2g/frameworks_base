@@ -24,12 +24,12 @@ import com.android.internal.telephony.AdnRecordLoader;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.IccCardApplication.AppType;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SmsMessageBase;
+import com.android.internal.telephony.UiccCard;
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.gsm.SIMRecords;
 import com.android.internal.telephony.ims.IsimRecords;
@@ -57,7 +57,7 @@ public final class CdmaLteUiccRecords extends SIMRecords {
 
     private final IsimUiccRecords mIsimUiccRecords = new IsimUiccRecords();
 
-    public CdmaLteUiccRecords(IccCard card, Context c, CommandsInterface ci) {
+    public CdmaLteUiccRecords(UiccCard card, Context c, CommandsInterface ci) {
         super(card, c, ci);
     }
 

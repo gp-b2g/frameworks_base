@@ -62,6 +62,7 @@ import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.UiccCard;
 import com.android.internal.telephony.UiccManager;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cat.CatService;
@@ -1083,10 +1084,10 @@ public class CDMAPhone extends PhoneBase {
             return;
         }
 
-        IccCard newIccCard = mUiccManager.getIccCard();
+        UiccCard newUiccCard = mUiccManager.getUiccCard();
 
-        if (mIccCard != newIccCard) {
-            if (mIccCard != null) {
+        if (mUiccCard != newUiccCard) {
+            if (mUiccCard != null) {
                 log("Removing stale icc objects.");
                 if (mIccRecords != null) {
                     unregisterForRuimRecordEvents();
@@ -1096,12 +1097,12 @@ public class CDMAPhone extends PhoneBase {
                     }
                 }
                 mIccRecords = null;
-                mIccCard = null;
+                mUiccCard = null;
             }
-            if (newIccCard != null) {
+            if (newUiccCard != null) {
                 log("New card found");
-                mIccCard = newIccCard;
-                mIccRecords = mIccCard.getIccRecords();
+                mUiccCard = newUiccCard;
+                mIccRecords = mUiccCard.getIccRecords();
                 registerForRuimRecordEvents();
                 if (mRuimPhoneBookInterfaceManager != null) {
                     mRuimPhoneBookInterfaceManager.updateIccRecords(mIccRecords);
