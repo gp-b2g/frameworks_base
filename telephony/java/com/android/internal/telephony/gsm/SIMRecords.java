@@ -41,7 +41,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.IccRefreshResponse;
-import com.android.internal.telephony.UiccCard;
+import com.android.internal.telephony.UiccCardApplication;
 
 import java.util.ArrayList;
 
@@ -121,9 +121,10 @@ public class SIMRecords extends IccRecords {
 
     // ***** Event Constants
 
+    private static final int EVENT_APP_READY = 1;
     private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 2;
-    protected static final int EVENT_GET_IMSI_DONE = 3;
-    protected static final int EVENT_GET_ICCID_DONE = 4;
+    private static final int EVENT_GET_IMSI_DONE = 3;
+    private static final int EVENT_GET_ICCID_DONE = 4;
     private static final int EVENT_GET_MBI_DONE = 5;
     private static final int EVENT_GET_MBDN_DONE = 6;
     private static final int EVENT_GET_MWIS_DONE = 7;
@@ -170,8 +171,8 @@ public class SIMRecords extends IccRecords {
 
     // ***** Constructor
 
-    public SIMRecords(UiccCard card, Context c, CommandsInterface ci) {
-        super(card, c, ci);
+    public SIMRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
+        super(app, c, ci);
 
         adnCache = new AdnRecordCache(mFh);
 
@@ -190,7 +191,7 @@ public class SIMRecords extends IccRecords {
 
         // Start off by setting empty state
         onRadioOffOrNotAvailable();
-
+        mParentApp.registerForReady(this, EVENT_APP_READY, null);
     }
 
     @Override
@@ -519,6 +520,10 @@ public class SIMRecords extends IccRecords {
         }
 
         try { switch (msg.what) {
+            case EVENT_APP_READY:
+                onReady();
+                break;
+
             case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:
                 onRadioOffOrNotAvailable();
             break;
@@ -1300,7 +1305,7 @@ public class SIMRecords extends IccRecords {
 
         Log.v(LOG_TAG, "SIMRecords:fetchSimRecords " + recordsToLoad);
 
-        mCi.getIMSIForApp(mParentCard.getAid(), obtainMessage(EVENT_GET_IMSI_DONE));
+        mCi.getIMSIForApp(mParentApp.getAid(), obtainMessage(EVENT_GET_IMSI_DONE));
         recordsToLoad++;
 
         mFh.loadEFTransparent(EF_ICCID, obtainMessage(EVENT_GET_ICCID_DONE));

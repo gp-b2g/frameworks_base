@@ -25,6 +25,8 @@ import android.os.Message;
 public interface IccCard {
     /* The extra data for broacasting intent INTENT_ICC_STATE_CHANGE */
     static public final String INTENT_KEY_ICC_STATE = "ss";
+    /* UNKNOWN means the ICC state is unknown */
+    static public final String INTENT_VALUE_ICC_UNKNOWN = "UNKNOWN";
     /* NOT_READY means the ICC interface is not ready (eg, radio is off or powering on) */
     static public final String INTENT_VALUE_ICC_NOT_READY = "NOT_READY";
     /* ABSENT means ICC is missing */
@@ -71,6 +73,19 @@ public interface IccCard {
             return ((this == PIN_REQUIRED) || (this == PUK_REQUIRED)
                     || (this == NETWORK_LOCKED) || (this == READY)
                     || (this == PERM_DISABLED));
+        }
+        
+        public String getIntentString() {
+            switch (this) {
+                case ABSENT: return INTENT_VALUE_ICC_ABSENT;
+                case PIN_REQUIRED: return INTENT_VALUE_LOCKED_ON_PIN;
+                case PUK_REQUIRED: return INTENT_VALUE_LOCKED_ON_PUK;
+                case NETWORK_LOCKED: return INTENT_VALUE_LOCKED_NETWORK;
+                case READY: return INTENT_VALUE_ICC_READY;
+                case NOT_READY: return INTENT_VALUE_ICC_NOT_READY;
+                case PERM_DISABLED: return INTENT_VALUE_ABSENT_ON_PERM_DISABLED;
+                default: return INTENT_VALUE_ICC_UNKNOWN;
+            }
         }
     }
 
@@ -218,7 +233,7 @@ public interface IccCard {
      */
     public String getServiceProviderName ();
     public State getIccCardState();
-    public boolean isApplicationOnIcc(IccCardApplication.AppType type);
+    public boolean isApplicationOnIcc(IccCardApplicationStatus.AppType type);
 
     /**
      * @return true if a ICC card is present

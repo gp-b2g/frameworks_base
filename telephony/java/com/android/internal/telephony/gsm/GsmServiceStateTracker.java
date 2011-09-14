@@ -29,6 +29,9 @@ import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UiccCard;
+import com.android.internal.telephony.UiccCardApplication;
+import com.android.internal.telephony.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.UiccManager.AppFamily;
 
 import android.app.AlarmManager;
 import android.app.Notification;
@@ -232,7 +235,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForVoiceNetworkStateChanged(this);
         cm.unregisterForDataNetworkStateChanged(this);
-        if (mUiccCard != null) {mUiccCard.unregisterForReady(this);}
+        if (mUiccApplcation != null) {mUiccApplcation.unregisterForReady(this);}
         if (mIccRecords != null) {mIccRecords.unregisterForRecordsLoaded(this);}
         cm.unSetOnSignalStrengthUpdate(this);
         cm.unSetOnRestrictedStateChanged(this);
@@ -1019,7 +1022,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     ((state & RILConstants.RIL_RESTRICTED_STATE_CS_EMERGENCY) != 0) ||
                     ((state & RILConstants.RIL_RESTRICTED_STATE_CS_ALL) != 0) );
             //ignore the normal call and data restricted state before SIM READY
-            if (mUiccCard.getState() == IccCard.State.READY) {
+            if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY) {
                 newRs.setCsNormalRestricted(
                         ((state & RILConstants.RIL_RESTRICTED_STATE_CS_NORMAL) != 0) ||
                         ((state & RILConstants.RIL_RESTRICTED_STATE_CS_ALL) != 0) );
@@ -1543,23 +1546,23 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             return;
         }
 
-        UiccCard newUiccCard = mUiccManager.getUiccCard();
+        UiccCardApplication newUiccApplication = mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP);
 
-        if (mUiccCard != newUiccCard) {
-            if (mUiccCard != null) {
+        if (mUiccApplcation != newUiccApplication) {
+            if (mUiccApplcation != null) {
                 log("Removing stale icc objects.");
-                mUiccCard.unregisterForReady(this);
+                mUiccApplcation.unregisterForReady(this);
                 if (mIccRecords != null) {
                     mIccRecords.unregisterForRecordsLoaded(this);
                 }
                 mIccRecords = null;
-                mUiccCard = null;
+                mUiccApplcation = null;
             }
-            if (newUiccCard != null) {
+            if (newUiccApplication != null) {
                 log("New card found");
-                mUiccCard = newUiccCard;
-                mIccRecords = mUiccCard.getIccRecords();
-                mUiccCard.registerForReady(this, EVENT_SIM_READY, null);
+                mUiccApplcation = newUiccApplication;
+                mIccRecords = mUiccApplcation.getIccRecords();
+                mUiccApplcation.registerForReady(this, EVENT_SIM_READY, null);
                 if (mIccRecords != null) {
                     mIccRecords.registerForRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
                 }

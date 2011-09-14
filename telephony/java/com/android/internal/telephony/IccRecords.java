@@ -36,7 +36,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected Context mContext;
     protected CommandsInterface mCi;
     protected IccFileHandler mFh;
-    protected UiccCard mParentCard;
+    protected UiccCardApplication mParentApp;
 
     protected RegistrantList recordsLoadedRegistrants = new RegistrantList();
     protected RegistrantList mImsiReadyRegistrants = new RegistrantList();
@@ -104,11 +104,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
     }
 
     // ***** Constructor
-    public IccRecords(UiccCard card, Context c, CommandsInterface ci) {
+    public IccRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
         mContext = c;
         mCi = ci;
-        mFh = card.getIccFileHandler();
-        mParentCard = card;
+        mFh = app.getIccFileHandler();
+        mParentApp = app;
     }
 
     /**
@@ -116,7 +116,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     public void dispose() {
         mDestroyed = true;
-        mParentCard = null;
+        mParentApp = null;
         mFh = null;
         mCi = null;
         mContext = null;
@@ -128,10 +128,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
     //***** Public Methods
     public AdnRecordCache getAdnCache() {
         return adnCache;
-    }
-
-    public UiccCard getIccCard() {
-        return mParentCard;
     }
 
     public void registerForRecordsLoaded(Handler h, int what, Object obj) {

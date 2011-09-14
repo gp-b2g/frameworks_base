@@ -91,7 +91,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
      // member variables
     protected CommandsInterface mCi;
-    protected UiccCard mParentCard;
+    protected UiccCardApplication mParentApp;
     protected String mAid;
 
     static class LoadLinearFixedContext {
@@ -122,8 +122,8 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
     /**
      * Default constructor
      */
-    protected IccFileHandler(UiccCard card, String aid, CommandsInterface ci) {
-        mParentCard = card;
+    protected IccFileHandler(UiccCardApplication app, String aid, CommandsInterface ci) {
+        mParentApp = app;
         mAid = aid;
         mCi = ci;
     }
@@ -222,6 +222,24 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
         mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, getEFPath(fileid),
                         0, 0, GET_RESPONSE_EF_SIZE_BYTES, null, null, mAid, response);
+    }
+
+    /**
+     * Load first @size bytes from SIM Transparent EF
+     *
+     * @param fileid EF id
+     * @param size
+     * @param onLoaded
+     *
+     * ((AsyncResult)(onLoaded.obj)).result is the byte[]
+     *
+     */
+    public void loadEFTransparent(int fileid, int size, Message onLoaded) {
+        Message response = obtainMessage(EVENT_READ_BINARY_DONE,
+                        fileid, 0, onLoaded);
+
+        mCi.iccIOForApp(COMMAND_READ_BINARY, fileid, getEFPath(fileid),
+                        0, 0, size, null, null, mAid, response);
     }
 
     /**

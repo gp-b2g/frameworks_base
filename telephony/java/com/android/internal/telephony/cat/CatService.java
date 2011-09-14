@@ -29,6 +29,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.UiccCard;
+import com.android.internal.telephony.UiccCardApplication;
 
 
 import java.io.ByteArrayOutputStream;
@@ -116,6 +117,7 @@ public class CatService extends Handler implements AppInterface {
 
     // Class members
     private static IccRecords mIccRecords;
+    private static UiccCardApplication mUiccApplication;
 
     // Service members.
     // Protects singleton instance lazy initialization.
@@ -150,9 +152,9 @@ public class CatService extends Handler implements AppInterface {
     private static final int DEV_ID_NETWORK     = 0x83;
 
     /* Intentionally private for singleton */
-    private CatService(CommandsInterface ci, IccRecords ir, Context context,
-            IccFileHandler fh, UiccCard ic) {
-        if (ci == null || ir == null || context == null || fh == null
+    private CatService(CommandsInterface ci, UiccCardApplication ca, IccRecords ir,
+            Context context, IccFileHandler fh, UiccCard ic) {
+        if (ci == null || ca == null || ir == null || context == null || fh == null
                 || ic == null) {
             throw new NullPointerException(
                     "Service: Input parameters must not be null");
@@ -171,9 +173,10 @@ public class CatService extends Handler implements AppInterface {
         //mCmdIf.setOnSimRefresh(this, MSG_ID_REFRESH, null);
 
         mIccRecords = ir;
+        mUiccApplication = ca;
 
         // Register for SIM ready event.
-        ic.registerForReady(this, MSG_ID_SIM_READY, null);
+        mUiccApplication.registerForReady(this, MSG_ID_SIM_READY, null);
         mIccRecords.registerForRecordsLoaded(this, MSG_ID_ICC_RECORDS_LOADED, null);
 
         CatLog.d(this, "Is running");
@@ -533,24 +536,46 @@ public class CatService extends Handler implements AppInterface {
      * @param ic Icc card
      * @return The only Service object in the system
      */
-    public static CatService getInstance(CommandsInterface ci, IccRecords ir,
-            Context context, IccFileHandler fh, UiccCard ic) {
+    public static CatService getInstance(CommandsInterface ci,
+            Context context, UiccCard ic) {
+        UiccCardApplication ca = null;
+        IccFileHandler fh = null;
+        IccRecords ir = null;
+        if (ic != null) {
+            /* Since Cat is not tied to any application, but rather is Uicc application
+             * in itself - just get any FileHandler and IccRecords object
+             */
+            ca = ic.getApplication(0);
+            if (ca != null) {
+                fh = ca.getIccFileHandler();
+                ir = ca.getIccRecords();
+            }
+        }
         synchronized (sInstanceLock) {
             if (sInstance == null) {
-                if (ci == null || ir == null || context == null || fh == null
+                if (ci == null || ca == null || ir == null || context == null || fh == null
                         || ic == null) {
                     return null;
                 }
                 HandlerThread thread = new HandlerThread("Cat Telephony service");
                 thread.start();
-                sInstance = new CatService(ci, ir, context, fh, ic);
+                sInstance = new CatService(ci, ca, ir, context, fh, ic);
                 CatLog.d(sInstance, "NEW sInstance");
             } else if ((ir != null) && (mIccRecords != ir)) {
-                CatLog.d(sInstance, "Reinitialize the Service with SIMRecords");
+                if (mIccRecords != null) {
+                    mIccRecords.unregisterForRecordsLoaded(sInstance);
+                }
+
+                if (mUiccApplication != null) {
+                    mUiccApplication.unregisterForReady(sInstance);
+                }
+                CatLog.d(sInstance, "Reinitialize the Service with SIMRecords and UiccCardApplication");
                 mIccRecords = ir;
+                mUiccApplication = ca;
 
                 // re-Register for SIM ready event.
                 mIccRecords.registerForRecordsLoaded(sInstance, MSG_ID_ICC_RECORDS_LOADED, null);
+                mUiccApplication.registerForReady(sInstance, MSG_ID_SIM_READY, null);
                 CatLog.d(sInstance, "sr changed reinitialize and return current sInstance");
             } else {
                 CatLog.d(sInstance, "Return current sInstance");
@@ -565,7 +590,7 @@ public class CatService extends Handler implements AppInterface {
      * @return The only Service object in the system
      */
     public static AppInterface getInstance() {
-        return getInstance(null, null, null, null, null);
+        return getInstance(null, null, null);
     }
 
     @Override

@@ -40,6 +40,7 @@ import android.telephony.SignalStrength;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
@@ -63,6 +64,7 @@ import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UiccCard;
+import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.UiccManager;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cat.CatService;
@@ -153,7 +155,7 @@ public class CDMAPhone extends PhoneBase {
     }
 
     protected void initSstIcc() {
-        mUiccManager = UiccManager.getInstance(this);
+        mUiccManager = UiccManager.getInstance(mContext, mCM);
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mSST = new CdmaServiceStateTracker(this);
     }
@@ -1079,34 +1081,31 @@ public class CDMAPhone extends PhoneBase {
         }
     }
 
+    @Override
     protected void updateIccAvailability() {
         if (mUiccManager == null ) {
             return;
         }
 
-        UiccCard newUiccCard = mUiccManager.getUiccCard();
+        UiccCardApplication newUiccApplication = mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP2);
 
-        if (mUiccCard != newUiccCard) {
-            if (mUiccCard != null) {
+        if (mUiccApplication != newUiccApplication) {
+            if (mUiccApplication != null) {
                 log("Removing stale icc objects.");
                 if (mIccRecords != null) {
                     unregisterForRuimRecordEvents();
                     mIccRecords = null;
-                    if (mRuimPhoneBookInterfaceManager != null) {
-                        mRuimPhoneBookInterfaceManager.updateIccRecords(null);
-                    }
+                    mRuimPhoneBookInterfaceManager.updateIccRecords(null);
                 }
                 mIccRecords = null;
-                mUiccCard = null;
+                mUiccApplication = null;
             }
-            if (newUiccCard != null) {
-                log("New card found");
-                mUiccCard = newUiccCard;
-                mIccRecords = mUiccCard.getIccRecords();
+            if (newUiccApplication != null) {
+                log("New Uicc application found");
+                mUiccApplication = newUiccApplication;
+                mIccRecords = mUiccApplication.getIccRecords();
                 registerForRuimRecordEvents();
-                if (mRuimPhoneBookInterfaceManager != null) {
-                    mRuimPhoneBookInterfaceManager.updateIccRecords(mIccRecords);
-                }
+                mRuimPhoneBookInterfaceManager.updateIccRecords(mIccRecords);
             }
         }
     }

@@ -27,7 +27,9 @@ import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UiccCard;
+import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.CommandsInterface.RadioState;
+import com.android.internal.telephony.UiccManager.AppFamily;
 
 import android.app.AlarmManager;
 import android.content.ContentResolver;
@@ -211,7 +213,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         cm.unregisterForDataNetworkStateChanged(this);
         cm.unregisterForCdmaOtaProvision(this);
         phone.unregisterForEriFileLoaded(this);
-        if (mUiccCard != null) {mUiccCard.unregisterForReady(this);}
+        if (mUiccApplcation != null) {mUiccApplcation.unregisterForReady(this);}
         if (mIccRecords != null) {mIccRecords.unregisterForRecordsLoaded(this);}
         cm.unSetOnSignalStrengthUpdate(this);
         cm.unSetOnNITZTime(this);
@@ -393,7 +395,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     mIsMinInfoReady = true;
 
                     updateOtaspState();
-                    mIccRecords.setImsi(getImsi());
+                    if (mIccRecords != null) {
+                        mIccRecords.setImsi(getImsi());
+                    }
                 } else {
                     if (DBG) {
                         log("GET_CDMA_SUBSCRIPTION: error parsing cdmaSubscription params num="
@@ -1613,24 +1617,24 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             return;
         }
 
-        UiccCard newUiccCard = mUiccManager.getUiccCard();
+        UiccCardApplication newUiccApplication = mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP2);
 
-        if (mUiccCard != newUiccCard) {
-            if (mUiccCard != null) {
+        if (mUiccApplcation != newUiccApplication) {
+            if (mUiccApplcation != null) {
                 log("Removing stale icc objects.");
-                mUiccCard.unregisterForReady(this);
+                mUiccApplcation.unregisterForReady(this);
                 if (mIccRecords != null) {
                     mIccRecords.unregisterForRecordsLoaded(this);
                 }
                 mIccRecords = null;
-                mUiccCard = null;
+                mUiccApplcation = null;
             }
-            if (newUiccCard != null) {
+            if (newUiccApplication != null) {
                 log("New card found");
-                mUiccCard = newUiccCard;
-                mIccRecords = mUiccCard.getIccRecords();
+                mUiccApplcation = newUiccApplication;
+                mIccRecords = mUiccApplcation.getIccRecords();
                 if (isSubscriptionFromRuim) {
-                    mUiccCard.registerForReady(this, EVENT_RUIM_READY, null);
+                    mUiccApplcation.registerForReady(this, EVENT_RUIM_READY, null);
                     if (mIccRecords != null) {
                         mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
                     }

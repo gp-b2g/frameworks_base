@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +17,7 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.IccCardStatus.CardState;
-import com.android.internal.telephony.cdma.CDMALTEPhone;
-import com.android.internal.telephony.cdma.CDMAPhone;
-import com.android.internal.telephony.gsm.GSMPhone;
-
+import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -36,23 +33,25 @@ public class UiccManager extends Handler {
     private final static String LOG_TAG = "RIL_UiccManager";
     public enum AppFamily {
         APP_FAM_3GPP,
-        APP_FAM_3GPP2;
+        APP_FAM_3GPP2,
+        APP_FAM_IMS
     }
     private static final int EVENT_ICC_STATUS_CHANGED = 1;
     private static final int EVENT_GET_ICC_STATUS_DONE = 2;
     private static UiccManager mInstance;
 
-    private PhoneBase mCurrentPhone;
+    private Context mContext;
     private CommandsInterface mCi;
     private UiccCard mUiccCard;
 
     private RegistrantList mIccChangedRegistrants = new RegistrantList();
 
-    public static UiccManager getInstance(PhoneBase phone) {
+    public static UiccManager getInstance(Context c, CommandsInterface ci) {
         if (mInstance == null) {
-            mInstance = new UiccManager(phone);
+            mInstance = new UiccManager(c, ci);
         } else {
-            mInstance.setNewPhone(phone);
+            mInstance.mContext = c;
+            mInstance.mCi = ci;
         }
         return mInstance;
     }
@@ -65,10 +64,10 @@ public class UiccManager extends Handler {
         }
     }
 
-    private UiccManager(PhoneBase phone) {
+    private UiccManager(Context c, CommandsInterface ci) {
         Log.d(LOG_TAG, "Creating UiccManager");
-        setNewPhone(phone);
-        mCi = mCurrentPhone.mCM;
+        mContext = c;
+        mCi = ci;
         mCi.registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, null);
         // TODO remove this once modem correctly notifies the unsols
         mCi.registerForOn(this, EVENT_ICC_STATUS_CHANGED, null);
@@ -101,44 +100,52 @@ public class UiccManager extends Handler {
 
         IccCardStatus status = (IccCardStatus)ar.result;
 
-        //Update already existing card
-        if (mUiccCard != null && status.getCardState() == CardState.CARDSTATE_PRESENT) {
-            mUiccCard.update(mCurrentPhone, status);
-        }
-
-        //Dispose of removed card
-        if (mUiccCard != null && status.getCardState() != CardState.CARDSTATE_PRESENT) {
-            mUiccCard.dispose();
-            mUiccCard = null;
-        }
-
-        //Create new card
-        if (mUiccCard == null && status.getCardState() == CardState.CARDSTATE_PRESENT) {
-            mUiccCard = new UiccCard(mCurrentPhone, status, mCurrentPhone.getPhoneName(), true);
+        if (mUiccCard == null) {
+            //Create new card
+            mUiccCard = new UiccCard(mContext, mCi, status);
+        } else {
+            //Update already existing card
+            mUiccCard.update(mContext, mCi , status);
         }
 
         Log.d(LOG_TAG, "Notifying IccChangedRegistrants");
         mIccChangedRegistrants.notifyRegistrants();
     }
 
-    private void setNewPhone(PhoneBase phone) {
-        Log.d(LOG_TAG, "setNewPhone");
-        if (mCurrentPhone != phone) {
-            if (mUiccCard != null) {
-                // Refresh card if phone changed
-                // TODO: Remove once card is simplified
-                Log.d(LOG_TAG, "Disposing card since phone object changed");
-                mUiccCard.dispose();
-                mUiccCard = null;
-            }
-            sendMessage(obtainMessage(EVENT_ICC_STATUS_CHANGED));
-        }
-        mCurrentPhone = phone;
-    }
-
     public UiccCard getUiccCard() {
         return mUiccCard;
     }
+
+    // Easy to use API
+    public UiccCardApplication getUiccCardApplication(AppFamily family) {
+        if (mUiccCard != null) {
+            return mUiccCard.getApplication(family);
+        }
+        return null;
+    }
+
+    // Easy to use API
+    public IccRecords getIccRecords(AppFamily family) {
+        if (mUiccCard != null) {
+            UiccCardApplication app = mUiccCard.getApplication(family);
+            if (app != null) {
+                return app.getIccRecords();
+            }
+        }
+        return null;
+    }
+
+    // Easy to use API
+    public IccFileHandler getIccFileHandler(AppFamily family) {
+        if (mUiccCard != null) {
+            UiccCardApplication app = mUiccCard.getApplication(family);
+            if (app != null) {
+                return app.getIccFileHandler();
+            }
+        }
+        return null;
+    }
+
     //Notifies when card status changes
     public void registerForIccChanged(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);

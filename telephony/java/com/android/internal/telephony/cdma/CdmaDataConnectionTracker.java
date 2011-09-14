@@ -36,6 +36,7 @@ import com.android.internal.telephony.ApnSetting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.DataCallState;
 import com.android.internal.telephony.DataConnection.FailCause;
+import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.DataConnection;
 import com.android.internal.telephony.DataConnectionAc;
 import com.android.internal.telephony.DataConnectionTracker;
@@ -960,11 +961,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
             return;
         }
 
-        UiccCard newUiccCard = mUiccManager.getUiccCard();
-        IccRecords newIccRecords = null;
-        if (newUiccCard != null) {
-            newIccRecords = newUiccCard.getIccRecords();
-        }
+        IccRecords newIccRecords = mUiccManager.getIccRecords(AppFamily.APP_FAM_3GPP2);
 
         if (mIccRecords != newIccRecords) {
             if (mIccRecords != null) {
@@ -972,8 +969,8 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
                 mIccRecords.unregisterForRecordsLoaded(this);
                 mIccRecords = null;
             }
-            if (newUiccCard != null) {
-                log("New card found");
+            if (newIccRecords != null) {
+                log("New records found");
                 mIccRecords = newIccRecords;
                 mIccRecords.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
             }
