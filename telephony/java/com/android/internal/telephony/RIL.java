@@ -3151,7 +3151,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             dataCall.type = p.readString();
             dataCall.ifname = p.readString();
             if ((dataCall.status == DataConnection.FailCause.NONE.getErrorCode()) &&
-                    TextUtils.isEmpty(dataCall.ifname)) {
+                    TextUtils.isEmpty(dataCall.ifname) && dataCall.active != 0) {
               throw new RuntimeException("getDataCallState, no ifname");
             }
             String addresses = p.readString();
@@ -3641,7 +3641,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE: return "UNSOL_EXIT_EMERGENCY_CALLBACK_MODE";
             case RIL_UNSOL_RIL_CONNECTED: return "UNSOL_RIL_CONNECTED";
             case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: return "UNSOL_VOICE_RADIO_TECH_CHANGED";
-            default: return "<unknown reponse>";
+            case RIL_UNSOL_DATA_NETWORK_STATE_CHANGED: return "RIL_UNSOL_DATA_NETWORK_STATE_CHANGED";
+            default: return "<unknown response>";
         }
     }
 
