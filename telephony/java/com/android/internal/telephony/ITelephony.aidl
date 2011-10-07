@@ -21,7 +21,7 @@ import android.os.Bundle;
 import java.util.List;
 import android.telephony.NeighboringCellInfo;
 import com.android.internal.telephony.QosSpec;
-
+import com.android.internal.telephony.IOemHookCallback;
 
 /**
  * Interface used to interact with the phone.  Mostly this is used by the
@@ -287,6 +287,12 @@ interface ITelephony {
      * Caller. The returnValue is negative on failure. 0 or length of response on SUCCESS
      */
     int sendOemRilRequestRaw(in byte[] request, out byte[] response);
+
+    /**
+     * Sends a OEM request to the RIL asynchronously. An OemHook callback is invoked
+     * with the response bytes
+     */
+    void sendOemRilRequestRawAsync(in byte[] request, in IOemHookCallback oemHookCb);
 
     /**
      * Returns the CDMA ERI icon index to display
