@@ -156,6 +156,9 @@ class IconLoader extends Handler {
                 } else if (mId.codingScheme == ImageDescriptor.CODING_SCHEME_COLOUR) {
                     mIconData = rawData;
                     readClut();
+                } else {
+                    // post null icon back to the caller.
+                    postIcon();
                 }
                 break;
             case EVENT_READ_CLUT_DONE:
