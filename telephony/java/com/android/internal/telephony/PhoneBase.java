@@ -129,7 +129,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     public IccRecords mIccRecords;
     public SmsStorageMonitor mSmsStorageMonitor;
     public SmsUsageMonitor mSmsUsageMonitor;
-    protected UiccCardApplication mUiccApplication;
+    public UiccCardApplication mUiccApplication;
     public SMSDispatcher mSMS;
 
     /**
