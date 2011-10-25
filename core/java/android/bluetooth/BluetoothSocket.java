@@ -84,8 +84,8 @@ public final class BluetoothSocket implements Closeable {
 
     /** Keep BT_AMP_POLICY fields in sync with bluetooth/bluetooth.h */
     /** @hide */ public static final int BT_AMP_POLICY_REQUIRE_BR_EDR = 0;
-    /** @hide */ public static final int BT_AMP_POLICY_PREFER_AMP = 1;
-    /** @hide */ public static final int BT_AMP_POLICY_PREFER_BR_EDR = 2;
+    /** @hide */ public static final int BT_AMP_POLICY_PREFER_BR_EDR = 1;
+    /** @hide */ public static final int BT_AMP_POLICY_PREFER_AMP = 2;
 
     /*package*/ static final int EBADFD = 77;
     /*package*/ static final int EADDRINUSE = 98;
