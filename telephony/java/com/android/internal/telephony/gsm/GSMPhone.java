@@ -122,6 +122,7 @@ public class GSMPhone extends PhoneBase {
     private String mImeiSv;
     private String mVmNumber;
     private String mMdn;
+    private String mPrlVersion;
 
 
     // Constructors
@@ -156,6 +157,10 @@ public class GSMPhone extends PhoneBase {
         mCM.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mCM.setOnSS(this, EVENT_SS, null);
+
+        if (SystemProperties.getBoolean("ro.config.multimode_cdma", false)) {
+            mCM.registerForCdmaPrlChanged(this, EVENT_CDMA_PRL_VERSION_CHANGED, null);
+        }
 
         if (false) {
             try {
@@ -1401,6 +1406,19 @@ public class GSMPhone extends PhoneBase {
                 }
                 String localTemp[] = (String[])ar.result;
                 mMdn = localTemp[0];
+                if (localTemp.length > 4) {
+                    mPrlVersion = localTemp[4];
+                }
+                break;
+
+            case EVENT_CDMA_PRL_VERSION_CHANGED:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception != null || ar.result == null) {
+                    Log.e(LOG_TAG, "Error while fetching Prl");
+                    break;
+                }
+                int[] prl = (int[]) ar.result;
+                mPrlVersion = Integer.toString(prl[0]);
                 break;
 
              default:
@@ -1635,6 +1653,10 @@ public class GSMPhone extends PhoneBase {
          *  cases will be controlled by csp
          */
         return true;
+    }
+
+    public String getCdmaPrlVersion(){
+        return mPrlVersion;
     }
 
     private void registerForSimRecordEvents() {
