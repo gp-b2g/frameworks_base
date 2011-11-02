@@ -593,10 +593,11 @@ public class BluetoothService extends IBluetooth.Stub {
                 // is entered wrongly twice we should abort.
                 if (attempt > 0 && attempt <= 2) {
                     mBondState.attempt(address);
-                    setBondState(address,
-                        BluetoothDevice.BOND_RETRY,
-                        BluetoothDevice.UNBOND_REASON_AUTH_FAILED);
-                    createBond(address);
+                    if (true == createBond(address)) {
+                       setBondState(address,
+                            BluetoothDevice.BOND_RETRY,
+                            BluetoothDevice.UNBOND_REASON_AUTH_FAILED);
+                    }
                     return;
                 }
                 if (attempt > 0) mBondState.clearPinAttempts(address);
@@ -1046,18 +1047,20 @@ public class BluetoothService extends IBluetooth.Stub {
             if (mBondState.isAutoPairingAttemptsInProgress(address)) {
                 mBondState.clearPinAttempts(address);
             }
-        } else if (result == BluetoothDevice.UNBOND_REASON_AUTH_FAILED &&
-                mBondState.getAttempt(address) == 1) {
-            mBondState.addAutoPairingFailure(address);
-            pairingAttempt(address, result);
-        } else if (result == BluetoothDevice.UNBOND_REASON_REMOTE_DEVICE_DOWN &&
-              mBondState.isAutoPairingAttemptsInProgress(address)) {
-            pairingAttempt(address, result);
         } else {
             setBondState(address, BluetoothDevice.BOND_NONE, result);
-            if (mBondState.isAutoPairingAttemptsInProgress(address)) {
-                mBondState.clearPinAttempts(address);
-            }
+            if (result == BluetoothDevice.UNBOND_REASON_AUTH_FAILED &&
+                mBondState.getAttempt(address) == 1) {
+                mBondState.addAutoPairingFailure(address);
+                pairingAttempt(address, result);
+            } else if (result == BluetoothDevice.UNBOND_REASON_REMOTE_DEVICE_DOWN &&
+                  mBondState.isAutoPairingAttemptsInProgress(address)) {
+                pairingAttempt(address, result);
+            } else {
+                if (mBondState.isAutoPairingAttemptsInProgress(address)) {
+                   mBondState.clearPinAttempts(address);
+                }
+             }
         }
     }
 
