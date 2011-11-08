@@ -551,8 +551,6 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
     protected String getCommonIccEFPath(int efid) {
         switch(efid) {
         case EF_ADN:
-        case EF_FDN:
-        case EF_MSISDN:
         case EF_SDN:
         case EF_EXT1:
         case EF_EXT2:
