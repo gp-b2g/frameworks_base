@@ -356,7 +356,8 @@ public abstract class SMSDispatcher extends Handler {
             if (mSTrackers.isEmpty() == false) {
                 try {
                     SmsTracker sTracker = mSTrackers.remove(0);
-                    sTracker.mSentIntent.send(RESULT_ERROR_LIMIT_EXCEEDED);
+                    if (sTracker.mSentIntent != null)
+                        sTracker.mSentIntent.send(RESULT_ERROR_LIMIT_EXCEEDED);
                 } catch (CanceledException ex) {
                     Log.e(TAG, "failed to send back RESULT_ERROR_LIMIT_EXCEEDED");
                 }
@@ -1028,7 +1029,8 @@ public abstract class SMSDispatcher extends Handler {
         if (mSTrackers.size() >= MO_MSG_QUEUE_LIMIT) {
             // Deny the sending when the queue limit is reached.
             try {
-                tracker.mSentIntent.send(RESULT_ERROR_LIMIT_EXCEEDED);
+                if (tracker.mSentIntent != null)
+                    tracker.mSentIntent.send(RESULT_ERROR_LIMIT_EXCEEDED);
             } catch (CanceledException ex) {
                 Log.e(TAG, "failed to send back RESULT_ERROR_LIMIT_EXCEEDED");
             }
