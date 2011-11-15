@@ -1140,15 +1140,24 @@ public interface CommandsInterface {
      *      by a length byte (as expected by TS 27.005) or NULL for default SMSC
      * @param pdu is SMS in PDU format as an ASCII hex string
      *      less the SMSC address
+     * @param retry indicates if this is a retry; 0 == not retry, nonzero = retry
+     * @param messageRef valid field if retry is set to nonzero.
+     *        Contains messageRef from RIL_SMS_Response corresponding to failed MO SMS
+     * @param response sent when operation completes
      */
-    void sendImsGsmSms(String smscPDU, String pdu, Message response);
+    void sendImsGsmSms (String smscPDU, String pdu, int retry, int messageRef,
+            Message response);
 
     /**
      * send SMS over IMS with 3GPP2/CDMA SMS encoding
      * @param pdu is CDMA-SMS in internal pseudo-PDU format
      * @param response sent when operation completes
+     * @param retry indicates if this is a retry; 0 == not retry, nonzero = retry
+     * @param messageRef valid field if retry is set to nonzero.
+     *        Contains messageRef from RIL_SMS_Response corresponding to failed MO SMS
+     * @param response sent when operation completes
      */
-    void sendImsCdmaSms(byte[] pdu, Message response);
+    void sendImsCdmaSms(byte[] pdu, int retry, int messageRef, Message response);
 
     /**
      * Deletes the specified SMS record from SIM memory (EF_SMS).

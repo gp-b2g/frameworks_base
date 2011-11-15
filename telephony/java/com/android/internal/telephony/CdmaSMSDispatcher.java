@@ -361,11 +361,20 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
 
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
 
-        if (tracker.mRetryCount > 0 || !isIms()) {
-            // this is retry, use old method
+        Log.d(TAG, "sendSms: "
+                +" isIms()="+isIms()
+                +" mRetryCount="+tracker.mRetryCount
+                +" mImsRetry="+tracker.mImsRetry
+                +" mMessageRef="+tracker.mMessageRef
+                +" SS=" +mPhone.getServiceState().getState());
+
+        if ( 0 == tracker.mImsRetry && !isIms()) {
             mCm.sendCdmaSms(pdu, reply);
         } else {
-            mCm.sendImsCdmaSms(pdu, reply);
+            mCm.sendImsCdmaSms(pdu, tracker.mImsRetry, tracker.mMessageRef, reply);
+            // increment it here, so in case of SMS_FAIL_RETRY over IMS
+            // next retry will be sent using IMS request again.
+            tracker.mImsRetry++;
         }
     }
 

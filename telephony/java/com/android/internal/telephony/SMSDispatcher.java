@@ -462,6 +462,12 @@ public abstract class SMSDispatcher extends Handler {
         SmsTracker tracker = (SmsTracker) ar.userObj;
         PendingIntent sentIntent = tracker.mSentIntent;
 
+        if (ar.result != null) {
+            tracker.mMessageRef =  ((SmsResponse)ar.result).messageRef;
+        } else {
+            Log.e(TAG, "SmsResponse was null ");
+        }
+
         if (ar.exception == null) {
             if (false) {
                 Log.d(TAG, "SMS send complete. Broadcasting "
@@ -470,8 +476,6 @@ public abstract class SMSDispatcher extends Handler {
 
             if (tracker.mDeliveryIntent != null) {
                 // Expecting a status report.  Add it to the list.
-                int messageRef = ((SmsResponse)ar.result).messageRef;
-                tracker.mMessageRef = messageRef;
                 deliveryPendingList.add(tracker);
             }
 
@@ -501,6 +505,20 @@ public abstract class SMSDispatcher extends Handler {
             }
 
             int ss = mPhone.getServiceState().getState();
+
+            if ( tracker.mImsRetry > 0 && ss != ServiceState.STATE_IN_SERVICE) {
+                // This is retry after failure over IMS but voice is not available.
+                // Set retry to max allowed, so no retry is sent and
+                //   cause RESULT_ERROR_GENERIC_FAILURE to be returned to app.
+                tracker.mRetryCount = MAX_SEND_RETRIES;
+
+                Log.d(TAG, "handleSendComplete: Skipping retry: "
+                +" isIms()="+isIms()
+                +" mRetryCount="+tracker.mRetryCount
+                +" mImsRetry="+tracker.mImsRetry
+                +" mMessageRef="+tracker.mMessageRef
+                +" SS= "+mPhone.getServiceState().getState());
+            }
 
             // if IMS not registered on data and voice is not available...
             if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
@@ -1148,6 +1166,7 @@ public abstract class SMSDispatcher extends Handler {
         // fields need to be public for derived SmsDispatchers
         public final HashMap<String, Object> mData;
         public int mRetryCount;
+        public int mImsRetry; // nonzero indicates initial message was sent over Ims
         public int mMessageRef;
         String mFormat;
 
@@ -1161,6 +1180,8 @@ public abstract class SMSDispatcher extends Handler {
             mDeliveryIntent = deliveryIntent;
             mRetryCount = 0;
             mFormat = format;
+            mImsRetry = 0;
+            mMessageRef = 0;
         }
 
         /**

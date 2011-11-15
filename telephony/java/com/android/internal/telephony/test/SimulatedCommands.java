@@ -1530,11 +1530,13 @@ public final class SimulatedCommands extends BaseCommands
         unimplemented(response);
     }
 
-    public void sendImsCdmaSms(byte[] pdu, Message response){
+    public void sendImsCdmaSms(byte[] pdu, int retry, int messageRef,
+            Message response){
         unimplemented(response);
     }
 
-    public void sendImsGsmSms(String smscPDU, String pdu, Message response){
+    public void sendImsGsmSms(String smscPDU, String pdu,
+            int retry, int messageRef, Message response){
         unimplemented(response);
     }
 
