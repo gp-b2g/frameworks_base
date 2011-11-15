@@ -2542,6 +2542,8 @@ void TouchInputMapper::configureParameters() {
     }
 
     String8 deviceTypeString;
+    //Force device-type to be DEVICE_TYPE_TOUCH_SCREEN
+	mParameters.deviceType = Parameters::DEVICE_TYPE_TOUCH_SCREEN;
     if (getDevice()->getConfiguration().tryGetProperty(String8("touch.deviceType"),
             deviceTypeString)) {
         if (deviceTypeString == "touchScreen") {
