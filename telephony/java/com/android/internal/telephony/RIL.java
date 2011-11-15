@@ -2535,7 +2535,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_DATA_CALL_LIST_CHANGED:
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
-                mDataNetworkStateRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));
+                mDataCallListChangedRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));
             break;
 
             case RIL_UNSOL_SUPP_SVC_NOTIFICATION:

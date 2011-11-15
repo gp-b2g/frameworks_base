@@ -149,7 +149,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         p.mCM.registerForAvailable (this, EVENT_RADIO_AVAILABLE, null);
         p.mCM.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         p.mIccRecords.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
-        p.mCM.registerForDataNetworkStateChanged (this, EVENT_DATA_STATE_CHANGED, null);
+        p.mCM.registerForDataCallListChanged (this, EVENT_DATA_STATE_CHANGED, null);
         p.getCallTracker().registerForVoiceCallEnded (this, EVENT_VOICE_CALL_ENDED, null);
         p.getCallTracker().registerForVoiceCallStarted (this, EVENT_VOICE_CALL_STARTED, null);
         p.getServiceStateTracker().registerForDataConnectionAttached(this,
@@ -185,7 +185,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         mPhone.mCM.unregisterForAvailable(this);
         mPhone.mCM.unregisterForOffOrNotAvailable(this);
         mPhone.mIccRecords.unregisterForRecordsLoaded(this);
-        mPhone.mCM.unregisterForDataNetworkStateChanged(this);
+        mPhone.mCM.unregisterForDataCallListChanged(this);
         mPhone.getCallTracker().unregisterForVoiceCallEnded(this);
         mPhone.getCallTracker().unregisterForVoiceCallStarted(this);
         mPhone.getServiceStateTracker().unregisterForDataConnectionAttached(this);
