@@ -189,6 +189,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         cm.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
 
         cm.registerForVoiceNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED_CDMA, null);
+        cm.registerForDataNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED_CDMA, null);
         cm.setOnNITZTime(this, EVENT_NITZ_TIME, null);
         cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
 
@@ -217,6 +218,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         cm.unregisterForVoiceNetworkStateChanged(this);
         phone.mIccCard.unregisterForReady(this);
 
+        cm.unregisterForDataNetworkStateChanged(this);
         cm.unregisterForCdmaOtaProvision(this);
         phone.unregisterForEriFileLoaded(this);
         phone.mIccRecords.unregisterForRecordsLoaded(this);

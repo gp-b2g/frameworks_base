@@ -2384,6 +2384,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED: ret =  responseVoid(p); break;
             case RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED: ret =  responseVoid(p); break;
             case RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED: ret =  responseVoid(p); break;
+            case RIL_UNSOL_DATA_NETWORK_STATE_CHANGED: ret =  responseVoid(p); break;
             case RIL_UNSOL_RESPONSE_NEW_SMS: ret =  responseString(p); break;
             case RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT: ret =  responseString(p); break;
             case RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM: ret =  responseInts(p); break;
@@ -2444,6 +2445,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 if (RILJ_LOGD) unsljLog(response);
 
                 mVoiceNetworkStateRegistrants
+                    .notifyRegistrants(new AsyncResult(null, null, null));
+            break;
+            case RIL_UNSOL_DATA_NETWORK_STATE_CHANGED:
+                if (RILJ_LOGD) unsljLog(response);
+
+                mDataNetworkStateRegistrants
                     .notifyRegistrants(new AsyncResult(null, null, null));
             break;
             case RIL_UNSOL_RESPONSE_NEW_SMS: {

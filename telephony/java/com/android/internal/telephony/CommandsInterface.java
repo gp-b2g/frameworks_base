@@ -226,6 +226,8 @@ public interface CommandsInterface {
     void unregisterForCallStateChanged(Handler h);
     void registerForVoiceNetworkStateChanged(Handler h, int what, Object obj);
     void unregisterForVoiceNetworkStateChanged(Handler h);
+    void registerForDataNetworkStateChanged(Handler h, int what, Object obj);
+    void unregisterForDataNetworkStateChanged(Handler h);
     void registerForDataCallListChanged(Handler h, int what, Object obj);
     void unregisterForDataCallListChanged(Handler h);
 

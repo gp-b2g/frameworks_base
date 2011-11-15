@@ -202,6 +202,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         cm.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
 
         cm.registerForVoiceNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED, null);
+        cm.registerForDataNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED, null);
         cm.setOnNITZTime(this, EVENT_NITZ_TIME, null);
         cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         cm.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
@@ -239,6 +240,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForVoiceNetworkStateChanged(this);
         phone.mIccCard.unregisterForReady(this);
+        cm.unregisterForDataNetworkStateChanged(this);
         phone.mIccRecords.unregisterForRecordsLoaded(this);
         cm.unSetOnSignalStrengthUpdate(this);
         cm.unSetOnRestrictedStateChanged(this);
