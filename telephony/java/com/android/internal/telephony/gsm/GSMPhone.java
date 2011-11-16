@@ -28,6 +28,8 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
+import android.provider.Settings.Secure;
 import android.provider.Telephony;
 import android.telephony.CellLocation;
 import android.telephony.PhoneNumberUtils;
@@ -1457,6 +1459,35 @@ public class GSMPhone extends PhoneBase {
     }
 
     public boolean isCspPlmnEnabled() {
-        return mIccRecords.isCspPlmnEnabled();
+        return (mIccRecords != null) ? mIccRecords.isCspPlmnEnabled() : false;
+    }
+
+    public boolean isManualNetSelAllowed() {
+
+        int nwMode = Phone.PREFERRED_NT_MODE;
+
+        nwMode = android.provider.Settings.Secure.getInt(mContext.getContentResolver(),
+                    android.provider.Settings.Secure.PREFERRED_NETWORK_MODE, nwMode);
+
+        Log.d(LOG_TAG, "isManualNetSelAllowed in mode = " + nwMode);
+        /*
+         *  For multimode targets in global mode manual network
+         *  selection is disallowed
+         */
+        if (SystemProperties.getBoolean("ro.config.multimode_cdma", false)
+                && ((nwMode == Phone.NT_MODE_LTE_CMDA_EVDO_GSM_WCDMA)
+                        || (nwMode == Phone.NT_MODE_GLOBAL)) ){
+            Log.d(LOG_TAG, "Manual selection not supported in mode = " + nwMode);
+            return false;
+        }
+
+        /*
+         *  Single mode phone with - GSM network modes/global mode
+         *  LTE only for 3GPP
+         *  LTE centric + 3GPP Legacy
+         *  Note: the actual enabling/disabling manual selection for these
+         *  cases will be controlled by csp
+         */
+        return true;
     }
 }

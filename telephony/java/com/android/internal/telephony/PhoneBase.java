@@ -1126,6 +1126,12 @@ public abstract class PhoneBase extends Handler implements Phone {
         }
     }
 
+    public boolean isManualNetSelAllowed() {
+        // This function should be overridden in GsmPhone.
+        // Not implemented in CdmaPhone and SIPPhone.
+        return false;
+    }
+
     public boolean isCspPlmnEnabled() {
         // This function should be overridden by the class GSMPhone.
         // Not implemented in CDMAPhone.
