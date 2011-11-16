@@ -1821,6 +1821,7 @@ OMXCodec::OMXCodec(
       mState(LOADED),
       mInitialBufferSubmit(true),
       mSignalledEOS(false),
+      mFinalStatus(OK),
       mNoMoreOutputData(false),
       mOutputPortSettingsHaveChanged(false),
       mSeekTimeUs(-1),
@@ -3678,10 +3679,12 @@ bool OMXCodec::drainInputBuffer(BufferInfo *info) {
         // mNoMoreOutputData to false so fillOutputBuffer gets called on
         // the first output buffer (see comment in fillOutputBuffer), and
         // mSignalledEOS must be true so drainInputBuffer is not executed
-        // on extra frames.
+        // on extra frames. Setting mFinalStatus to ERROR_END_OF_STREAM as
+        // we dont want to return OK and NULL buffer in read.
         flags |= OMX_BUFFERFLAG_EOS;
         mNoMoreOutputData = false;
         mSignalledEOS = true;
+        mFinalStatus = ERROR_END_OF_STREAM;
     } else {
         mNoMoreOutputData = false;
     }
