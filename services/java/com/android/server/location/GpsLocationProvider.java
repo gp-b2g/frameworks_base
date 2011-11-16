@@ -941,9 +941,10 @@ public class GpsLocationProvider implements LocationProviderInterface {
             if (mSupportsXtra) {
                 xtraDownloadRequest();
                 result = true;
-            }
+               }
         } else {
-            Log.w(TAG, "sendExtraCommand: unknown command " + command);
+          if (native_inject_raw_command(command.getBytes(), command.length()) == false)
+              result = true;
         }
         
         Binder.restoreCallingIdentity(identity);
@@ -1065,7 +1066,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
      * called from native code to update our position.
      */
     private void reportLocation(int flags, double latitude, double longitude, double altitude,
-            float speed, float bearing, float accuracy, long timestamp) {
+            float speed, float bearing, float accuracy, long timestamp, byte[] rawData) {
         if (VERBOSE) Log.v(TAG, "reportLocation lat: " + latitude + " long: " + longitude +
                 " timestamp: " + timestamp);
 
@@ -1096,6 +1097,13 @@ public class GpsLocationProvider implements LocationProviderInterface {
             } else {
                 mLocation.removeAccuracy();
             }
+
+            if (rawData.length > 0) {
+                 mLocationExtras.putByteArray("RawData", rawData);
+            } else {
+                mLocationExtras.remove("RawData");
+            }
+            mLocation.setExtras(mLocationExtras);
 
             try {
                 mLocationManager.reportLocation(mLocation, false);
@@ -1687,6 +1695,9 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private native void native_inject_time(long time, long timeReference, int uncertainty);
     private native boolean native_supports_xtra();
     private native void native_inject_xtra_data(byte[] data, int length);
+
+    // Special Test Command Path
+    private native boolean native_inject_raw_command(byte[] data, int length);
 
     // DEBUG Support
     private native String native_get_internal_state();
