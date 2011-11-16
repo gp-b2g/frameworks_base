@@ -343,14 +343,9 @@ public class SignalStrength implements Parcelable {
         int level;
 
         if (isGsm) {
-            if ((mLteSignalStrength == -1)
-                    && (mLteRsrp == -1)
-                    && (mLteRsrq == -1)
-                    && (mLteRssnr == -1)
-                    && (mLteCqi == -1)) {
+            level = getLteLevel();
+            if (level == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
                 level = getGsmLevel();
-            } else {
-                level = getLteLevel();
             }
         } else {
             int cdmaLevel = getCdmaLevel();
@@ -619,19 +614,63 @@ public class SignalStrength implements Parcelable {
      * @hide
      */
     public int getLteLevel() {
-        int levelLteRsrp = 0;
+        /*
+         * TS 36.214 Physical Layer Section 5.1.3 TS 36.331 RRC RSSI = received
+         * signal + noise RSRP = reference signal dBm RSRQ = quality of signal
+         * dB= Number of Resource blocksxRSRP/RSSI SNR = gain=signal/noise ratio
+         * = -10log P1/P2 dB
+         */
+        int rssiIconLevel = SIGNAL_STRENGTH_NONE_OR_UNKNOWN, rsrpIconLevel = -1, snrIconLevel = -1;
 
-        if (mLteRsrp == -1) levelLteRsrp = 0;
-        else if (mLteRsrp >= -85) levelLteRsrp = SIGNAL_STRENGTH_GREAT;
-        else if (mLteRsrp >= -95) levelLteRsrp = SIGNAL_STRENGTH_GOOD;
-        else if (mLteRsrp >= -105) levelLteRsrp = SIGNAL_STRENGTH_MODERATE;
-        else if (mLteRsrp >= -115) levelLteRsrp = SIGNAL_STRENGTH_POOR;
-        else levelLteRsrp = 0;
+        if (mLteRsrp > -44) rsrpIconLevel = -1;
+        else if (mLteRsrp >= -85) rsrpIconLevel = SIGNAL_STRENGTH_GREAT;
+        else if (mLteRsrp >= -95) rsrpIconLevel = SIGNAL_STRENGTH_GOOD;
+        else if (mLteRsrp >= -105) rsrpIconLevel = SIGNAL_STRENGTH_MODERATE;
+        else if (mLteRsrp >= -115) rsrpIconLevel = SIGNAL_STRENGTH_POOR;
+        else if (mLteRsrp >= -140) rsrpIconLevel = SIGNAL_STRENGTH_NONE_OR_UNKNOWN;
 
-        if (DBG) log("Lte level: "+levelLteRsrp);
-        return levelLteRsrp;
+        /*
+         * Values are -200 dB to +300 (SNR*10dB) RS_SNR >= 13.0 dB =>4 bars 4.5
+         * dB <= RS_SNR < 13.0 dB => 3 bars 1.0 dB <= RS_SNR < 4.5 dB => 2 bars
+         * -3.0 dB <= RS_SNR < 1.0 dB 1 bar RS_SNR < -3.0 dB/No Service Antenna
+         * Icon Only
+         */
+        if (mLteRssnr > 300) snrIconLevel = -1;
+        else if (mLteRssnr >= 130) snrIconLevel = SIGNAL_STRENGTH_GREAT;
+        else if (mLteRssnr >= 45) snrIconLevel = SIGNAL_STRENGTH_GOOD;
+        else if (mLteRssnr >= 10) snrIconLevel = SIGNAL_STRENGTH_MODERATE;
+        else if (mLteRssnr >= -30) snrIconLevel = SIGNAL_STRENGTH_POOR;
+        else if (mLteRssnr >= -200)
+            snrIconLevel = SIGNAL_STRENGTH_NONE_OR_UNKNOWN;
+
+        if (DBG) log("getLTELevel - rsrp:" + mLteRsrp + " snr:" + mLteRssnr + " rsrpIconLevel:"
+                + rsrpIconLevel + " snrIconLevel:" + snrIconLevel);
+
+        /* Choose a measurement type to use for notification */
+        if (snrIconLevel != -1 && rsrpIconLevel != -1) {
+            /*
+             * The number of bars displayed shall be the smaller of the bars
+             * associated with LTE RSRP and the bars associated with the LTE
+             * RS_SNR
+             */
+            return (rsrpIconLevel < snrIconLevel ? rsrpIconLevel : snrIconLevel);
+        }
+
+        if (snrIconLevel != -1) return snrIconLevel;
+
+        if (rsrpIconLevel != -1) return rsrpIconLevel;
+
+        /* Valid values are (0-63, 99) as defined in TS 36.331 */
+        if (mLteSignalStrength > 63) rssiIconLevel = SIGNAL_STRENGTH_NONE_OR_UNKNOWN;
+        else if (mLteSignalStrength >= 12) rssiIconLevel = SIGNAL_STRENGTH_GREAT;
+        else if (mLteSignalStrength >= 8) rssiIconLevel = SIGNAL_STRENGTH_GOOD;
+        else if (mLteSignalStrength >= 5) rssiIconLevel = SIGNAL_STRENGTH_MODERATE;
+        else if (mLteSignalStrength >= 0) rssiIconLevel = SIGNAL_STRENGTH_POOR;
+        if (DBG) log("getLTELevel - rssi:" + mLteSignalStrength + " rssiIconLevel:"
+                + rssiIconLevel);
+        return rssiIconLevel;
+
     }
-
     /**
      * Get the LTE signal level as an asu value between 0..97, 99 is unknown
      * Asu is calculated based on 3GPP RSRP. Refer to 3GPP 27.007 (Ver 10.3.0) Sec 8.69
