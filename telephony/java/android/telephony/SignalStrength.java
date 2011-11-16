@@ -61,7 +61,7 @@ public class SignalStrength implements Parcelable {
     private int mLteCqi;
 
     private boolean isGsm; // This value is set by the ServiceStateTracker onSignalStrengthResult
-
+    private static int INVALID = 0x7FFFFFFF;
     /**
      * Create a new SignalStrength from a intent notifier Bundle
      *
@@ -93,11 +93,11 @@ public class SignalStrength implements Parcelable {
         mEvdoDbm = -1;
         mEvdoEcio = -1;
         mEvdoSnr = -1;
-        mLteSignalStrength = -1;
-        mLteRsrp = -1;
-        mLteRsrq = -1;
-        mLteRssnr = -1;
-        mLteCqi = -1;
+        mLteSignalStrength = 99;
+        mLteRsrp = INVALID;
+        mLteRsrq = INVALID;
+        mLteRssnr = INVALID;
+        mLteCqi = INVALID;
         isGsm = true;
     }
 
@@ -135,8 +135,8 @@ public class SignalStrength implements Parcelable {
             int cdmaDbm, int cdmaEcio,
             int evdoDbm, int evdoEcio, int evdoSnr,
             boolean gsm) {
-        this(gsmSignalStrength, gsmBitErrorRate, cdmaDbm, cdmaEcio,
-                evdoDbm, evdoEcio, evdoSnr, -1, -1, -1, -1, -1, gsm);
+         this(gsmSignalStrength, gsmBitErrorRate, cdmaDbm, cdmaEcio, evdoDbm, evdoEcio, evdoSnr, 99,
+                INVALID, INVALID, INVALID, INVALID, gsm);
     }
 
     /**
@@ -191,6 +191,31 @@ public class SignalStrength implements Parcelable {
     }
 
     /**
+     * Construct a SignalStrength object from the given parcel.
+     * gsm flag does not come from RIL.
+     * validate the input if validate flag is set
+     *
+     * @hide
+     */
+    public SignalStrength(Parcel in, boolean validate) {
+        mGsmSignalStrength = in.readInt();
+        mGsmBitErrorRate = in.readInt();
+        mCdmaDbm = in.readInt();
+        mCdmaEcio = in.readInt();
+        mEvdoDbm = in.readInt();
+        mEvdoEcio = in.readInt();
+        mEvdoSnr = in.readInt();
+        mLteSignalStrength = in.readInt();
+        mLteRsrp = in.readInt();
+        mLteRsrq = in.readInt();
+        mLteRssnr = in.readInt();
+        mLteCqi = in.readInt();
+
+        if (validate == true )
+            validateInput();
+    }
+
+    /**
      * {@link Parcelable#writeToParcel}
      */
     public void writeToParcel(Parcel out, int flags) {
@@ -231,6 +256,35 @@ public class SignalStrength implements Parcelable {
         }
     };
 
+    private void validateInput() {
+        // cdma, evdo, lte values need to be sign converted from ril to telephony
+        // perform range check for all values
+        mGsmSignalStrength = mGsmSignalStrength >= 0 ? mGsmSignalStrength : 99;
+        // BER no change;
+
+        mCdmaDbm = mCdmaDbm > 0 ? -mCdmaDbm : -120;
+        mCdmaEcio = (mCdmaEcio > 0) ? -mCdmaEcio : -160;
+
+        mEvdoDbm = (mEvdoDbm > 0) ? -mEvdoDbm : -120;
+        mEvdoEcio = (mEvdoEcio > 0) ? -mEvdoEcio : -1;
+        mEvdoSnr = ((mEvdoSnr > 0) && (mEvdoSnr <= 8)) ? mEvdoSnr : -1;
+
+        mLteSignalStrength = (mLteSignalStrength >= 0) ? mLteSignalStrength : 99;
+        mLteRsrp = ((mLteRsrp >= 44) && (mLteRsrp <= 140)) ? -mLteRsrp : SignalStrength.INVALID;
+        mLteRsrq = ((mLteRsrq >= 3) && (mLteRsrq <= 20)) ? -mLteRsrq : SignalStrength.INVALID;
+        mLteRssnr = ((mLteRssnr >= -200) && (mLteRssnr <= 300)) ? mLteRssnr : SignalStrength.INVALID;
+        // Cqi  no change
+    }
+
+    /**
+     * @param true - Gsm, Lte
+     *        false - Cdma
+     *
+     * @hide
+     */
+    public void setGsm(boolean gsmFlag) {
+      isGsm = gsmFlag;
+    }
     /**
      * Get the GSM Signal Strength, valid values are (0-31, 99) as defined in TS 27.007 8.5
      */
