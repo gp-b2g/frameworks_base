@@ -139,6 +139,10 @@ enum {
     kkeyAacFormatLtp      = 'ltp',
 
     kKeyRequiresSecureBuffers = 'secu',  // bool (int32_t)
+
+    // 3D Video Flag
+    kKey3D                = '3Dvf',  // bool (int32_t)
+    kKeyHFR               = 'hfr ',  // int32_t
 };
 
 enum {

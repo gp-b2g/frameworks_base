@@ -17,6 +17,8 @@ LOCAL_C_INCLUDES:= \
 	$(TOP)/frameworks/base/include/media/stagefright/openmax \
         external/skia/include/core \
         external/skia/include/images \
+    $(TOP)/vendor/qcom/opensource/omx/mm-core/omxcore/inc
+
 
 LOCAL_CFLAGS += -Wno-multichar
 
@@ -64,7 +66,8 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_C_INCLUDES:= \
 	$(JNI_H_INCLUDE) \
 	frameworks/base/media/libstagefright \
-	$(TOP)/frameworks/base/include/media/stagefright/openmax
+	$(TOP)/frameworks/base/include/media/stagefright/openmax \
+    $(TOP)/vendor/qcom/opensource/omx/mm-core/omxcore/inc
 
 LOCAL_CFLAGS += -Wno-multichar
 
@@ -113,7 +116,8 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_C_INCLUDES:= \
 	$(JNI_H_INCLUDE) \
 	frameworks/base/media/libstagefright \
-	$(TOP)/frameworks/base/include/media/stagefright/openmax
+	$(TOP)/frameworks/base/include/media/stagefright/openmax \
+    $(TOP)/vendor/qcom/opensource/omx/mm-core/omxcore/inc
 
 LOCAL_CFLAGS += -Wno-multichar
 
@@ -137,7 +141,8 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_C_INCLUDES:= \
 	$(JNI_H_INCLUDE) \
 	frameworks/base/media/libstagefright \
-	$(TOP)/frameworks/base/include/media/stagefright/openmax
+	$(TOP)/frameworks/base/include/media/stagefright/openmax \
+    $(TOP)/vendor/qcom/opensource/omx/mm-core/omxcore/inc
 
 LOCAL_CFLAGS += -Wno-multichar
 
