@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (C) 2010-2011 Code Aurora Forum
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@
 #include "include/DRMExtractor.h"
 #include "include/FLACExtractor.h"
 #include "include/AACExtractor.h"
+#include "include/ExtendedExtractor.h"
 
 #include "matroska/MatroskaExtractor.h"
 
@@ -80,6 +82,10 @@ bool DataSource::sniff(
                 *mimeType = newMimeType;
                 *confidence = newConfidence;
                 *meta = newMeta;
+                if(*confidence >= 0.6f) {
+                    LOGV("Ignore other Sniffers - confidence = %f , mimeType = %s",*confidence,mimeType->string());
+                    break;
+                }
             }
         }
     }
@@ -112,7 +118,7 @@ void DataSource::RegisterDefaultSniffers() {
     RegisterSniffer(SniffMPEG2TS);
     RegisterSniffer(SniffMP3);
     RegisterSniffer(SniffAAC);
-    RegisterSniffer(SniffAVI);
+    ExtendedExtractor::RegisterSniffers();
 
     char value[PROPERTY_VALUE_MAX];
     if (property_get("drm.service.enabled", value, NULL)

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- *
+ * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*--------------------------------------------------------------------------
+Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+--------------------------------------------------------------------------*/
 
 #ifndef OMX_CODEC_H_
 
@@ -115,6 +118,7 @@ private:
     };
 
     enum {
+        kPortIndexBoth   = -1,
         kPortIndexInput  = 0,
         kPortIndexOutput = 1
     };
@@ -143,6 +147,8 @@ private:
         kRequiresLargerEncoderOutputBuffer    = 4096,
         kOutputBuffersAreUnreadable           = 8192,
         kStoreMetaDataInInputVideoBuffers     = 16384,
+        kRequiresGlobalFlush                  = 0x20000000, // 2^29
+        kRequiresWMAProComponent              = 0x40000000, //2^30
     };
 
     enum BufferStatus {
@@ -237,7 +243,9 @@ private:
 
     void setAMRFormat(bool isWAMR, int32_t bitRate);
     status_t setAACFormat(int32_t numChannels, int32_t sampleRate, int32_t bitRate);
+    void setEVRCFormat( int32_t sampleRate, int32_t numChannels, int32_t bitRate);
     void setG711Format(int32_t numChannels);
+    void setQCELPFormat( int32_t sampleRate, int32_t numChannels, int32_t bitRate);
 
     status_t setVideoPortFormatType(
             OMX_U32 portIndex,
@@ -348,6 +356,8 @@ private:
 
     OMXCodec(const OMXCodec &);
     OMXCodec &operator=(const OMXCodec &);
+    status_t setWMAFormat(const sp<MetaData> &inputFormat);
+    void setAC3Format(int32_t numChannels, int32_t sampleRate);
 };
 
 struct CodecCapabilities {
