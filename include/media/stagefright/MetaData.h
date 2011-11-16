@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (C) 2010-2011 Code Aurora Forum
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +48,7 @@ enum {
     kKeyFrameRate         = 'frmR',  // int32_t (video frame rate fps)
     kKeyBitRate           = 'brte',  // int32_t (bps)
     kKeyESDS              = 'esds',  // raw data
+    kKeyAacCodecSpecificData = 'nacc' , // for native aac files
     kKeyAVCC              = 'avcc',  // raw data
     kKeyD263              = 'd263',  // raw data
     kKeyVorbisInfo        = 'vinf',  // raw data
@@ -112,6 +114,18 @@ enum {
     kKeyValidSamples      = 'valD',  // int32_t
 
     kKeyIsUnreadable      = 'unre',  // bool (int32_t)
+    kKeyRawCodecSpecificData = 'rcsd',  // raw data - added to support mmParser
+    kKeyDivXVersion       = 'DivX',  // int32_t
+    kKeyDivXDrm           = 'QDrm',  // void *
+    kKeyWMAEncodeOpt      = 'eopt',  // int32_t
+    kKeyWMABlockAlign     = 'blka',  // int32_t
+    kKeyWMAVersion        = 'wmav',  // int32_t
+    kKeyWMAAdvEncOpt1     = 'ade1',   // int16_t
+    kKeyWMAAdvEncOpt2     = 'ade2',  // int32_t
+    kKeyWMAFormatTag      = 'fmtt',  // int64_t
+    kKeyWMABitspersample  = 'bsps',  // int64_t
+    kKeyWMAVirPktSize     = 'vpks',  // int64_t
+    kKeyWMVProfile        = 'wmvp',   //int32_t
 
     // An indication that a video buffer has been rendered.
     kKeyRendered          = 'rend',  // bool (int32_t)
@@ -119,8 +133,10 @@ enum {
     // The language code for this media
     kKeyMediaLanguage     = 'lang',  // cstring
 
-    // To store the timed text format data
+     // To store the timed text format data
     kKeyTextFormatData    = 'text',  // raw data
+    kkeyAacFormatAdif     = 'adif', // bool (int32_t)
+    kkeyAacFormatLtp      = 'ltp',
 
     kKeyRequiresSecureBuffers = 'secu',  // bool (int32_t)
 };
@@ -129,6 +145,22 @@ enum {
     kTypeESDS        = 'esds',
     kTypeAVCC        = 'avcc',
     kTypeD263        = 'd263',
+};
+enum {
+    kTypeDivXVer_3_11,
+    kTypeDivXVer_4,
+    kTypeDivXVer_5,
+    kTypeDivXVer_6,
+};
+enum {
+    kTypeWMVSimple,
+    kTypeWMVAdvance,
+};
+
+enum {
+    kTypeWMA,
+    kTypeWMAPro,
+    kTypeWMALossLess,
 };
 
 class MetaData : public RefBase {

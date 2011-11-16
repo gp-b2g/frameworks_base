@@ -52,6 +52,7 @@ LOCAL_SRC_FILES:=                         \
         WVMExtractor.cpp                  \
         XINGSeeker.cpp                    \
         avc_utils.cpp                     \
+        ExtendedExtractor.cpp             \
 
 LOCAL_C_INCLUDES:= \
 	$(JNI_H_INCLUDE) \
