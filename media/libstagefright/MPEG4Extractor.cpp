@@ -697,6 +697,7 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
         case FOURCC('m', 'f', 'r', 'a'):
         case FOURCC('u', 'd', 't', 'a'):
         case FOURCC('i', 'l', 's', 't'):
+        case FOURCC('e', 'd', 't', 's'):
         {
             if (chunk_type == FOURCC('s', 't', 'b', 'l')) {
                 LOGV("sampleTable chunk is %d bytes long.", (size_t)chunk_size);
@@ -789,6 +790,87 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
             status_t err;
             if ((err = parseTrackHeader(data_offset, chunk_data_size)) != OK) {
                 return err;
+            }
+
+            *offset += chunk_size;
+            break;
+        }
+
+        case FOURCC('e', 'l', 's', 't' ):
+        {
+            if (chunk_data_size < 4){
+                return ERROR_MALFORMED;
+            }
+
+            uint8_t version;
+            if (mDataSource->readAt(data_offset, &version, 1) < 1){
+                return ERROR_IO;
+            }
+
+            uint8_t buffer[8];
+            if (mDataSource->readAt(data_offset,
+                buffer,
+                sizeof(buffer)) < (ssize_t)sizeof(buffer)) {
+                return ERROR_IO;
+            }
+
+            uint32_t entry_count = U32_AT(&buffer[4]);
+
+            if( version == 1 ){
+                uint8_t buffer[8 + entry_count * 20];
+                if (mDataSource->readAt(data_offset,
+                    buffer,
+                    sizeof(buffer)) < (ssize_t)sizeof(buffer)) {
+                    return ERROR_IO;
+                }
+
+                int64_t mvhdTimeScale = 0;
+                mFileMetaData->findInt64( kKeyEditOffset, &mvhdTimeScale );
+
+                uint64_t segment_duration[entry_count];
+                int64_t media_time[entry_count];
+                for (uint32_t i = 0; i < entry_count; i++ ){
+                    segment_duration[i] = U64_AT(&buffer[8 + i * 20]);
+                    media_time[i] = U64_AT(&buffer[8 + 8 + i * 20]);
+
+                    if( media_time[i] == -1 ){
+                        if( mvhdTimeScale != 0 ){
+                            int64_t editTime = ((int64_t)segment_duration[i] * 1000000 )/mvhdTimeScale;
+                            mLastTrack->meta->setInt64( kKeyEditOffset, editTime );
+                        }
+                    }
+                }
+
+                int16_t media_rate_integer;
+                int16_t media_rate_fraction = 0;
+            }
+            else { //version == 0
+                uint8_t buffer[8 + entry_count * 12];
+                if (mDataSource->readAt(data_offset,
+                    buffer,
+                    sizeof(buffer)) < (ssize_t)sizeof(buffer)) {
+                    return ERROR_IO;
+                }
+
+                uint32_t segment_duration[entry_count];
+                int32_t media_time[entry_count];
+
+                int32_t mvhdTimeScale = 0;
+                mFileMetaData->findInt32( kKeyEditOffset, &mvhdTimeScale );
+
+                for (uint32_t i = 0; i < entry_count; i++ ){
+                    segment_duration[i] = U32_AT(&buffer[8 + i * 12]);
+                    media_time[i] = U32_AT(&buffer[8 + 4 + i * 20]);
+
+                    if( media_time[i] == -1 ){
+                        if( mvhdTimeScale != 0 ){
+                            int64_t editTime = ((int64_t)segment_duration[i] * 1000000 )/mvhdTimeScale;
+                            mLastTrack->meta->setInt64( kKeyEditOffset, editTime );
+                        }
+                    }
+                }
+                int16_t media_rate_integer;
+                int16_t media_rate_fraction = 0;
             }
 
             *offset += chunk_size;
@@ -1336,11 +1418,11 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
 
         case FOURCC('m', 'v', 'h', 'd'):
         {
-            if (chunk_data_size < 12) {
+            if (chunk_data_size < 12) { //increase to 16?
                 return ERROR_MALFORMED;
             }
 
-            uint8_t header[12];
+            uint8_t header[16];
             if (mDataSource->readAt(
                         data_offset, header, sizeof(header))
                     < (ssize_t)sizeof(header)) {
@@ -1350,10 +1432,14 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
             int64_t creationTime;
             if (header[0] == 1) {
                 creationTime = U64_AT(&header[4]);
+                mFileMetaData->setInt64(kKeyEditOffset, 0 );
             } else if (header[0] != 0) {
                 return ERROR_MALFORMED;
             } else {
                 creationTime = U32_AT(&header[4]);
+                int32_t mvTimeScale = U32_AT(&header[12]);
+
+                mFileMetaData->setInt32(kKeyEditOffset, mvTimeScale );
             }
 
             String8 s;
