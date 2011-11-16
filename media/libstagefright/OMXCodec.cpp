@@ -1261,6 +1261,13 @@ void OMXCodec::setVideoInputFormat(
         const char *mime, const sp<MetaData>& meta) {
 
     int32_t width, height, frameRate, bitRate, stride, sliceHeight;
+
+    char value[PROPERTY_VALUE_MAX];
+    if ( property_get("encoder.video.bitrate", value, 0) > 0 && atoi(value) > 0){
+        LOGV("Setting bit rate to %d", atoi(value));
+        meta->setInt32(kKeyBitRate, atoi(value));
+    }
+
     bool success = meta->findInt32(kKeyWidth, &width);
     success = success && meta->findInt32(kKeyHeight, &height);
     success = success && meta->findInt32(kKeyFrameRate, &frameRate);
