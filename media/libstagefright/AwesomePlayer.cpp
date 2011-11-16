@@ -71,6 +71,9 @@ static int64_t kHighWaterMarkUs = 5000000ll;  // 5secs
 static int64_t kHighWaterMarkRTSPUs = 4000000ll;  // 4secs
 static const size_t kLowWaterMarkBytes = 40000;
 static const size_t kHighWaterMarkBytes = 200000;
+static int64_t kVideoEarlyMarginUs = -10000LL;   //50 ms
+static int64_t kVideoLateMarginUs = 40000LL;  //200 ms
+static int64_t kVideoTooLateMarginUs = 500000LL;
 
 struct AwesomeEvent : public TimedEventQueue::Event {
     AwesomeEvent(
@@ -1889,7 +1892,7 @@ void AwesomePlayer::onVideoEvent() {
 
         latenessUs = nowUs - timeUs;
 
-        if (latenessUs > 500000ll
+        if (latenessUs > kVideoTooLateMarginUs
                 && mRTSPController == NULL
                 && mAudioPlayer != NULL
                 && mAudioPlayer->getMediaTimeMapping(
@@ -1907,7 +1910,7 @@ void AwesomePlayer::onVideoEvent() {
             return;
         }
 
-        if (latenessUs > 40000) {
+        if (latenessUs > kVideoLateMarginUs) {
             // We're more than 40ms late.
             LOGV("we're late by %lld us (%.2f secs)",
                  latenessUs, latenessUs / 1E6);
@@ -1941,7 +1944,7 @@ void AwesomePlayer::onVideoEvent() {
             }
         }
 
-        if (latenessUs < -10000) {
+        if (latenessUs < kVideoEarlyMarginUs) {
             // We're more than 10ms early.
             logOnTime(timeUs,nowUs,latenessUs);
             {
