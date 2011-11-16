@@ -1430,7 +1430,34 @@ status_t OMXCodec::setupBitRate(int32_t bitRate) {
             &bitrateType, sizeof(bitrateType));
     CHECK_EQ(err, (status_t)OK);
 
-    bitrateType.eControlRate = OMX_Video_ControlRateVariable;
+    OMX_VIDEO_CONTROLRATETYPE controlRate = OMX_Video_ControlRateVariable;
+    char value[PROPERTY_VALUE_MAX];
+
+    if ( mIsEncoder && property_get("encoder.video.rc", value, NULL ) > 0 ) {
+        int rv = atoi( value );
+        switch ( rv ) {
+        case 0:
+            controlRate = OMX_Video_ControlRateDisable;
+            break;
+        case 1:
+            controlRate = OMX_Video_ControlRateVariable;
+            break;
+        case 2:
+            controlRate = OMX_Video_ControlRateConstant;
+            break;
+        case 3:
+            controlRate = OMX_Video_ControlRateVariableSkipFrames;
+            break;
+        case 4:
+            controlRate = OMX_Video_ControlRateConstantSkipFrames;
+            break;
+        default:
+            LOGW("Unknown rate control value, assume default");
+            break;
+        }
+    }
+
+    bitrateType.eControlRate = controlRate;
     bitrateType.nTargetBitrate = bitRate;
 
     err = mOMX->setParameter(
