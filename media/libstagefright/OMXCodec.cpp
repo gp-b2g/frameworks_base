@@ -2904,6 +2904,12 @@ void OMXCodec::onEvent(OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2) {
         {
             CODEC_LOGV("OMX_EventPortSettingsChanged(port=%ld, data2=0x%08lx)",
                        data1, data2);
+
+            if (mState != EXECUTING) {
+                LOGE("Ignore PortSettingsChanged event");
+                break;
+            }
+
             if (data2 == 0 || data2 == OMX_IndexParamPortDefinition) {
                 // There is no need to check whether mFilledBuffers is empty or not
                 // when the OMX_EventPortSettingsChanged is not meant for reallocating
