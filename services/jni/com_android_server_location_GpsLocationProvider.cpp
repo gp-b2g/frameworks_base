@@ -506,7 +506,8 @@ static void android_location_GpsLocationProvider_inject_xtra_data(JNIEnv* env, j
     env->ReleasePrimitiveArrayCritical(data, bytes, JNI_ABORT);
 }
 
-static void android_location_GpsLocationProvider_agps_data_conn_open(JNIEnv* env, jobject obj, jstring apn)
+static void android_location_GpsLocationProvider_agps_data_conn_open(JNIEnv* env, jobject obj,
+        jint agpsType, jstring apn, jint bearerType)
 {
     if (!sAGpsInterface) {
         LOGE("no AGPS interface in agps_data_conn_open");
@@ -517,26 +518,28 @@ static void android_location_GpsLocationProvider_agps_data_conn_open(JNIEnv* env
         return;
     }
     const char *apnStr = env->GetStringUTFChars(apn, NULL);
-    sAGpsInterface->data_conn_open(apnStr);
+    sAGpsInterface->data_conn_open(agpsType, apnStr, bearerType);
     env->ReleaseStringUTFChars(apn, apnStr);
 }
 
-static void android_location_GpsLocationProvider_agps_data_conn_closed(JNIEnv* env, jobject obj)
+static void android_location_GpsLocationProvider_agps_data_conn_closed(JNIEnv* env, jobject obj,
+        jint agpsType)
 {
     if (!sAGpsInterface) {
         LOGE("no AGPS interface in agps_data_conn_open");
         return;
     }
-    sAGpsInterface->data_conn_closed();
+    sAGpsInterface->data_conn_closed(agpsType);
 }
 
-static void android_location_GpsLocationProvider_agps_data_conn_failed(JNIEnv* env, jobject obj)
+static void android_location_GpsLocationProvider_agps_data_conn_failed(JNIEnv* env, jobject obj,
+        jint agpsType)
 {
     if (!sAGpsInterface) {
         LOGE("no AGPS interface in agps_data_conn_open");
         return;
     }
-    sAGpsInterface->data_conn_failed();
+    sAGpsInterface->data_conn_failed(agpsType);
 }
 
 static void android_location_GpsLocationProvider_set_agps_server(JNIEnv* env, jobject obj,
@@ -615,10 +618,10 @@ static JNINativeMethod sMethods[] = {
     {"native_inject_location", "(DDF)V", (void*)android_location_GpsLocationProvider_inject_location},
     {"native_supports_xtra", "()Z", (void*)android_location_GpsLocationProvider_supports_xtra},
     {"native_inject_xtra_data", "([BI)V", (void*)android_location_GpsLocationProvider_inject_xtra_data},
-    {"native_agps_data_conn_open", "(Ljava/lang/String;)V", (void*)android_location_GpsLocationProvider_agps_data_conn_open},
     {"native_inject_raw_command", "([BI)Z", (void*)android_location_GpsLocationProvider_inject_raw_command},
-    {"native_agps_data_conn_closed", "()V", (void*)android_location_GpsLocationProvider_agps_data_conn_closed},
-    {"native_agps_data_conn_failed", "()V", (void*)android_location_GpsLocationProvider_agps_data_conn_failed},
+    {"native_agps_data_conn_open", "(ILjava/lang/String;I)V", (void*)android_location_GpsLocationProvider_agps_data_conn_open},
+    {"native_agps_data_conn_closed", "(I)V", (void*)android_location_GpsLocationProvider_agps_data_conn_closed},
+    {"native_agps_data_conn_failed", "(I)V", (void*)android_location_GpsLocationProvider_agps_data_conn_failed},
     {"native_agps_set_id","(ILjava/lang/String;)V",(void*)android_location_GpsLocationProvider_agps_set_id},
     {"native_agps_set_ref_location_cellid","(IIIII)V",(void*)android_location_GpsLocationProvider_agps_set_reference_location_cellid},
     {"native_set_agps_server", "(ILjava/lang/String;I)V", (void*)android_location_GpsLocationProvider_set_agps_server},
