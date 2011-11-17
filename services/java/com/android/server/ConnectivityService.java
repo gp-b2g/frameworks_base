@@ -93,6 +93,10 @@ import java.util.GregorianCalendar;
 import java.util.HashSet;
 import java.util.List;
 
+import dalvik.system.PathClassLoader;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+
 /**
  * @hide
  */
@@ -261,6 +265,10 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     private static final int EVENT_SET_POLICY_DATA_ENABLE = MAX_NETWORK_STATE_TRACKER_EVENT + 13;
 
     private Handler mHandler;
+
+    private Object mCneObj = null;
+    private boolean mCneStarted = false;
+    private static final String UseCne = "persist.cne.UseCne";
 
     // list of DeathRecipients used to make sure features are turned off when
     // a process dies
@@ -2964,4 +2972,62 @@ public class ConnectivityService extends IConnectivityManager.Stub {
             }
         }
     }
+
+    /* CNE related methods. */
+    public void startCne() {
+        if (!mCneStarted) {
+            if (isCneAware()) {
+                Slog.v(TAG, "CNE is starting up");
+                mCneObj = makeVendorCne();
+                mCneStarted = true;
+            } else {
+                Slog.v(TAG, "CNE is disabled.");
+            }
+        } else {
+            Slog.e(TAG, "CNE already Started");
+        }
+    }
+
+    private Object makeVendorCne() {
+        try {
+            PathClassLoader cneClassLoader =
+                new PathClassLoader("/system/framework/com.quicinc.cne.jar",
+                                    ClassLoader.getSystemClassLoader());
+            Class cneClass = cneClassLoader.loadClass("com.quicinc.cne.CNE");
+            Constructor cneConstructor = cneClass.getConstructor
+                        (new Class[] {Context.class,ConnectivityService.class});
+                return cneConstructor.newInstance(mContext,this);
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            } catch(IllegalAccessException e) {
+                e.printStackTrace();
+            } catch(InvocationTargetException e) {
+                e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        Slog.e(TAG,"Could not make vendor Cne obj falling back to reference cne");
+        return null;
+    }
+
+    /** @hide
+     * Has CNE been started on this device?
+     * @return true of CNE has been started, otherwise false
+     */
+    public boolean isCneStarted() {
+        return mCneStarted;
+    }
+
+    /** @hide
+     * Check if this android device is CNE aware.
+     * @return true if CNE is enabled on this device, otherwise false
+     */
+    public boolean isCneAware() {
+        boolean isUsingVendorCne =
+            SystemProperties.get(UseCne, "none").equalsIgnoreCase("vendor");
+        return (isUsingVendorCne);
+    }
+
 }
