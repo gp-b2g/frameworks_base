@@ -380,17 +380,25 @@ public final class CallManager {
                 break;
             case OFFHOOK:
                 Phone fgPhone = getFgPhone();
-                // While foreground call is in DIALING,
-                // ALERTING, ACTIVE and DISCONNECTING state
-                if (getActiveFgCallState() != Call.State.IDLE
-                        && getActiveFgCallState() != Call.State.DISCONNECTED) {
-                    if (fgPhone instanceof SipPhone) {
+                /*
+                 * While foreground call is in DIALING, ALERTING, ACTIVE and
+                 * DISCONNECTING state for SipPhone
+                 */
+                if (fgPhone instanceof SipPhone) {
+                    if (getActiveFgCallState() != Call.State.IDLE
+                            && getActiveFgCallState() != Call.State.DISCONNECTED) {
                         // enable IN_COMMUNICATION audio mode for sipPhone
                         mode = AudioManager.MODE_IN_COMMUNICATION;
-                    } else {
-                        // enable IN_CALL audio mode for telephony
-                        mode = AudioManager.MODE_IN_CALL;
                     }
+                } else {
+                    /*
+                     * Enable IN_CALL if Foreground or background call is in
+                     * DIALING, ALERTING, ACTIVE, HOLDING or DISCONNECTING
+                     * state. This means an active foreground call with/without
+                     * a background call or an idle foreground with a background
+                     * held call.
+                     */
+                    mode = AudioManager.MODE_IN_CALL;
                 }
                 break;
         }
@@ -698,10 +706,6 @@ public final class CallManager {
         if (VDBG) {
             Log.d(LOG_TAG, " dial(" + basePhone + ", "+ dialString + ")");
             Log.d(LOG_TAG, this.toString());
-        }
-
-        if (!canDial(phone)) {
-            throw new CallStateException("cannot dial in current state");
         }
 
         if ( hasActiveFgCall() ) {
