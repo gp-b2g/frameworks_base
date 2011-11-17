@@ -1,6 +1,7 @@
 /* //device/java/android/android/os/INetworkManagementService.aidl
 **
 ** Copyright 2007, The Android Open Source Project
+** Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -103,6 +104,16 @@ interface INetworkManagementService
      * Remove the specified route from the interface.
      */
     void removeRoute(String iface, in RouteInfo route);
+
+    /**
+     * Add the specified policy route.
+     */
+    boolean addPolicyRoute(String iface, in RouteInfo route, int tableId);
+
+    /**
+     * Remove the specified policy route.
+     */
+    boolean removePolicyRoute(String iface, in RouteInfo route, int tableId);
 
     /**
      * Shuts down the service

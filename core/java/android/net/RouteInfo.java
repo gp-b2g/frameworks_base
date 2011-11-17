@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,12 +39,17 @@ public class RouteInfo implements Parcelable {
     private final LinkAddress mDestination;
 
     /**
+     * The IP destination address for this route.
+     */
+    private final LinkAddress mLocal;
+    /**
      * The gateway address for this route.
      */
     private final InetAddress mGateway;
 
     private final boolean mIsDefault;
     private final boolean mIsHost;
+    private final boolean mIsPolicy;
 
     public RouteInfo(LinkAddress destination, InetAddress gateway) {
         if (destination == null) {
@@ -70,6 +76,10 @@ public class RouteInfo implements Parcelable {
         mGateway = gateway;
         mIsDefault = isDefault();
         mIsHost = isHost();
+        //TODO modify this with appropriate check to decide if its a source
+        //policy route. initialize it to false for now
+        mLocal = new LinkAddress(Inet4Address.ANY, 0);
+        mIsPolicy = false;
     }
 
     public RouteInfo(InetAddress gateway) {
@@ -115,12 +125,20 @@ public class RouteInfo implements Parcelable {
         return mGateway;
     }
 
+    public LinkAddress getLocal() {
+        return mLocal;
+    }
+
     public boolean isDefaultRoute() {
         return mIsDefault;
     }
 
     public boolean isHostRoute() {
         return mIsHost;
+    }
+
+    public boolean isPolicyRoute() {
+        return mIsPolicy;
     }
 
     public String toString() {

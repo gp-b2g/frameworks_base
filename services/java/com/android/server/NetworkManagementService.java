@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,6 +91,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         public static final int TetherDnsFwdTgtListResult = 112;
         public static final int TtyListResult             = 113;
 
+        public static final int CommandOkay               = 200;
         public static final int TetherStatusResult        = 210;
         public static final int IpFwdStatusResult         = 211;
         public static final int InterfaceGetCfgResult     = 213;
@@ -659,6 +661,88 @@ public class NetworkManagementService extends INetworkManagementService.Stub
             }
         }
         return (RouteInfo[]) routes.toArray(new RouteInfo[0]);
+    }
+
+    public boolean addPolicyRoute(String interfaceName, RouteInfo route, int tableId) {
+        mContext.enforceCallingOrSelfPermission(CHANGE_NETWORK_STATE, TAG);
+
+        if (route == null || !route.isPolicyRoute()) return false;
+
+        StringBuilder cmd = new StringBuilder("route replace src");
+
+        LinkAddress la = route.getLocal();
+        if (la.getAddress() instanceof Inet4Address) cmd.append(" v4 ");
+        else cmd.append(" v6 ");
+
+        cmd.append(interfaceName + " " + la.getAddress().getHostAddress()
+                + " " + Integer.toString(tableId));
+        if (route.getGateway() != null)
+            cmd.append(" " + route.getGateway().getHostAddress());
+
+        try {
+            String rsp = mConnector.doCommand(cmd.toString()).get(0);
+
+            String []tok = rsp.split(" ");
+            int code;
+            try {
+                code = Integer.parseInt(tok[0]);
+            } catch (NumberFormatException nfe) {
+                Slog.e(TAG, String.format("Error parsing code %s", tok[0]));
+                return false;
+            }
+            if (code == NetdResponseCode.CommandOkay) {
+                Slog.d(TAG, rsp);
+                return true;
+            } else {
+                Slog.e(TAG, rsp);
+                return false;
+            }
+        } catch (NativeDaemonConnectorException e) {
+            throw new IllegalStateException(
+                    "Unable to communicate with native dameon to add policy routes - " + e);
+        } catch (NullPointerException npe) {
+            Slog.e(TAG, "Null pointer exception while trying to add src route");
+        }
+        return false;
+    }
+
+    public boolean removePolicyRoute(String interfaceName, RouteInfo route, int tableId) {
+        mContext.enforceCallingOrSelfPermission(CHANGE_NETWORK_STATE, TAG);
+
+        if (route == null || !route.isPolicyRoute()) return false;
+
+        StringBuilder cmd = new StringBuilder("route del src");
+
+        if (route.getLocal().getAddress() instanceof Inet4Address)
+            cmd.append(" v4 ");
+        else cmd.append(" v6 ");
+        cmd.append(Integer.toString(tableId));
+
+        try {
+            String rsp = mConnector.doCommand(cmd.toString()).get(0);
+
+            String []tok = rsp.split(" ");
+            int code;
+            try {
+                code = Integer.parseInt(tok[0]);
+            } catch (NumberFormatException nfe) {
+                Slog.e(TAG, String.format("Error parsing code %s", tok[0]));
+                return false;
+            }
+            if (code == NetdResponseCode.CommandOkay) {
+                Slog.d(TAG, rsp);
+                return true;
+            } else {
+                Slog.e(TAG, rsp);
+                return false;
+            }
+        } catch (NativeDaemonConnectorException e) {
+            throw new IllegalStateException(
+                    "Unable to communicate with native dameon to remove policy routes - " + e);
+        } catch (NullPointerException npe) {
+            Slog.e(TAG, "Null pointer exception while trying to remove src route");
+        }
+        return false;
     }
 
     public void shutdown() {
