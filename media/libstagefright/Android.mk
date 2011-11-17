@@ -1,6 +1,25 @@
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
+ifeq ($(call is-board-platform-in-list,msm7627a msm7627_surf),true)
+    LOCAL_CFLAGS += -DUSE_AAC_HW_DEC
+endif
+
+ifeq ($(call is-chipset-in-board-platform,msm7627),true)
+    LOCAL_CFLAGS += -DTARGET7x27
+endif
+ifeq ($(call is-board-platform,msm7627a),true)
+    LOCAL_CFLAGS += -DTARGET7x27A
+endif
+ifeq ($(call is-chipset-in-board-platform,msm7630),true)
+    LOCAL_CFLAGS += -DTARGET7x30
+endif
+ifeq ($(call is-board-platform-in-list,$(QSD8K_BOARD_PLATFORMS)),true)
+    LOCAL_CFLAGS += -DTARGET8x50
+endif
+ifeq ($(call is-board-platform-in-list,msm8660 msm8960),true)
+    LOCAL_CFLAGS += -DTARGET8x60
+endif
 include frameworks/base/media/libstagefright/codecs/common/Config.mk
 
 LOCAL_SRC_FILES:=                         \
@@ -61,7 +80,7 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/external/tremolo \
         $(TOP)/frameworks/base/media/libstagefright/rtsp \
         $(TOP)/external/openssl/include \
-	    $(TOP)/hardware/msm7k/libgralloc-qsd8k \
+        $(TOP)/hardware/msm7k/libgralloc-qsd8k \
         $(TOP)/vendor/qcom/opensource/omx/mm-core/omxcore/inc
 
 
