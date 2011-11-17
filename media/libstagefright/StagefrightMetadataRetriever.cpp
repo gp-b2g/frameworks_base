@@ -247,9 +247,9 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
 
     ColorConverter converter(
             (OMX_COLOR_FORMATTYPE)srcFormat, OMX_COLOR_Format16bitRGB565);
-    CHECK(converter.isValid());
 
-    err = converter.convert(
+    if (converter.isValid()) {
+        err = converter.convert(
             (const uint8_t *)buffer->data() + buffer->range_offset(),
             width, height,
             crop_left, crop_top, crop_right, crop_bottom,
@@ -257,6 +257,10 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
             frame->mWidth,
             frame->mHeight,
             0, 0, frame->mWidth - 1, frame->mHeight - 1);
+    }
+    else {
+        err = ERROR_UNSUPPORTED;
+    }
 
     buffer->release();
     buffer = NULL;
@@ -527,7 +531,8 @@ void StagefrightMetadataRetriever::parseMetaData() {
 
     if (numTracks == 1) {
         const char *fileMIME;
-        CHECK(meta->findCString(kKeyMIMEType, &fileMIME));
+        sp<MetaData> trackmeta = mExtractor->getTrackMetaData(0);
+        CHECK(trackmeta->findCString(kKeyMIMEType, &fileMIME));
 
         if (!strcasecmp(fileMIME, "video/x-matroska")) {
             sp<MetaData> trackMeta = mExtractor->getTrackMetaData(0);

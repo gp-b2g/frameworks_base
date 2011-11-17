@@ -61,6 +61,10 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/external/tremolo \
         $(TOP)/frameworks/base/media/libstagefright/rtsp \
         $(TOP)/external/openssl/include \
+	    $(TOP)/hardware/msm7k/libgralloc-qsd8k \
+        $(TOP)/vendor/qcom/opensource/omx/mm-core/omxcore/inc
+
+
 
 LOCAL_SHARED_LIBRARIES := \
         libbinder         \

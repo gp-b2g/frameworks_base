@@ -26,6 +26,7 @@
 #include <media/stagefright/OMXClient.h>
 #include <media/stagefright/OMXCodec.h>
 #include <media/MediaPlayerInterface.h>
+#include <OMX_QCOMExtns.h>
 
 using namespace android;
 

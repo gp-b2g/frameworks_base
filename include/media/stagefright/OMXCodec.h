@@ -56,6 +56,8 @@ struct OMXCodec : public MediaSource,
 
         // Secure decoding mode
         kUseSecureInputBuffers = 256,
+
+        kEnableThumbnailMode = 512,
     };
     static sp<MediaSource> Create(
             const sp<IOMX> &omx,
@@ -140,6 +142,7 @@ private:
         kAvoidMemcopyInputRecordingFrames     = 2048,
         kRequiresLargerEncoderOutputBuffer    = 4096,
         kOutputBuffersAreUnreadable           = 8192,
+        kStoreMetaDataInInputVideoBuffers     = 16384,
     };
 
     enum BufferStatus {
@@ -193,6 +196,7 @@ private:
     ReadOptions::SeekMode mSeekMode;
     int64_t mTargetTimeUs;
     bool mOutputPortSettingsChangedPending;
+    bool mThumbnailMode;
 
     MediaBuffer *mLeftOverBuffer;
 
@@ -211,6 +215,10 @@ private:
     // A list of indices into mPortStatus[kPortIndexOutput] filled with data.
     List<size_t> mFilledBuffers;
     Condition mBufferFilled;
+
+    bool mIsMetaDataStoredInVideoBuffers;
+    bool mOnlySubmitOneBufferAtOneTime;
+    bool mInterlaceFormatDetected;
 
     // Used to record the decoding time for an output picture from
     // a video encoder.
@@ -335,6 +343,8 @@ private:
     status_t waitForBufferFilled_l();
 
     int64_t retrieveDecodingTimeUs(bool isCodecSpecific);
+
+    void parseFlags( uint32_t flags );
 
     OMXCodec(const OMXCodec &);
     OMXCodec &operator=(const OMXCodec &);
