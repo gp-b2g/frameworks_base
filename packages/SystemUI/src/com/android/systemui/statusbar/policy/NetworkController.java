@@ -495,11 +495,18 @@ public class NetworkController extends BroadcastReceiver {
                 mContentDescriptionDataType = mContext.getString(
                         R.string.accessibility_data_connection_4g);
                 break;
-            default:
+            case TelephonyManager.NETWORK_TYPE_GPRS:
                 mDataIconList = TelephonyIcons.DATA_G[mInetCondition];
                 mDataTypeIconId = R.drawable.stat_sys_data_connected_g;
                 mContentDescriptionDataType = mContext.getString(
                         R.string.accessibility_data_connection_gprs);
+                break;
+            default:
+                if (DEBUG) {
+                    Slog.e(TAG, "updateDataNetType unknown radio:" + mDataNetType );
+                }
+                mDataNetType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+                mDataTypeIconId = 0;
                 break;
         }
         if ((isCdma() && isCdmaEri()) || mPhone.isNetworkRoaming()) {
@@ -522,10 +529,12 @@ public class NetworkController extends BroadcastReceiver {
     }
 
     private final void updateDataIcon() {
-        int iconId;
+        int iconId = 0;
         boolean visible = true;
-
-        if (!isCdma()) {
+        if (mDataNetType == TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+            // If data network type is unknown do not display data icon
+            visible = false;
+        } else if (!isCdma()) {
             // GSM case, we have to check also the sim state
             if (mSimState == IccCard.State.READY || mSimState == IccCard.State.UNKNOWN) {
                 if (hasService() && mDataState == TelephonyManager.DATA_CONNECTED) {
