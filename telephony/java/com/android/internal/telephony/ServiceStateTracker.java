@@ -459,4 +459,36 @@ public abstract class ServiceStateTracker extends Handler {
         // This will effectively cancel the rest of the poll requests.
         pollingContext = new int[1];
     }
+
+    /**
+     * send signal-strength-changed notification if changed Called both for
+     * solicited and unsolicited signal strength updates
+     */
+    protected void onSignalStrengthResult(AsyncResult ar, PhoneBase phone, boolean isGsm) {
+        SignalStrength oldSignalStrength = mSignalStrength;
+
+        // This signal is used for both voice and data radio signal so parse
+        // all fields
+
+        if (ar.exception == null) {
+            mSignalStrength = new SignalStrength((SignalStrength) ar.result);
+        } else {
+            log("onSignalStrengthResult() Exception from RIL : " + ar.exception);
+            mSignalStrength = new SignalStrength();
+        }
+        mSignalStrength.setGsm(isGsm);
+
+        if (!mSignalStrength.equals(oldSignalStrength)) {
+            try {
+                // This takes care of delayed EVENT_POLL_SIGNAL_STRENGTH
+                // (scheduled after POLL_PERIOD_MILLIS) during Radio Technology
+                // Change)
+                phone.notifySignalStrength();
+            } catch (NullPointerException ex) {
+                log("onSignalStrengthResult() Phone already destroyed: " + ex
+                        + "SignalStrength not notified");
+            }
+        }
+    }
+
 }

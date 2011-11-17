@@ -45,6 +45,7 @@ import android.os.RegistrantList;
 import android.os.PowerManager.WakeLock;
 import android.telephony.NeighboringCellInfo;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.text.TextUtils;
@@ -3374,16 +3375,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     private Object
     responseSignalStrength(Parcel p) {
-        int numInts = 12;
-        int response[];
-
-        /* TODO: Add SignalStrength class to match RIL_SignalStrength */
-        response = new int[numInts];
-        for (int i = 0 ; i < numInts ; i++) {
-            response[i] = p.readInt();
-        }
-
-        return response;
+        //Signal strength from RIL interface has to be validated
+        SignalStrength signalStrength = new SignalStrength(p,true);
+        return signalStrength;
     }
 
     private ArrayList<CdmaInformationRecords>
