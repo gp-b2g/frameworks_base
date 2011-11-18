@@ -120,6 +120,7 @@ public class GSMPhone extends PhoneBase {
     private String mImei;
     private String mImeiSv;
     private String mVmNumber;
+    private String mMdn;
 
 
     // Constructors
@@ -715,6 +716,9 @@ public class GSMPhone extends PhoneBase {
             return mCT.dial(newDialString, uusInfo);
         } else if (mmi.isTemporaryModeCLIR()) {
             return mCT.dial(mmi.dialingNumber, mmi.getCLIRMode(), uusInfo);
+        } else if (SystemProperties.getBoolean("ro.config.multimode_cdma", false) &&
+                   mmi.isGlobalDevMmi()) {
+            return mCT.dial(mmi.dialingNumber, uusInfo);
         } else {
             mPendingMMIs.add(mmi);
             mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
@@ -858,6 +862,10 @@ public class GSMPhone extends PhoneBase {
     @Override
     public String getMsisdn() {
         return mIccRecords.getMsisdnNumber();
+    }
+
+    public String getMdn() {
+        return mMdn;
     }
 
     public String getLine1AlphaTag() {
@@ -1164,7 +1172,10 @@ public class GSMPhone extends PhoneBase {
             break;
 
             case EVENT_RADIO_ON:
-            break;
+                if (SystemProperties.getBoolean("ro.config.multimode_cdma", false)) {
+                    mCM.getCDMASubscription(obtainMessage(EVENT_GET_MDN_DONE));
+                }
+                break;
 
             case EVENT_REGISTERED_TO_NETWORK:
                 syncClirSetting();
@@ -1359,6 +1370,16 @@ public class GSMPhone extends PhoneBase {
                 } else {
                     Log.e(LOG_TAG, "[EONS] In EVENT_GET_NETWORKS_DONE, onComplete is null!");
                 }
+                break;
+
+            case EVENT_GET_MDN_DONE:
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception != null) {
+                    Log.e(LOG_TAG, "Error while fetching Mdn");
+                    break;
+                }
+                String localTemp[] = (String[])ar.result;
+                mMdn = localTemp[0];
                 break;
 
              default:
