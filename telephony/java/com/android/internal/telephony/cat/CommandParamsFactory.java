@@ -61,10 +61,9 @@ class CommandParamsFactory extends Handler {
         if (sInstance != null) {
             return sInstance;
         }
-        if (fh != null) {
-            return new CommandParamsFactory(caller, fh);
-        }
-        return null;
+
+        sInstance = new CommandParamsFactory(caller, fh);
+        return sInstance;
     }
 
     private CommandParamsFactory(RilMessageDecoder caller, IccFileHandler fh) {
