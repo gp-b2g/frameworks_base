@@ -1,6 +1,7 @@
 /* //device/java/android/android/os/INetworkManagementService.aidl
 **
 ** Copyright 2007, The Android Open Source Project
+** Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -108,6 +109,36 @@ interface INetworkManagementService
      * Shuts down the service
      */
     void shutdown();
+
+   /**
+    ** Policy Routing
+    **/
+
+   /**
+    * Replaces a source policy route for the given iface and protocol family AF_INET
+    * in a custom routing table denoted by routeId, if it already exists.
+    * Adds a new route if it did not exist.
+    */
+   boolean replaceV4SrcRoute(String iface, String ipAddr, String gatewayAddr, int routeId);
+
+   /**
+    * Replaces a source policy route for the given iface and protocol family AF_INET6
+    * in a custom routing table denoted by routeId, if it already exists.
+    * Adds a new route if it did not exist.
+    */
+   boolean replaceV6SrcRoute(String iface, String ipAddr, String gatewayAddr, int routeId);
+
+   /**
+    * Deletes a source policy route for the given route identifier
+    * and protocol family AF_INET from a custom routing table
+    */
+   boolean delV4SrcRoute(int routeId);
+
+   /**
+    * Deletes a source policy route for the given route identifier
+    * and protocol family AF_INET6 from a custom routing table
+    */
+   boolean delV6SrcRoute(int routeId);
 
     /**
      ** TETHERING RELATED
