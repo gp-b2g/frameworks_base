@@ -1205,20 +1205,6 @@ public abstract class SMSDispatcher extends Handler {
         }
     };
 
-    protected void dispatchBroadcastPdus(byte[][] pdus, boolean isEmergencyMessage) {
-        if (isEmergencyMessage) {
-            Intent intent = new Intent(Intents.SMS_EMERGENCY_CB_RECEIVED_ACTION);
-            intent.putExtra("pdus", pdus);
-            Log.d(TAG, "Dispatching " + pdus.length + " emergency SMS CB pdus");
-            dispatch(intent, RECEIVE_EMERGENCY_BROADCAST_PERMISSION);
-        } else {
-            Intent intent = new Intent(Intents.SMS_CB_RECEIVED_ACTION);
-            intent.putExtra("pdus", pdus);
-            Log.d(TAG, "Dispatching " + pdus.length + " SMS CB pdus");
-            dispatch(intent, RECEIVE_SMS_PERMISSION);
-        }
-    }
-
     private void processNextPendingMessage() {
         synchronized (mPendingMessagesList) {
             // Remove sent message from the list

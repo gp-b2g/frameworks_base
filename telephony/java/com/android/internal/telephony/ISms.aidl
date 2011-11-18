@@ -171,6 +171,36 @@ interface ISms {
     boolean disableCellBroadcast(int messageIdentifier);
 
     /**
+     * Enable reception of cdma broadcast messages with the given
+     * message identifier. Note that if two different clients enable the same
+     * message identifier, they must both disable it for the device to stop
+     * receiving those messages. All received messages will be broadcast in an
+     * intent with the action "android.provider.telephony.SMS_CDMA_BROADCAST_RECEIVED".
+     * Note: This call is blocking, callers may want to avoid calling it from
+     * the main thread of an application.
+     *
+     * @param messageIdentifier Message identifier as specified in C.R1001-G
+     * @return true if successful, false otherwise
+     * @see #disableCdmaBroadcast(int)
+     */
+    boolean enableCdmaBroadcast(int messageIdentifier);
+
+    /**
+     * Disable reception of cdma broadcast messages with the given
+     * message identifier. Note that if two different clients enable the same
+     * message identifier, they must both disable it for the device to stop
+     * receiving those messages.
+     * Note: This call is blocking, callers may want to avoid calling it from
+     * the main thread of an application.
+     *
+     * @param messageIdentifier Message identifier as specified in C.R1001-G
+     * @return true if successful, false otherwise
+     *
+     * @see #enableCdmaBroadcast(int)
+     */
+    boolean disableCdmaBroadcast(int messageIdentifier);
+
+    /*
      * Enable reception of cell broadcast (SMS-CB) messages with the given
      * message identifier range. Note that if two different clients enable
      * a message identifier range, they must both disable it for the device
@@ -197,5 +227,4 @@ interface ISms {
      * @see #enableCellBroadcastRange(int, int)
      */
     boolean disableCellBroadcastRange(int startMessageId, int endMessageId);
-
 }

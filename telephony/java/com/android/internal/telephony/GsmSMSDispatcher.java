@@ -25,6 +25,7 @@ import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.CellLocation;
 import android.telephony.ServiceState;
 import android.telephony.SmsCbMessage;
 import android.telephony.gsm.GsmCellLocation;
@@ -452,6 +453,7 @@ final class GsmSMSDispatcher extends SMSDispatcher {
             }
 
             boolean isEmergencyMessage = SmsCbHeader.isEmergencyMessage(header.messageIdentifier);
+
             dispatchBroadcastPdus(pdus, isEmergencyMessage);
 
             // Remove messages that are out of scope to prevent the map from
@@ -468,6 +470,20 @@ final class GsmSMSDispatcher extends SMSDispatcher {
             }
         } catch (RuntimeException e) {
             Log.e(TAG, "Error in decoding SMS CB pdu", e);
+        }
+    }
+
+    protected void dispatchBroadcastPdus(byte[][] pdus, boolean isEmergencyMessage) {
+        if (isEmergencyMessage) {
+            Intent broadcastIntent = new Intent(Intents.SMS_EMERGENCY_CB_RECEIVED_ACTION);
+            broadcastIntent.putExtra("pdus", pdus);
+            Log.d(TAG, "Dispatching " + pdus.length + " emergency SMS CB pdus");
+            dispatch(broadcastIntent, RECEIVE_EMERGENCY_BROADCAST_PERMISSION);
+        } else {
+            Intent broadcastIntent = new Intent(Intents.SMS_CB_RECEIVED_ACTION);
+            broadcastIntent.putExtra("pdus", pdus);
+            Log.d(TAG, "Dispatching " + pdus.length + " SMS CB pdus");
+            dispatch(broadcastIntent, RECEIVE_SMS_PERMISSION);
         }
     }
 

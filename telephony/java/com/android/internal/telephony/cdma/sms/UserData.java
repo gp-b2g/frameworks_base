@@ -18,6 +18,10 @@ package com.android.internal.telephony.cdma.sms;
 
 import android.util.SparseIntArray;
 
+import android.telephony.EmergencyMessage.Severity;
+import android.telephony.EmergencyMessage.Urgency;
+import android.telephony.EmergencyMessage.Certainty;
+
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.util.HexDump;
 
@@ -146,6 +150,12 @@ public class UserData {
      */
     public byte[] payload;
     public String payloadStr;
+
+    public Severity severity = Severity.UNDEFINED;
+    public Urgency urgency = Urgency.UNDEFINED;
+    public Certainty certainty = Certainty.UNDEFINED;
+    public int language = -1;
+
 
     @Override
     public String toString() {

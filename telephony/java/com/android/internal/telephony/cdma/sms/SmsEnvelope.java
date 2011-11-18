@@ -56,6 +56,14 @@ public final class SmsEnvelope {
     static public final int SMS_BEARER_DATA_MAX = 255;
 
     /**
+     * Service categories for Cmas messages
+     * (See 3GPP2 C.R1001G 9.3.3)
+     */
+    static public final int EMERGENCY_MESSAGE_ID_START = 0x1000;
+    static public final int EMERGENCY_MESSAGE_ID_END = 0x1004;
+
+
+    /**
      * Provides the type of a SMS message like point to point, broadcast or acknowledge
      */
     public int messageType;
@@ -120,6 +128,14 @@ public final class SmsEnvelope {
 
     public SmsEnvelope() {
         // nothing to see here
+    }
+
+    public boolean isCmas() {
+        if (serviceCategory >= EMERGENCY_MESSAGE_ID_START &&
+                serviceCategory <= EMERGENCY_MESSAGE_ID_END) {
+            return true;
+        }
+        return false;
     }
 
 }

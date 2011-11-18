@@ -16,9 +16,11 @@
 
 package com.android.internal.telephony.gsm;
 
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.telephony.SmsCbConstants;
 
-public class SmsCbHeader implements SmsCbConstants {
+public class SmsCbHeader implements Parcelable, SmsCbConstants {
     /**
      * Length of SMS-CB header
      */
@@ -142,6 +144,62 @@ public class SmsCbHeader implements SmsCbConstants {
             etwsPopup = false;
             etwsWarningType = -1;
         }
+    }
+
+    // Copy constructor for CB Header
+    public SmsCbHeader(SmsCbHeader other) {
+        this.dataCodingScheme = other.dataCodingScheme;
+        this.geographicalScope = other.geographicalScope;
+        this.messageCode = other.messageCode;
+        this.messageIdentifier = other.messageIdentifier;
+        this.nrOfPages = other.nrOfPages;
+        this.pageIndex = other.pageIndex;
+        this.updateNumber = other.updateNumber;
+        this.format = other.format;
+        this.etwsEmergencyUserAlert = other.etwsEmergencyUserAlert;
+        this.etwsPopup = other.etwsPopup;
+        this.etwsWarningType = other.etwsWarningType;
+    }
+
+    public int describeContents() {
+        return 0;
+    }
+
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(geographicalScope);
+        dest.writeInt(messageCode);
+        dest.writeInt(updateNumber);
+        dest.writeInt(messageIdentifier);
+        dest.writeInt(dataCodingScheme);
+        dest.writeInt(pageIndex);
+        dest.writeInt(nrOfPages);
+        dest.writeInt(format);
+        dest.writeInt(etwsEmergencyUserAlert ? 1 : 0);
+        dest.writeInt(etwsPopup ? 1 : 0);
+    }
+
+    public static final Parcelable.Creator<SmsCbHeader> CREATOR = new Parcelable.Creator<SmsCbHeader>() {
+        public SmsCbHeader createFromParcel(Parcel in) {
+            return new SmsCbHeader(in);
+        }
+
+        public SmsCbHeader[] newArray(int size) {
+            return new SmsCbHeader[size];
+        }
+    };
+
+    private SmsCbHeader(Parcel in) {
+        geographicalScope = in.readInt();
+        messageCode = in.readInt();
+        updateNumber = in.readInt();
+        messageIdentifier = in.readInt();
+        dataCodingScheme = in.readInt();
+        pageIndex = in.readInt();
+        nrOfPages = in.readInt();
+        format = in.readInt();
+        etwsEmergencyUserAlert = (in.readInt() == 1 ? true : false);
+        etwsPopup = (in.readInt() == 1 ? true : false);
+        etwsWarningType = in.readInt();
     }
 
     /**

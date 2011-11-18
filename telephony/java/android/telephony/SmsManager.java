@@ -463,6 +463,60 @@ public final class SmsManager {
     }
 
     /**
+     * Enable reception of cdma broadcast messages with the given message
+     * identifier. Note that if two different clients enable the same message
+     * identifier, they must both disable it for the device to stop receiving
+     * those messages. All received messages will be broadcast in an intent with
+     * the action "android.provider.telephony.SMS_CDMA_BROADCAST_RECEIVED".
+     * Note: This call is blocking, callers may want to avoid calling it from
+     * the main thread of an application.
+     *
+     * @param messageIdentifier Message identifier as specified in C.R1001-G
+     * @return true if successful, false otherwise
+     * @see #disableCdmaBroadcast(int) {@hide}
+     */
+    public boolean enableCdmaBroadcast(int messageIdentifier) {
+        boolean success = false;
+
+        try {
+            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            if (iccISms != null) {
+                success = iccISms.enableCdmaBroadcast(messageIdentifier);
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+
+        return success;
+    }
+
+    /**
+     * Disable reception of cdma broadcast messages with the given message
+     * identifier. Note that if two different clients enable the same message
+     * identifier, they must both disable it for the device to stop receiving
+     * those messages. Note: This call is blocking, callers may want to avoid
+     * calling it from the main thread of an application.
+     *
+     * @param messageIdentifier Message identifier as specified in C.R1001-G
+     * @return true if successful, false otherwise
+     * @see #enableCdmaBroadcast(int) {@hide}
+     */
+    public boolean disableCdmaBroadcast(int messageIdentifier) {
+        boolean success = false;
+
+        try {
+            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            if (iccISms != null) {
+                success = iccISms.disableCdmaBroadcast(messageIdentifier);
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+
+        return success;
+    }
+
+    /**
      * Create a list of <code>SmsMessage</code>s from a list of RawSmsData
      * records returned by <code>getAllMessagesFromIcc()</code>
      *

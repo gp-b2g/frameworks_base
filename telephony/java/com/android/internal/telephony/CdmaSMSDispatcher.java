@@ -199,7 +199,28 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             return Intents.RESULT_SMS_UNSUPPORTED;
         }
 
+        if (sms.getMessageType() == SmsEnvelope.MESSAGE_TYPE_BROADCAST
+                && sms.getServiceCategory() >= SmsEnvelope.EMERGENCY_MESSAGE_ID_START
+                && sms.getServiceCategory() <= SmsEnvelope.EMERGENCY_MESSAGE_ID_END) {
+            // This is cmas message
+            byte[][] pdus = new byte[1][];
+            pdus[0] = sms.getPdu();
+            dispatchBroadcastPdus(pdus, true);
+            return Activity.RESULT_OK;
+        }
         return dispatchNormalMessage(smsb);
+    }
+
+    protected void dispatchBroadcastPdus(byte[][] pdus, boolean isEmergencyMessage) {
+        if (isEmergencyMessage) {
+            Intent broadcastIntent = new Intent(Intents.EMERGENCY_CDMA_MESSAGE_RECEIVED_ACTION);
+            broadcastIntent.putExtra("pdus", pdus);
+            Log.d(TAG, "Dispatching " + pdus.length + " emergency SMS CB pdus");
+            dispatch(broadcastIntent, RECEIVE_EMERGENCY_BROADCAST_PERMISSION);
+        } else {
+            /*TODO: CDMA non emergency messages*/
+            Log.d(TAG,"CDMA non emergency messages: not supported");
+        }
     }
 
     /**

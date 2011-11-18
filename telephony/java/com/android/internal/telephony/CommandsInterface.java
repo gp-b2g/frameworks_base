@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 
 import android.os.Message;
@@ -1636,6 +1637,7 @@ public interface CommandsInterface {
      */
     // TODO: Change the configValuesArray to a RIL_BroadcastSMSConfig
     public void setCdmaBroadcastConfig(int[] configValuesArray, Message result);
+    public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message response);
 
     /**
      * Query the current configuration of cdma cell broadcast SMS.

@@ -179,7 +179,7 @@ public abstract class IntRangeManager {
 
         // empty range list: add the initial IntRange
         if (len == 0) {
-            if (tryAddSingleRange(startId, endId, true)) {
+            if (tryAddRanges(startId, endId, true)) {
                 mRanges.add(new IntRange(startId, endId, client));
                 return true;
             } else {
@@ -194,7 +194,7 @@ public abstract class IntRangeManager {
                 // note that [1, 4] and [5, 6] coalesce to [1, 6]
                 if ((endId + 1) < range.startId) {
                     // insert new int range before previous first range
-                    if (tryAddSingleRange(startId, endId, true)) {
+                    if (tryAddRanges(startId, endId, true)) {
                         mRanges.add(startIndex, new IntRange(startId, endId, client));
                         return true;
                     } else {
@@ -202,7 +202,7 @@ public abstract class IntRangeManager {
                     }
                 } else if (endId <= range.endId) {
                     // extend the start of this range
-                    if (tryAddSingleRange(startId, range.startId - 1, true)) {
+                    if (tryAddRanges(startId, range.startId - 1, true)) {
                         range.startId = startId;
                         range.clients.add(0, new ClientRange(startId, endId, client));
                         return true;
@@ -215,7 +215,7 @@ public abstract class IntRangeManager {
                         IntRange endRange = mRanges.get(endIndex);
                         if ((endId + 1) < endRange.startId) {
                             // try to add entire new range
-                            if (tryAddSingleRange(startId, endId, true)) {
+                            if (tryAddRanges(startId, endId, true)) {
                                 range.startId = startId;
                                 range.endId = endId;
                                 // insert new ClientRange before existing ranges
@@ -238,7 +238,7 @@ public abstract class IntRangeManager {
                         } else if (endId <= endRange.endId) {
                             // add range from start id to start of last overlapping range,
                             // values from endRange.startId to endId are already enabled
-                            if (tryAddSingleRange(startId, endRange.startId - 1, true)) {
+                            if (tryAddRanges(startId, endRange.startId - 1, true)) {
                                 range.startId = startId;
                                 range.endId = endRange.endId;
                                 // insert new ClientRange before existing ranges
@@ -262,7 +262,7 @@ public abstract class IntRangeManager {
                     }
 
                     // endId extends past all existing IntRanges: combine them all together
-                    if (tryAddSingleRange(startId, endId, true)) {
+                    if (tryAddRanges(startId, endId, true)) {
                         range.startId = startId;
                         range.endId = endId;
                         // insert new ClientRange before existing ranges
@@ -303,7 +303,7 @@ public abstract class IntRangeManager {
                     if (endIndex == startIndex) {
                         // add range from range.endId+1 to endId,
                         // values from startId to range.endId are already enabled
-                        if (tryAddSingleRange(range.endId + 1, endId, true)) {
+                        if (tryAddRanges(range.endId + 1, endId, true)) {
                             range.endId = endId;
                             range.insert(new ClientRange(startId, endId, client));
                             return true;
@@ -318,7 +318,7 @@ public abstract class IntRangeManager {
                     // else enable range from range.endId+1 to endRange.startId-1, because
                     // values from endRange.startId to endId have already been added.
                     int newRangeEndId = (endId <= endRange.endId) ? endRange.startId - 1 : endId;
-                    if (tryAddSingleRange(range.endId + 1, newRangeEndId, true)) {
+                    if (tryAddRanges(range.endId + 1, newRangeEndId, true)) {
                         range.endId = endId;
                         // insert new ClientRange in place
                         range.insert(new ClientRange(startId, endId, client));
@@ -342,7 +342,7 @@ public abstract class IntRangeManager {
         }
 
         // append new range after existing IntRanges
-        if (tryAddSingleRange(startId, endId, true)) {
+        if (tryAddRanges(startId, endId, true)) {
             mRanges.add(new IntRange(startId, endId, client));
             return true;
         } else {
@@ -378,7 +378,7 @@ public abstract class IntRangeManager {
                     ClientRange cr = clients.get(0);
                     if (cr.startId == startId && cr.endId == endId && cr.client.equals(client)) {
                         // disable range in radio then remove the entire IntRange
-                        if (tryAddSingleRange(startId, endId, false)) {
+                        if (tryAddRanges(startId, endId, false)) {
                             mRanges.remove(i);
                             return true;
                         } else {
@@ -407,7 +407,7 @@ public abstract class IntRangeManager {
                                 return true;
                             } else {
                                 // disable the channels at the end and lower the end id
-                                if (tryAddSingleRange(largestEndId + 1, range.endId, false)) {
+                                if (tryAddRanges(largestEndId + 1, range.endId, false)) {
                                     clients.remove(crIndex);
                                     range.endId = largestEndId;
                                     return true;
@@ -536,8 +536,11 @@ public abstract class IntRangeManager {
      * @param selected true to enable range, false to disable range
      * @return true if successful, false otherwise
      */
-    private boolean tryAddSingleRange(int startId, int endId, boolean selected) {
+    private boolean tryAddRanges(int startId, int endId, boolean selected) {
+
         startUpdate();
+        populateAllRanges();
+        // This is the new range to be enabled
         addRange(startId, endId, selected);
         return finishUpdate();
     }
@@ -548,6 +551,19 @@ public abstract class IntRangeManager {
      */
     public boolean isEmpty() {
         return mRanges.isEmpty();
+    }
+
+    /**
+     * Called when attempting to add a single range of message identifiers
+     * Populate all ranges of message identifiers.
+     */
+    private void populateAllRanges() {
+        Iterator<IntRange> itr = mRanges.iterator();
+        // Populate all ranges from mRanges
+        while (itr.hasNext()) {
+            IntRange currRange = (IntRange) itr.next();
+            addRange(currRange.startId, currRange.endId, true);
+        }
     }
 
     /**
