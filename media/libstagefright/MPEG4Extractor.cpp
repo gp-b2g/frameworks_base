@@ -2256,7 +2256,7 @@ static bool LegacySniffMPEG4(
         || !memcmp(header, "ftypM4A ", 8) || !memcmp(header, "ftypf4v ", 8)
         || !memcmp(header, "ftypkddi", 8) || !memcmp(header, "ftypM4VP", 8)) {
         *mimeType = MEDIA_MIMETYPE_CONTAINER_MPEG4;
-        *confidence = 0.4;
+        *confidence = 0.6;
 
         return true;
     }
@@ -2331,7 +2331,7 @@ static bool BetterSniffMPEG4(
     }
 
     *mimeType = MEDIA_MIMETYPE_CONTAINER_MPEG4;
-    *confidence = 0.4f;
+    *confidence = 0.6f;
 
     return true;
 }
