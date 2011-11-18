@@ -290,6 +290,15 @@ public class CatService extends Handler implements AppInterface {
                         sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
                         return;
                 }
+                sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
+                return;
+            case CLOSE_CHANNEL:
+            case RECEIVE_DATA:
+            case SEND_DATA:
+            case GET_CHANNEL_STATUS:
+                sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
+                break;
+            case OPEN_CHANNEL:
             case LAUNCH_BROWSER:
             case SELECT_ITEM:
             case GET_INPUT:
@@ -729,6 +738,7 @@ public class CatService extends Handler implements AppInterface {
             case DISPLAY_TEXT:
             case LAUNCH_BROWSER:
                 break;
+            case OPEN_CHANNEL:
             case SET_UP_CALL:
                 mCmdIf.handleCallSetupRequestFromSim(resMsg.usersConfirm, null);
                 // No need to send terminal response for SET UP CALL. The user's

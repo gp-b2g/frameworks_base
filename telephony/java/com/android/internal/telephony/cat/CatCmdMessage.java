@@ -80,6 +80,13 @@ public class CatCmdMessage implements Parcelable {
             mToneSettings = params.settings;
             mTextMsg = params.textMsg;
             break;
+        case CLOSE_CHANNEL:
+        case RECEIVE_DATA:
+        case SEND_DATA:
+        case GET_CHANNEL_STATUS:
+            mTextMsg = ((CallSetupParams) cmdParams).confirmMsg;
+            break;
+        case OPEN_CHANNEL:
         case SET_UP_CALL:
             mCallSettings = new CallSettings();
             mCallSettings.confirmMsg = ((CallSetupParams) cmdParams).confirmMsg;
@@ -102,6 +109,7 @@ public class CatCmdMessage implements Parcelable {
         case PLAY_TONE:
             mToneSettings = in.readParcelable(null);
             break;
+        case OPEN_CHANNEL:
         case SET_UP_CALL:
             mCallSettings = new CallSettings();
             mCallSettings.confirmMsg = in.readParcelable(null);
@@ -123,6 +131,7 @@ public class CatCmdMessage implements Parcelable {
         case PLAY_TONE:
             dest.writeParcelable(mToneSettings, 0);
             break;
+        case OPEN_CHANNEL:
         case SET_UP_CALL:
             dest.writeParcelable(mCallSettings.confirmMsg, 0);
             dest.writeParcelable(mCallSettings.callMsg, 0);
