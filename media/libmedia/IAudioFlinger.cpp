@@ -52,8 +52,12 @@ enum {
     REGISTER_CLIENT,
     GET_INPUTBUFFERSIZE,
     OPEN_OUTPUT,
+    OPEN_SESSION,
     OPEN_DUPLICATE_OUTPUT,
     CLOSE_OUTPUT,
+    PAUSE_SESSION,
+    RESUME_SESSION,
+    CLOSE_SESSION,
     SUSPEND_OUTPUT,
     RESTORE_OUTPUT,
     OPEN_INPUT,
@@ -390,6 +394,62 @@ public:
         if (pLatencyMs) *pLatencyMs = latency;
         return output;
     }
+
+    virtual int openSession(uint32_t *pDevices,
+                            uint32_t *pFormat,
+                            uint32_t flags,
+                            int32_t  stream,
+                            int32_t  sessionId)
+    {
+        Parcel data, reply;
+        uint32_t devices = pDevices ? *pDevices : 0;
+        uint32_t format = pFormat ? *pFormat : 0;
+
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(devices);
+        data.writeInt32(format);
+        data.writeInt32(flags);
+        data.writeInt32(stream);
+        data.writeInt32(sessionId);
+        remote()->transact(OPEN_SESSION, data, &reply);
+        int  output = reply.readInt32();
+        LOGV("openOutput() returned output, %p", output);
+        devices = reply.readInt32();
+        if (pDevices) *pDevices = devices;
+        format = reply.readInt32();
+        if (pFormat) *pFormat = format;
+        return output;
+    }
+
+    virtual status_t pauseSession(int output, int32_t  stream)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(output);
+        data.writeInt32(stream);
+        remote()->transact(PAUSE_SESSION, data, &reply);
+        return reply.readInt32();
+    }
+
+    virtual status_t resumeSession(int output, int32_t  stream)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(output);
+        data.writeInt32(stream);
+        remote()->transact(RESUME_SESSION, data, &reply);
+        return reply.readInt32();
+    }
+
+    virtual status_t closeSession(int output)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(output);
+        remote()->transact(CLOSE_SESSION, data, &reply);
+        return reply.readInt32();
+    }
+
 
     virtual int openDuplicateOutput(int output1, int output2)
     {
@@ -851,6 +911,45 @@ status_t BnAudioFlinger::onTransact(
             reply->writeInt32(format);
             reply->writeInt32(channels);
             reply->writeInt32(latency);
+            return NO_ERROR;
+        } break;
+        case OPEN_SESSION: {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            uint32_t devices = data.readInt32();
+            uint32_t format = data.readInt32();
+            uint32_t flags = data.readInt32();
+            int32_t  stream = data.readInt32();
+            int32_t  sessionId = data.readInt32();
+            int output = openSession(&devices,
+                                     &format,
+                                     flags,
+                                     stream,
+                                     sessionId);
+            LOGV("OPEN_SESSION output, %p", output);
+            reply->writeInt32(output);
+            reply->writeInt32(devices);
+            reply->writeInt32(format);
+            return NO_ERROR;
+        } break;
+        case PAUSE_SESSION: {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            int output = data.readInt32();
+            int32_t  stream = data.readInt32();
+            reply->writeInt32(pauseSession(output,
+                                           stream));
+            return NO_ERROR;
+        } break;
+        case RESUME_SESSION: {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            int output = data.readInt32();
+            int32_t  stream = data.readInt32();
+            reply->writeInt32(resumeSession(output,
+                                           stream));
+            return NO_ERROR;
+        } break;
+        case CLOSE_SESSION: {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            reply->writeInt32(closeSession(data.readInt32()));
             return NO_ERROR;
         } break;
         case OPEN_DUPLICATE_OUTPUT: {

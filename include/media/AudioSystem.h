@@ -120,6 +120,8 @@ public:
         INPUT_CLOSED,
         INPUT_CONFIG_CHANGED,
         STREAM_CONFIG_CHANGED,
+        A2DP_OUTPUT_STATE,
+        EFFECT_CONFIG_CHANGED,
         NUM_CONFIG_EVENTS
     };
 
@@ -151,6 +153,13 @@ public:
                                         uint32_t format = AUDIO_FORMAT_DEFAULT,
                                         uint32_t channels = AUDIO_CHANNEL_OUT_STEREO,
                                         audio_policy_output_flags_t flags = AUDIO_POLICY_OUTPUT_FLAG_INDIRECT);
+    static audio_io_handle_t getSession(audio_stream_type_t stream,
+                                        uint32_t format = AUDIO_FORMAT_DEFAULT,
+                                        audio_policy_output_flags_t flags = AUDIO_POLICY_OUTPUT_FLAG_DIRECT,
+                                        int32_t sessionId = -1);
+    static void closeSession(audio_io_handle_t output);
+    static status_t pauseSession(audio_io_handle_t output, audio_stream_type_t stream);
+    static status_t resumeSession(audio_io_handle_t output, audio_stream_type_t stream);
     static status_t startOutput(audio_io_handle_t output,
                                 audio_stream_type_t stream,
                                 int session = 0);

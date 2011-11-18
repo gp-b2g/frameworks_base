@@ -119,6 +119,19 @@ AudioTrack::AudioTrack(
             sharedBuffer, false, sessionId);
 }
 
+AudioTrack::AudioTrack(
+        int streamType,
+        uint32_t sampleRate,
+        int format,
+        int channels,
+        uint32_t flags,
+        int sessionId,
+        int lpaSessionId)
+    : mStatus(NO_INIT), mAudioSession(-1)
+{
+    mStatus = set(streamType, sampleRate, format, channels, flags, sessionId, lpaSessionId);
+}
+
 AudioTrack::~AudioTrack()
 {
     LOGV_IF(mSharedBuffer != 0, "Destructor sharedBuffer: %p", mSharedBuffer->pointer());
@@ -132,7 +145,24 @@ AudioTrack::~AudioTrack()
             mAudioTrackThread->requestExitAndWait();
             mAudioTrackThread.clear();
         }
-        mAudioTrack.clear();
+        if(mAudioTrack != NULL) {
+            mAudioTrack.clear();
+        }
+        if(mAudioSession >= 0) {
+#ifdef EFFECT_ENABLED
+            const sp<IAudioFlinger>& audioFlinger = AudioSystem::get_audio_flinger();
+            if (audioFlinger != 0) {
+                status_t status;
+                LOGV("Calling AudioFlinger::deleteSession");
+                audioFlinger->deleteSession();
+            } else {
+                LOGE("Could not get audioflinger");
+            }
+#endif
+            AudioSystem::closeSession(mAudioSession);
+            mAudioSession = -1;
+        }
+
         IPCThreadState::self()->flushCommands();
         AudioSystem::releaseAudioSessionId(mSessionId);
     }
@@ -261,8 +291,95 @@ status_t AudioTrack::set(
     mUpdatePeriod = 0;
     mFlushed = false;
     mFlags = flags;
+    mAudioSession = -1;
     AudioSystem::acquireAudioSessionId(mSessionId);
     mRestoreStatus = NO_ERROR;
+    return NO_ERROR;
+}
+
+status_t AudioTrack::set(
+        int streamType,
+        uint32_t sampleRate,
+        int format,
+        int channels,
+        uint32_t flags,
+        int sessionId,
+        int lpaSessionId)
+{
+
+    // handle default values first.
+    if (streamType == AUDIO_STREAM_DEFAULT) {
+        streamType = AUDIO_STREAM_MUSIC;
+    }
+    // these below should probably come from the audioFlinger too...
+    if (format == 0) {
+        format = AUDIO_FORMAT_PCM_16_BIT;
+    }
+    // validate parameters
+    if (!audio_is_valid_format(format)) {
+        LOGE("Invalid format");
+        return BAD_VALUE;
+    }
+    // force direct flag if format is not linear PCM
+    if (!audio_is_linear_pcm(format)) {
+        flags |= AUDIO_POLICY_OUTPUT_FLAG_DIRECT;
+    }
+
+    audio_io_handle_t output = AudioSystem::getSession((audio_stream_type_t)streamType,
+            format, (audio_policy_output_flags_t)flags, lpaSessionId);
+
+    if (output == 0) {
+        LOGE("Could not get audio output for stream type %d", streamType);
+        return BAD_VALUE;
+    }
+    mVolume[LEFT] = 1.0f;
+    mVolume[RIGHT] = 1.0f;
+    mStatus = NO_ERROR;
+    mStreamType = streamType;
+    mFormat = format;
+    mChannelCount = 2;
+    mSharedBuffer = NULL;
+    mMuted = false;
+    mActive = 0;
+    mCbf = NULL;
+    mNotificationFramesReq = 0;
+    mRemainingFrames = 0;
+    mUserData = NULL;
+    mLatency = 0;
+    mLoopCount = 0;
+    mMarkerPosition = 0;
+    mMarkerReached = false;
+    mNewPosition = 0;
+    mUpdatePeriod = 0;
+    mFlags = flags;
+    mAudioTrack = NULL;
+    mAudioSession = output;
+
+    /*Effects code will be enabled in the next gerrit*/
+    /*
+    mSessionId = sessionId;
+    mAuxEffectId = 0;
+
+    const sp<IAudioFlinger>& audioFlinger = AudioSystem::get_audio_flinger();
+    if (audioFlinger == 0) {
+       LOGE("Could not get audioflinger");
+       return NO_INIT;
+    }
+    status_t status;
+    audioFlinger->createSession(getpid(),
+                                sampleRate,
+                                channels,
+                                &mSessionId,
+                                &status);
+    if(status != NO_ERROR) {
+        LOGE("createSession returned with status %d", status);
+    }
+    */
+
+    /* Make the track active and start output */
+    android_atomic_or(1, &mActive);
+    AudioSystem::startOutput(output, (audio_stream_type_t)mStreamType);
+    LOGV("AudioTrack::set() - Started output(%d)",output);
     return NO_ERROR;
 }
 
@@ -316,6 +433,15 @@ sp<IMemory>& AudioTrack::sharedBuffer()
 
 void AudioTrack::start()
 {
+    if ( mAudioSession != -1  ) {
+        if ( NO_ERROR != AudioSystem::resumeSession(mAudioSession,
+                                   (audio_stream_type_t)mStreamType) )
+        {
+            LOGE("ResumeSession failed");
+        }
+        return;
+    }
+
     sp<AudioTrackThread> t = mAudioTrackThread;
     status_t status = NO_ERROR;
 
@@ -391,24 +517,26 @@ void AudioTrack::stop()
 
     AutoMutex lock(mLock);
     if (mActive == 1) {
-        mActive = 0;
-        mCblk->cv.signal();
-        mAudioTrack->stop();
-        // Cancel loops (If we are in the middle of a loop, playback
-        // would not stop until loopCount reaches 0).
-        setLoop_l(0, 0, 0);
-        // the playback head position will reset to 0, so if a marker is set, we need
-        // to activate it again
-        mMarkerReached = false;
-        // Force flush if a shared buffer is used otherwise audioflinger
-        // will not stop before end of buffer is reached.
-        if (mSharedBuffer != 0) {
-            flush_l();
-        }
-        if (t != 0) {
-            t->requestExit();
-        } else {
-            setpriority(PRIO_PROCESS, 0, ANDROID_PRIORITY_NORMAL);
+        if (mAudioTrack != NULL) {
+            mActive = 0;
+            mCblk->cv.signal();
+            mAudioTrack->stop();
+            // Cancel loops (If we are in the middle of a loop, playback
+            // would not stop until loopCount reaches 0).
+            setLoop_l(0, 0, 0);
+            // the playback head position will reset to 0, so if a marker is set, we need
+            // to activate it again
+            mMarkerReached = false;
+            // Force flush if a shared buffer is used otherwise audioflinger
+            // will not stop before end of buffer is reached.
+            if (mSharedBuffer != 0) {
+                flush_l();
+            }
+            if (t != 0) {
+                t->requestExit();
+            } else {
+                setpriority(PRIO_PROCESS, 0, ANDROID_PRIORITY_NORMAL);
+            }
         }
     }
 
@@ -450,6 +578,15 @@ void AudioTrack::flush_l()
 void AudioTrack::pause()
 {
     LOGV("pause");
+
+    if ( mAudioSession != -1 ) {
+        if ( NO_ERROR != AudioSystem::pauseSession(mAudioSession,
+                                  (audio_stream_type_t)mStreamType) )
+        {
+            LOGE("PauseSession failed");
+        }
+        return;
+    }
     AutoMutex lock(mLock);
     if (mActive == 1) {
         mActive = 0;

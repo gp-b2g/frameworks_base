@@ -125,6 +125,18 @@ public:
                                     uint32_t *pLatencyMs,
                                     uint32_t flags);
 
+    virtual int openSession(   uint32_t *pDevices,
+                                    uint32_t *pFormat,
+                                    uint32_t flags,
+                                    int32_t  streamType,
+                                    int32_t  sessionId);
+
+    virtual status_t pauseSession(int output, int32_t  streamType);
+
+    virtual status_t resumeSession(int output, int32_t  streamType);
+
+    virtual status_t closeSession(int output);
+
     virtual int openDuplicateOutput(int output1, int output2);
 
     virtual status_t closeOutput(int output);
@@ -146,6 +158,8 @@ public:
     virtual status_t setVoiceVolume(float volume);
 
     virtual status_t getRenderPosition(uint32_t *halFrames, uint32_t *dspFrames, int output);
+
+    virtual status_t deregisterClient(const sp<IAudioFlingerClient>& client);
 
     virtual int newAudioSessionId();
 
@@ -248,7 +262,7 @@ private:
     public:
                             NotificationClient(const sp<AudioFlinger>& audioFlinger,
                                                 const sp<IAudioFlingerClient>& client,
-                                                pid_t pid);
+                                                sp<IBinder> binder);
         virtual             ~NotificationClient();
 
                 sp<IAudioFlingerClient>    client() { return mClient; }
@@ -261,7 +275,7 @@ private:
                             NotificationClient& operator = (const NotificationClient&);
 
         sp<AudioFlinger>        mAudioFlinger;
-        pid_t                   mPid;
+        sp<IBinder>             mBinder;
         sp<IAudioFlingerClient> mClient;
     };
 
@@ -927,7 +941,7 @@ private:
 
 
                 void        removeClient_l(pid_t pid);
-                void        removeNotificationClient(pid_t pid);
+                void        removeNotificationClient(sp<IBinder> binder);
 
 
     // record thread
@@ -1393,10 +1407,15 @@ private:
 
                 DefaultKeyedVector< int, sp<RecordThread> >    mRecordThreads;
 
-                DefaultKeyedVector< pid_t, sp<NotificationClient> >    mNotificationClients;
+                DefaultKeyedVector< sp<IBinder>, sp<NotificationClient> >    mNotificationClients;
                 volatile int32_t                    mNextUniqueId;
                 uint32_t                            mMode;
                 bool                                mBtNrecIsOff;
+                int                                 mA2DPHandle; // Handle to notify client (MIO)
+                int                                 mLPAStreamType;
+                AudioStreamOut                     *mLPAOutput;
+                audio_io_handle_t                   mLPAHandle;
+                int                                 mLPAStreamIsActive;
 
                 Vector<AudioSessionRef*> mAudioSessionRefs;
 };

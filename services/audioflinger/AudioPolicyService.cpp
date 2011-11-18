@@ -267,6 +267,19 @@ audio_io_handle_t AudioPolicyService::getOutput(audio_stream_type_t stream,
     return mpAudioPolicy->get_output(mpAudioPolicy, stream, samplingRate, format, channels, flags);
 }
 
+audio_io_handle_t AudioPolicyService::getSession(audio_stream_type_t stream,
+                                    uint32_t format,
+                                    audio_policy_output_flags_t flags,
+                                    int32_t sessionId)
+{
+    if (mpAudioPolicy == NULL) {
+        return 0;
+    }
+    LOGV("getSession() tid %d", gettid());
+    Mutex::Autolock _l(mLock);
+    return mpAudioPolicy->get_session(mpAudioPolicy, stream, format, flags, sessionId);
+}
+
 status_t AudioPolicyService::startOutput(audio_io_handle_t output,
                                          audio_stream_type_t stream,
                                          int session)
@@ -299,6 +312,64 @@ void AudioPolicyService::releaseOutput(audio_io_handle_t output)
     LOGV("releaseOutput() tid %d", gettid());
     Mutex::Autolock _l(mLock);
     mpAudioPolicy->release_output(mpAudioPolicy, output);
+}
+
+status_t AudioPolicyService::pauseSession(audio_io_handle_t output,
+                                          audio_stream_type_t stream)
+{
+    LOGV("pauseSession() tid %d", gettid());
+    if (mpAudioPolicy != NULL) {
+        Mutex::Autolock _l(mLock);
+        mpAudioPolicy->pause_session(mpAudioPolicy,output,
+                                      stream);
+    }
+
+    sp<IAudioFlinger> af = AudioSystem::get_audio_flinger();
+    if (af == 0) {
+        LOGW("pauseSession() could not get AudioFlinger");
+        return 0;
+    }
+
+    return af->pauseSession((int) output, (int32_t) stream);
+}
+
+status_t AudioPolicyService::resumeSession(audio_io_handle_t output,
+                                           audio_stream_type_t stream)
+{
+    LOGV("resumeSession() tid %d", gettid());
+
+    sp<IAudioFlinger> af = AudioSystem::get_audio_flinger();
+    if (af == 0) {
+        LOGW("resumeSession() could not get AudioFlinger");
+        return 0;
+    }
+
+    if (NO_ERROR != af->resumeSession((int) output, (int32_t) stream))
+    {
+        LOGE("Resume Session failed from AudioFligner");
+    }
+
+    if (mpAudioPolicy != NULL) {
+        Mutex::Autolock _l(mLock);
+        mpAudioPolicy->resume_session(mpAudioPolicy,output,
+                                       stream);
+    }
+
+    return 0;
+}
+
+status_t AudioPolicyService::closeSession(audio_io_handle_t output)
+{
+    LOGV("closeSession() tid %d", gettid());
+    if (mpAudioPolicy != NULL) {
+        Mutex::Autolock _l(mLock);
+        mpAudioPolicy->release_session(mpAudioPolicy,output);
+    }
+
+    sp<IAudioFlinger> af = AudioSystem::get_audio_flinger();
+    if (af == 0) return PERMISSION_DENIED;
+
+    return af->closeSession(output);
 }
 
 audio_io_handle_t AudioPolicyService::getInput(int inputSource,
@@ -1363,6 +1434,33 @@ static audio_io_handle_t aps_open_output(void *service,
                           pLatencyMs, flags);
 }
 
+static audio_io_handle_t aps_open_session(void *service,
+                                uint32_t *pDevices,
+                                uint32_t *pFormat,
+                                audio_policy_output_flags_t flags,
+                                int32_t stream,
+                                int32_t sessionId)
+{
+    sp<IAudioFlinger> af = AudioSystem::get_audio_flinger();
+    if (af == 0) {
+        LOGW("openSession() could not get AudioFlinger");
+        return 0;
+    }
+
+    return af->openSession(pDevices, (uint32_t *)pFormat, flags, stream, sessionId);
+}
+
+static int aps_close_session(void *service, audio_io_handle_t output)
+{
+    LOGV("closeSession() tid %d", gettid());
+
+    sp<IAudioFlinger> af = AudioSystem::get_audio_flinger();
+    if (af == 0) return PERMISSION_DENIED;
+
+    return af->closeSession(output);
+}
+
+
 static audio_io_handle_t aps_open_dup_output(void *service,
                                                  audio_io_handle_t output1,
                                                  audio_io_handle_t output2)
@@ -1505,6 +1603,8 @@ static int aps_set_voice_volume(void *service, float volume, int delay_ms)
 namespace {
     struct audio_policy_service_ops aps_ops = {
         open_output           : aps_open_output,
+        open_session          : aps_open_session,
+        close_session         : aps_close_session,
         open_duplicate_output : aps_open_dup_output,
         close_output          : aps_close_output,
         suspend_output        : aps_suspend_output,

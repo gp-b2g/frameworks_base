@@ -56,6 +56,7 @@
 #include <media/stagefright/MediaErrors.h>
 
 #include <system/audio.h>
+#include <system/audio_policy.h>
 
 #include <private/android_filesystem_config.h>
 
@@ -1266,6 +1267,7 @@ MediaPlayerService::AudioOutput::AudioOutput(int sessionId)
       mSessionId(sessionId) {
     LOGV("AudioOutput(%d)", sessionId);
     mTrack = 0;
+    mSession = 0;
     mStreamType = AUDIO_STREAM_MUSIC;
     mLeftVolume = 1.0;
     mRightVolume = 1.0;
@@ -1279,6 +1281,7 @@ MediaPlayerService::AudioOutput::AudioOutput(int sessionId)
 MediaPlayerService::AudioOutput::~AudioOutput()
 {
     close();
+    closeSession();
 }
 
 void MediaPlayerService::AudioOutput::setMinBufferCount()
@@ -1341,6 +1344,37 @@ status_t MediaPlayerService::AudioOutput::getPosition(uint32_t *position)
     if (mTrack == 0) return NO_INIT;
     return mTrack->getPosition(position);
 }
+
+status_t MediaPlayerService::AudioOutput::openSession(
+        int format, int lpaSessionId, uint32_t sampleRate, int channels)
+{
+    uint32_t flags = 0;
+    mCallback = NULL;
+    mCallbackCookie = NULL;
+    if (mSession) closeSession();
+    mSession = NULL;
+
+    flags |= AUDIO_POLICY_OUTPUT_FLAG_DIRECT;
+
+    AudioTrack *t = new AudioTrack(
+                mStreamType,
+                sampleRate,
+                format,
+                channels,
+                flags,
+                mSessionId,
+                lpaSessionId);
+    LOGV("openSession: AudioTrack created successfully track(%p)",t);
+    if ((t == 0) || (t->initCheck() != NO_ERROR)) {
+        LOGE("Unable to create audio track");
+        delete t;
+        return NO_INIT;
+    }
+    LOGV("openSession: Out");
+    mSession = t;
+    return NO_ERROR;
+}
+
 
 status_t MediaPlayerService::AudioOutput::open(
         uint32_t sampleRate, int channelCount, int format, int bufferCount,
@@ -1459,8 +1493,35 @@ void MediaPlayerService::AudioOutput::pause()
 void MediaPlayerService::AudioOutput::close()
 {
     LOGV("close");
-    delete mTrack;
-    mTrack = 0;
+    if(mTrack != NULL) {
+        delete mTrack;
+        mTrack = 0;
+    }
+}
+
+void MediaPlayerService::AudioOutput::closeSession()
+{
+    LOGV("closeSession");
+    if(mSession != NULL) {
+        delete mSession;
+        mSession = 0;
+    }
+}
+
+void MediaPlayerService::AudioOutput::pauseSession()
+{
+    LOGV("pauseSession");
+    if(mSession != NULL) {
+        mSession->pause();
+    }
+}
+
+void MediaPlayerService::AudioOutput::resumeSession()
+{
+    LOGV("resumeSession");
+    if(mSession != NULL) {
+        mSession->start();
+    }
 }
 
 void MediaPlayerService::AudioOutput::setVolume(float left, float right)

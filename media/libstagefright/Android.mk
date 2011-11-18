@@ -42,6 +42,7 @@ LOCAL_SRC_FILES:=                         \
         FLACExtractor.cpp                 \
         HTTPBase.cpp                      \
         JPEGSource.cpp                    \
+        LPAPlayer.cpp                     \
         MP3Extractor.cpp                  \
         MPEG2TSWriter.cpp                 \
         MPEG4Extractor.cpp                \
@@ -74,18 +75,19 @@ LOCAL_SRC_FILES:=                         \
         ExtendedExtractor.cpp             \
         ExtendedWriter.cpp                \
 
+LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
 LOCAL_C_INCLUDES:= \
-	$(JNI_H_INCLUDE) \
+        $(JNI_H_INCLUDE) \
         $(TOP)/frameworks/base/include/media/stagefright/openmax \
         $(TOP)/external/flac/include \
         $(TOP)/external/tremolo \
         $(TOP)/frameworks/base/media/libstagefright/rtsp \
         $(TOP)/external/openssl/include \
-	$(TOP)/hardware/msm7k/libgralloc-qsd8k \
+        $(TOP)/hardware/msm7k/libgralloc-qsd8k \
         $(TOP)/vendor/qcom/opensource/omx/mm-core/omxcore/inc \
-        $(TOP)/system/core/include
-
-
+        $(TOP)/system/core/include \
+        $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 LOCAL_SHARED_LIBRARIES := \
         libbinder         \
