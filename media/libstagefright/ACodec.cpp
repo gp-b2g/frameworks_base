@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*--------------------------------------------------------------------------
+Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+--------------------------------------------------------------------------*/
 
 //#define LOG_NDEBUG 0
 #define LOG_TAG "ACodec"
@@ -36,6 +39,8 @@
 
 #include <OMX_Component.h>
 #include <OMX_QCOMExtns.h>
+#include <gralloc_priv.h>
+
 
 namespace android {
 
@@ -438,11 +443,14 @@ status_t ACodec::allocateOutputBuffersFromNativeWindow() {
         return err;
     }
 
+    int format = (def.format.video.eColorFormat == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)?
+                 HAL_PIXEL_FORMAT_YCbCr_420_SP_TILED : def.format.video.eColorFormat;
+
     err = native_window_set_buffers_geometry(
             mNativeWindow.get(),
             def.format.video.nFrameWidth,
             def.format.video.nFrameHeight,
-            def.format.video.eColorFormat);
+            format);
 
     if (err != 0) {
         LOGE("native_window_set_buffers_geometry failed: %s (%d)",
@@ -990,7 +998,8 @@ status_t ACodec::setSupportedOutputFormat() {
            || format.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar
            || format.eColorFormat == OMX_COLOR_FormatCbYCrY
            || format.eColorFormat == OMX_TI_COLOR_FormatYUV420PackedSemiPlanar
-           || format.eColorFormat == OMX_QCOM_COLOR_FormatYVU420SemiPlanar);
+           || format.eColorFormat == (OMX_COLOR_FORMATTYPE)OMX_QCOM_COLOR_FormatYVU420SemiPlanar
+           || format.eColorFormat ==  (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka);
 
     return mOMX->setParameter(
             mNode, OMX_IndexParamVideoPortFormat,
