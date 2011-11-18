@@ -120,6 +120,7 @@ private:
     // will be sent to the client side using which the
     // frame buffers will be queued and dequeued
     sp<SurfaceMediaSource> mSurfaceMediaSource;
+    bool mDisableAudio;
 
     status_t setupMPEG4Recording(
         int outputFd,
