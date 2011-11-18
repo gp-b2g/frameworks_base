@@ -165,13 +165,13 @@ final class GsmSMSDispatcher extends SMSDispatcher {
         // Special case the message waiting indicator messages
         boolean handled = false;
         if (sms.isMWISetMessage()) {
-            updateMessageWaitingIndicator(true);
+            updateMessageWaitingIndicator(sms.getNumOfVoicemails());
             handled = sms.isMwiDontStore();
             if (false) {
                 Log.d(TAG, "Received voice mail indicator set SMS shouldStore=" + !handled);
             }
         } else if (sms.isMWIClearMessage()) {
-            updateMessageWaitingIndicator(false);
+            updateMessageWaitingIndicator(0);
             handled = sms.isMwiDontStore();
             if (false) {
                 Log.d(TAG, "Received voice mail indicator clear SMS shouldStore=" + !handled);
@@ -301,13 +301,6 @@ final class GsmSMSDispatcher extends SMSDispatcher {
                 mIccRecords = mUiccApplication.getIccRecords();
             }
         }
-    }
-
-    /*package*/ void
-    updateMessageWaitingIndicator(boolean mwi) {
-        // this also calls notifyMessageWaitingIndicator()
-        if (mIccRecords != null)
-            mIccRecords.setVoiceMessageWaiting(1, mwi ? -1 : 0);
     }
 
     /**
@@ -535,6 +528,27 @@ final class GsmSMSDispatcher extends SMSDispatcher {
         } else {
             Log.e(TAG, "Error on GET_SMS with exp "
                     + ar.exception);
+        }
+    }
+
+    /* package */void updateMessageWaitingIndicator(int mwi) {
+        Message onComplete;
+        // range check
+        if (mwi < 0) {
+            mwi = -1;
+        } else if (mwi > 0xff) {
+            // TS 23.040 9.2.3.24.2
+            // "The value 255 shall be taken to mean 255 or greater"
+            mwi = 0xff;
+        }
+        // update voice mail count in GsmPhone
+        ((PhoneBase)mPhone).setVoiceMessageCount(mwi);
+        // store voice mail count in SIM/preferences
+        if (mIccRecords != null) {
+            onComplete = obtainMessage(EVENT_UPDATE_ICC_MWI);
+            mIccRecords.setVoiceMessageWaiting(1, mwi, onComplete);
+        } else {
+            Log.d(TAG, "SIM Records not found, MWI not updated");
         }
     }
 }

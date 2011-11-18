@@ -27,6 +27,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.DialogInterface;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.SQLException;
@@ -37,6 +38,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.SystemProperties;
 import android.os.Registrant;
+import android.preference.PreferenceManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.provider.Settings;
@@ -134,6 +136,8 @@ public abstract class SMSDispatcher extends Handler {
     static final protected int EVENT_SMS_ON_ICC = 13;
 
     static final protected int EVENT_GET_ICC_SMS_DONE = 14;
+
+    static final protected int EVENT_UPDATE_ICC_MWI = 20;
 
     /** Must be static as they are referenced by 3 derived instances, Ims/Cdma/GsmSMSDispatcher */
     /** true if IMS is registered, false otherwise.*/
@@ -392,6 +396,16 @@ public abstract class SMSDispatcher extends Handler {
 
         case EVENT_GET_ICC_SMS_DONE:
             handleGetIccSmsDone((AsyncResult) msg.obj);
+            break;
+
+        case EVENT_UPDATE_ICC_MWI:
+            ar = (AsyncResult) msg.obj;
+            if ( ar == null)
+                break;
+            if (ar.exception != null) {
+                Log.v(TAG, " MWI update on card failed " + ar.exception );
+                storeVoiceMailCount();
+            }
             break;
         }
     }
@@ -1232,6 +1246,23 @@ public abstract class SMSDispatcher extends Handler {
                 sendSms(tracker);
             }
         }
+    }
+
+    protected void storeVoiceMailCount() {
+        // Store the voice mail count in persistent memory.
+        String imsi = mPhone.getSubscriberId();
+        int mwi = mPhone.getVoiceMessageCount();
+
+        Log.d(TAG, " Storing Voice Mail Count = " + mwi
+                    + " for imsi = " + imsi
+                    + " in preferences.");
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putInt(((PhoneBase)mPhone).VM_COUNT, mwi);
+        editor.putString(((PhoneBase)mPhone).VM_ID, imsi);
+        editor.commit();
+
     }
 
     static public boolean isIms() {

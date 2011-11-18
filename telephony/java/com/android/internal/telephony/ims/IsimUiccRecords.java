@@ -261,7 +261,12 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
 	}
 
 	@Override
-	public void setVoiceMessageWaiting(int line, int countWaiting) {
+	public void setVoiceMessageWaiting(int line, int countWaiting, Message onComplete) {
 		// Not applicable to Isim
 	}
+
+	public int getVoiceMessageCount() {
+        return 0; // Not applicable to Isim
+    }
+
 }

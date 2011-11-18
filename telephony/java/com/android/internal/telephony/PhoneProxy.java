@@ -938,11 +938,6 @@ public class PhoneProxy extends Handler implements Phone {
         return mActivePhone.getLteOnCdmaMode();
     }
 
-    @Override
-    public void setVoiceMessageWaiting(int line, int countWaiting) {
-        mActivePhone.setVoiceMessageWaiting(line, countWaiting);
-    }
-
     public void dispose() {
         mCommandsInterface.unregisterForOn(this);
         mCommandsInterface.unregisterForVoiceRadioTechChanged(this);

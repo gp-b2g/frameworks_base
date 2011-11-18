@@ -1781,15 +1781,6 @@ public interface Phone {
     void requestIsimAuthentication(String nonce, Message response);
 
     /**
-     * Sets the SIM voice message waiting indicator records.
-     * @param line GSM Subscriber Profile Number, one-based. Only '1' is supported
-     * @param countWaiting The number of messages waiting, if known. Use
-     *                     -1 to indicate that an unknown number of
-     *                      messages are waiting
-     */
-    void setVoiceMessageWaiting(int line, int countWaiting);
-
-    /**
      * Unregister from all events it registered for and dispose objects
      * created by this object.
      */
