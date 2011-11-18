@@ -1257,6 +1257,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     
             loadBooleanSetting(stmt, Settings.System.DIM_SCREEN,
                     R.bool.def_dim_screen);
+            loadSetting(stmt, Settings.System.AUTO_ANSWER_TIMEOUT, -1);
             loadSetting(stmt, Settings.System.STAY_ON_WHILE_PLUGGED_IN,
                     "1".equals(SystemProperties.get("ro.kernel.qemu")) ? 1 : 0);
             loadIntegerSetting(stmt, Settings.System.SCREEN_OFF_TIMEOUT,
