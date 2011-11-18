@@ -20,14 +20,16 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.EventLogTags;
-import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.UiccCard;
+import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.CommandsInterface.RadioState;
+import com.android.internal.telephony.UiccManager.AppFamily;
 
 import android.app.AlarmManager;
 import android.content.ContentResolver;
@@ -119,12 +121,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     long mSavedTime;
     long mSavedAtTime;
 
-    /**
-     * We can't register for SIM_RECORDS_LOADED immediately because the
-     * SIMRecords object may not be instantiated yet.
-     */
-    private boolean mNeedToRegForRuimLoaded = false;
-
     /** Wake lock used while setting time of day. */
     private PowerManager.WakeLock mWakeLock;
     private static final String WAKELOCK_TAG = "ServiceStateTracker";
@@ -166,11 +162,10 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     };
 
     public CdmaServiceStateTracker(CDMAPhone phone) {
-        super();
+        super(phone.mCM);
 
         this.phone = phone;
         cr = phone.getContext().getContentResolver();
-        cm = phone.mCM;
         ss = new ServiceState();
         newSS = new ServiceState();
         cellLoc = new CdmaCellLocation();
@@ -208,20 +203,18 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             Settings.System.getUriFor(Settings.System.AUTO_TIME_ZONE), true,
             mAutoTimeZoneObserver);
         setSignalStrengthDefaultValues();
-
-        mNeedToRegForRuimLoaded = true;
     }
 
     public void dispose() {
         // Unregister for all events.
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForVoiceNetworkStateChanged(this);
-        phone.mIccCard.unregisterForReady(this);
 
         cm.unregisterForDataNetworkStateChanged(this);
         cm.unregisterForCdmaOtaProvision(this);
         phone.unregisterForEriFileLoaded(this);
-        phone.mIccRecords.unregisterForRecordsLoaded(this);
+        if (mUiccApplcation != null) {mUiccApplcation.unregisterForReady(this);}
+        if (mIccRecords != null) {mIccRecords.unregisterForRecordsLoaded(this);}
         cm.unSetOnSignalStrengthUpdate(this);
         cm.unSetOnNITZTime(this);
         cr.unregisterContentObserver(mAutoTimeObserver);
@@ -290,13 +283,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             break;
 
         case EVENT_RUIM_READY:
-            // The RUIM is now ready i.e if it was locked it has been
-            // unlocked. At this stage, the radio is already powered on.
-            if (mNeedToRegForRuimLoaded) {
-                phone.mIccRecords.registerForRecordsLoaded(this,
-                        EVENT_RUIM_RECORDS_LOADED, null);
-                mNeedToRegForRuimLoaded = false;
-            }
             if (DBG) log("Receive EVENT_RUIM_READY and Send Request getCDMASubscription.");
             getSubscriptionInfoAndStartPollingThreads();
             phone.prepareEri();
@@ -409,8 +395,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     mIsMinInfoReady = true;
 
                     updateOtaspState();
-                    phone.getIccCard().broadcastIccStateChangedIntent(IccCard.INTENT_VALUE_ICC_IMSI,
-                            null);
+                    if (mIccRecords != null) {
+                        mIccRecords.setImsi(getImsi());
+                    }
                 } else {
                     if (DBG) {
                         log("GET_CDMA_SUBSCRIPTION: error parsing cdmaSubscription params num="
@@ -501,8 +488,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         if (!isSubscriptionFromRuim) {
             // NV is ready when subscription source is NV
             sendMessage(obtainMessage(EVENT_NV_READY));
-        } else {
-            phone.mIccCard.registerForReady(this, EVENT_RUIM_READY, null);
         }
     }
 
@@ -1624,6 +1609,37 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     oldOtaspMode + " new otaspMode=" + mCurrentOtaspMode);
             }
             phone.notifyOtaspChanged(mCurrentOtaspMode);
+        }
+    }
+
+    protected void updateIccAvailability() {
+        if (mUiccManager == null ) {
+            return;
+        }
+
+        UiccCardApplication newUiccApplication = mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP2);
+
+        if (mUiccApplcation != newUiccApplication) {
+            if (mUiccApplcation != null) {
+                log("Removing stale icc objects.");
+                mUiccApplcation.unregisterForReady(this);
+                if (mIccRecords != null) {
+                    mIccRecords.unregisterForRecordsLoaded(this);
+                }
+                mIccRecords = null;
+                mUiccApplcation = null;
+            }
+            if (newUiccApplication != null) {
+                log("New card found");
+                mUiccApplcation = newUiccApplication;
+                mIccRecords = mUiccApplcation.getIccRecords();
+                if (isSubscriptionFromRuim) {
+                    mUiccApplcation.registerForReady(this, EVENT_RUIM_READY, null);
+                    if (mIccRecords != null) {
+                        mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
+                    }
+                }
+            }
         }
     }
 

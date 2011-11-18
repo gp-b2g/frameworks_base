@@ -130,6 +130,7 @@ public abstract class DataConnectionTracker extends Handler {
     public static final int EVENT_CLEAN_UP_ALL_CONNECTIONS = BASE + 30;
     public static final int CMD_SET_DEPENDENCY_MET = BASE + 31;
     public static final int CMD_SET_POLICY_DATA_ENABLE = BASE + 32;
+    protected static final int EVENT_ICC_CHANGED = BASE + 33;
 
     /***** Constants *****/
 
@@ -233,6 +234,8 @@ public abstract class DataConnectionTracker extends Handler {
 
     // member variables
     protected PhoneBase mPhone;
+    protected UiccManager mUiccManager;
+    protected IccRecords mIccRecords;
     protected Activity mActivity = Activity.NONE;
     protected State mState = State.IDLE;
     protected Handler mDataConnectionTracker = null;
@@ -400,6 +403,8 @@ public abstract class DataConnectionTracker extends Handler {
     protected DataConnectionTracker(PhoneBase phone) {
         super();
         mPhone = phone;
+        mUiccManager = UiccManager.getInstance();
+        mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(getActionIntentReconnectAlarm());
@@ -441,6 +446,7 @@ public abstract class DataConnectionTracker extends Handler {
         mIsDisposed = true;
         mPhone.getContext().unregisterReceiver(this.mIntentReceiver);
         mDataRoamingSettingObserver.unregister(mPhone.getContext());
+        mUiccManager.unregisterForIccChanged(this);
     }
 
     protected void broadcastMessenger() {
@@ -552,6 +558,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected abstract void onCleanUpConnection(boolean tearDown, int apnId, String reason);
     protected abstract void onCleanUpAllConnections(String cause);
     protected abstract boolean isDataPossible(String apnType);
+    protected abstract void updateIccAvailability();
 
     @Override
     public void handleMessage(Message msg) {
@@ -654,6 +661,10 @@ public abstract class DataConnectionTracker extends Handler {
                 onSetPolicyDataEnabled(enabled);
                 break;
             }
+            case EVENT_ICC_CHANGED:
+                updateIccAvailability();
+                break;
+
             default:
                 Log.e("DATA", "Unidentified event msg=" + msg);
                 break;

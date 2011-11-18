@@ -35,6 +35,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.EventLog;
 
+import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.gsm.GsmDataConnectionTracker;
 
 public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
@@ -63,12 +64,12 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             handlePollStateResult(msg.what, ar);
             break;
         case EVENT_RUIM_RECORDS_LOADED:
-            CdmaLteUiccRecords sim = (CdmaLteUiccRecords)phone.mIccRecords;
-            if ((sim != null) && sim.isProvisioned()) {
-                mMdn = sim.getMdn();
-                mMin = sim.getMin();
-                parseSidNid(sim.getSid(), sim.getNid());
-                mPrlVersion = sim.getPrlVersion();;
+            RuimRecords ruim = (RuimRecords)mIccRecords;
+            if ((ruim != null) && ruim.isProvisioned()) {
+                mMdn = ruim.getMdn();
+                mMin = ruim.getMin();
+                parseSidNid(ruim.getSid(), ruim.getNid());
+                mPrlVersion = ruim.getPrlVersion();;
                 mIsMinInfoReady = true;
                 updateOtaspState();
             }
@@ -347,16 +348,18 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 ss.setOperatorAlphaLong(eriText);
             }
 
-            if (phone.mIccCard.getState() == IccCard.State.READY) {
+            if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
+                    mIccRecords != null) {
                 // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
                 // one configfured in SIM, use operator name  from CSIM record.
                 boolean showSpn =
-                    ((CdmaLteUiccRecords)phone.mIccRecords).getCsimSpnDisplayCondition();
+                    ((RuimRecords)mIccRecords).getCsimSpnDisplayCondition();
                 int iconIndex = ss.getCdmaEriIconIndex();
 
                 if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF) &&
-                    isInHomeSidNid(ss.getSystemId(), ss.getNetworkId())) {
-                    ss.setOperatorAlphaLong(phone.mIccRecords.getServiceProviderName());
+                    isInHomeSidNid(ss.getSystemId(), ss.getNetworkId()) &&
+                    mIccRecords != null) {
+                    ss.setOperatorAlphaLong(mIccRecords.getServiceProviderName());
                 }
             }
 

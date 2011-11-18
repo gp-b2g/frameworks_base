@@ -28,6 +28,10 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.UiccCard;
+import com.android.internal.telephony.UiccCardApplication;
+import com.android.internal.telephony.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.UiccManager.AppFamily;
 
 import android.app.AlarmManager;
 import android.app.Notification;
@@ -116,12 +120,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     long mSavedTime;
     long mSavedAtTime;
 
-    /**
-     * We can't register for SIM_RECORDS_LOADED immediately because the
-     * SIMRecords object may not be instantiated yet.
-     */
-    private boolean mNeedToRegForSimLoaded;
-
     /** Started the recheck process after finding gprs should registered but not. */
     private boolean mStartedGprsRegCheck = false;
 
@@ -184,10 +182,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     };
 
     public GsmServiceStateTracker(GSMPhone phone) {
-        super();
+        super(phone.mCM);
 
         this.phone = phone;
-        cm = phone.mCM;
         ss = new ServiceState();
         newSS = new ServiceState();
         cellLoc = new GsmCellLocation();
@@ -206,7 +203,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         cm.setOnNITZTime(this, EVENT_NITZ_TIME, null);
         cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         cm.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
-        phone.mIccCard.registerForReady(this, EVENT_SIM_READY, null);
 
         // system setting property AIRPLANE_MODE_ON is set in Settings.
         int airplaneMode = Settings.System.getInt(
@@ -223,7 +219,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 mAutoTimeZoneObserver);
 
         setSignalStrengthDefaultValues();
-        mNeedToRegForSimLoaded = true;
 
         // Monitor locale change
         IntentFilter filter = new IntentFilter();
@@ -239,9 +234,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         cm.unregisterForAvailable(this);
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForVoiceNetworkStateChanged(this);
-        phone.mIccCard.unregisterForReady(this);
         cm.unregisterForDataNetworkStateChanged(this);
-        phone.mIccRecords.unregisterForRecordsLoaded(this);
+        if (mUiccApplcation != null) {mUiccApplcation.unregisterForReady(this);}
+        if (mIccRecords != null) {mIccRecords.unregisterForRecordsLoaded(this);}
         cm.unSetOnSignalStrengthUpdate(this);
         cm.unSetOnRestrictedStateChanged(this);
         cm.unSetOnNITZTime(this);
@@ -276,15 +271,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 break;
 
             case EVENT_SIM_READY:
-                // The SIM is now ready i.e if it was locked
-                // it has been unlocked. At this stage, the radio is already
-                // powered on.
-                if (mNeedToRegForSimLoaded) {
-                    phone.mIccRecords.registerForRecordsLoaded(this,
-                            EVENT_SIM_RECORDS_LOADED, null);
-                    mNeedToRegForSimLoaded = false;
-                }
-
                 boolean skipRestoringSelection = phone.getContext().getResources().getBoolean(
                         com.android.internal.R.bool.skip_restoring_network_selection);
 
@@ -486,8 +472,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     protected void updateSpnDisplay() {
-        int rule = phone.mIccRecords.getDisplayRule(ss.getOperatorNumeric());
-        String spn = phone.mIccRecords.getServiceProviderName();
+        if (mIccRecords == null) {
+            return;
+        }
+        int rule = mIccRecords.getDisplayRule(ss.getOperatorNumeric());
+        String spn = mIccRecords.getServiceProviderName();
         String plmn = ss.getOperatorAlphaLong();
 
         // For emergency calls only, pass the EmergencyCallsOnly string via EXTRA_PLMN
@@ -1033,7 +1022,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     ((state & RILConstants.RIL_RESTRICTED_STATE_CS_EMERGENCY) != 0) ||
                     ((state & RILConstants.RIL_RESTRICTED_STATE_CS_ALL) != 0) );
             //ignore the normal call and data restricted state before SIM READY
-            if (phone.getIccCard().getState() == IccCard.State.READY) {
+            if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY) {
                 newRs.setCsNormalRestricted(
                         ((state & RILConstants.RIL_RESTRICTED_STATE_CS_NORMAL) != 0) ||
                         ((state & RILConstants.RIL_RESTRICTED_STATE_CS_ALL) != 0) );
@@ -1552,6 +1541,34 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
     }
 
+    protected void updateIccAvailability() {
+        if (mUiccManager == null ) {
+            return;
+        }
+
+        UiccCardApplication newUiccApplication = mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP);
+
+        if (mUiccApplcation != newUiccApplication) {
+            if (mUiccApplcation != null) {
+                log("Removing stale icc objects.");
+                mUiccApplcation.unregisterForReady(this);
+                if (mIccRecords != null) {
+                    mIccRecords.unregisterForRecordsLoaded(this);
+                }
+                mIccRecords = null;
+                mUiccApplcation = null;
+            }
+            if (newUiccApplication != null) {
+                log("New card found");
+                mUiccApplcation = newUiccApplication;
+                mIccRecords = mUiccApplcation.getIccRecords();
+                mUiccApplcation.registerForReady(this, EVENT_SIM_READY, null);
+                if (mIccRecords != null) {
+                    mIccRecords.registerForRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
+                }
+            }
+        }
+    }
     @Override
     protected void log(String s) {
         Log.d(LOG_TAG, "[GsmSST] " + s);

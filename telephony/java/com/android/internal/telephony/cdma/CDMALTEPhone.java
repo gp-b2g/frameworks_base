@@ -33,9 +33,14 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.SMSDispatcher;
+import com.android.internal.telephony.UiccCardApplication;
+import com.android.internal.telephony.UiccManager;
+import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
-import com.android.internal.telephony.gsm.SimCard;
+import com.android.internal.telephony.gsm.SIMRecords;
+import com.android.internal.telephony.gsm.SmsMessage;
 import com.android.internal.telephony.ims.IsimRecords;
+import com.android.internal.telephony.ims.IsimUiccRecords;
 
 public class CDMALTEPhone extends CDMAPhone {
     static final String LOG_TAG = "CDMA";
@@ -44,6 +49,12 @@ public class CDMALTEPhone extends CDMAPhone {
 
     /** Secondary SMSDispatcher for 3GPP format messages. */
     SMSDispatcher m3gppSMS;
+
+    /** CdmaLtePhone in addition to RuimRecords available from
+     * PhoneBase needs access to SIMRecords and IsimUiccRecords
+     */
+    private SIMRecords mSimRecords;
+    private IsimUiccRecords mIsimUiccRecords;
 
     /**
      * Small container class used to hold information relevant to
@@ -72,6 +83,10 @@ public class CDMALTEPhone extends CDMAPhone {
             case EVENT_SET_NETWORK_MANUAL_COMPLETE:
                 handleSetSelectNetwork((AsyncResult) msg.obj);
                 break;
+            case EVENT_NEW_ICC_SMS:
+                ar = (AsyncResult)msg.obj;
+                m3gppSMS.dispatchMessage((SmsMessage)ar.result);
+                break;
             default:
                 super.handleMessage(msg);
         }
@@ -79,10 +94,9 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     protected void initSstIcc() {
-        mIccCard = new SimCard(this, LOG_TAG, DBG);
+        mUiccManager = UiccManager.getInstance(mContext, mCM);
+        mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mSST = new CdmaLteServiceStateTracker(this);
-        mIccRecords = new CdmaLteUiccRecords(this);
-        mIccFileHandler = new CdmaLteUiccFileHandler(this);
     }
 
     @Override
@@ -192,11 +206,11 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     public boolean updateCurrentCarrierInProvider() {
-        if (mIccRecords != null) {
+        if (mSimRecords != null) {
             try {
                 Uri uri = Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "current");
                 ContentValues map = new ContentValues();
-                String operatorNumeric = mIccRecords.getOperatorNumeric();
+                String operatorNumeric = mSimRecords.getOperatorNumeric();
                 map.put(Telephony.Carriers.NUMERIC, operatorNumeric);
                 log("updateCurrentCarrierInProvider from UICC: numeric=" + operatorNumeric);
                 mContext.getContentResolver().insert(uri, map);
@@ -210,19 +224,10 @@ public class CDMALTEPhone extends CDMAPhone {
         return false;
     }
 
-    @Override
-    public void setSystemLocale(String language, String country, boolean fromMcc) {
-        // Avoid system locale is set from MCC table if CDMALTEPhone is used.
-        // The locale will be picked up based on EFpl/EFli once CSIM records are loaded.
-        if (fromMcc) return;
-
-        super.setSystemLocale(language, country, false);
-    }
-
     // return IMSI from USIM as subscriber ID.
     @Override
     public String getSubscriberId() {
-        return mIccRecords.getIMSI();
+        return (mSimRecords != null) ? mSimRecords.getIMSI() : "";
     }
 
     @Override
@@ -237,12 +242,12 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     public IsimRecords getIsimRecords() {
-        return mIccRecords.getIsimRecords();
+        return mIsimUiccRecords;
     }
 
     @Override
     public String getMsisdn() {
-        return mIccRecords.getMsisdnNumber();
+        return (mSimRecords != null) ? mSimRecords.getMsisdnNumber() : null;
     }
 
     @Override
@@ -253,6 +258,43 @@ public class CDMALTEPhone extends CDMAPhone {
     @Override
     public void requestIsimAuthentication(String nonce, Message result) {
         mCM.requestIsimAuthentication(nonce, result);
+    }
+
+    @Override
+    protected void updateIccAvailability() {
+        if (mUiccManager == null ) {
+            return;
+        }
+
+        // Update IsimRecords
+        UiccCardApplication newUiccApplication = mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_IMS);
+        IsimUiccRecords newIsimUiccRecords = null;
+
+        if (newUiccApplication != null) {
+            newIsimUiccRecords = (IsimUiccRecords)newUiccApplication.getIccRecords();
+        }
+        mIsimUiccRecords = newIsimUiccRecords;
+
+        // Update UsimRecords
+        newUiccApplication = mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP);
+        SIMRecords newSimRecords = null;
+        if (newUiccApplication != null) {
+            newSimRecords = (SIMRecords)newUiccApplication.getIccRecords();
+        }
+        if (mSimRecords != newSimRecords) {
+            if (mSimRecords != null) {
+                log("Removing stale SIMRecords object.");
+                mSimRecords.unregisterForNewSms(this);
+                mSimRecords = null;
+            }
+            if (newSimRecords != null) {
+                log("New SIMRecords found");
+                mSimRecords = newSimRecords;
+                mSimRecords.registerForNewSms(this, EVENT_NEW_ICC_SMS, null);
+            }
+        }
+
+        super.updateIccAvailability();
     }
 
     @Override

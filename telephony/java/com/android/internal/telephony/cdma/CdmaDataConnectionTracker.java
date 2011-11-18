@@ -36,12 +36,15 @@ import com.android.internal.telephony.ApnSetting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.DataCallState;
 import com.android.internal.telephony.DataConnection.FailCause;
+import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.DataConnection;
 import com.android.internal.telephony.DataConnectionAc;
 import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.UiccCard;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.telephony.RILConstants;
 
@@ -100,7 +103,6 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
 
         p.mCM.registerForAvailable (this, EVENT_RADIO_AVAILABLE, null);
         p.mCM.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
-        p.mIccRecords.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
         p.mCM.registerForDataCallListChanged (this, EVENT_DATA_STATE_CHANGED, null);
         p.mCT.registerForVoiceCallEnded (this, EVENT_VOICE_CALL_ENDED, null);
         p.mCT.registerForVoiceCallStarted (this, EVENT_VOICE_CALL_STARTED, null);
@@ -127,8 +129,8 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
         // Unregister from all events
         mPhone.mCM.unregisterForAvailable(this);
         mPhone.mCM.unregisterForOffOrNotAvailable(this);
-        mCdmaPhone.mIccRecords.unregisterForRecordsLoaded(this);
         mPhone.mCM.unregisterForDataCallListChanged(this);
+        if (mIccRecords != null) { mIccRecords.unregisterForRecordsLoaded(this);}
         mCdmaPhone.mCT.unregisterForVoiceCallEnded(this);
         mCdmaPhone.mCT.unregisterForVoiceCallStarted(this);
         mCdmaPhone.mSST.unregisterForDataConnectionAttached(this);
@@ -192,7 +194,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
                     (psState == ServiceState.STATE_IN_SERVICE ||
                             mAutoAttachOnCreation) &&
                     (subscriptionFromNv ||
-                            mCdmaPhone.mIccRecords.getRecordsLoaded()) &&
+                            mIccRecords != null && mIccRecords.getRecordsLoaded()) &&
                     (mCdmaPhone.mSST.isConcurrentVoiceAndDataAllowed() ||
                             mPhone.getState() == Phone.State.IDLE) &&
                     !roaming &&
@@ -206,7 +208,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
                 reason += " - psState= " + psState;
             }
             if (!subscriptionFromNv &&
-                    !mCdmaPhone.mIccRecords.getRecordsLoaded()) {
+                    !(mIccRecords != null && mIccRecords.getRecordsLoaded())) {
                 reason += " - RUIM not loaded";
             }
             if (!(mCdmaPhone.mSST.isConcurrentVoiceAndDataAllowed() ||
@@ -951,6 +953,27 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
                 // handle the message in the super class DataConnectionTracker
                 super.handleMessage(msg);
                 break;
+        }
+    }
+
+    protected void updateIccAvailability() {
+        if (mUiccManager == null ) {
+            return;
+        }
+
+        IccRecords newIccRecords = mUiccManager.getIccRecords(AppFamily.APP_FAM_3GPP2);
+
+        if (mIccRecords != newIccRecords) {
+            if (mIccRecords != null) {
+                log("Removing stale icc objects.");
+                mIccRecords.unregisterForRecordsLoaded(this);
+                mIccRecords = null;
+            }
+            if (newIccRecords != null) {
+                log("New records found");
+                mIccRecords = newIccRecords;
+                mIccRecords.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
+            }
         }
     }
 

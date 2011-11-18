@@ -49,6 +49,7 @@ public class PhoneProxy extends Handler implements Phone {
     private IccSmsInterfaceManagerProxy mIccSmsInterfaceManagerProxy;
     private IccPhoneBookInterfaceManagerProxy mIccPhoneBookInterfaceManagerProxy;
     private PhoneSubInfoProxy mPhoneSubInfoProxy;
+    private IccCardProxy mIccCardProxy;
 
     private boolean mResetModemOnRadioTechnologyChange = false;
 
@@ -73,6 +74,13 @@ public class PhoneProxy extends Handler implements Phone {
         mCommandsInterface.registerForOn(this, EVENT_RADIO_ON, null);
         mCommandsInterface.registerForVoiceRadioTechChanged(
                 this, EVENT_VOICE_RADIO_TECHNOLOGY_CHANGED, null);
+        mIccCardProxy = new IccCardProxy(phone.getContext(), mCommandsInterface);
+        if (phone.getPhoneType() == Phone.PHONE_TYPE_GSM) {
+            // For the purpose of IccCardProxy we only care about the technology family
+            mIccCardProxy.setVoiceRadioTech(RadioTechnology.RADIO_TECH_GSM);
+        } else if (phone.getPhoneType() == Phone.PHONE_TYPE_CDMA) {
+            mIccCardProxy.setVoiceRadioTech(RadioTechnology.RADIO_TECH_1xRTT);
+        }
     }
 
     @Override
@@ -169,6 +177,7 @@ public class PhoneProxy extends Handler implements Phone {
         mPhoneSubInfoProxy.setmPhoneSubInfo(this.mActivePhone.getPhoneSubInfo());
 
         mCommandsInterface = ((PhoneBase)mActivePhone).mCM;
+        mIccCardProxy.setVoiceRadioTech(newVoiceRadioTech);
 
         // Send an Intent to the PhoneApp that we had a radio technology change
         Intent intent = new Intent(TelephonyIntents.ACTION_RADIO_TECHNOLOGY_CHANGED);
@@ -430,11 +439,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     public boolean getIccRecordsLoaded() {
-        return mActivePhone.getIccRecordsLoaded();
+        return mIccCardProxy.getIccRecordsLoaded();
     }
 
     public IccCard getIccCard() {
-        return mActivePhone.getIccCard();
+        return mIccCardProxy;
     }
 
     public void acceptCall() throws CallStateException {
