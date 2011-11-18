@@ -31,17 +31,30 @@ sources := \
     ProcessState.cpp \
     Static.cpp
 
+ifeq ($(TARGET_USES_ION),true)
+    sources += MemoryHeapIon.cpp
+endif
+
+
 LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
 LOCAL_LDLIBS += -lpthread
 LOCAL_MODULE := libbinder
+ifeq ($(TARGET_USES_ION),true)
+LOCAL_C_INCLUDES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+LOCAL_ADDITIONAL_DEPENDENCIES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/
+endif
 LOCAL_SHARED_LIBRARIES := liblog libcutils libutils
 LOCAL_SRC_FILES := $(sources)
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_LDLIBS += -lpthread
+ifeq ($(TARGET_USES_ION),true)
+LOCAL_C_INCLUDES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+LOCAL_ADDITIONAL_DEPENDENCIES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/
+endif
 LOCAL_MODULE := libbinder
 LOCAL_SRC_FILES := $(sources)
 include $(BUILD_STATIC_LIBRARY)
