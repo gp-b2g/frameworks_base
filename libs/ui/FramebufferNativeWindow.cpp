@@ -97,9 +97,11 @@ FramebufferNativeWindow::FramebufferNativeWindow()
         mUpdateOnDemand = (fbDev->setUpdateRect != 0);
         
         // initialize the buffer FIFO
-        mNumBuffers = NUM_FRAME_BUFFERS;
-        mNumFreeBuffers = NUM_FRAME_BUFFERS;
-        mBufferHead = mNumBuffers-1;
+        mNumBuffers = fbDev->numFramebuffers;
+        mNumFreeBuffers = mNumBuffers;
+        mBufferHead = 0;
+
+        LOGD("mNumBuffers = %d", mNumBuffers);
 
         for (i = 0; i < mNumBuffers; i++)
         {
@@ -142,15 +144,17 @@ FramebufferNativeWindow::FramebufferNativeWindow()
     ANativeWindow::queueBuffer = queueBuffer;
     ANativeWindow::query = query;
     ANativeWindow::perform = perform;
+    ANativeWindow::cancelBuffer = NULL;
 }
 
 FramebufferNativeWindow::~FramebufferNativeWindow() 
 {
     if (grDev) {
-        if (buffers[0] != NULL)
-            grDev->free(grDev, buffers[0]->handle);
-        if (buffers[1] != NULL)
-            grDev->free(grDev, buffers[1]->handle);
+        for(int i = 0; i < mNumBuffers; i++) {
+            if (buffers[i] != NULL) {
+                grDev->free(grDev, buffers[i]->handle);
+            }
+        }
         gralloc_close(grDev);
     }
 
@@ -201,23 +205,27 @@ int FramebufferNativeWindow::getCurrentBufferIndex() const
 }
 
 int FramebufferNativeWindow::dequeueBuffer(ANativeWindow* window, 
-        ANativeWindowBuffer** buffer)
+        android_native_buffer_t** buffer)
 {
     FramebufferNativeWindow* self = getSelf(window);
-    Mutex::Autolock _l(self->mutex);
     framebuffer_device_t* fb = self->fbDev;
 
-    int index = self->mBufferHead++;
-    if (self->mBufferHead >= self->mNumBuffers)
-        self->mBufferHead = 0;
+    int index = self->mBufferHead;
 
     GraphicLog& logger(GraphicLog::getInstance());
     logger.log(GraphicLog::SF_FB_DEQUEUE_BEFORE, index);
 
-    // wait for a free buffer
-    while (!self->mNumFreeBuffers) {
+    /* The buffer is available, return it */
+    Mutex::Autolock _l(self->mutex);
+
+    // wait if the number of free buffers <= 0
+    while (self->mNumFreeBuffers <= 0) {
         self->mCondition.wait(self->mutex);
     }
+    self->mBufferHead++;
+    if (self->mBufferHead >= self->mNumBuffers)
+        self->mBufferHead = 0;
+
     // get this buffer
     self->mNumFreeBuffers--;
     self->mCurrentBufferIndex = index;
@@ -229,19 +237,21 @@ int FramebufferNativeWindow::dequeueBuffer(ANativeWindow* window,
 }
 
 int FramebufferNativeWindow::lockBuffer(ANativeWindow* window, 
-        ANativeWindowBuffer* buffer)
+        android_native_buffer_t* buffer)
 {
     FramebufferNativeWindow* self = getSelf(window);
-    Mutex::Autolock _l(self->mutex);
+    framebuffer_device_t* fb = self->fbDev;
+    int index = -1;
 
-    const int index = self->mCurrentBufferIndex;
+    {
+        Mutex::Autolock _l(self->mutex);
+        index = self->mCurrentBufferIndex;
+    }
+
     GraphicLog& logger(GraphicLog::getInstance());
     logger.log(GraphicLog::SF_FB_LOCK_BEFORE, index);
 
-    // wait that the buffer we're locking is not front anymore
-    while (self->front == buffer) {
-        self->mCondition.wait(self->mutex);
-    }
+    fb->lockBuffer(fb, index);
 
     logger.log(GraphicLog::SF_FB_LOCK_AFTER, index);
 
@@ -288,6 +298,9 @@ int FramebufferNativeWindow::query(const ANativeWindow* window,
             return NO_ERROR;
         case NATIVE_WINDOW_CONCRETE_TYPE:
             *value = NATIVE_WINDOW_FRAMEBUFFER;
+            return NO_ERROR;
+        case NATIVE_WINDOW_NUM_BUFFERS:
+            *value = fb->numFramebuffers;
             return NO_ERROR;
         case NATIVE_WINDOW_QUEUES_TO_WINDOW_COMPOSER:
             *value = 0;
