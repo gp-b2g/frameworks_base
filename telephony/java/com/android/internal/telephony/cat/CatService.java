@@ -712,6 +712,7 @@ public class CatService extends Handler implements AppInterface {
         case PRFRMD_WITH_MODIFICATION:
         case PRFRMD_NAA_NOT_ACTIVE:
         case PRFRMD_TONE_NOT_PLAYED:
+        case LAUNCH_BROWSER_ERROR:
             switch (AppInterface.CommandType.fromInt(cmdDet.typeOfCommand)) {
             case SET_UP_MENU:
                 helpRequired = resMsg.resCode == ResultCode.HELP_INFO_REQUIRED;
@@ -756,7 +757,8 @@ public class CatService extends Handler implements AppInterface {
         default:
             return;
         }
-        sendTerminalResponse(cmdDet, resMsg.resCode, false, 0, resp);
+        sendTerminalResponse(cmdDet, resMsg.resCode, resMsg.includeAdditionalInfo,
+                             resMsg.additionalInfo, resp);
         mCurrntCmd = null;
     }
 }
