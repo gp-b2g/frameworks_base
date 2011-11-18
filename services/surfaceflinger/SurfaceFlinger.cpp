@@ -100,7 +100,8 @@ SurfaceFlinger::SurfaceFlinger()
         mLastTransactionTime(0),
         mBootFinished(false),
         mConsoleSignals(0),
-        mSecureFrameBuffer(0)
+        mSecureFrameBuffer(0),
+        mHDMIOutput(false)
 {
     init();
 }
@@ -436,7 +437,12 @@ bool SurfaceFlinger::threadLoop()
         handleConsoleEvents();
     }
 
-    // if we're in a global transaction, don't do anything.
+    //Serializes HDMI event handling and drawing.
+    //Necessary for race-free overlay channel management.
+    //Must always be held only after handleConsoleEvents() since
+    //that could enable / disable HDMI based on suspend resume
+    Mutex::Autolock _l(mHDMILock);
+
     const uint32_t mask = eTransactionNeeded | eTraversalNeeded;
     uint32_t transactionFlags = peekTransactionFlags(mask);
     if (UNLIKELY(transactionFlags)) {
@@ -489,7 +495,14 @@ void SurfaceFlinger::postFramebuffer()
     LOGW_IF(mSwapRegion.isEmpty(), "mSwapRegion is empty");
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
     const nsecs_t now = systemTime();
+    const GraphicPlane& plane(graphicPlane(0));
+    const Transform& planeTransform(plane.transform());
     mDebugInSwapBuffers = now;
+    //If orientation has changed, inform gralloc for HDMI mirroring
+    if(mOrientationChanged) {
+        mOrientationChanged = false;
+        hw.orientationChanged(planeTransform.getOrientation());
+    }
     hw.flip(mSwapRegion);
     mLastSwapBufferTime = systemTime() - now;
     mDebugInSwapBuffers = 0;
@@ -504,6 +517,7 @@ void SurfaceFlinger::handleConsoleEvents()
     int what = android_atomic_and(0, &mConsoleSignals);
     if (what & eConsoleAcquired) {
         hw.acquireScreen();
+        updateHwcHDMI(mHDMIOutput);
         // this is a temporary work-around, eventually this should be called
         // by the power-manager
         SurfaceFlinger::turnElectronBeamOn(mElectronBeamAnimationMode);
@@ -512,6 +526,7 @@ void SurfaceFlinger::handleConsoleEvents()
     if (what & eConsoleReleased) {
         if (hw.isScreenAcquired()) {
             hw.releaseScreen();
+            updateHwcHDMI(false);
         }
     }
 
@@ -577,6 +592,7 @@ void SurfaceFlinger::handleTransactionLocked(uint32_t transactionFlags)
             // Currently unused: const uint32_t flags = mCurrentState.orientationFlags;
             GraphicPlane& plane(graphicPlane(dpy));
             plane.setOrientation(orientation);
+            mOrientationChanged = true;
 
             // update the shared control block
             const DisplayHardware& hw(plane.displayHardware());
@@ -1330,6 +1346,32 @@ int SurfaceFlinger::setOrientation(DisplayID dpy,
         }
     }
     return orientation;
+}
+
+void SurfaceFlinger::updateHwcHDMI(bool enable)
+{
+    invalidateHwcGeometry();
+    const DisplayHardware& hw(graphicPlane(0).displayHardware());
+    HWComposer& hwc(hw.getHwComposer());
+    hwc.enableHDMIOutput(enable);
+}
+
+void SurfaceFlinger::enableHDMIOutput(int enable)
+{
+    Mutex::Autolock _l(mHDMILock);
+    mHDMIOutput = enable;
+    updateHwcHDMI(enable);
+    signalEvent();
+}
+
+void SurfaceFlinger::setActionSafeWidthRatio(float asWidthRatio){
+    const DisplayHardware& hw(graphicPlane(0).displayHardware());
+    hw.setActionSafeWidthRatio(asWidthRatio);
+}
+
+void SurfaceFlinger::setActionSafeHeightRatio(float asHeightRatio){
+    const DisplayHardware& hw(graphicPlane(0).displayHardware());
+    hw.setActionSafeHeightRatio(asHeightRatio);
 }
 
 sp<ISurface> SurfaceFlinger::createSurface(

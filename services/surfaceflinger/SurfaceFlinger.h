@@ -175,6 +175,11 @@ public:
     virtual int                         setOrientation(DisplayID dpy, int orientation, uint32_t flags);
     virtual bool                        authenticateSurfaceTexture(const sp<ISurfaceTexture>& surface) const;
 
+    //HDMI Specific
+    virtual void                        enableHDMIOutput(int enable);
+    virtual void                        setActionSafeWidthRatio(float asWidthRatio);
+    virtual void                        setActionSafeHeightRatio(float asHeightRatio);
+
     virtual status_t captureScreen(DisplayID dpy,
             sp<IMemoryHeap>* heap,
             uint32_t* width, uint32_t* height,
@@ -345,15 +350,18 @@ private:
             }
             inline void decFreezeCount() { if (mFreezeCount > 0) mFreezeCount--; }
             inline bool hasFreezeRequest() const { return mFreezeDisplay; }
-            inline bool isFrozen() const { 
+            inline bool isFrozen() const {
                 return (mFreezeDisplay || mFreezeCount>0) && mBootFinished;
             }
 
-            
+
             void        debugFlashRegions();
             void        debugShowFPS() const;
             void        drawWormhole() const;
-           
+
+            //HDMI Specific
+            void updateHwcHDMI(bool enable);
+
 
     mutable     MessageQueue    mEventQueue;
 
@@ -408,6 +416,11 @@ private:
                 volatile nsecs_t            mDebugInTransaction;
                 nsecs_t                     mLastTransactionTime;
                 bool                        mBootFinished;
+
+                //HDMI specific
+                bool                        mHDMIOutput;
+                Mutex                       mHDMILock;
+                bool                        mOrientationChanged;
 
                 // these are thread safe
     mutable     Barrier                     mReadyToRunBarrier;
