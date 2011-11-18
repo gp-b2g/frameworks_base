@@ -1149,7 +1149,10 @@ public class SIMRecords extends IccRecords {
                 if (DBG) log("handleSimRefresh with SIM_REFRESH_INIT");
                 // need to reload all files (that we care about)
                 adnCache.reset();
-                fetchSimRecords();
+                // Reregister for ready notification so that we read files
+                // if app is ready
+                mParentApp.unregisterForReady(this);
+                mParentApp.registerForReady(this, EVENT_APP_READY, null);
                 break;
             case ICC_RESET:
                 if (DBG) log("handleSimRefresh with SIM_REFRESH_RESET");
