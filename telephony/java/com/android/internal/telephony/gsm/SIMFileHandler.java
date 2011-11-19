@@ -77,10 +77,6 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
         case EF_INFO_CPHS:
         case EF_CSP_CPHS:
             return MF_SIM + DF_GSM;
-
-        case EF_PBR:
-            // we only support global phonebook.
-            return MF_SIM + DF_TELECOM + DF_PHONEBOOK;
         }
         String path = getCommonIccEFPath(efid);
         if (path == null) {
