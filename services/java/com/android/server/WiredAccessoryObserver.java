@@ -52,13 +52,20 @@ class WiredAccessoryObserver extends UEventObserver {
 
     private static final int BIT_HEADSET = (1 << 0);
     private static final int BIT_HEADSET_NO_MIC = (1 << 1);
-    private static final int BIT_USB_HEADSET_ANLG = (1 << 2);
-    private static final int BIT_USB_HEADSET_DGTL = (1 << 3);
-    private static final int BIT_HDMI_AUDIO = (1 << 4);
-    private static final int SUPPORTED_HEADSETS = (BIT_HEADSET|BIT_HEADSET_NO_MIC|
+    private static final int BIT_HEADSET_MIC_ONLY = (1 << 2);
+    private static final int BIT_ANCHEADSET = (1 << 3);
+    private static final int BIT_ANCHEADSET_NO_MIC = (1 << 4);
+    private static final int BIT_ANCHEADSET_MIC_ONLY = (1 << 5);
+    private static final int BIT_USB_HEADSET_ANLG = (1 << 6);
+    private static final int BIT_USB_HEADSET_DGTL = (1 << 7);
+    private static final int BIT_HDMI_AUDIO = (1 << 8);
+    private static final int SUPPORTED_HEADSETS = (BIT_HEADSET|BIT_HEADSET_NO_MIC|BIT_HEADSET_MIC_ONLY|
+                                                   BIT_ANCHEADSET|BIT_ANCHEADSET_NO_MIC|BIT_ANCHEADSET_MIC_ONLY|
                                                    BIT_USB_HEADSET_ANLG|BIT_USB_HEADSET_DGTL|
                                                    BIT_HDMI_AUDIO);
+    private static final int SUPPORTED_ANC_HEADSETS = (BIT_ANCHEADSET|BIT_ANCHEADSET_NO_MIC|BIT_ANCHEADSET_MIC_ONLY);
     private static final int HEADSETS_WITH_MIC = BIT_HEADSET;
+    private static final int ANC_HEADSETS_WITH_MIC = BIT_ANCHEADSET;
 
     private int mHeadsetState;
     private int mPrevHeadsetState;
@@ -107,18 +114,27 @@ class WiredAccessoryObserver extends UEventObserver {
     private synchronized final void updateState(String name, int state)
     {
         if (name.equals("usb_audio")) {
-            switchState = ((mHeadsetState & (BIT_HEADSET|BIT_HEADSET_NO_MIC|BIT_HDMI_AUDIO)) |
-                           ((state == 1) ? BIT_USB_HEADSET_ANLG :
-                                         ((state == 2) ? BIT_USB_HEADSET_DGTL : 0)));
+            if (state == 1) {
+                switchState = ((mHeadsetState & (BIT_HEADSET|BIT_HEADSET_NO_MIC|
+                                                 BIT_ANCHEADSET|BIT_ANCHEADSET_NO_MIC|
+                                                 BIT_USB_HEADSET_DGTL|BIT_HDMI_AUDIO)) |
+                               (state << 2));
+            } else if (state == 2) {
+                switchState = ((mHeadsetState & (BIT_HEADSET|BIT_HEADSET_NO_MIC|
+                                                 BIT_ANCHEADSET|BIT_ANCHEADSET_NO_MIC|
+                                                 BIT_USB_HEADSET_ANLG|BIT_HDMI_AUDIO)) |
+                               (state << 3));
+            } else switchState = (mHeadsetState & (BIT_HEADSET|BIT_HEADSET_NO_MIC|
+                                                      BIT_ANCHEADSET|BIT_ANCHEADSET_NO_MIC|BIT_HDMI_AUDIO));
         } else if (name.equals("hdmi")) {
             switchState = ((mHeadsetState & (BIT_HEADSET|BIT_HEADSET_NO_MIC|
+                                             BIT_ANCHEADSET|BIT_ANCHEADSET_NO_MIC|
                                              BIT_USB_HEADSET_DGTL|BIT_USB_HEADSET_ANLG)) |
-                           ((state == 1) ? BIT_HDMI_AUDIO : 0));
+                           (state << 4));
         } else {
             switchState = ((mHeadsetState & (BIT_HDMI_AUDIO|BIT_USB_HEADSET_ANLG|
                                              BIT_USB_HEADSET_DGTL)) |
-                            ((state == 1) ? BIT_HEADSET :
-                                          ((state == 2) ? BIT_HEADSET_NO_MIC : 0)));
+                           state);
         }
         update(name, switchState);
     }
@@ -163,7 +179,8 @@ class WiredAccessoryObserver extends UEventObserver {
         int delay = 0;
         int usb_headset_anlg = headsetState & BIT_USB_HEADSET_ANLG;
         int usb_headset_dgtl = headsetState & BIT_USB_HEADSET_DGTL;
-        int h2w_headset = headsetState & (BIT_HEADSET | BIT_HEADSET_NO_MIC);
+        int h2w_headset = headsetState & (BIT_HEADSET | BIT_HEADSET_NO_MIC|
+                                             BIT_ANCHEADSET|BIT_ANCHEADSET_NO_MIC);
         boolean h2wStateChange = true;
         boolean usbStateChange = true;
         // reject all suspect transitions: only accept state changes from:
@@ -259,23 +276,28 @@ class WiredAccessoryObserver extends UEventObserver {
                 if (LOG) Slog.v(TAG, "Intent.ACTION_USB_HEADSET_PLUG: state: "+state+" name: "+headsetName);
                 // TODO: Should we require a permission?
             }
-            if((headset == BIT_HEADSET) || (headset == BIT_HEADSET_NO_MIC)) {
+            if((headset == BIT_HEADSET) || (headset == BIT_HEADSET_NO_MIC)||
+                (headset == BIT_ANCHEADSET) || (headset == BIT_ANCHEADSET_NO_MIC)) {
 
                 //  Pack up the values and broadcast them to everyone
                 Intent intent = new Intent(Intent.ACTION_HEADSET_PLUG);
                 intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
                 //int state = 0;
                 int microphone = 0;
+                int anc = 0;
 
-                if ((headset & HEADSETS_WITH_MIC) != 0) {
+                if (((headset & HEADSETS_WITH_MIC)|(headset & ANC_HEADSETS_WITH_MIC)) != 0) {
                     microphone = 1;
                 }
-
+                if ((headset & SUPPORTED_ANC_HEADSETS) != 0) {
+                    anc = 1;
+                }
                 intent.putExtra("state", state);
                 intent.putExtra("name", headsetName);
                 intent.putExtra("microphone", microphone);
+                intent.putExtra("anc", anc);
 
-                if (LOG) Slog.v(TAG, "Intent.ACTION_HEADSET_PLUG: state: "+state+" name: "+headsetName+" mic: "+microphone);
+                if (LOG) Slog.v(TAG, "Intent.ACTION_HEADSET_PLUG: state: "+state+" name: "+headsetName+" mic: "+microphone+" anc: "+anc);
                 // TODO: Should we require a permission?
                 ActivityManagerNative.broadcastStickyIntent(intent, null);
             }
