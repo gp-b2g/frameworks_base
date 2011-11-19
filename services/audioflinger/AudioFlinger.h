@@ -185,6 +185,8 @@ public:
 
     virtual status_t moveEffects(int sessionId, int srcOutput, int dstOutput);
 
+    virtual status_t setFmVolume(float volume);
+
     enum hardware_call_state {
         AUDIO_HW_IDLE = 0,
         AUDIO_HW_INIT,
@@ -202,6 +204,7 @@ public:
         AUDIO_HW_SET_MIC_MUTE,
         AUDIO_SET_VOICE_VOLUME,
         AUDIO_SET_PARAMETER,
+        AUDIO_SET_FM_VOLUME
     };
 
     // record interface

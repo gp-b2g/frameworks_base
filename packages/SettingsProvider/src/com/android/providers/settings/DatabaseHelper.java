@@ -1172,6 +1172,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     
             loadSetting(stmt, Settings.System.VOLUME_MUSIC,
                     AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_MUSIC]);
+            loadSetting(stmt, Settings.System.VOLUME_FM,
+                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_FM]);
             loadSetting(stmt, Settings.System.VOLUME_RING,
                     AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_RING]);
             loadSetting(stmt, Settings.System.VOLUME_SYSTEM,

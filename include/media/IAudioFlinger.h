@@ -168,6 +168,7 @@ public:
 
     virtual status_t moveEffects(int session, int srcOutput, int dstOutput) = 0;
     virtual status_t deregisterClient(const sp<IAudioFlingerClient>& client) { return false; };
+    virtual status_t setFmVolume(float volume) = 0;
 };
 
 

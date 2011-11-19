@@ -132,6 +132,7 @@ private:
         sp<MetaData> *meta);
     status_t startMPEG4Recording();
     status_t startAMRRecording();
+    status_t startFMA2DPWriter();
     status_t startAACRecording();
     status_t startRawAudioRecording();
     status_t startRTPRecording();
