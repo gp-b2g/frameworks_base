@@ -369,6 +369,9 @@ public class AudioService extends IAudioService.Stub {
         intentFilter.addAction(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED);
         intentFilter.addAction(Intent.ACTION_DOCK_EVENT);
         intentFilter.addAction(Intent.ACTION_USB_ANLG_HEADSET_PLUG);
+        intentFilter.addAction("HDMI_CONNECTED");
+        intentFilter.addAction("HDMI_DISCONNECTED");
+        intentFilter.addCategory(Intent.CATEGORY_DEFAULT);
         intentFilter.addAction(Intent.ACTION_USB_DGTL_HEADSET_PLUG);
         intentFilter.addAction(Intent.ACTION_HDMI_AUDIO_PLUG);
         intentFilter.addAction(Intent.ACTION_BOOT_COMPLETED);
@@ -2579,6 +2582,18 @@ public class AudioService extends IAudioService.Stub {
                     newIntent.putExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, state);
                     mContext.sendStickyBroadcast(newIntent);
                 }
+            } else if (action.equals("HDMI_CONNECTED")) {
+                Log.v(TAG, "HDMI connected");
+                AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_AUX_DIGITAL,
+                                                     AudioSystem.DEVICE_STATE_AVAILABLE,
+                                                     "");
+                mConnectedDevices.put( new Integer(AudioSystem.DEVICE_OUT_AUX_DIGITAL), "");
+            } else if (action.equals("HDMI_DISCONNECTED")) {
+                Log.v(TAG, "HDMI disconnected");
+                AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_AUX_DIGITAL,
+                                                     AudioSystem.DEVICE_STATE_UNAVAILABLE,
+                                                     "");
+                mConnectedDevices.remove(AudioSystem.DEVICE_OUT_AUX_DIGITAL);
             } else if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
                 mBootCompleted = true;
                 sendMsg(mAudioHandler, MSG_LOAD_SOUND_EFFECTS, SHARED_MSG, SENDMSG_NOOP,
