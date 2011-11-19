@@ -403,7 +403,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected DataConnectionTracker(PhoneBase phone) {
         super();
         mPhone = phone;
-        mUiccManager = UiccManager.getInstance();
+        mUiccManager = UiccManager.getInstance(phone.getContext(), phone.mCM);
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
 
         IntentFilter filter = new IntentFilter();
