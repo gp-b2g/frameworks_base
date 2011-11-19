@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (C) 2007, 2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,15 @@ public class CommandException extends RuntimeException {
         MODE_NOT_SUPPORTED,
         FDN_CHECK_FAILURE,
         ILLEGAL_SIM_OR_ME,
+        DIAL_MODIFIED_TO_USSD,
+        DIAL_MODIFIED_TO_SS,
+        DIAL_MODIFIED_TO_DIAL,
+        USSD_MODIFIED_TO_DIAL,
+        USSD_MODIFIED_TO_SS,
+        USSD_MODIFIED_TO_USSD,
+        SS_MODIFIED_TO_DIAL,
+        SS_MODIFIED_TO_USSD,
+        SS_MODIFIED_TO_SS
     }
 
     public CommandException(Error e) {
@@ -83,6 +92,25 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.FDN_CHECK_FAILURE);
             case RILConstants.ILLEGAL_SIM_OR_ME:
                 return new CommandException(Error.ILLEGAL_SIM_OR_ME);
+            case RILConstants.DIAL_MODIFIED_TO_USSD:
+                return new CommandException(Error.DIAL_MODIFIED_TO_USSD);
+            case RILConstants.DIAL_MODIFIED_TO_SS:
+                return new CommandException(Error.DIAL_MODIFIED_TO_SS);
+            case RILConstants.DIAL_MODIFIED_TO_DIAL:
+                return new CommandException(Error.DIAL_MODIFIED_TO_DIAL);
+            case RILConstants.USSD_MODIFIED_TO_DIAL:
+                return new CommandException(Error.USSD_MODIFIED_TO_DIAL);
+            case RILConstants.USSD_MODIFIED_TO_SS:
+                return new CommandException(Error.USSD_MODIFIED_TO_SS);
+            case RILConstants.USSD_MODIFIED_TO_USSD:
+                return new CommandException(Error.USSD_MODIFIED_TO_USSD);
+            case RILConstants.SS_MODIFIED_TO_DIAL:
+                return new CommandException(Error.SS_MODIFIED_TO_DIAL);
+            case RILConstants.SS_MODIFIED_TO_USSD:
+                return new CommandException(Error.SS_MODIFIED_TO_USSD);
+            case RILConstants.SS_MODIFIED_TO_SS:
+                return new CommandException(Error.SS_MODIFIED_TO_SS);
+
             default:
                 Log.e("GSM", "Unrecognized RIL errno " + ril_errno);
                 return new CommandException(Error.INVALID_RESPONSE);
