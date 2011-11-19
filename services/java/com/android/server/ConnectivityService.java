@@ -161,6 +161,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     private Object mDnsLock = new Object();
     private int mNumDnsEntries;
     private boolean mDnsOverridden = false;
+    private static int mRouteIdCtr = 0;
 
     private boolean mTestMode;
     private static ConnectivityService sServiceInstance;
@@ -308,6 +309,25 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     }
     RadioAttributes[] mRadioAttributes;
 
+    private class RouteAttributes {
+        /**
+         * Class for holding identifiers used to create custom tables for source
+         * policy routing in the kernel.
+         * Max allowable custom tables is 253 with 0 set to local and 254 set to
+         * main table. Anything in between is valid.
+         */
+        public int v4TableId;
+        public int v6TableId;
+        public RouteAttributes () {
+            //We are assuming that MAX network types supported on android won't
+            //exceed 126 in which case identifier assignment needs to change. Its
+            //safe to do it this way for now.
+            v4TableId = ++mRouteIdCtr;
+            v6TableId = ++mRouteIdCtr;
+        }
+    }
+    RouteAttributes[]  mRouteAttributes;
+
     // the set of network types that can only be enabled by system/sig apps
     List mProtectedNetworks;
 
@@ -367,6 +387,10 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
         mRadioAttributes = new RadioAttributes[ConnectivityManager.MAX_RADIO_TYPE+1];
         mNetConfigs = new NetworkConfig[ConnectivityManager.MAX_NETWORK_TYPE+1];
+        mRouteAttributes = new RouteAttributes[ConnectivityManager.MAX_NETWORK_TYPE+1];
+        for (int i = 0; i < ConnectivityManager.MAX_NETWORK_TYPE+1; i++) {
+            mRouteAttributes[i] = new RouteAttributes();
+        }
 
         // Load device network attributes from resources
         String[] raStrings = context.getResources().getStringArray(
@@ -1743,6 +1767,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
         if (mNetTrackers[netType].getNetworkInfo().isConnected()) {
             newLp = mNetTrackers[netType].getLinkProperties();
+
             if (VDBG) {
                 log("handleConnectivityChange: changed linkProperty[" + netType + "]:" +
                         " doReset=" + doReset + " resetMask=" + resetMask +
@@ -1795,7 +1820,8 @@ public class ConnectivityService extends IConnectivityManager.Stub {
             }
         }
         mCurrentLinkProperties[netType] = newLp;
-        boolean resetDns = updateRoutes(newLp, curLp, mNetConfigs[netType].isDefault());
+        boolean resetDns = updateRoutes(newLp, curLp, mNetConfigs[netType].isDefault(),
+                mRouteAttributes[netType]);
 
         if (resetMask != 0 || resetDns) {
             LinkProperties linkProperties = mNetTrackers[netType].getLinkProperties();
@@ -1845,19 +1871,23 @@ public class ConnectivityService extends IConnectivityManager.Stub {
      * returns a boolean indicating the routes changed
      */
     private boolean updateRoutes(LinkProperties newLp, LinkProperties curLp,
-            boolean isLinkDefault) {
+            boolean isLinkDefault, RouteAttributes ra) {
         Collection<RouteInfo> routesToAdd = null;
         CompareResult<InetAddress> dnsDiff = new CompareResult<InetAddress>();
         CompareResult<RouteInfo> routeDiff = new CompareResult<RouteInfo>();
+        CompareResult<LinkAddress> localAddrDiff = new CompareResult<LinkAddress>();
         if (curLp != null) {
             // check for the delta between the current set and the new
             routeDiff = curLp.compareRoutes(newLp);
             dnsDiff = curLp.compareDnses(newLp);
+            localAddrDiff = curLp.compareAddresses(newLp);
         } else if (newLp != null) {
             routeDiff.added = newLp.getRoutes();
             dnsDiff.added = newLp.getDnses();
+            localAddrDiff.added = newLp.getLinkAddresses();
         }
 
+        // linkaddress change does not affect dns, so exclude it from this condition.
         boolean routesChanged = (routeDiff.removed.size() != 0 || routeDiff.added.size() != 0);
 
         for (RouteInfo r : routeDiff.removed) {
@@ -1884,6 +1914,48 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                 }
             }
         }
+
+        if (localAddrDiff.removed.size() != 0) {
+            for (LinkAddress la : localAddrDiff.removed) {
+                if (VDBG) log("Removing src route for:" + la.getAddress().getHostAddress());
+                try {
+                    if (la.getAddress() instanceof Inet4Address)
+                        mNetd.delV4SrcRoute(ra.v4TableId);
+                    else
+                        mNetd.delV6SrcRoute(ra.v6TableId);
+                } catch (Exception e) {
+                    // never crash - catch them all
+                    if (VDBG) loge("Exception trying to remove src route: " + e);
+                }
+            }
+        }
+
+        if (localAddrDiff.added.size() != 0) {
+            String gw4Str = null, gw6Str = null, localAddr = null;
+            String ifaceName = newLp.getInterfaceName();
+            if (! TextUtils.isEmpty(ifaceName)) {
+                for (RouteInfo r : newLp.getRoutes()) {
+                    if (! r.isDefaultRoute()) continue;
+                    if (r.getGateway() instanceof Inet4Address)
+                        gw4Str = r.getGateway().getHostAddress();
+                    else
+                        gw6Str = r.getGateway().getHostAddress();
+                } //gateway is optional so continue adding the source route.
+                for (LinkAddress la : localAddrDiff.added) {
+                    try {
+                        localAddr = la.getAddress().getHostAddress();
+                        if (la.getAddress() instanceof Inet4Address)
+                            mNetd.replaceV4SrcRoute(ifaceName, localAddr, gw4Str, ra.v4TableId);
+                        else
+                            mNetd.replaceV6SrcRoute(ifaceName, localAddr, gw6Str, ra.v6TableId);
+                    } catch (Exception e) {
+                        // never crash - catch them all
+                        if (VDBG) loge("Exception trying to add a src route: " + e);
+                    }
+                }
+            }
+        }
+
 
         if (!isLinkDefault) {
             // handle DNS routes
