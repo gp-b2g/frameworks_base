@@ -686,6 +686,10 @@ public abstract class PhoneBase extends Handler implements Phone {
         //throw new Exception("getIccCard Shouldn't be called from PhoneBase");
     }
 
+    public UiccCardApplication getUiccApplication() {
+        return mUiccApplication;
+    }
+
     @Override
     public String getIccSerialNumber() {
         return (mIccRecords != null) ? mIccRecords.iccid : "";

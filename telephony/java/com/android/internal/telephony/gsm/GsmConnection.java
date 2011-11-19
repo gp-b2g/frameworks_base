@@ -370,7 +370,9 @@ public class GsmConnection extends Connection {
                 } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
                         || serviceState == ServiceState.STATE_EMERGENCY_ONLY ) {
                     return DisconnectCause.OUT_OF_SERVICE;
-                } else if (phone.getIccCard().getState() != IccCard.State.READY) {
+                } else if (phone.getUiccApplication() == null ||
+                        phone.getUiccApplication().getState() !=
+                            IccCardApplicationStatus.AppState.APPSTATE_READY) {
                     return DisconnectCause.ICC_ERROR;
                 } else if (causeCode == CallFailCause.ERROR_UNSPECIFIED) {
                     if (phone.mSST.mRestrictedState.isCsRestricted()) {
