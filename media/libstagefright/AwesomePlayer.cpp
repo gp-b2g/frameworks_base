@@ -900,9 +900,7 @@ status_t AwesomePlayer::play_l() {
 
                 char lpaDecode[128];
                 property_get("lpa.decode",lpaDecode,"0");
-                char lpaStagefright[128];
-                property_get("lpa.use-stagefright",lpaStagefright,"0");
-                if(strcmp("true",lpaDecode) == 0 && strcmp("true",lpaStagefright) == 0)
+                if(strcmp("true",lpaDecode) == 0)
                 {
                     LOGV("LPAPlayer::getObjectsAlive() %d",LPAPlayer::objectsAlive);
                     if ( durationUs > 60000000 && (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG) || !strcasecmp(mime,MEDIA_MIMETYPE_AUDIO_AAC)) && LPAPlayer::objectsAlive == 0 && mVideoSource == NULL) {

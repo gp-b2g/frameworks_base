@@ -42,7 +42,6 @@ LOCAL_SRC_FILES:=                         \
         FLACExtractor.cpp                 \
         HTTPBase.cpp                      \
         JPEGSource.cpp                    \
-        LPAPlayer.cpp                     \
         MP3Extractor.cpp                  \
         MPEG2TSWriter.cpp                 \
         MPEG4Extractor.cpp                \
@@ -87,7 +86,8 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/hardware/msm7k/libgralloc-qsd8k \
         $(TOP)/vendor/qcom/opensource/omx/mm-core/omxcore/inc \
         $(TOP)/system/core/include \
-        $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+        $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr \
+        $(TOP)/hardware/libhardware_legacy/include
 
 LOCAL_SHARED_LIBRARIES := \
         libbinder         \
@@ -103,6 +103,7 @@ LOCAL_SHARED_LIBRARIES := \
         libcrypto        \
         libssl           \
         libgui           \
+        libhardware_legacy \
 
 LOCAL_STATIC_LIBRARIES := \
         libstagefright_color_conversion \
@@ -119,6 +120,15 @@ LOCAL_STATIC_LIBRARIES := \
         libstagefright_rtsp \
         libstagefright_id3 \
         libFLAC \
+
+ifeq ($(BOARD_USES_ALSA_AUDIO),true)
+        LOCAL_SRC_FILES += LPAPlayerALSA.cpp
+        LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-audio/libalsa-intf
+        LOCAL_C_INCLUDES += $(TOP)/kernel/include/sound
+        LOCAL_SHARED_LIBRARIES += libalsa-intf
+else
+        LOCAL_SRC_FILES += LPAPlayer.cpp
+endif
 
 ################################################################################
 
