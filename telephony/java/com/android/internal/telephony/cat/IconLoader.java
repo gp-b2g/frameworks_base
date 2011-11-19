@@ -79,12 +79,17 @@ class IconLoader extends Handler {
         if (sLoader != null) {
             return sLoader;
         }
-        if (fh != null) {
-            HandlerThread thread = new HandlerThread("Cat Icon Loader");
-            thread.start();
-            return new IconLoader(thread.getLooper(), fh);
+
+        HandlerThread thread = new HandlerThread("Cat Icon Loader");
+        thread.start();
+        sLoader = new IconLoader(thread.getLooper(), fh);
+        return sLoader;
+    }
+
+    public void updateIccFileHandler(IccFileHandler fh) {
+        if (fh != null && fh != mSimFH) {
+            mSimFH = fh;
         }
-        return null;
     }
 
     void loadIcons(int[] recordNumbers, Message msg) {

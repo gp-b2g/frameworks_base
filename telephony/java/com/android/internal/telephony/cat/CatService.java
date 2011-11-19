@@ -154,8 +154,7 @@ public class CatService extends Handler implements AppInterface {
     /* Intentionally private for singleton */
     private CatService(CommandsInterface ci, UiccCardApplication ca, IccRecords ir,
             Context context, IccFileHandler fh, UiccCard ic) {
-        if (ci == null || ca == null || ir == null || context == null || fh == null
-                || ic == null) {
+        if (ci == null || context == null) {
             throw new NullPointerException(
                     "Service: Input parameters must not be null");
         }
@@ -177,9 +176,11 @@ public class CatService extends Handler implements AppInterface {
 
         // Register for SIM ready event.
         mUiccApplication.registerForReady(this, MSG_ID_SIM_READY, null);
-        mIccRecords.registerForRecordsLoaded(this, MSG_ID_ICC_RECORDS_LOADED, null);
-
-        CatLog.d(this, "Is running");
+        if (ir != null) {
+            // Register for SIM ready event
+            mIccRecords.registerForRecordsLoaded(this, MSG_ID_ICC_RECORDS_LOADED, null);
+        }
+        CatLog.d(this, "CatService running");
     }
 
     public void dispose() {
@@ -577,9 +578,16 @@ public class CatService extends Handler implements AppInterface {
                 mIccRecords.registerForRecordsLoaded(sInstance, MSG_ID_ICC_RECORDS_LOADED, null);
                 mUiccApplication.registerForReady(sInstance, MSG_ID_SIM_READY, null);
                 CatLog.d(sInstance, "sr changed reinitialize and return current sInstance");
-            } else {
-                CatLog.d(sInstance, "Return current sInstance");
             }
+            if (fh != null) {
+                CatLog.d(sInstance, "Reinitialize the Service with new IccFilehandler");
+                IconLoader mIconLoader = IconLoader.getInstance(null,null);
+                if (mIconLoader != null) {
+                    mIconLoader.updateIccFileHandler(fh);
+                }
+            }
+
+            CatLog.d(sInstance, "Return current sInstance");
             return sInstance;
         }
     }
