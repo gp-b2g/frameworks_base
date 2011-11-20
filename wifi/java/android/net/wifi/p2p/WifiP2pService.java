@@ -441,6 +441,9 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                 loge("Failed to stop supplicant, issue kill");
                 WifiNative.killSupplicant();
             }
+            if(WifiNative.unloadDriver()) {
+                Slog.e(TAG, "Unload Driver Successful");
+            }
         }
 
         @Override
@@ -573,6 +576,14 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                         mNwService.setInterfaceDown(mInterface);
                     } catch (Exception e) {
                         if (DBG) Slog.w(TAG, "Unable to bring down wlan interface: " + e);
+                    }
+
+                    if (mWifiState != WifiManager.WIFI_STATE_ENABLED){
+                        WifiNative.loadDriver();
+                    }
+                    else{
+                        Slog.w(TAG, "Stopping Wifi Supplicant");
+                        WifiNative.stopSupplicant();
                     }
 
                     if (WifiNative.startP2pSupplicant()) {
