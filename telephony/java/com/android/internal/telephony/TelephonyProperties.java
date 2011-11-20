@@ -182,4 +182,9 @@ public interface TelephonyProperties
      * in commercial configuration.
      */
     static final String PROPERTY_TEST_CSIM = "persist.radio.test-csim";
+
+    /**
+     * Set to true to indicates support for simultaneous voice and data.
+     */
+    static final String PROPERTY_SVDATA = "ro.config.svlte1x";
 }
