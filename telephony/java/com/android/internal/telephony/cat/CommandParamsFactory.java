@@ -338,13 +338,20 @@ class CommandParamsFactory extends Handler {
         if (ctlv != null) {
             textMsg.text = ValueParser.retrieveTextString(ctlv);
         }
-        // load icons only when text exist.
-        if (textMsg.text != null) {
-            ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
-            if (ctlv != null) {
-                iconId = ValueParser.retrieveIconId(ctlv);
-                textMsg.iconSelfExplanatory = iconId.selfExplanatory;
-            }
+
+        ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
+        if (ctlv != null) {
+            iconId = ValueParser.retrieveIconId(ctlv);
+            textMsg.iconSelfExplanatory = iconId.selfExplanatory;
+        }
+
+        /*
+         * If the tlv object doesn't contain text and the icon is not self
+         * explanatory then reply with command not understood.
+         */
+
+        if (textMsg.text == null && iconId != null && !textMsg.iconSelfExplanatory) {
+            throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
         }
 
         mCmdParams = new DisplayTextParams(cmdDet, textMsg);
