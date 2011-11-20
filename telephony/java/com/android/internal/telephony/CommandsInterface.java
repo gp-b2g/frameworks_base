@@ -176,6 +176,13 @@ public interface CommandsInterface {
     void unregisterForVoiceRadioTechChanged(Handler h);
 
     /**
+     * Indications for tethered mode calls. ON/OFF indications should trigger
+     * immediate data call retries.
+     */
+    void registerForTetheredModeStateChanged(Handler h, int what, Object obj);
+    void unregisterForTetheredModeStateChanged(Handler h);
+
+    /**
      * Fires on any transition into RadioState.isOn()
      * Fires immediately if currently in that state
      * In general, actions should be idempotent. State may change
