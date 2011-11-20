@@ -290,6 +290,15 @@ public class CatService extends Handler implements AppInterface {
                         sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
                         return;
                 }
+                sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
+                return;
+            case CLOSE_CHANNEL:
+            case RECEIVE_DATA:
+            case SEND_DATA:
+            case GET_CHANNEL_STATUS:
+                sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
+                break;
+            case OPEN_CHANNEL:
             case LAUNCH_BROWSER:
             case SELECT_ITEM:
             case GET_INPUT:
@@ -703,6 +712,7 @@ public class CatService extends Handler implements AppInterface {
         case PRFRMD_WITH_MODIFICATION:
         case PRFRMD_NAA_NOT_ACTIVE:
         case PRFRMD_TONE_NOT_PLAYED:
+        case LAUNCH_BROWSER_ERROR:
             switch (AppInterface.CommandType.fromInt(cmdDet.typeOfCommand)) {
             case SET_UP_MENU:
                 helpRequired = resMsg.resCode == ResultCode.HELP_INFO_REQUIRED;
@@ -729,6 +739,7 @@ public class CatService extends Handler implements AppInterface {
             case DISPLAY_TEXT:
             case LAUNCH_BROWSER:
                 break;
+            case OPEN_CHANNEL:
             case SET_UP_CALL:
                 mCmdIf.handleCallSetupRequestFromSim(resMsg.usersConfirm, null);
                 // No need to send terminal response for SET UP CALL. The user's
@@ -746,7 +757,8 @@ public class CatService extends Handler implements AppInterface {
         default:
             return;
         }
-        sendTerminalResponse(cmdDet, resMsg.resCode, false, 0, resp);
+        sendTerminalResponse(cmdDet, resMsg.resCode, resMsg.includeAdditionalInfo,
+                             resMsg.additionalInfo, resp);
         mCurrntCmd = null;
     }
 }

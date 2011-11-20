@@ -49,7 +49,6 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     private static final boolean DUMP_RECORDS = false;   // Note: PII is logged when this is true
 
     private static final int EVENT_APP_READY = 1;
-    private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 2;
 
     // ISIM EF records (see 3GPP TS 31.103)
     private String mIsimImpi;               // IMS private user identity
@@ -66,10 +65,16 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
         // recordsToLoad is set to 0 because no requests are made yet
         recordsToLoad = 0;
 
-        mCi.registerForOffOrNotAvailable(
-                        this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
-
         mParentApp.registerForReady(this, EVENT_APP_READY, null);
+    }
+
+    @Override
+    public void dispose() {
+        log("Disposing " + this);
+        //Unregister for all events
+        mParentApp.unregisterForReady(this);
+        resetRecords();
+        super.dispose();
     }
 
     // ***** Overridden from Handler
@@ -84,10 +89,6 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
             switch (msg.what) {
                 case EVENT_APP_READY:
                     onReady();
-                    break;
-
-                case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:
-                    onRadioOffOrNotAvailable();
                     break;
 
                 default:
@@ -118,8 +119,7 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
         log("fetchIsimRecords " + recordsToLoad);
     }
 
-    @Override
-    protected void onRadioOffOrNotAvailable() {
+    protected void resetRecords() {
         // recordsRequested is set to false indicating that the SIM
         // read requests made so far are not valid. This is set to
         // true only when fresh set of read requests are made.

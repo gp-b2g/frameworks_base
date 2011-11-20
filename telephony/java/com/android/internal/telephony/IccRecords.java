@@ -122,7 +122,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
         mContext = null;
     }
 
-    protected abstract void onRadioOffOrNotAvailable();
     public abstract void onReady();
 
     //***** Public Methods
