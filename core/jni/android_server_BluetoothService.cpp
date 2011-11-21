@@ -955,6 +955,55 @@ static jboolean setDevicePropertyIntegerNative(JNIEnv *env, jobject object,
 #endif
 }
 
+static jboolean setConnectionParametersNative(JNIEnv *env, jobject object,
+                                              jstring path,
+                                              jint intervalMin,
+                                              jint interValMax,
+                                              jint slaveLatency,
+                                              jint supervisionTimeout) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s", __FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        DBusMessage *reply, *msg;
+        DBusMessageIter iter;
+        DBusError err;
+
+        const char *c_path = env->GetStringUTFChars(path, NULL);
+
+        dbus_error_init(&err);
+        msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC,
+                                          c_path, DBUS_DEVICE_IFACE, "SetConnectionParams");
+        if (!msg) {
+            LOGE("%s: Can't allocate new method call for device SetConnectionParams!", __FUNCTION__);
+            env->ReleaseStringUTFChars(path, c_path);
+            return JNI_FALSE;
+        }
+
+        dbus_message_append_args(msg, DBUS_TYPE_UINT16, (uint16_t *)&intervalMin,
+                                 DBUS_TYPE_UINT16, (uint16_t *)&interValMax,
+                                 DBUS_TYPE_UINT16, (uint16_t *)&slaveLatency,
+                                 DBUS_TYPE_UINT16, (uint16_t *)&supervisionTimeout,
+                                 DBUS_TYPE_INVALID);
+        dbus_message_iter_init_append(msg, &iter);
+
+        reply = dbus_connection_send_with_reply_and_block(nat->conn, msg, -1, &err);
+        dbus_message_unref(msg);
+
+        env->ReleaseStringUTFChars(path, c_path);
+        if (!reply) {
+            if (dbus_error_is_set(&err)) {
+                LOG_AND_FREE_DBUS_ERROR(&err);
+            } else
+            LOGE("DBus reply is NULL in function %s", __FUNCTION__);
+            return JNI_FALSE;
+        }
+        return JNI_TRUE;
+    }
+#endif
+    return JNI_FALSE;
+}
+
 static jboolean createDeviceNative(JNIEnv *env, jobject object,
                                                 jstring address) {
     LOGV("%s", __FUNCTION__);
@@ -2105,7 +2154,8 @@ static JNINativeMethod sMethods[] = {
             (void *)setDevicePropertyStringNative},
     {"setDevicePropertyIntegerNative", "(Ljava/lang/String;Ljava/lang/String;I)Z",
              (void *)setDevicePropertyIntegerNative},
-
+    {"setConnectionParametersNative", "(Ljava/lang/String;IIII)Z",
+             (void *)setConnectionParametersNative},
     {"createDeviceNative", "(Ljava/lang/String;)Z", (void *)createDeviceNative},
     {"discoverServicesNative", "(Ljava/lang/String;Ljava/lang/String;)Z", (void *)discoverServicesNative},
     {"addRfcommServiceRecordNative", "(Ljava/lang/String;JJS)I", (void *)addRfcommServiceRecordNative},

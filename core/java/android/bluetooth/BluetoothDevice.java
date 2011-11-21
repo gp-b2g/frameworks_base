@@ -780,6 +780,26 @@ public final class BluetoothDevice implements Parcelable {
         return false;
     }
 
+     /**
+     * Set the connection parameters of the remote device.
+     * <p>Requires {@link android.Manifest.permission#BLUETOOTH}.
+     *
+     * @param connection parameters values.
+     * @hide
+     */
+    public boolean setLEConnectionParams(int intervalMin,
+                                       int intervalMax,
+                                       int slaveLatency,
+                                       int supervisionTimeout) {
+        try {
+            return sService.setLEConnectionParams(mAddress,
+                                                intervalMin,
+                                                intervalMax,
+                                                slaveLatency,
+                                                supervisionTimeout);
+        } catch (RemoteException e) {Log.e(TAG, "", e);}
+        return false;
+    }
 
     /**
      * Get trust state of a remote device.

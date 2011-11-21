@@ -1289,6 +1289,25 @@ public class BluetoothService extends IBluetooth.Stub {
                 classOfDevice);
     }
 
+    public boolean setLEConnectionParams(String address,
+                                       int intervalMin,
+                                       int intervalMax,
+                                       int slaveLatency,
+                                       int supervisionTimeout) {
+        if (!BluetoothAdapter.checkBluetoothAddress(address)) {
+            mContext.enforceCallingOrSelfPermission(BLUETOOTH_ADMIN_PERM,
+                    "Need BLUETOOTH_ADMIN permission");
+            return false;
+        }
+
+        if (!isEnabledInternal()) return false;
+
+        return setConnectionParametersNative(getObjectPathFromAddress(address),
+                                             intervalMin,
+                                             intervalMax,
+                                             slaveLatency,
+                                             supervisionTimeout);
+    }
 
     /**
      * Returns the user-friendly name of a remote device.  This value is
@@ -3964,7 +3983,8 @@ public class BluetoothService extends IBluetooth.Stub {
             String value);
     private native boolean setDevicePropertyIntegerNative(String objectPath, String key,
             int value);
-
+    private native boolean setConnectionParametersNative(String objectPath, int intervalMin,
+            int intervalMax, int slaveLatency, int supervisionTimeout);
     private native boolean createDeviceNative(String address);
     /*package*/ native boolean discoverServicesNative(String objectPath, String pattern);
 
