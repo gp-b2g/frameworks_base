@@ -110,7 +110,7 @@ public class WifiStateMachine extends StateMachine {
     private static final boolean DBG = false;
 
     /* TODO: This is no more used with the hostapd code. Clean up */
-    private static final String SOFTAP_IFACE = "wl0.1";
+    private static final String SOFTAP_IFACE = "wlan0";
 
     private WifiMonitor mWifiMonitor;
     private INetworkManagementService mNwService;
