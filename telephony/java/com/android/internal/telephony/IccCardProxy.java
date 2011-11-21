@@ -548,7 +548,8 @@ public class IccCardProxy extends Handler implements IccCard {
         }
         mExternalState = newState;
         SystemProperties.set(PROPERTY_SIM_STATE, mExternalState.toString());
-        broadcastIccStateChangedIntent(mExternalState.getIntentString(), null);
+        broadcastIccStateChangedIntent(mExternalState.getIntentString(),
+                                       mExternalState.getReason());
     }
     private void setExternalState(State newState) {
         setExternalState(newState, false);
