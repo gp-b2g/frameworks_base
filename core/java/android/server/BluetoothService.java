@@ -233,6 +233,7 @@ public class BluetoothService extends IBluetooth.Stub {
         registerForAirplaneMode(filter);
 
         filter.addAction(Intent.ACTION_DOCK_EVENT);
+        filter.addAction(Intent.ACTION_BOOT_COMPLETED);
         mContext.registerReceiver(mReceiver, filter);
         mBluetoothInputProfileHandler = BluetoothInputProfileHandler.getInstance(mContext, this);
         mBluetoothPanProfileHandler = BluetoothPanProfileHandler.getInstance(mContext, this);
@@ -1666,6 +1667,15 @@ public class BluetoothService extends IBluetooth.Stub {
                                 mContext.MODE_PRIVATE).edit();
                     editor.putBoolean(SHARED_PREFERENCE_DOCK_ADDRESS + mDockAddress, true);
                     editor.apply();
+                }
+            } else if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
+                ContentResolver resolver = context.getContentResolver();
+                int airplaneModeOn = Settings.System.getInt(resolver,
+                        Settings.System.AIRPLANE_MODE_ON, 0);
+                int bluetoothOn = Settings.Secure.getInt(resolver,
+                        Settings.Secure.BLUETOOTH_ON, 0);
+                if (airplaneModeOn == 0 && bluetoothOn != 0) {
+                    enable();
                 }
             }
         }
