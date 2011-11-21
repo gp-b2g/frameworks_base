@@ -24,6 +24,7 @@
 
 package android.server;
 
+import android.bluetooth.BluetoothA2dp;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
@@ -81,7 +82,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.LinkedList;
+import java.util.ListIterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 public class BluetoothService extends IBluetooth.Stub {
     private static final String TAG = "BluetoothService";
@@ -113,6 +117,8 @@ public class BluetoothService extends IBluetooth.Stub {
 
     private static final String SHARED_PREFERENCE_DOCK_ADDRESS = "dock_bluetooth_address";
     private static final String SHARED_PREFERENCES_NAME = "bluetooth_service_settings";
+    public static final String ACTION_UPDATE_SERVICE_CACHE =
+                       "android.server.bluetoothservice.action.SCAN_MODE_CHANGED";
 
     private static final int MESSAGE_UUID_INTENT = 1;
     private static final int MESSAGE_AUTO_PAIRING_FAILURE_ATTEMPT_DELAY = 2;
@@ -128,20 +134,31 @@ public class BluetoothService extends IBluetooth.Stub {
     private static final long INIT_AUTO_PAIRING_FAILURE_ATTEMPT_DELAY = 3000;
     private static final long MAX_AUTO_PAIRING_FAILURE_ATTEMPT_DELAY = 12000;
 
+    private static final int SDP_ATTR_PROTO_DESC_LIST = 0x0004;
+    private static final int SDP_ATTR_GOEP_L2CAP_PSM = 0x0200;
+
     // The timeout used to sent the UUIDs Intent
     // This timeout should be greater than the page timeout
-    private static final int UUID_INTENT_DELAY = 6000;
+    // Some of devices takes more than 15 secons for SDP response,
+    // Therefore, it is better set 30 seconds timeout instead of 6 seconds.
+    private static final int UUID_INTENT_DELAY = 30000;
 
     /** Always retrieve RFCOMM channel for these SDP UUIDs */
     private static final ParcelUuid[] RFCOMM_UUIDS = {
             BluetoothUuid.Handsfree,
             BluetoothUuid.HSP,
-            BluetoothUuid.ObexObjectPush };
+            BluetoothUuid.ObexObjectPush,
+            BluetoothUuid.DirectPrinting,
+            BluetoothUuid.ReferencePrinting,
+            BluetoothUuid.PrintingStatus };
 
     private final BluetoothAdapterProperties mAdapterProperties;
     private final BluetoothDeviceProperties mDeviceProperties;
 
     private final HashMap<String, Map<ParcelUuid, Integer>> mDeviceServiceChannelCache;
+    private final HashMap<String, Map<ParcelUuid, Integer>> mDeviceL2capPsmCache;
+    private final HashMap<String, Map<String, String>> mDeviceFeatureCache;
+
     private final ArrayList<String> mUuidIntentTracker;
     private final HashMap<RemoteService, IBluetoothCallback> mUuidCallbackTracker;
 
@@ -215,10 +232,12 @@ public class BluetoothService extends IBluetooth.Stub {
 
         mBondState = new BluetoothBondState(context, this);
         mAdapterProperties = new BluetoothAdapterProperties(context, this);
-        mDeviceProperties = new BluetoothDeviceProperties(this);
+        mDeviceProperties = new BluetoothDeviceProperties(this, context);
 
         mDeviceServiceChannelCache = new HashMap<String, Map<ParcelUuid, Integer>>();
+        mDeviceFeatureCache = new HashMap<String, Map<String, String>>();
         mDeviceOobData = new HashMap<String, Pair<byte[], byte[]>>();
+        mDeviceL2capPsmCache = new HashMap<String, Map<ParcelUuid, Integer>>();
         mUuidIntentTracker = new ArrayList<String>();
         mUuidCallbackTracker = new HashMap<RemoteService, IBluetoothCallback>();
         mServiceRecordToPid = new HashMap<Integer, Pair<Integer, IBinder>>();
@@ -229,8 +248,15 @@ public class BluetoothService extends IBluetooth.Stub {
         mHfpProfileState.start();
         mA2dpProfileState.start();
 
+        mConnectionManager = new ConnectionManager();
+
         IntentFilter filter = new IntentFilter();
         registerForAirplaneMode(filter);
+
+        // Register for connection-oriented notifications
+        filter.addAction(BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED);
+        filter.addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
+        filter.addAction(ACTION_UPDATE_SERVICE_CACHE);
 
         filter.addAction(Intent.ACTION_DOCK_EVENT);
         filter.addAction(Intent.ACTION_BOOT_COMPLETED);
@@ -525,6 +551,9 @@ public class BluetoothService extends IBluetooth.Stub {
                 // is entered wrongly twice we should abort.
                 if (attempt > 0 && attempt <= 2) {
                     mBondState.attempt(address);
+                    setBondState(address,
+                        BluetoothDevice.BOND_RETRY,
+                        BluetoothDevice.UNBOND_REASON_AUTH_FAILED);
                     createBond(address);
                     return;
                 }
@@ -624,6 +653,160 @@ public class BluetoothService extends IBluetooth.Stub {
             Log.e(TAG, "", e);
         } finally {
             Binder.restoreCallingIdentity(ident);
+        }
+    }
+
+    private ConnectionManager mConnectionManager;
+
+    // Track system Bluetooth profile connection state.  A centralized location to
+    // control and enforce profile concurrency policies (e.g., do X when audio activity
+    // is present)
+    private class ConnectionManager {
+        private LinkedList<BtPolicyCallback> mConnectionList = new LinkedList<BtPolicyCallback>();
+        private boolean mScoAudioActive = false;
+        private boolean mA2dpAudioActive = false;
+        private boolean mUseWifiForBtTransfers = true;
+
+        private int mBtPolicyHandle = 1;
+        private LinkedList<Integer> mBtPolicyHandlesAvailable = new LinkedList<Integer>();
+
+        private class BtPolicyCallback {
+            IBluetoothCallback mCallback;
+            int mDesiredAmpPolicy = BluetoothSocket.BT_AMP_POLICY_REQUIRE_BR_EDR;
+            int mCurrentAmpPolicy = BluetoothSocket.BT_AMP_POLICY_REQUIRE_BR_EDR;
+            int mHandle = 0;
+
+            boolean removeHandle(int handle) {
+                Log.i(TAG, "Deallocating handle " + Integer.toString(mHandle) + " to track BT policy.");
+                mHandle = 0;
+                return mBtPolicyHandlesAvailable.add(handle);
+            }
+
+            int getHandle() {
+                return mHandle;
+            }
+
+            BtPolicyCallback(IBluetoothCallback newCallback, int newDesiredAmpPolicy) {
+                this.mCallback = newCallback;
+                this.mDesiredAmpPolicy = validateAmpPolicy(newDesiredAmpPolicy);
+                this.mCurrentAmpPolicy = getEffectiveAmpPolicy(newDesiredAmpPolicy);
+
+                /* Allocate a handle */
+                try {
+                    mHandle = mBtPolicyHandlesAvailable.getFirst();
+                } catch (NoSuchElementException e) {
+                    if (mBtPolicyHandle < Integer.MAX_VALUE) {
+                        mHandle = ++mBtPolicyHandle;
+                        Log.i(TAG, "Allocating handle " + Integer.toString(mHandle) + " to track BT policy.");
+                    } else {
+                        Log.e(TAG, "Trouble finding open handle to track BT policy!");
+                    }
+                }
+            }
+        }
+
+        private int validateAmpPolicy(int policy) {
+            if (policy == BluetoothSocket.BT_AMP_POLICY_PREFER_BR_EDR ||
+                    policy == BluetoothSocket.BT_AMP_POLICY_PREFER_AMP) {
+                return policy;
+            }
+            return BluetoothSocket.BT_AMP_POLICY_REQUIRE_BR_EDR;
+        }
+
+        public synchronized int getEffectiveAmpPolicy(int policy) {
+            if (mScoAudioActive || mA2dpAudioActive || !mUseWifiForBtTransfers) {
+                return BluetoothSocket.BT_AMP_POLICY_REQUIRE_BR_EDR;
+            }
+            return validateAmpPolicy(policy);
+        }
+
+        public synchronized int registerEl2capConnection(IBluetoothCallback callback, int initialPolicy) {
+            BtPolicyCallback bpc = new BtPolicyCallback(callback, initialPolicy);
+            mConnectionList.add(bpc);
+            return bpc.getHandle();
+        }
+
+        public synchronized void deregisterEl2capConnection(int handle) {
+            ListIterator<BtPolicyCallback> it = mConnectionList.listIterator();
+            while (it.hasNext()) {
+                BtPolicyCallback thisBtPolicyCallback = it.next();
+                if (thisBtPolicyCallback.mHandle == handle) {
+                    thisBtPolicyCallback.removeHandle(handle);
+                    mConnectionList.remove(thisBtPolicyCallback);
+                    break;
+                }
+            }
+        }
+
+        public synchronized boolean setDesiredAmpPolicy(int handle, int policy) {
+            boolean result = true;
+            ListIterator<BtPolicyCallback> it = mConnectionList.listIterator();
+            policy = validateAmpPolicy(policy);
+            int allowedPolicy = getEffectiveAmpPolicy(policy);
+            while (it.hasNext()) {
+                BtPolicyCallback thisBtPolicyCallback = it.next();
+                if (thisBtPolicyCallback.mHandle == handle) {
+                    if (thisBtPolicyCallback.mCurrentAmpPolicy != allowedPolicy) {
+                        try {
+                            thisBtPolicyCallback.mCallback.onAmpPolicyChange(allowedPolicy);
+                            thisBtPolicyCallback.mCurrentAmpPolicy = allowedPolicy;
+                            thisBtPolicyCallback.mDesiredAmpPolicy = policy;
+                        } catch (RemoteException e) {
+                            Log.e(TAG, "", e);
+                            result = false;
+                        }
+                    }
+                    break;
+                }
+            }
+            return result;
+        }
+
+        public synchronized void setScoAudioActive(boolean active) {
+            Log.d(TAG, "setScoAudioActive(): " + active);
+
+            if (mScoAudioActive != active) {
+                mScoAudioActive = active;
+                updateConnectionAmpPolicies();
+            }
+        }
+
+        public synchronized void setA2dpAudioActive(boolean active) {
+            Log.d(TAG, "setA2dpAudioActive(): " + active);
+
+            if (mA2dpAudioActive != active) {
+                mA2dpAudioActive = active;
+                updateConnectionAmpPolicies();
+            }
+        }
+
+        public synchronized void setUseWifiForBtTransfers(boolean useWifi) {
+            Log.d(TAG, "setUseWifiForBtTransfers(): " + useWifi);
+
+            if (mUseWifiForBtTransfers != useWifi) {
+                mUseWifiForBtTransfers = useWifi;
+                updateConnectionAmpPolicies();
+            }
+        }
+
+        // call when anything happens that can change an AMP policy
+        private boolean updateConnectionAmpPolicies() {
+            boolean result = true;
+            ListIterator<BtPolicyCallback> it = mConnectionList.listIterator();
+            while (it.hasNext()) {
+                BtPolicyCallback thisBtPolicyCallback = it.next();
+                int allowedPolicy = getEffectiveAmpPolicy(thisBtPolicyCallback.mDesiredAmpPolicy);
+                if (allowedPolicy != thisBtPolicyCallback.mCurrentAmpPolicy) {
+                    try {
+                        thisBtPolicyCallback.mCallback.onAmpPolicyChange(allowedPolicy);
+                        thisBtPolicyCallback.mCurrentAmpPolicy = allowedPolicy;
+                    } catch (RemoteException e) {
+                        Log.e(TAG, "", e);
+                        result = false; /* This one didn't update, but keep looping */
+                    }
+                }
+            }
+            return result;
         }
     }
 
@@ -873,6 +1056,25 @@ public class BluetoothService extends IBluetooth.Stub {
         return uuids;
     }
 
+    public synchronized String getCOD() {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
+        return getProperty("Class", false);
+    }
+
+    public boolean setBluetoothClass(String address, int classOfDevice) {
+        if (!BluetoothAdapter.checkBluetoothAddress(address)) {
+            mContext.enforceCallingOrSelfPermission(BLUETOOTH_ADMIN_PERM,
+                    "Need BLUETOOTH_ADMIN permission");
+            return false;
+        }
+
+        if (!isEnabledInternal()) return false;
+
+        return setDevicePropertyIntegerNative(getObjectPathFromAddress(address), "Class",
+                classOfDevice);
+    }
+
+
     /**
      * Returns the user-friendly name of a remote device.  This value is
      * returned from our local cache, which is updated when onPropertyChange
@@ -1015,6 +1217,18 @@ public class BluetoothService extends IBluetooth.Stub {
 
     public synchronized boolean createBond(String address) {
         if (!isBondingFeasible(address)) return false;
+        BluetoothClass btClass = new BluetoothClass(getRemoteClass(address));
+        int btDeviceClass = btClass.getDeviceClass();
+
+        if (btDeviceClass == BluetoothClass.Device.PERIPHERAL_POINTING) {
+            Log.i(TAG, "The device is HID pointing device, skipping pairing");
+            if (!createDeviceNative(address)) {
+                Log.e(TAG, "CreateDeviceNative failed for " + address);
+                return false;
+            }
+            mBondState.setBondState(address, BluetoothDevice.BOND_BONDING);
+            return true;
+        }
 
         if (!createPairedDeviceNative(address, 60000  /*1 minute*/ )) {
             return false;
@@ -1278,9 +1492,18 @@ public class BluetoothService extends IBluetooth.Stub {
             return true;
         }
 
-        // If the device is already created, we will
-        // do the SDP on the callback of createDeviceNative.
-        boolean ret= createDeviceNative(address);
+        boolean ret;
+        // Just do the SDP if the device is already  created and UUIDs are not
+        // NULL, else create the device and then do SDP.
+        if (isRemoteDeviceInCache(address) && getRemoteUuids(address) != null && findDeviceNative(address) != null) {
+            String path = getObjectPathFromAddress(address);
+            if (path == null) return false;
+
+            // Use an empty string for the UUID pattern
+            ret = discoverServicesNative(path, "");
+        } else {
+            ret = createDeviceNative(address);
+        }
 
         mUuidIntentTracker.add(address);
         if (uuid != null) {
@@ -1319,6 +1542,61 @@ public class BluetoothService extends IBluetooth.Stub {
         Map<ParcelUuid, Integer> value = mDeviceServiceChannelCache.get(address);
         if (value != null && value.containsKey(uuid))
             return value.get(uuid);
+        return -1;
+    }
+
+
+    /**
+     * Gets the remote features list associated with the feature name.
+     * Pulls records from the cache only.
+     *
+     * @param address Address of the remote device
+     * @param feature the name of feature to get
+     *
+     * @return feature list string value
+     *         null on error
+     */
+    public String getRemoteFeature(String address, String feature) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
+        if (!isEnabledInternal()) return null;
+
+        if (!BluetoothAdapter.checkBluetoothAddress(address)) {
+            return null;
+        }
+
+        Map<String, String> value = mDeviceFeatureCache.get(address);
+        if (value != null && value.containsKey(feature))
+            return value.get(feature);
+        return null;
+    }
+
+    /**
+     * Gets the L2CAP PSM associated with the UUID.
+     * Pulls records from the cache only.
+     *
+     * @param address Address of the remote device
+     * @param uuid ParcelUuid of the service attribute
+     *
+     * @return L2CAP PSM associated with the service attribute
+     *         -1 on error
+     */
+    public int getRemoteL2capPsm(String address, ParcelUuid uuid) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
+        if (!isEnabledInternal()) return -1;
+
+        if (!BluetoothAdapter.checkBluetoothAddress(address)) {
+            return BluetoothDevice.ERROR;
+        }
+        // Check if we are recovering from a crash.
+        if (mDeviceProperties.isEmpty()) {
+            updateRemoteDevicePropertiesCache(address);
+        }
+
+        Map<ParcelUuid, Integer> value = mDeviceL2capPsmCache.get(address);
+        if (value != null && value.containsKey(uuid)) {
+            return value.get(uuid);
+        }
+
         return -1;
     }
 
@@ -1433,11 +1711,20 @@ public class BluetoothService extends IBluetooth.Stub {
     }
 
     /*package*/ void updateDeviceServiceChannelCache(String address) {
-        if (DBG) Log.d(TAG, "updateDeviceServiceChannelCache(" + address + ")");
+        if (!isEnabledInternal()) {
+            log("Bluetooth is not on");
+            return;
+        }
 
-        // We are storing the rfcomm channel numbers only for the uuids
-        // we are interested in.
         ParcelUuid[] deviceUuids = getRemoteUuids(address);
+        // We are storing the RFCOMM channel numbers and L2CAP PSMs
+        // only for the uuids we are interested in.
+        int channel;
+        int psm;
+        if (DBG) Log.d(TAG,"updateDeviceServiceChannelCache(" + address + ")");
+
+        // Remove service channel timeout handler
+        mHandler.removeMessages(MESSAGE_UUID_INTENT);
 
         ArrayList<ParcelUuid> applicationUuids = new ArrayList<ParcelUuid>();
 
@@ -1449,36 +1736,71 @@ public class BluetoothService extends IBluetooth.Stub {
             }
         }
 
-        Map <ParcelUuid, Integer> uuidToChannelMap = new HashMap<ParcelUuid, Integer>();
+        Map <ParcelUuid, Integer> rfcommValue = new HashMap<ParcelUuid, Integer>();
+        Map <ParcelUuid, Integer> l2capPsmValue = new HashMap<ParcelUuid, Integer>();
+        Map <String, String> feature = new HashMap<String, String>();
 
-        // Retrieve RFCOMM channel for default uuids
+        // Retrieve RFCOMM channel and L2CAP PSM (if available) for default uuids
         for (ParcelUuid uuid : RFCOMM_UUIDS) {
             if (BluetoothUuid.isUuidPresent(deviceUuids, uuid)) {
-                int channel = getDeviceServiceChannelForUuid(address, uuid);
-                uuidToChannelMap.put(uuid, channel);
-                if (DBG) Log.d(TAG, "\tuuid(system): " + uuid + " " + channel);
+                psm = getDeviceServiceChannelNative(getObjectPathFromAddress(address),
+                        uuid.toString(), SDP_ATTR_GOEP_L2CAP_PSM);
+                l2capPsmValue.put(uuid, psm);
+                if (DBG) log("\tuuid(system): " + uuid + " PSM: "+ psm );
+                if(!BluetoothUuid.isPrintingStatus(uuid)){
+                    channel = getDeviceServiceChannelNative(getObjectPathFromAddress(address),
+                             uuid.toString(), SDP_ATTR_PROTO_DESC_LIST);
+                    rfcommValue.put(uuid, channel);
+                    if (DBG) log("\tuuid(system): " + uuid + " SCN: "+ channel );
+                }
             }
+
+            // Retrieve Additional RFCOMM Channel for BPP
+            if (BluetoothUuid.isPrintingStatus(uuid)) {
+                channel = getDeviceServiceChannelNative(getObjectPathFromAddress(address),
+                         uuid.toString(), 0x000d); // find additional Channel Number
+                if (DBG) log("\tuuid(system): " + uuid + " " + channel);
+                rfcommValue.put(uuid, channel);
+            }
+
+            if (BluetoothUuid.isDirectPrinting(uuid)) {
+                String SupportedFormats;
+                SupportedFormats = getDeviceStringAttrValue(getObjectPathFromAddress(address),
+                                   uuid.toString(), 0x0350); // find additional Channel Number
+                if (DBG) log("\tSupportedFormats: " + uuid + " " + SupportedFormats);
+                feature.put("SupportedFormats", SupportedFormats);
+                mDeviceFeatureCache.put(address, feature);
+            }
+
         }
-        // Retrieve RFCOMM channel for application requested uuids
+        // Retrieve RFCOMM channel and L2CAP PSM (if available) for
+        // application requested uuids
         for (ParcelUuid uuid : applicationUuids) {
             if (BluetoothUuid.isUuidPresent(deviceUuids, uuid)) {
-                int channel = getDeviceServiceChannelForUuid(address, uuid);
-                uuidToChannelMap.put(uuid, channel);
-                if (DBG) Log.d(TAG, "\tuuid(application): " + uuid + " " + channel);
+                psm = getDeviceServiceChannelNative(getObjectPathFromAddress(address),
+                        uuid.toString(), SDP_ATTR_GOEP_L2CAP_PSM);
+                channel = getDeviceServiceChannelNative(getObjectPathFromAddress(address),
+                        uuid.toString(), SDP_ATTR_PROTO_DESC_LIST);
+                if (DBG) Log.d(TAG,"\tuuid(application): " + uuid + " SCN: " + channel +
+                        " PSM: " + psm);
+                rfcommValue.put(uuid, channel);
+                l2capPsmValue.put(uuid, psm);
             }
         }
 
         synchronized (this) {
-            // Make application callbacks
+            // Make application callbacks (RFCOMM channels only)
             for (Iterator<RemoteService> iter = mUuidCallbackTracker.keySet().iterator();
                     iter.hasNext();) {
                 RemoteService service = iter.next();
                 if (service.address.equals(address)) {
-                    if (uuidToChannelMap.containsKey(service.uuid)) {
-                        int channel = uuidToChannelMap.get(service.uuid);
-
-                        if (DBG) Log.d(TAG, "Making callback for " + service.uuid +
-                                    " with result " + channel);
+                    channel = -1;
+                    if (rfcommValue.get(service.uuid) != null) {
+                        channel = rfcommValue.get(service.uuid);
+                    }
+                    if (channel != -1) {
+                        if (DBG) Log.d(TAG,"Making callback for " + service.uuid + " with result " +
+                                channel);
                         IBluetoothCallback callback = mUuidCallbackTracker.get(service);
                         if (callback != null) {
                             try {
@@ -1492,7 +1814,8 @@ public class BluetoothService extends IBluetooth.Stub {
             }
 
             // Update cache
-            mDeviceServiceChannelCache.put(address, uuidToChannelMap);
+            mDeviceServiceChannelCache.put(address, rfcommValue);
+            mDeviceL2capPsmCache.put(address, l2capPsmValue);
         }
     }
 
@@ -1544,6 +1867,36 @@ public class BluetoothService extends IBluetooth.Stub {
         Message message = mHandler.obtainMessage(MESSAGE_REMOVE_SERVICE_RECORD);
         message.obj = new Pair<Integer, Integer>(handle, Binder.getCallingPid());
         mHandler.sendMessage(message);
+    }
+
+    public int registerEl2capConnection(IBluetoothCallback callback, int desiredAmpPolicy) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                                                "Need BLUETOOTH permission");
+        return mConnectionManager.registerEl2capConnection(callback, desiredAmpPolicy);
+    }
+
+    public void deregisterEl2capConnection(int handle) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                                                "Need BLUETOOTH permission");
+        mConnectionManager.deregisterEl2capConnection(handle);
+    }
+
+    public int getEffectiveAmpPolicy(int desiredPolicy) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                                                "Need BLUETOOTH permission");
+        return mConnectionManager.getEffectiveAmpPolicy(desiredPolicy);
+    }
+
+    public boolean setDesiredAmpPolicy(int handle, int policy) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                                                "Need BLUETOOTH permission");
+        return mConnectionManager.setDesiredAmpPolicy(handle, policy);
+    }
+
+    public void setUseWifiForBtTransfers(boolean useWifi) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                                                "Need BLUETOOTH permission");
+        mConnectionManager.setUseWifiForBtTransfers(useWifi);
     }
 
     private synchronized void checkAndRemoveRecord(int handle, int pid) {
@@ -1677,6 +2030,30 @@ public class BluetoothService extends IBluetooth.Stub {
                 if (airplaneModeOn == 0 && bluetoothOn != 0) {
                     enable();
                 }
+            } else if (BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED.equals(action)) {
+                int audioState = intent.getIntExtra(BluetoothHeadset.EXTRA_STATE,
+                        BluetoothHeadset.STATE_AUDIO_DISCONNECTED);
+                mConnectionManager.setScoAudioActive(audioState == BluetoothHeadset.STATE_AUDIO_CONNECTED);
+            } else if (BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED.equals(action)) {
+                if(mA2dpService != null)
+                {
+                    List<BluetoothDevice> audioDevices = mA2dpService.getConnectedDevices();
+                    for(int i = 0; i < audioDevices.size(); i++) {
+                        if(mA2dpService.isA2dpPlaying(audioDevices.get(i)) == true) {
+                            mConnectionManager.setA2dpAudioActive(true);
+                            return;
+                        }
+                    }
+                    mConnectionManager.setA2dpAudioActive(false);
+                }
+            } else if (ACTION_UPDATE_SERVICE_CACHE.equals(action)) {
+                String address = intent.getStringExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (address == null) {
+                    Log.e(TAG, "address is null");
+                    return;
+                }
+                Log.d(TAG, "Received ACTION_UPDATE_SERVICE_CACHE" + address);
+                updateDeviceServiceChannelCache(address);
             }
         }
     };
@@ -1929,6 +2306,21 @@ public class BluetoothService extends IBluetooth.Stub {
                     }
                 }
             }
+
+            Map<ParcelUuid, Integer> uuidPsms = mDeviceL2capPsmCache.get(address);
+            if (uuidPsms == null) {
+                pw.println("\tuuids = null");
+            } else {
+                for (ParcelUuid uuid : uuidPsms.keySet()) {
+                    Integer psm = uuidPsms.get(uuid);
+                    if (psm == null) {
+                        pw.println("\t" + uuid);
+                    } else {
+                        pw.println("\t" + uuid + " L2CAP PSM = " + psm);
+                    }
+                }
+            }
+
             for (RemoteService service : mUuidCallbackTracker.keySet()) {
                 if (service.address.equals(address)) {
                     pw.println("\tPENDING CALLBACK: " + service.uuid);
@@ -2434,6 +2826,19 @@ public class BluetoothService extends IBluetooth.Stub {
         }
     }
 
+    public boolean notifyConnectA2dp(String address) {
+        BluetoothDeviceProfileState state =
+             mDeviceProfileState.get(address);
+        if (state != null) {
+            Message msg = new Message();
+            msg.what = BluetoothDeviceProfileState.CONNECT_OTHER_PROFILES;
+            msg.arg1 = BluetoothDeviceProfileState.CONNECT_A2DP_OUTGOING;
+            state.sendMessage(msg);
+            return true;
+        }
+        return false;
+    }
+
     public boolean notifyIncomingConnection(String address) {
         BluetoothDeviceProfileState state =
              mDeviceProfileState.get(address);
@@ -2779,6 +3184,8 @@ public class BluetoothService extends IBluetooth.Stub {
     private native boolean removeDeviceNative(String objectPath);
     private native int getDeviceServiceChannelNative(String objectPath, String uuid,
             int attributeId);
+    private native String getDeviceStringAttrValue(String objectPath, String uuid,
+            int attributeId);
 
     private native boolean cancelPairingUserInputNative(String address, int nativeData);
     private native boolean setPinNative(String address, String pin, int nativeData);
@@ -2792,6 +3199,9 @@ public class BluetoothService extends IBluetooth.Stub {
             int value);
     private native boolean setDevicePropertyStringNative(String objectPath, String key,
             String value);
+    private native boolean setDevicePropertyIntegerNative(String objectPath, String key,
+            int value);
+
     private native boolean createDeviceNative(String address);
     /*package*/ native boolean discoverServicesNative(String objectPath, String pattern);
 
@@ -2811,6 +3221,7 @@ public class BluetoothService extends IBluetooth.Stub {
 
     private native int[] addReservedServiceRecordsNative(int[] uuuids);
     private native boolean removeReservedServiceRecordsNative(int[] handles);
+    private native String findDeviceNative(String address);
 
     // Health API
     native String registerHealthApplicationNative(int dataType, String role, String name,

@@ -4420,6 +4420,11 @@ package android.bluetooth {
     field public static final int HEALTH_THERMOMETER = 2312; // 0x908
     field public static final int HEALTH_UNCATEGORIZED = 2304; // 0x900
     field public static final int HEALTH_WEIGHING = 2316; // 0x90c
+    field public static final int IMAGING_CAMERA = 1568; // 0x620
+    field public static final int IMAGING_DISPLAY = 1552; // 0x610
+    field public static final int IMAGING_PRINTER = 1664; // 0x680
+    field public static final int IMAGING_SCANNER = 1600; // 0x640
+
     field public static final int PHONE_CELLULAR = 516; // 0x204
     field public static final int PHONE_CORDLESS = 520; // 0x208
     field public static final int PHONE_ISDN = 532; // 0x214

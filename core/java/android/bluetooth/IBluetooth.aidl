@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008, The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +39,7 @@ interface IBluetooth
 
     String getAddress();
     String getName();
+    String getCOD();
     boolean setName(in String name);
     ParcelUuid[] getUuids();
 
@@ -65,6 +67,7 @@ interface IBluetooth
     String[] listBonds();
     int getBondState(in String address);
     boolean setDeviceOutOfBandData(in String address, in byte[] hash, in byte[] randomizer);
+    boolean setBluetoothClass(String address, int classOfDevice);
 
     String getRemoteName(in String address);
     String getRemoteAlias(in String address);
@@ -73,7 +76,8 @@ interface IBluetooth
     ParcelUuid[] getRemoteUuids(in String address);
     boolean fetchRemoteUuids(in String address, in ParcelUuid uuid, in IBluetoothCallback callback);
     int getRemoteServiceChannel(in String address, in ParcelUuid uuid);
-
+    int getRemoteL2capPsm(in String address, in ParcelUuid uuid);
+    String getRemoteFeature(String address, String feature);
     boolean setPin(in String address, in byte[] pin);
     boolean setPasskey(in String address, int passkey);
     boolean setPairingConfirmation(in String address, boolean confirm);
@@ -123,4 +127,9 @@ interface IBluetooth
     int getHealthDeviceConnectionState(in BluetoothDevice device);
 
     void sendConnectionStateChange(in BluetoothDevice device, int profile, int state, int prevState);
+    int registerEl2capConnection(in IBluetoothCallback callback, in int ampPolicy);
+    void deregisterEl2capConnection(in int handle);
+    int getEffectiveAmpPolicy(in int policy);
+    boolean setDesiredAmpPolicy(in int handle, in int policy);
+    void setUseWifiForBtTransfers(in boolean useWifi);
 }

@@ -201,6 +201,12 @@ public final class BluetoothClass implements Parcelable {
         //public static final int AUDIO_VIDEO_RESERVED              = 0x0444;
         public static final int AUDIO_VIDEO_VIDEO_GAMING_TOY        = 0x0448;
 
+        // Devices in the IMAGING major class
+        public static final int IMAGING_DISPLAY                     = 0x0610;
+        public static final int IMAGING_CAMERA                      = 0x0620;
+        public static final int IMAGING_SCANNER                     = 0x0640;
+        public static final int IMAGING_PRINTER                     = 0x0680;
+
         // Devices in the WEARABLE major class
         public static final int WEARABLE_UNCATEGORIZED              = 0x0700;
         public static final int WEARABLE_WRIST_WATCH                = 0x0704;

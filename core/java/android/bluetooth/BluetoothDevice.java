@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -232,6 +233,12 @@ public final class BluetoothDevice implements Parcelable {
      * </i>
      */
     public static final int BOND_BONDED = 12;
+
+    /**
+     * This bonding state will be used, When auto pairing fails and
+     * retry the manual bonding process.
+     * @hide */
+    public static final int BOND_RETRY = 13;
 
     /** @hide */
     public static final String EXTRA_REASON = "android.bluetooth.device.extra.REASON";
@@ -742,6 +749,21 @@ public final class BluetoothDevice implements Parcelable {
     }
 
     /**
+     * Set the Bluetooth class of the remote device.
+     * <p>Requires {@link android.Manifest.permission#BLUETOOTH}.
+     *
+     * @param classOfDevice the Bluetooth COD value to be set
+     * @hide
+     */
+    public boolean setBluetoothClass(int classOfDevice) {
+        try {
+            return sService.setBluetoothClass(mAddress, classOfDevice);
+        } catch (RemoteException e) {Log.e(TAG, "", e);}
+        return false;
+    }
+
+
+    /**
      * Get trust state of a remote device.
      * <p>Requires {@link android.Manifest.permission#BLUETOOTH}.
      * @hide
@@ -805,6 +827,22 @@ public final class BluetoothDevice implements Parcelable {
              return sService.getRemoteServiceChannel(mAddress, uuid);
          } catch (RemoteException e) {Log.e(TAG, "", e);}
          return BluetoothDevice.ERROR;
+    }
+
+    /** @hide */
+    public int getL2capPsm(ParcelUuid uuid) {
+         try {
+             return sService.getRemoteL2capPsm(mAddress, uuid);
+         } catch (RemoteException e) {Log.e(TAG, "", e);}
+         return BluetoothDevice.ERROR;
+    }
+
+    /** @hide */
+    public String getFeature(String feature) {
+         try {
+             return sService.getRemoteFeature(mAddress, feature);
+         } catch (RemoteException e) {Log.e(TAG, "", e);}
+         return null;
     }
 
     /** @hide */
@@ -882,6 +920,86 @@ public final class BluetoothDevice implements Parcelable {
      */
     public BluetoothSocket createRfcommSocket(int channel) throws IOException {
         return new BluetoothSocket(BluetoothSocket.TYPE_RFCOMM, -1, true, true, this, channel,
+                null);
+    }
+
+    /**
+     * Create an L2Cap {@link BluetoothSocket} ready to start a secure
+     * outgoing connection to this remote device on given channel.
+     * <p>The remote device will be authenticated and communication on this
+     * socket will be encrypted.
+     * <p>Use {@link BluetoothSocket#connect} to intiate the outgoing
+     * connection.
+     * <p>Requires {@link android.Manifest.permission#BLUETOOTH}
+     *
+     * @param psm L2Cap psm to connect to
+     * @return a L2Cap BluetoothSocket ready for an outgoing connection
+     * @throws IOException on error, for example Bluetooth not available, or
+     *                     insufficient permissions
+     * @hide
+     */
+    public BluetoothSocket createL2capSocket(int psm) throws IOException {
+        return new BluetoothSocket(BluetoothSocket.TYPE_L2CAP, -1, true, true, this, psm,
+                null);
+    }
+
+    /**
+     * Create an L2Cap {@link BluetoothSocket} ready to start an insecure
+     * outgoing connection to this remote device on given channel.
+     * <p>The remote device not will be authenticated and communication on this
+     * socket will not be encrypted.
+     * <p>Use {@link BluetoothSocket#connect} to intiate the outgoing
+     * connection.
+     * <p>Requires {@link android.Manifest.permission#BLUETOOTH}
+     *
+     * @param psm L2Cap psm to connect to
+     * @return a L2Cap BluetoothSocket ready for an outgoing connection
+     * @throws IOException on error, for example Bluetooth not available, or
+     *                     insufficient permissions
+     * @hide
+     */
+    public BluetoothSocket createInsecureL2capSocket(int psm) throws IOException {
+        return new BluetoothSocket(BluetoothSocket.TYPE_L2CAP, -1, false, false, this, psm,
+                null);
+    }
+
+    /**
+     * Create an EL2CAP {@link BluetoothSocket} ready to start a secure
+     * outgoing connection to this remote device on given channel.
+     * <p>The remote device will be authenticated and communication on this
+     * socket will be encrypted.
+     * <p>Use {@link BluetoothSocket#connect} to intiate the outgoing
+     * connection.
+     * <p>Requires {@link android.Manifest.permission#BLUETOOTH}
+     *
+     * @param psm L2Cap psm to connect to
+     * @return a L2Cap BluetoothSocket ready for an outgoing connection
+     * @throws IOException on error, for example Bluetooth not available, or
+     *                     insufficient permissions
+     * @hide
+     */
+    public BluetoothSocket createEl2capSocket(int psm) throws IOException {
+        return new BluetoothSocket(BluetoothSocket.TYPE_EL2CAP, -1, true, true, this, psm,
+                null);
+    }
+
+    /**
+     * Create an EL2CAP {@link BluetoothSocket} ready to start an insecure
+     * outgoing connection to this remote device on given channel.
+     * <p>The remote device not will be authenticated and communication on this
+     * socket will not be encrypted.
+     * <p>Use {@link BluetoothSocket#connect} to intiate the outgoing
+     * connection.
+     * <p>Requires {@link android.Manifest.permission#BLUETOOTH}
+     *
+     * @param psm L2Cap psm to connect to
+     * @return a L2Cap BluetoothSocket ready for an outgoing connection
+     * @throws IOException on error, for example Bluetooth not available, or
+     *                     insufficient permissions
+     * @hide
+     */
+    public BluetoothSocket createInsecureEl2capSocket(int psm) throws IOException {
+        return new BluetoothSocket(BluetoothSocket.TYPE_EL2CAP, -1, false, false, this, psm,
                 null);
     }
 

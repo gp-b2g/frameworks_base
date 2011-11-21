@@ -1192,8 +1192,10 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                     Message m = new Message();
                     m.what = DISCONNECT_PBAP_OUTGOING;
                     deferMessage(m);
-                    if (mHeadsetService.getPriority(mDevice) ==
-                        BluetoothHeadset.PRIORITY_AUTO_CONNECT) {
+                    int bluetoothState = mService.getBluetoothState();
+                    if ((mHeadsetService.getPriority(mDevice) ==
+                        BluetoothHeadset.PRIORITY_AUTO_CONNECT) &&
+                        (bluetoothState != BluetoothAdapter.STATE_TURNING_OFF)) {
                         mHeadsetService.setPriority(mDevice, BluetoothHeadset.PRIORITY_ON);
                     }
                     return mHeadsetService.disconnectHeadsetInternal(mDevice);
