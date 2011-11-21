@@ -230,6 +230,9 @@ private:
     // a video encoder.
     List<int64_t> mDecodingTimeList;
 
+    //Used to indicate if the AAC container has ADIF format
+    int32_t mIsAacFormatAdif;
+
     OMXCodec(const sp<IOMX> &omx, IOMX::node_id node,
              uint32_t quirks, uint32_t flags,
              bool isEncoder, const char *mime, const char *componentName,

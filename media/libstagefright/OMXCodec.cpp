@@ -644,7 +644,7 @@ sp<MediaSource> OMXCodec::Create(
 }
 
 status_t OMXCodec::configureCodec(const sp<MetaData> &meta) {
-    LOGV("configureCodec protected=%d",
+    LOGD("configureCodec protected=%d",
          (mFlags & kEnableGrallocUsageProtected) ? 1 : 0);
 
     if (!(mFlags & kIgnoreCodecSpecificData)) {
@@ -747,6 +747,7 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta) {
         }
 
     }
+
     if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_DIVX, mMIME) || !strcasecmp(MEDIA_MIMETYPE_VIDEO_DIVX4, mMIME)) {
         LOGV("Setting the QOMX_VIDEO_PARAM_DIVXTYPE params ");
         QOMX_VIDEO_PARAM_DIVXTYPE paramDivX;
@@ -844,7 +845,19 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta) {
         CHECK(meta->findInt32(kKeyChannelCount, &numChannels));
         CHECK(meta->findInt32(kKeySampleRate, &sampleRate));
 
+        meta->findInt32(kKeyBitRate, &bitRate);
+        meta->findInt32(kkeyAacFormatAdif, &mIsAacFormatAdif);
         status_t err = setAACFormat(numChannels, sampleRate, bitRate);
+
+        uint32_t type;
+        const void *data;
+        size_t size;
+
+        if (meta->findData(kKeyAacCodecSpecificData, &type, &data, &size)) {
+            LOGV("OMXCodec:: configureCodec found kKeyAacCodecSpecificData of size %d\n", size);
+            addCodecSpecificData(data, size);
+        }
+
         if (err != OK) {
             CODEC_LOGE("setAACFormat() failed (err = %d)", err);
             return err;
@@ -1786,6 +1799,7 @@ OMXCodec::OMXCodec(
       mOutputPortSettingsChangedPending(false),
       mLeftOverBuffer(NULL),
       mPaused(false),
+      mIsAacFormatAdif(0),
       mNativeWindow(!strncmp(componentName, "OMX.google.", 11)
                             ? NULL : nativeWindow),
       mInterlaceFormatDetected(false),
@@ -3954,7 +3968,12 @@ status_t OMXCodec::setAACFormat(int32_t numChannels, int32_t sampleRate, int32_t
 
         profile.nChannels = numChannels;
         profile.nSampleRate = sampleRate;
-        profile.eAACStreamFormat = OMX_AUDIO_AACStreamFormatMP4ADTS;
+
+        if(mIsAacFormatAdif){
+            profile.eAACStreamFormat = OMX_AUDIO_AACStreamFormatADIF;
+        }else{
+            profile.eAACStreamFormat = OMX_AUDIO_AACStreamFormatMP4ADTS;
+        }
 
         err = mOMX->setParameter(
                 mNode, OMX_IndexParamAudioAac, &profile, sizeof(profile));
