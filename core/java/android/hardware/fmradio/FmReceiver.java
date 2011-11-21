@@ -2020,4 +2020,66 @@ public class FmReceiver extends FmTransceiver
       return currFMState;
 
    }
+/*==============================================================
+   FUNCTION:  setOnChannelThreshold
+   ==============================================================*/
+   /**
+   *    Sets the On channel threshold value
+   *
+   *    <p>
+   *    This method sets the On channel threshold value.
+   *
+   *    <p>
+   */
+   public void setOnChannelThreshold(int data)
+   {
+      int re =  mControl.setOnChannelThreshold(sFd, data);
+   }
+
+/*==============================================================
+   FUNCTION:  getOnChannelThreshold
+   ==============================================================*/
+   /**
+   *    Gets the On channel threshold value
+   *
+   *    <p>
+   *    This method gets the currently set On channel threshold value.
+   *
+   *    <p>
+   */
+   public int getOnChannelThreshold()
+   {
+      return mControl.getOnChannelThreshold(sFd);
+   }
+
+/*==============================================================
+   FUNCTION:  setOffChannelThreshold
+   ==============================================================*/
+   /**
+   *    Sets the Off channel threshold value
+   *
+   *    <p>
+   *    This method sets the Off channel threshold value.
+   *
+   *    <p>
+   */
+   public void setOffChannelThreshold(int data)
+   {
+      int re =  mControl.setOffChannelThreshold(sFd, data);
+   }
+/*==============================================================
+   FUNCTION:  getOffChannelThreshold
+   ==============================================================*/
+   /**
+   *    Gets the Off channel threshold value
+   *
+   *    <p>
+   *    This method gets the currently set Off channel threshold value.
+   *
+   *    <p>
+   */
+   public int getOffChannelThreshold()
+   {
+      return mControl.getOffChannelThreshold(sFd);
+   }
 }

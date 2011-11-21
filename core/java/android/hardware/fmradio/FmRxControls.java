@@ -84,6 +84,11 @@ class FmRxControls
    private static final int V4L2_CID_BASE = V4L2_CTRL_CLASS_USER | 0x900;
 
    private static final int V4L2_CID_AUDIO_MUTE = V4L2_CID_BASE + 9;
+   private static int V4L2_CID_PRIVATE_TAVARUA_ON_CHANNEL_THRESHOLD  = V4L2_CID_BASE + 0x2B;
+   private static int V4L2_CID_PRIVATE_TAVARUA_OFF_CHANNEL_THRESHOLD = V4L2_CID_BASE + 0x2C;
+
+   private int sOnData  ;
+   private int sOffData ;
 
 
 
@@ -151,6 +156,52 @@ class FmRxControls
    {
       int re =  FmReceiverJNI.setControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_HLSI, inj);
       return re;
+   }
+
+   /*
+    * Set On channel threshold
+    */
+   public int setOnChannelThreshold(int fd, int sBuff)
+   {
+      int cnt = 0;
+      int re = FmReceiverJNI.setControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_ON_CHANNEL_THRESHOLD, sBuff);
+      if ( re < 0)
+         Log.e(TAG, "Failed to set On channel threshold data");
+      else
+         sOnData = sBuff;
+      return re;
+   }
+
+   /*
+    * Set Off channel threshold
+    */
+   public int setOffChannelThreshold(int fd, int sBuff)
+   {
+      int cnt = 0;
+      int re = FmReceiverJNI.setControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_OFF_CHANNEL_THRESHOLD, sBuff);
+      if ( re < 0)
+         Log.e(TAG, "Failed to set Off channel Threshold data");
+      else
+         sOffData = sBuff;
+      return re;
+   }
+
+   /*
+    * Get On channel threshold
+    */
+   public int getOnChannelThreshold(int fd)
+   {
+      Log.d(TAG, "On Channel Threshold data is : " + sOnData);
+      return sOnData;
+   }
+
+   /*
+    * Get Off channel threshold
+    */
+   public int getOffChannelThreshold(int fd)
+   {
+      Log.d(TAG, "Off Channel Threshold data is : " + sOffData);
+      return sOffData;
    }
 
    /*
