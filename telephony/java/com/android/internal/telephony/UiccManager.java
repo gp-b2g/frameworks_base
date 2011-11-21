@@ -38,6 +38,7 @@ public class UiccManager extends Handler {
     }
     private static final int EVENT_ICC_STATUS_CHANGED = 1;
     private static final int EVENT_GET_ICC_STATUS_DONE = 2;
+    private static final int EVENT_RADIO_UNAVAILABLE = 3;
     private static UiccManager mInstance;
 
     private Context mContext;
@@ -69,6 +70,7 @@ public class UiccManager extends Handler {
         mContext = c;
         mCi = ci;
         mCi.registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, null);
+        mCi.registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, null);
         // TODO remove this once modem correctly notifies the unsols
         mCi.registerForOn(this, EVENT_ICC_STATUS_CHANGED, null);
     }
@@ -84,6 +86,10 @@ public class UiccManager extends Handler {
                 Log.d(LOG_TAG, "Received EVENT_GET_ICC_STATUS_DONE");
                 AsyncResult ar = (AsyncResult)msg.obj;
                 onGetIccCardStatusDone(ar);
+                break;
+            case EVENT_RADIO_UNAVAILABLE:
+                Log.d(LOG_TAG, "EVENT_RADIO_UNAVAILABLE");
+                disposeCard();
                 break;
             default:
                 Log.e(LOG_TAG, " Unknown Event " + msg.what);
@@ -101,10 +107,10 @@ public class UiccManager extends Handler {
         IccCardStatus status = (IccCardStatus)ar.result;
 
         if (mUiccCard == null) {
-            //Create new card
+            Log.d(LOG_TAG, "Creating a new card");
             mUiccCard = new UiccCard(mContext, mCi, status);
         } else {
-            //Update already existing card
+            Log.d(LOG_TAG, "Update already existing card");
             mUiccCard.update(mContext, mCi , status);
         }
 
@@ -112,12 +118,12 @@ public class UiccManager extends Handler {
         mIccChangedRegistrants.notifyRegistrants();
     }
 
-    public UiccCard getUiccCard() {
+    public synchronized UiccCard getUiccCard() {
         return mUiccCard;
     }
 
     // Easy to use API
-    public UiccCardApplication getUiccCardApplication(AppFamily family) {
+    public synchronized UiccCardApplication getUiccCardApplication(AppFamily family) {
         if (mUiccCard != null) {
             return mUiccCard.getApplication(family);
         }
@@ -125,7 +131,7 @@ public class UiccManager extends Handler {
     }
 
     // Easy to use API
-    public IccRecords getIccRecords(AppFamily family) {
+    public synchronized IccRecords getIccRecords(AppFamily family) {
         if (mUiccCard != null) {
             UiccCardApplication app = mUiccCard.getApplication(family);
             if (app != null) {
@@ -136,7 +142,7 @@ public class UiccManager extends Handler {
     }
 
     // Easy to use API
-    public IccFileHandler getIccFileHandler(AppFamily family) {
+    public synchronized IccFileHandler getIccFileHandler(AppFamily family) {
         if (mUiccCard != null) {
             UiccCardApplication app = mUiccCard.getApplication(family);
             if (app != null) {
@@ -144,6 +150,15 @@ public class UiccManager extends Handler {
             }
         }
         return null;
+    }
+
+    // Destroys the card object
+    private synchronized void disposeCard() {
+        Log.d(LOG_TAG, "Disposing card ");
+        if (mUiccCard != null) {
+            mUiccCard.dispose();
+            mUiccCard = null;
+        }
     }
 
     //Notifies when card status changes

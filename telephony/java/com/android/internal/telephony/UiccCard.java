@@ -139,13 +139,18 @@ public class UiccCard {
             }
             mCatService = null;
         }
-
-        if (oldState != CardState.CARDSTATE_ABSENT && mCardState == CardState.CARDSTATE_ABSENT) {
-            mAbsentRegistrants.notifyRegistrants();
-            mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_REMOVED, null));
-        } else if (oldState == CardState.CARDSTATE_ABSENT && mCardState != CardState.CARDSTATE_ABSENT) {
-            mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_ADDED, null));
-        }
+        // The following logic does not account for Sim being powered down
+        // when we go into air plane mode. Commenting it out till we fix it.
+        // IccCardProxy is the only registrant and it
+        // handles card absence and presence directly.
+        // TODO: 1. Check property persist.radio.apm_sim_not_pwdn and radio state
+        //  before notifying ABSENT
+        //if (oldState != CardState.CARDSTATE_ABSENT && mCardState == CardState.CARDSTATE_ABSENT) {
+        //    mAbsentRegistrants.notifyRegistrants();
+        //    mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_REMOVED, null));
+        //} else if (oldState == CardState.CARDSTATE_ABSENT && mCardState != CardState.CARDSTATE_ABSENT) {
+        //    mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_ADDED, null));
+        //}
     }
 
     protected void finalize() {
