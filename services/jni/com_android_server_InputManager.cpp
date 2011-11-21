@@ -59,6 +59,7 @@ static const float POINTER_SPEED_EXPONENT = 1.0f / 4;
 static struct {
     jmethodID notifyConfigurationChanged;
     jmethodID notifyLidSwitchChanged;
+    jmethodID notifyJackSwitchChanged;
     jmethodID notifyInputChannelBroken;
     jmethodID notifyANR;
     jmethodID filterInputEvent;
@@ -513,6 +514,16 @@ void NativeInputManager::notifySwitch(nsecs_t when, int32_t switchCode,
                 when, switchValue == 0);
         checkAndClearExceptionFromCallback(env, "notifyLidSwitchChanged");
         break;
+#ifdef ALSA_HEADSET_DETECTION
+    case SW_HEADPHONE_INSERT:
+    case SW_MICROPHONE_INSERT:
+        // ToDo: Handle ANC switch event as well
+    LOGD("JACK-DETECT: In NativeInputManager-Before calling windowmanager service for HEADPHONE_INSERT");
+        env->CallVoidMethod(mCallbacksObj, gCallbacksClassInfo.notifyJackSwitchChanged,
+               when, switchCode, switchValue);
+        checkAndClearExceptionFromCallback(env, "notifyJackSwitchChanged");
+        break;
+#endif
     }
 }
 
@@ -1420,6 +1431,9 @@ int register_android_server_InputManager(JNIEnv* env) {
 
     GET_METHOD_ID(gCallbacksClassInfo.notifyLidSwitchChanged, clazz,
             "notifyLidSwitchChanged", "(JZ)V");
+
+    GET_METHOD_ID(gCallbacksClassInfo.notifyJackSwitchChanged, clazz,
+            "notifyJackSwitchChanged", "(JIZ)V");
 
     GET_METHOD_ID(gCallbacksClassInfo.notifyInputChannelBroken, clazz,
             "notifyInputChannelBroken", "(Lcom/android/server/wm/InputWindowHandle;)V");

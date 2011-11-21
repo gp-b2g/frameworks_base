@@ -22,6 +22,11 @@ LOCAL_C_INCLUDES += \
     frameworks/base/services \
     frameworks/base/core/jni \
     external/skia/include/core
+ifeq ($(BOARD_USES_ALSA_AUDIO),true)
+    LOCAL_CFLAGS += -DALSA_HEADSET_DETECTION
+    LOCAL_CFLAGS += -include $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include/linux/input.h
+    LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+endif
 
 LOCAL_SHARED_LIBRARIES := \
     libandroid_runtime \

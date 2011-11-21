@@ -539,6 +539,11 @@ public class InputManager implements Watchdog.Monitor {
         }
         
         @SuppressWarnings("unused")
+        public void notifyJackSwitchChanged(long whenNanos,int switchCode, boolean jackOpen) {
+            mWindowManagerService.mInputMonitor.notifyJackSwitchChanged(whenNanos,switchCode,jackOpen);
+        }
+
+        @SuppressWarnings("unused")
         public void notifyInputChannelBroken(InputWindowHandle inputWindowHandle) {
             mWindowManagerService.mInputMonitor.notifyInputChannelBroken(inputWindowHandle);
         }
