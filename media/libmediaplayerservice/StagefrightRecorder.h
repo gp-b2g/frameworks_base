@@ -188,6 +188,9 @@ private:
 
     StagefrightRecorder(const StagefrightRecorder &);
     StagefrightRecorder &operator=(const StagefrightRecorder &);
+
+    /* extension */
+    status_t startExtendedRecording();
 };
 
 }  // namespace android

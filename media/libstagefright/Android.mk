@@ -72,6 +72,7 @@ LOCAL_SRC_FILES:=                         \
         XINGSeeker.cpp                    \
         avc_utils.cpp                     \
         ExtendedExtractor.cpp             \
+        ExtendedWriter.cpp                \
 
 LOCAL_C_INCLUDES:= \
 	$(JNI_H_INCLUDE) \
@@ -80,8 +81,9 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/external/tremolo \
         $(TOP)/frameworks/base/media/libstagefright/rtsp \
         $(TOP)/external/openssl/include \
-        $(TOP)/hardware/msm7k/libgralloc-qsd8k \
-        $(TOP)/vendor/qcom/opensource/omx/mm-core/omxcore/inc
+	$(TOP)/hardware/msm7k/libgralloc-qsd8k \
+        $(TOP)/vendor/qcom/opensource/omx/mm-core/omxcore/inc \
+        $(TOP)/system/core/include
 
 
 
