@@ -917,6 +917,26 @@ status_t AudioFlinger::getRenderPosition(uint32_t *halFrames, uint32_t *dspFrame
     return BAD_VALUE;
 }
 
+status_t AudioFlinger::setFmVolume(float value)
+{
+    status_t ret = initCheck();
+    if (ret != NO_ERROR) {
+        return ret;
+    }
+
+    // check calling permissions
+    if (!settingsAllowed()) {
+        return PERMISSION_DENIED;
+    }
+
+    AutoMutex lock(mHardwareLock);
+    mHardwareStatus = AUDIO_SET_FM_VOLUME;
+    ret = mPrimaryHardwareDev->set_fm_volume(mPrimaryHardwareDev, value);
+    mHardwareStatus = AUDIO_HW_IDLE;
+
+    return ret;
+}
+
 void AudioFlinger::registerClient(const sp<IAudioFlingerClient>& client)
 {
 

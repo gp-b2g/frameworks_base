@@ -474,6 +474,11 @@ public class VolumePanel extends Handler implements OnSeekBarChangeListener, Vie
                 break;
             }
 
+            case AudioManager.STREAM_FM: {
+                setMusicIcon(R.drawable.ic_audio_vol, R.drawable.ic_audio_vol_mute);
+                break;
+            }
+
             case AudioManager.STREAM_VOICE_CALL: {
                 /*
                  * For in-call voice call volume, there is no inaudible volume.

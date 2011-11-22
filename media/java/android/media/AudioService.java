@@ -185,7 +185,8 @@ public class AudioService extends IAudioService.Stub {
         15, // STREAM_BLUETOOTH_SCO
         7,  // STREAM_SYSTEM_ENFORCED
         15, // STREAM_DTMF
-        15  // STREAM_TTS
+        15,  // STREAM_TTS
+        15 // STREAM_FM
     };
     /* STREAM_VOLUME_ALIAS[] indicates for each stream if it uses the volume settings
      * of another stream: This avoids multiplying the volume settings for hidden
@@ -201,7 +202,8 @@ public class AudioService extends IAudioService.Stub {
         AudioSystem.STREAM_BLUETOOTH_SCO, // STREAM_BLUETOOTH_SCO
         AudioSystem.STREAM_SYSTEM,  // STREAM_SYSTEM_ENFORCED
         AudioSystem.STREAM_VOICE_CALL, // STREAM_DTMF
-        AudioSystem.STREAM_MUSIC  // STREAM_TTS
+        AudioSystem.STREAM_MUSIC,  // STREAM_TTS
+        AudioSystem.STREAM_FM
     };
 
     private AudioSystem.ErrorCallback mAudioSystemCallback = new AudioSystem.ErrorCallback() {
@@ -369,7 +371,11 @@ public class AudioService extends IAudioService.Stub {
         intentFilter.addAction(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED);
         intentFilter.addAction(Intent.ACTION_DOCK_EVENT);
         intentFilter.addAction(Intent.ACTION_USB_ANLG_HEADSET_PLUG);
-        intentFilter.addAction(Intent.ACTION_USB_DGTL_HEADSET_PLUG);
+        intentFilter.addAction("HDMI_CONNECTED");
+        intentFilter.addAction("HDMI_DISCONNECTED");
+        intentFilter.addCategory(Intent.CATEGORY_DEFAULT);
+        intentFilter.addAction(Intent.ACTION_FM);
+        intentFilter.addAction(Intent.ACTION_FM_TX);
         intentFilter.addAction(Intent.ACTION_HDMI_AUDIO_PLUG);
         intentFilter.addAction(Intent.ACTION_BOOT_COMPLETED);
         intentFilter.addAction(Intent.ACTION_SCREEN_ON);
@@ -465,6 +471,7 @@ public class AudioService extends IAudioService.Stub {
         mMuteAffectedStreams = System.getInt(cr,
                 System.MUTE_STREAMS_AFFECTED,
                 ((1 << AudioSystem.STREAM_MUSIC)|(1 << AudioSystem.STREAM_RING)|(1 << AudioSystem.STREAM_SYSTEM)));
+        mMuteAffectedStreams |= (1 << AudioSystem.STREAM_FM);
 
         // Each stream will read its own persisted settings
 
@@ -544,12 +551,6 @@ public class AudioService extends IAudioService.Stub {
         // If stream is muted, adjust last audible index only
         int index;
         if (streamState.muteCount() != 0) {
-            if (adjustVolume) {
-                streamState.adjustLastAudibleIndex(direction);
-                // Post a persist volume msg
-                sendMsg(mAudioHandler, MSG_PERSIST_VOLUME, streamType,
-                        SENDMSG_REPLACE, 0, 1, streamState, PERSIST_DELAY);
-            }
             index = streamState.mLastAudibleIndex;
         } else {
             if (adjustVolume && streamState.adjustIndex(direction)) {
@@ -2579,6 +2580,18 @@ public class AudioService extends IAudioService.Stub {
                     newIntent.putExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, state);
                     mContext.sendStickyBroadcast(newIntent);
                 }
+            } else if (action.equals("HDMI_CONNECTED")) {
+                Log.v(TAG, "HDMI connected");
+                AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_AUX_DIGITAL,
+                                                     AudioSystem.DEVICE_STATE_AVAILABLE,
+                                                     "");
+                mConnectedDevices.put( new Integer(AudioSystem.DEVICE_OUT_AUX_DIGITAL), "");
+            } else if (action.equals("HDMI_DISCONNECTED")) {
+                Log.v(TAG, "HDMI disconnected");
+                AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_AUX_DIGITAL,
+                                                     AudioSystem.DEVICE_STATE_UNAVAILABLE,
+                                                     "");
+                mConnectedDevices.remove(AudioSystem.DEVICE_OUT_AUX_DIGITAL);
             } else if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
                 mBootCompleted = true;
                 sendMsg(mAudioHandler, MSG_LOAD_SOUND_EFFECTS, SHARED_MSG, SENDMSG_NOOP,
@@ -2602,6 +2615,35 @@ public class AudioService extends IAudioService.Stub {
                     if (packageName != null) {
                         removeMediaButtonReceiverForPackage(packageName);
                     }
+                }
+            } else if (action.equals(Intent.ACTION_FM)){
+               Log.v(TAG, "FM Intent received");
+               int state = intent.getIntExtra("state", 0);
+               if(state == 1){
+                    AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM,
+                            AudioSystem.DEVICE_STATE_AVAILABLE,
+                            "");
+                    mConnectedDevices.put( new Integer(AudioSystem.DEVICE_OUT_FM), "");
+                }else if(state == 0){
+                    AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM,
+                            AudioSystem.DEVICE_STATE_UNAVAILABLE,
+                            "");
+                    mConnectedDevices.remove(AudioSystem.DEVICE_OUT_FM);
+                }
+            }else if (action.equals(Intent.ACTION_FM_TX)){
+               int state = intent.getIntExtra("state", 0);
+               Log.v(TAG, "FM Tx Intent received "+state);
+               boolean isConnected = mConnectedDevices.containsKey(AudioSystem.DEVICE_OUT_FM_TX);
+               if(state == 1 && !isConnected){
+                    AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM_TX,
+                            AudioSystem.DEVICE_STATE_AVAILABLE,
+                            "");
+                    mConnectedDevices.put( new Integer(AudioSystem.DEVICE_OUT_FM_TX), "");
+                }else if(state == 0 && isConnected){
+                    AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM_TX,
+                            AudioSystem.DEVICE_STATE_UNAVAILABLE,
+                            "");
+                    mConnectedDevices.remove(AudioSystem.DEVICE_OUT_FM_TX);
                 }
             } else if (action.equals(Intent.ACTION_SCREEN_ON)) {
                 AudioSystem.setParameters("screen_state=on");

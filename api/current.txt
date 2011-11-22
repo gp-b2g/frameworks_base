@@ -5423,6 +5423,8 @@ package android.content {
     field public static final java.lang.String ACTION_EXTERNAL_APPLICATIONS_AVAILABLE = "android.intent.action.EXTERNAL_APPLICATIONS_AVAILABLE";
     field public static final java.lang.String ACTION_EXTERNAL_APPLICATIONS_UNAVAILABLE = "android.intent.action.EXTERNAL_APPLICATIONS_UNAVAILABLE";
     field public static final java.lang.String ACTION_FACTORY_TEST = "android.intent.action.FACTORY_TEST";
+    field public static final java.lang.String ACTION_FM = "android.intent.action.FM";
+    field public static final java.lang.String ACTION_FM_TX = "android.intent.action.FMTX";
     field public static final java.lang.String ACTION_GET_CONTENT = "android.intent.action.GET_CONTENT";
     field public static final java.lang.String ACTION_GTALK_SERVICE_CONNECTED = "android.intent.action.GTALK_CONNECTED";
     field public static final java.lang.String ACTION_GTALK_SERVICE_DISCONNECTED = "android.intent.action.GTALK_DISCONNECTED";
@@ -10824,6 +10826,8 @@ package android.media {
   public final class MediaRecorder.AudioSource {
     field public static final int CAMCORDER = 5; // 0x5
     field public static final int DEFAULT = 0; // 0x0
+    field public static final int FM_RX = 8; // 0x8
+    field public static final int FM_RX_A2DP = 9; // 0x9
     field public static final int MIC = 1; // 0x1
     field public static final int VOICE_CALL = 4; // 0x4
     field public static final int VOICE_COMMUNICATION = 7; // 0x7
@@ -17418,6 +17422,7 @@ package android.provider {
     field public static final deprecated java.lang.String DEVICE_PROVISIONED = "device_provisioned";
     field public static final java.lang.String DIM_SCREEN = "dim_screen";
     field public static final java.lang.String DTMF_TONE_WHEN_DIALING = "dtmf_tone";
+    field public static final java.lang.String DUMMY_STRING_FOR_PADDING = "";
     field public static final java.lang.String END_BUTTON_BEHAVIOR = "end_button_behavior";
     field public static final java.lang.String FONT_SCALE = "font_scale";
     field public static final java.lang.String HAPTIC_FEEDBACK_ENABLED = "haptic_feedback_enabled";
@@ -17467,6 +17472,7 @@ package android.provider {
     field public static final java.lang.String VIBRATE_ON = "vibrate_on";
     field public static final java.lang.String VOLUME_ALARM = "volume_alarm";
     field public static final java.lang.String VOLUME_BLUETOOTH_SCO = "volume_bluetooth_sco";
+    field public static final java.lang.String VOLUME_FM = "volume_fm";
     field public static final java.lang.String VOLUME_MUSIC = "volume_music";
     field public static final java.lang.String VOLUME_NOTIFICATION = "volume_notification";
     field public static final java.lang.String VOLUME_RING = "volume_ring";

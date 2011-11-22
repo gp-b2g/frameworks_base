@@ -370,6 +370,13 @@ void AudioSystem::releaseAudioSessionId(int audioSession) {
     }
 }
 
+status_t AudioSystem::setFmVolume(float value)
+{
+    const sp<IAudioFlinger>& af = AudioSystem::get_audio_flinger();
+    if (af == 0) return PERMISSION_DENIED;
+    return af->setFmVolume(value);
+}
+
 // ---------------------------------------------------------------------------
 
 void AudioSystem::AudioFlingerClient::binderDied(const wp<IBinder>& who) {
@@ -577,6 +584,7 @@ audio_io_handle_t AudioSystem::getOutput(audio_stream_type_t stream,
     // to the first use case we want to cover (Voice Recognition and Voice Dialer over
     // Bluetooth SCO
     if ((flags & AUDIO_POLICY_OUTPUT_FLAG_DIRECT) == 0 &&
+        (stream != AUDIO_STREAM_FM) &&
         ((stream != AUDIO_STREAM_VOICE_CALL && stream != AUDIO_STREAM_BLUETOOTH_SCO) ||
          channels != AUDIO_CHANNEL_OUT_MONO ||
          (samplingRate != 8000 && samplingRate != 16000))) {

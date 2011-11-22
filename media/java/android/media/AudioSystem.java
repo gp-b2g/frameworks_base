@@ -51,14 +51,17 @@ public class AudioSystem
     /* @hide The audio stream for DTMF tones */
     public static final int STREAM_DTMF = 8;
     /* @hide The audio stream for text to speech (TTS) */
-    public static final int STREAM_TTS = 9;
+    public static final int STREAM_TTS             = 9;
+    /* @hide The audio stream for FM */
+    public static final int STREAM_FM              = 10;
+
     /**
      * @deprecated Use {@link #numStreamTypes() instead}
      */
     public static final int NUM_STREAMS = 5;
 
     // Expose only the getter method publicly so we can change it in the future
-    private static final int NUM_STREAM_TYPES = 10;
+    private static final int NUM_STREAM_TYPES = 11;
     public static final int getNumStreamTypes() { return NUM_STREAM_TYPES; }
 
     /*
@@ -201,16 +204,18 @@ public class AudioSystem
     public static final int DEVICE_OUT_AUX_DIGITAL = 0x400;
     public static final int DEVICE_OUT_ANLG_DOCK_HEADSET = 0x800;
     public static final int DEVICE_OUT_DGTL_DOCK_HEADSET = 0x1000;
-    public static final int DEVICE_OUT_DEFAULT = 0x8000;
+    public static final int DEVICE_OUT_FM = 0x2000;
+    public static final int DEVICE_OUT_FM_TX = 0x10000;
+    public static final int DEVICE_OUT_DEFAULT = 0x80000;
     // input devices
-    public static final int DEVICE_IN_COMMUNICATION = 0x10000;
-    public static final int DEVICE_IN_AMBIENT = 0x20000;
-    public static final int DEVICE_IN_BUILTIN_MIC1 = 0x40000;
-    public static final int DEVICE_IN_BUILTIN_MIC2 = 0x80000;
-    public static final int DEVICE_IN_MIC_ARRAY = 0x100000;
-    public static final int DEVICE_IN_BLUETOOTH_SCO_HEADSET = 0x200000;
-    public static final int DEVICE_IN_WIRED_HEADSET = 0x400000;
-    public static final int DEVICE_IN_AUX_DIGITAL = 0x800000;
+    public static final int DEVICE_IN_COMMUNICATION = 0x100000;
+    public static final int DEVICE_IN_AMBIENT = 0x200000;
+    public static final int DEVICE_IN_BUILTIN_MIC1 = 0x400000;
+    public static final int DEVICE_IN_BUILTIN_MIC2 = 0x800000;
+    public static final int DEVICE_IN_MIC_ARRAY = 0x1000000;
+    public static final int DEVICE_IN_BLUETOOTH_SCO_HEADSET = 0x2000000;
+    public static final int DEVICE_IN_WIRED_HEADSET = 0x4000000;
+    public static final int DEVICE_IN_AUX_DIGITAL = 0x8000000;
     public static final int DEVICE_IN_DEFAULT = 0x80000000;
 
     // device states, must match AudioSystem::device_connection_state
