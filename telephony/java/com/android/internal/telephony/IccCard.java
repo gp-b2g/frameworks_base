@@ -78,13 +78,27 @@ public interface IccCard {
         public String getIntentString() {
             switch (this) {
                 case ABSENT: return INTENT_VALUE_ICC_ABSENT;
+                case PIN_REQUIRED: return INTENT_VALUE_ICC_LOCKED;
+                case PUK_REQUIRED: return INTENT_VALUE_ICC_LOCKED;
+                case NETWORK_LOCKED: return INTENT_VALUE_ICC_LOCKED;
+                case READY: return INTENT_VALUE_ICC_READY;
+                case NOT_READY: return INTENT_VALUE_ICC_NOT_READY;
+                case PERM_DISABLED: return INTENT_VALUE_ICC_LOCKED;
+                default: return INTENT_VALUE_ICC_UNKNOWN;
+            }
+        }
+
+        /**
+         * Locked state have a reason (PIN, PUK, NETWORK, PERM_DISABLED)
+         * @return reason
+         */
+        public String getReason() {
+            switch (this) {
                 case PIN_REQUIRED: return INTENT_VALUE_LOCKED_ON_PIN;
                 case PUK_REQUIRED: return INTENT_VALUE_LOCKED_ON_PUK;
                 case NETWORK_LOCKED: return INTENT_VALUE_LOCKED_NETWORK;
-                case READY: return INTENT_VALUE_ICC_READY;
-                case NOT_READY: return INTENT_VALUE_ICC_NOT_READY;
                 case PERM_DISABLED: return INTENT_VALUE_ABSENT_ON_PERM_DISABLED;
-                default: return INTENT_VALUE_ICC_UNKNOWN;
+                default: return null;
             }
         }
     }
