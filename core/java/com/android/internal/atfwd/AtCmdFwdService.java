@@ -75,6 +75,28 @@ public class AtCmdFwdService extends IAtCmdFwd.Stub {
         } catch (AtCmdHandlerInstantiationException e) {
             Log.e(LOG_TAG, "Unable to instantiate command", e);
         }
+
+        try {
+            cmd = new AtCrslCmdHandler(c);
+            mCmdHandlers.put(cmd.getCommandName().toUpperCase(), cmd);
+        } catch (AtCmdHandlerInstantiationException e) {
+            Log.e(LOG_TAG, "Unable to instantiate command", e);
+        }
+
+        try {
+            cmd = new AtCssCmdHandler(c);
+            mCmdHandlers.put(cmd.getCommandName().toUpperCase(), cmd);
+        } catch (AtCmdHandlerInstantiationException e) {
+            Log.e(LOG_TAG, "Unable to instantiate command", e);
+        }
+
+        try {
+            cmd = new AtCmarCmdHandler(c);
+            mCmdHandlers.put(cmd.getCommandName().toUpperCase(), cmd);
+        } catch (AtCmdHandlerInstantiationException e) {
+            Log.e(LOG_TAG, "Unable to instantiate command", e);
+        }
+
     }
 
     public AtCmdResponse processAtCmd(AtCmd cmd) throws RemoteException {
