@@ -870,7 +870,7 @@ bool AudioGroup::DeviceThread::threadLoop()
         int16_t input[sampleCount];
         int toWrite = sampleCount;
         int toRead = (mode == MUTED) ? 0 : sampleCount;
-        int chances = 100;
+        int chances = 10000;
 
         while (--chances > 0 && (toWrite > 0 || toRead > 0)) {
             if (toWrite > 0) {
@@ -985,7 +985,7 @@ void add(JNIEnv *env, jobject thiz, jint mode,
     if (!group) {
         int mode = env->GetIntField(thiz, gMode);
         group = new AudioGroup;
-        if (!group->set(8000, 256) || !group->setMode(mode)) {
+        if (!group->set(sampleRate, sampleCount) || !group->setMode(mode)) {
             jniThrowException(env, "java/lang/IllegalStateException",
                 "cannot initialize audio group");
             goto error;
