@@ -9241,6 +9241,7 @@ package android.hardware {
     method public final void addCallbackBuffer(byte[]);
     method public final void autoFocus(android.hardware.Camera.AutoFocusCallback);
     method public final void cancelAutoFocus();
+    method public final void encodeData();
     method public static void getCameraInfo(int, android.hardware.Camera.CameraInfo);
     method public static int getNumberOfCameras();
     method public android.hardware.Camera.Parameters getParameters();
@@ -9249,9 +9250,13 @@ package android.hardware {
     method public static android.hardware.Camera open();
     method public final void reconnect() throws java.io.IOException;
     method public final void release();
+    method public final void sendHistogramData();
+    method public final void sendMetaData();
     method public final void setDisplayOrientation(int);
     method public final void setErrorCallback(android.hardware.Camera.ErrorCallback);
+    method public final void setFaceDetectionCb(android.hardware.Camera.CameraMetaDataCallback);
     method public final void setFaceDetectionListener(android.hardware.Camera.FaceDetectionListener);
+    method public final void setHistogramMode(android.hardware.Camera.CameraDataCallback);
     method public final void setOneShotPreviewCallback(android.hardware.Camera.PreviewCallback);
     method public void setParameters(android.hardware.Camera.Parameters);
     method public final void setPreviewCallback(android.hardware.Camera.PreviewCallback);
@@ -9284,12 +9289,26 @@ package android.hardware {
     method public abstract void onAutoFocus(boolean, android.hardware.Camera);
   }
 
+  public static abstract interface Camera.CameraDataCallback {
+    method public abstract void onCameraData(int[], android.hardware.Camera);
+  }
+
   public static class Camera.CameraInfo {
     ctor public Camera.CameraInfo();
     field public static final int CAMERA_FACING_BACK = 0; // 0x0
     field public static final int CAMERA_FACING_FRONT = 1; // 0x1
     field public int facing;
     field public int orientation;
+  }
+
+  public static abstract interface Camera.CameraMetaDataCallback {
+    method public abstract void onCameraMetaData(int[], android.hardware.Camera);
+  }
+
+  public class Camera.Coordinate {
+    ctor public Camera.Coordinate(int, int);
+    field public int xCoordinate;
+    field public int yCoordinate;
   }
 
   public static abstract interface Camera.ErrorCallback {
@@ -9318,26 +9337,36 @@ package android.hardware {
     method public java.lang.String flatten();
     method public java.lang.String get(java.lang.String);
     method public java.lang.String getAntibanding();
+    method public java.lang.String getAutoExposure();
     method public boolean getAutoExposureLock();
     method public boolean getAutoWhiteBalanceLock();
     method public java.lang.String getColorEffect();
+    method public java.lang.String getContinuousAf();
+    method public int getContrast();
     method public int getExposureCompensation();
     method public float getExposureCompensationStep();
+    method public java.lang.String getFaceDetectionMode();
     method public java.lang.String getFlashMode();
     method public float getFocalLength();
     method public java.util.List<android.hardware.Camera.Area> getFocusAreas();
     method public void getFocusDistances(float[]);
     method public java.lang.String getFocusMode();
     method public float getHorizontalViewAngle();
+    method public java.lang.String getISOValue();
     method public int getInt(java.lang.String);
     method public int getJpegQuality();
     method public int getJpegThumbnailQuality();
     method public android.hardware.Camera.Size getJpegThumbnailSize();
+    method public java.lang.String getLensShade();
+    method public int getMaxContrast();
     method public int getMaxExposureCompensation();
     method public int getMaxNumDetectedFaces();
     method public int getMaxNumFocusAreas();
     method public int getMaxNumMeteringAreas();
+    method public int getMaxSaturation();
+    method public int getMaxSharpness();
     method public int getMaxZoom();
+    method public java.lang.String getMemColorEnhance();
     method public java.util.List<android.hardware.Camera.Area> getMeteringAreas();
     method public int getMinExposureCompensation();
     method public int getPictureFormat();
@@ -9346,22 +9375,42 @@ package android.hardware {
     method public int getPreviewFormat();
     method public void getPreviewFpsRange(int[]);
     method public deprecated int getPreviewFrameRate();
+    method public java.lang.String getPreviewFrameRateMode();
     method public android.hardware.Camera.Size getPreviewSize();
+    method public int getSaturation();
+    method public java.lang.String getSceneDetectMode();
     method public java.lang.String getSceneMode();
+    method public java.lang.String getSelectableZoneAf();
+    method public int getSharpness();
     method public java.util.List<java.lang.String> getSupportedAntibanding();
+    method public java.util.List<java.lang.String> getSupportedAutoexposure();
     method public java.util.List<java.lang.String> getSupportedColorEffects();
+    method public java.util.List<java.lang.String> getSupportedContinuousAfModes();
+    method public java.util.List<java.lang.String> getSupportedFaceDetectionModes();
     method public java.util.List<java.lang.String> getSupportedFlashModes();
     method public java.util.List<java.lang.String> getSupportedFocusModes();
+    method public java.util.List<java.lang.String> getSupportedHistogramModes();
+    method public java.util.List<java.lang.String> getSupportedIsoValues();
     method public java.util.List<android.hardware.Camera.Size> getSupportedJpegThumbnailSizes();
+    method public java.util.List<java.lang.String> getSupportedLensShadeModes();
+    method public java.util.List<java.lang.String> getSupportedMemColorEnhanceModes();
     method public java.util.List<java.lang.Integer> getSupportedPictureFormats();
     method public java.util.List<android.hardware.Camera.Size> getSupportedPictureSizes();
     method public java.util.List<java.lang.Integer> getSupportedPreviewFormats();
     method public java.util.List<int[]> getSupportedPreviewFpsRange();
+    method public java.util.List<java.lang.String> getSupportedPreviewFrameRateModes();
     method public deprecated java.util.List<java.lang.Integer> getSupportedPreviewFrameRates();
     method public java.util.List<android.hardware.Camera.Size> getSupportedPreviewSizes();
+    method public java.util.List<java.lang.String> getSupportedSceneDetectModes();
     method public java.util.List<java.lang.String> getSupportedSceneModes();
+    method public java.util.List<java.lang.String> getSupportedSelectableZoneAf();
+    method public java.util.List<java.lang.String> getSupportedSkinToneEnhancementModes();
+    method public java.util.List<java.lang.String> getSupportedTouchAfAec();
     method public java.util.List<android.hardware.Camera.Size> getSupportedVideoSizes();
     method public java.util.List<java.lang.String> getSupportedWhiteBalance();
+    method public java.lang.String getTouchAfAec();
+    method public android.hardware.Camera.Coordinate getTouchIndexAec();
+    method public android.hardware.Camera.Coordinate getTouchIndexAf();
     method public float getVerticalViewAngle();
     method public java.lang.String getWhiteBalance();
     method public int getZoom();
@@ -9376,31 +9425,51 @@ package android.hardware {
     method public void set(java.lang.String, java.lang.String);
     method public void set(java.lang.String, int);
     method public void setAntibanding(java.lang.String);
+    method public void setAutoExposure(java.lang.String);
     method public void setAutoExposureLock(boolean);
     method public void setAutoWhiteBalanceLock(boolean);
     method public void setColorEffect(java.lang.String);
+    method public void setContinuousAf(java.lang.String);
+    method public void setContrast(int);
+    method public void setExifDateTime(java.lang.String);
     method public void setExposureCompensation(int);
+    method public void setFaceDetectionMode(java.lang.String);
     method public void setFlashMode(java.lang.String);
     method public void setFocusAreas(java.util.List<android.hardware.Camera.Area>);
     method public void setFocusMode(java.lang.String);
     method public void setGpsAltitude(double);
+    method public void setGpsAltitudeRef(double);
     method public void setGpsLatitude(double);
+    method public void setGpsLatitudeRef(java.lang.String);
     method public void setGpsLongitude(double);
+    method public void setGpsLongitudeRef(java.lang.String);
     method public void setGpsProcessingMethod(java.lang.String);
+    method public void setGpsStatus(double);
     method public void setGpsTimestamp(long);
+    method public void setISOValue(java.lang.String);
     method public void setJpegQuality(int);
     method public void setJpegThumbnailQuality(int);
     method public void setJpegThumbnailSize(int, int);
+    method public void setLensShade(java.lang.String);
+    method public void setMemColorEnhance(java.lang.String);
     method public void setMeteringAreas(java.util.List<android.hardware.Camera.Area>);
     method public void setPictureFormat(int);
     method public void setPictureSize(int, int);
     method public void setPreviewFormat(int);
     method public void setPreviewFpsRange(int, int);
     method public deprecated void setPreviewFrameRate(int);
+    method public void setPreviewFrameRateMode(java.lang.String);
     method public void setPreviewSize(int, int);
     method public void setRecordingHint(boolean);
     method public void setRotation(int);
+    method public void setSaturation(int);
+    method public void setSceneDetectMode(java.lang.String);
     method public void setSceneMode(java.lang.String);
+    method public void setSelectableZoneAf(java.lang.String);
+    method public void setSharpness(int);
+    method public void setTouchAfAec(java.lang.String);
+    method public void setTouchIndexAec(int, int);
+    method public void setTouchIndexAf(int, int);
     method public void setWhiteBalance(java.lang.String);
     method public void setZoom(int);
     method public void unflatten(java.lang.String);
@@ -9408,6 +9477,11 @@ package android.hardware {
     field public static final java.lang.String ANTIBANDING_60HZ = "60hz";
     field public static final java.lang.String ANTIBANDING_AUTO = "auto";
     field public static final java.lang.String ANTIBANDING_OFF = "off";
+    field public static final java.lang.String AUTO_EXPOSURE_CENTER_WEIGHTED = "center-weighted";
+    field public static final java.lang.String AUTO_EXPOSURE_FRAME_AVG = "frame-average";
+    field public static final java.lang.String AUTO_EXPOSURE_SPOT_METERING = "spot-metering";
+    field public static final java.lang.String CONTINUOUS_AF_OFF = "caf-off";
+    field public static final java.lang.String CONTINUOUS_AF_ON = "caf-on";
     field public static final java.lang.String EFFECT_AQUA = "aqua";
     field public static final java.lang.String EFFECT_BLACKBOARD = "blackboard";
     field public static final java.lang.String EFFECT_MONO = "mono";
@@ -9417,6 +9491,8 @@ package android.hardware {
     field public static final java.lang.String EFFECT_SEPIA = "sepia";
     field public static final java.lang.String EFFECT_SOLARIZE = "solarize";
     field public static final java.lang.String EFFECT_WHITEBOARD = "whiteboard";
+    field public static final java.lang.String FACE_DETECTION_OFF = "off";
+    field public static final java.lang.String FACE_DETECTION_ON = "on";
     field public static final java.lang.String FLASH_MODE_AUTO = "auto";
     field public static final java.lang.String FLASH_MODE_OFF = "off";
     field public static final java.lang.String FLASH_MODE_ON = "on";
@@ -9432,14 +9508,32 @@ package android.hardware {
     field public static final java.lang.String FOCUS_MODE_FIXED = "fixed";
     field public static final java.lang.String FOCUS_MODE_INFINITY = "infinity";
     field public static final java.lang.String FOCUS_MODE_MACRO = "macro";
+    field public static final java.lang.String FOCUS_MODE_NORMAL = "normal";
+    field public static final java.lang.String HISTOGRAM_DISABLE = "disable";
+    field public static final java.lang.String HISTOGRAM_ENABLE = "enable";
+    field public static final java.lang.String ISO_100 = "ISO100";
+    field public static final java.lang.String ISO_1600 = "ISO1600";
+    field public static final java.lang.String ISO_200 = "ISO200";
+    field public static final java.lang.String ISO_400 = "ISO400";
+    field public static final java.lang.String ISO_800 = "ISO800";
+    field public static final java.lang.String ISO_AUTO = "auto";
+    field public static final java.lang.String ISO_HJR = "ISO_HJR";
+    field public static final java.lang.String LENSSHADE_DISABLE = "disable";
+    field public static final java.lang.String LENSSHADE_ENABLE = "enable";
+    field public static final java.lang.String MCE_DISABLE = "disable";
+    field public static final java.lang.String MCE_ENABLE = "enable";
     field public static final int PREVIEW_FPS_MAX_INDEX = 1; // 0x1
     field public static final int PREVIEW_FPS_MIN_INDEX = 0; // 0x0
+    field public static final java.lang.String SCENE_DETECT_OFF = "off";
+    field public static final java.lang.String SCENE_DETECT_ON = "on";
     field public static final java.lang.String SCENE_MODE_ACTION = "action";
     field public static final java.lang.String SCENE_MODE_AUTO = "auto";
+    field public static final java.lang.String SCENE_MODE_BACKLIGHT = "backlight";
     field public static final java.lang.String SCENE_MODE_BARCODE = "barcode";
     field public static final java.lang.String SCENE_MODE_BEACH = "beach";
     field public static final java.lang.String SCENE_MODE_CANDLELIGHT = "candlelight";
     field public static final java.lang.String SCENE_MODE_FIREWORKS = "fireworks";
+    field public static final java.lang.String SCENE_MODE_FLOWERS = "flowers";
     field public static final java.lang.String SCENE_MODE_LANDSCAPE = "landscape";
     field public static final java.lang.String SCENE_MODE_NIGHT = "night";
     field public static final java.lang.String SCENE_MODE_NIGHT_PORTRAIT = "night-portrait";
@@ -9450,6 +9544,14 @@ package android.hardware {
     field public static final java.lang.String SCENE_MODE_STEADYPHOTO = "steadyphoto";
     field public static final java.lang.String SCENE_MODE_SUNSET = "sunset";
     field public static final java.lang.String SCENE_MODE_THEATRE = "theatre";
+    field public static final java.lang.String SELECTABLE_ZONE_AF_AUTO = "auto";
+    field public static final java.lang.String SELECTABLE_ZONE_AF_CENTER_WEIGHTED = "center-weighted";
+    field public static final java.lang.String SELECTABLE_ZONE_AF_FRAME_AVERAGE = "frame-average";
+    field public static final java.lang.String SELECTABLE_ZONE_AF_SPOTMETERING = "spot-metering";
+    field public static final java.lang.String SKIN_TONE_ENHANCEMENT_DISABLE = "disable";
+    field public static final java.lang.String SKIN_TONE_ENHANCEMENT_ENABLE = "enable";
+    field public static final java.lang.String TOUCH_AF_AEC_OFF = "touch-off";
+    field public static final java.lang.String TOUCH_AF_AEC_ON = "touch-on";
     field public static final java.lang.String WHITE_BALANCE_AUTO = "auto";
     field public static final java.lang.String WHITE_BALANCE_CLOUDY_DAYLIGHT = "cloudy-daylight";
     field public static final java.lang.String WHITE_BALANCE_DAYLIGHT = "daylight";
