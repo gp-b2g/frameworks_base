@@ -174,6 +174,8 @@ public class CDMAPhone extends PhoneBase {
         mCM.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mCM.setEmergencyCallbackMode(this, EVENT_EMERGENCY_CALLBACK_MODE_ENTER, null);
+        mCM.registerForExitEmergencyCallbackMode(this, EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE,
+                null);
 
         PowerManager pm
             = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
@@ -227,6 +229,7 @@ public class CDMAPhone extends PhoneBase {
             mCM.unregisterForOn(this); //EVENT_RADIO_ON
             mSST.unregisterForNetworkAttached(this); //EVENT_REGISTERED_TO_NETWORK
             mCM.unSetOnSuppServiceNotification(this);
+            mCM.unregisterForExitEmergencyCallbackMode(this);
             removeCallbacks(mExitEcmRunnable);
 
             mPendingMmis.clear();
