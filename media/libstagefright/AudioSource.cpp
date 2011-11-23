@@ -66,6 +66,13 @@ AudioSource::AudioSource(
     uint32_t flags = AudioRecord::RECORD_AGC_ENABLE |
                      AudioRecord::RECORD_NS_ENABLE  |
                      AudioRecord::RECORD_IIR_ENABLE;
+
+    if ( NO_ERROR != AudioSystem::getInputBufferSize(
+        sampleRate, mFormat, channels, (size_t*)&mMaxBufferSize) ) {
+        mMaxBufferSize = kMaxBufferSize;
+        LOGV("mMaxBufferSize = %d", mMaxBufferSize);
+    }
+
     mRecord = new AudioRecord(
                 inputSource, sampleRate, AUDIO_FORMAT_PCM_16_BIT,
                 channels > 1? AUDIO_CHANNEL_IN_STEREO: AUDIO_CHANNEL_IN_MONO,
