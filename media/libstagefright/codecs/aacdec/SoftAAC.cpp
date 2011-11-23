@@ -308,7 +308,9 @@ void SoftAAC::onQueueFilled(OMX_U32 portIndex) {
 
         if (inHeader->nOffset == 0) {
             mAnchorTimeUs = inHeader->nTimeStamp;
-            mNumSamplesOutput = 0;
+            if(mAnchorTimeUs != 0) {
+                mNumSamplesOutput = 0;
+            }
         }
 
         inputBuffer = inHeader->pBuffer + inHeader->nOffset;
