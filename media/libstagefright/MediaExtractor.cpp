@@ -111,13 +111,12 @@ sp<MediaExtractor> MediaExtractor::Create(
         ret = new MatroskaExtractor(source);
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG2TS)) {
         ret = new MPEG2TSExtractor(source);
-    } else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_AVI)) {
-        ret = new AVIExtractor(source);
-    } else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WVM)) {
+    }else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WVM)) {
         ret = new WVMExtractor(source);
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AAC_ADTS)) {
         ret = new AACExtractor(source);
     }
+
 
     if (ret != NULL) {
        if (isDrm) {
@@ -127,10 +126,25 @@ sp<MediaExtractor> MediaExtractor::Create(
        }
     }
 
-    if (ret) return ret;
+    //If default extractor created, then pass them
+    if (ret){
+        return ret;
+    }
 
-        LOGV(" Using ExtendedExtractor\n");
-    return ExtendedExtractor::CreateExtractor(source, mime);
+    //Create Extended Extractor only if default extractor are not selected
+    LOGV(" Using ExtendedExtractor\n");
+    sp<MediaExtractor> retextParser =  ExtendedExtractor::CreateExtractor(source, mime);
+
+    if (retextParser != NULL){
+        return retextParser;
+    }
+
+    //Use default AVI parser if Extend parser is not created, if MIME is AVI
+    if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_AVI)) {
+        ret = new AVIExtractor(source);
+    }
+
+    return ret;
 }
 
 }  // namespace android
