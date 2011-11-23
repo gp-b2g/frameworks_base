@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.os.Handler;
 import android.os.Message;
+import android.os.SystemProperties;
 
 /**
  * {@hide}
@@ -31,6 +32,8 @@ public interface IccCard {
     static public final String INTENT_VALUE_ICC_NOT_READY = "NOT_READY";
     /* ABSENT means ICC is missing */
     static public final String INTENT_VALUE_ICC_ABSENT = "ABSENT";
+    /* CARD_IO_ERROR means for three consecutive times there was SIM IO error */
+    static public final String INTENT_VALUE_ICC_CARD_IO_ERROR = "CARD_IO_ERROR";
     /* LOCKED means ICC is locked by pin or by network */
     static public final String INTENT_VALUE_ICC_LOCKED = "LOCKED";
     /* READY means ICC is ready to access */
@@ -63,7 +66,8 @@ public interface IccCard {
         PERSO_LOCKED,
         READY,
         NOT_READY,
-        PERM_DISABLED;
+        PERM_DISABLED,
+        CARD_IO_ERROR;
 
         public boolean isPinLocked() {
             return ((this == PIN_REQUIRED) || (this == PUK_REQUIRED));
@@ -72,7 +76,7 @@ public interface IccCard {
         public boolean iccCardExist() {
             return ((this == PIN_REQUIRED) || (this == PUK_REQUIRED)
                     || (this == PERSO_LOCKED) || (this == READY)
-                    || (this == PERM_DISABLED));
+                    || (this == PERM_DISABLED) || (this == CARD_IO_ERROR));
         }
         
         public String getIntentString() {
@@ -84,12 +88,13 @@ public interface IccCard {
                 case READY: return INTENT_VALUE_ICC_READY;
                 case NOT_READY: return INTENT_VALUE_ICC_NOT_READY;
                 case PERM_DISABLED: return INTENT_VALUE_ICC_LOCKED;
+                case CARD_IO_ERROR: return INTENT_VALUE_ICC_CARD_IO_ERROR;
                 default: return INTENT_VALUE_ICC_UNKNOWN;
             }
         }
 
         /**
-         * Locked state have a reason (PIN, PUK, NETWORK, PERM_DISABLED)
+         * Locked state have a reason (PIN, PUK, NETWORK, PERM_DISABLED, CARD_IO_ERROR)
          * @return reason
          */
         public String getReason() {
@@ -98,6 +103,7 @@ public interface IccCard {
                 case PUK_REQUIRED: return INTENT_VALUE_LOCKED_ON_PUK;
                 case PERSO_LOCKED: return INTENT_VALUE_LOCKED_PERSO;
                 case PERM_DISABLED: return INTENT_VALUE_ABSENT_ON_PERM_DISABLED;
+                case CARD_IO_ERROR: return INTENT_VALUE_ICC_CARD_IO_ERROR;
                 default: return null;
             }
         }
@@ -156,6 +162,13 @@ public interface IccCard {
     public void supplyDepersonalization (String pin, int type, Message onComplete);
 
     /**
+     * Check whether fdn (fixed dialing number) service is available.
+     * @return true if ICC fdn service available
+     *         false if ICC fdn service not available
+    */
+    public boolean getIccFdnAvailable();
+
+    /**
      * Check whether ICC pin lock is enabled
      * This is a sync call which returns the cached pin enabled state
      *
@@ -172,6 +185,17 @@ public interface IccCard {
      *         false for ICC fdn disabled
      */
      public boolean getIccFdnEnabled();
+
+     /**
+     * @return No. of Attempts remaining to unlock PIN1/PUK1
+     */
+    public int getIccPin1RetryCount();
+
+    /**
+     * @return No. of Attempts remaining to unlock PIN2/PUK2
+     */
+    public int getIccPin2RetryCount();
+
 
      /**
       * Set the ICC pin lock enabled or disabled
@@ -253,4 +277,15 @@ public interface IccCard {
      * @return true if a ICC card is present
      */
     public boolean hasIccCard();
+
+    /**
+     * @return true if ICC card is PIN2 blocked
+     */
+    public boolean getIccPin2Blocked();
+
+    /**
+     * @return true if ICC card is PUK2 blocked
+     */
+    public boolean getIccPuk2Blocked();
+
 }

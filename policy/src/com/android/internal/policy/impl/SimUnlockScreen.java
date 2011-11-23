@@ -32,8 +32,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.view.ViewGroup;
+import android.view.Gravity;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 import com.android.internal.R;
 
 /**
@@ -52,6 +56,8 @@ public class SimUnlockScreen extends LinearLayout implements KeyguardScreen, Vie
     private TextView mOkButton;
 
     private View mBackSpaceButton;
+
+    private Context mContext;
 
     private final int[] mEnteredPin = {0, 0, 0, 0, 0, 0, 0, 0};
     private int mEnteredDigits = 0;
@@ -74,6 +80,7 @@ public class SimUnlockScreen extends LinearLayout implements KeyguardScreen, Vie
         super(context);
         mUpdateMonitor = updateMonitor;
         mCallback = callback;
+        mContext = context;
 
         mCreationOrientation = configuration.orientation;
         mKeyboardHidden = configuration.hardKeyboardHidden;
@@ -219,12 +226,39 @@ public class SimUnlockScreen extends LinearLayout implements KeyguardScreen, Vie
                     mSimUnlockProgressDialog.hide();
                 }
                 if (success) {
+                    //Display message to user that the PIN1 entered is accepted.
+                    LayoutInflater inflater = LayoutInflater.from(mContext);
+                    View layout = inflater.inflate(R.layout.transient_notification,
+                    (ViewGroup) findViewById(R.id.toast_layout_root));
+
+                    TextView text = (TextView) layout.findViewById(R.id.message);
+                    text.setText(R.string.keyguard_pin_accepted);
+
+                    Toast toast = new Toast(mContext);
+                    toast.setDuration(Toast.LENGTH_LONG);
+                    toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
+                    toast.setView(layout);
+                    toast.show();
+
                     // before closing the keyguard, report back that
                     // the sim is unlocked so it knows right away
                     mUpdateMonitor.reportSimUnlocked();
                     mCallback.goToUnlockScreen();
                 } else {
-                    mHeaderText.setText(R.string.keyguard_password_wrong_pin_code);
+                    try {
+                        //Displays No. of attempts remaining to unlock PIN1 in case of wrong entry.
+                        int attemptsRemaining = ITelephony.Stub.asInterface(ServiceManager
+                                .checkService("phone")).getIccPin1RetryCount();
+                        if (attemptsRemaining >= 0) {
+                            String displayMessage = getContext().getString(R.string.keyguard_password_wrong_pin_code)
+                                    + getContext().getString(R.string.pinpuk_attempts) + attemptsRemaining;
+                            mHeaderText.setText(displayMessage);
+                        } else {
+                            mHeaderText.setText(R.string.keyguard_password_wrong_pin_code);
+                        }
+                    } catch (RemoteException ex) {
+                        mHeaderText.setText(R.string.keyguard_password_wrong_pin_code);
+                    }
                     mPinText.setText("");
                     mEnteredDigits = 0;
                 }
