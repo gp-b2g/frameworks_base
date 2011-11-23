@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 
 import com.android.internal.telephony.DataCallState.SetupResult;
+import com.android.internal.telephony.DataProfile;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
@@ -72,13 +73,13 @@ public abstract class DataConnection extends StateMachine {
      * Used internally for saving connecting parameters.
      */
     protected static class ConnectionParams {
-        public ConnectionParams(ApnSetting apn, Message onCompletedMsg) {
+        public ConnectionParams(DataProfile apn, Message onCompletedMsg) {
             this.apn = apn;
             this.onCompletedMsg = onCompletedMsg;
         }
 
         public int tag;
-        public ApnSetting apn;
+        public DataProfile apn;
         public Message onCompletedMsg;
     }
 
@@ -206,7 +207,7 @@ public abstract class DataConnection extends StateMachine {
     protected static final int EVENT_LOG_BAD_DNS_ADDRESS = 50100;
 
     //***** Member Variables
-    protected ApnSetting mApn;
+    protected DataProfile mApn;
     protected int mTag;
     protected PhoneBase phone;
     protected int mRilVersion = -1;
@@ -1109,7 +1110,7 @@ public abstract class DataConnection extends StateMachine {
      *        AsyncResult.result = FailCause and AsyncResult.exception = Exception().
      * @param apn is the Access Point Name to bring up a connection to
      */
-    public void bringUp(Message onCompletedMsg, ApnSetting apn) {
+    public void bringUp(Message onCompletedMsg, DataProfile apn) {
         sendMessage(obtainMessage(EVENT_CONNECT, new ConnectionParams(apn, onCompletedMsg)));
     }
 

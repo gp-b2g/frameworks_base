@@ -20,6 +20,7 @@ import android.os.Message;
 import android.util.Log;
 
 import com.android.internal.telephony.DataConnection;
+import com.android.internal.telephony.DataProfile;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
@@ -70,6 +71,8 @@ public class CdmaDataConnection extends DataConnection {
         createTime = -1;
         lastFailTime = -1;
         lastFailCause = FailCause.NONE;
+        
+        // TODO: The data profile's profile ID must be set when it is created.
         int dataProfile;
         if ((cp.apn != null) && (cp.apn.types.length > 0) && (cp.apn.types[0] != null) &&
                 (cp.apn.types[0].equals(Phone.APN_TYPE_DUN))) {
@@ -78,18 +81,20 @@ public class CdmaDataConnection extends DataConnection {
         } else {
             dataProfile = RILConstants.DATA_PROFILE_DEFAULT;
         }
+        
+        ((DataProfileCdma)mApn).setProfileId(dataProfile);
 
         // msg.obj will be returned in AsyncResult.userObj;
         Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
         msg.obj = cp;
         phone.mCM.setupDataCall(
                 Integer.toString(getRadioTechnology(RILConstants.SETUP_DATA_TECH_CDMA)),
-                Integer.toString(dataProfile),
-                null, null, null,
-                Integer.toString(RILConstants.SETUP_DATA_AUTH_PAP_CHAP),
+                Integer.toString(((DataProfileCdma)mApn).getProfileId()),
+                mApn.apn, mApn.user, mApn.password,
+                Integer.toString(mApn.getAuthType()),
                 mApn.protocol, msg);
     }
-
+    
     @Override
     public String toString() {
         return "State=" + getCurrentState().getName() + " create=" + createTime + " lastFail="
