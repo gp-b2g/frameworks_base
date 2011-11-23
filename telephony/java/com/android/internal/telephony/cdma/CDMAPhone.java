@@ -524,7 +524,7 @@ public class CDMAPhone extends PhoneBase {
         if (mmi == null) {
             Log.e(LOG_TAG, "Mmi is NULL!");
             return false;
-        } else if (mmi.isPukCommand()) {
+        } else if (mmi.isPinCommand()) {
             mPendingMmis.add(mmi);
             mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
             mmi.processCode();
