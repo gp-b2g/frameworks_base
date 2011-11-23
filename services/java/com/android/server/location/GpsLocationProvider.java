@@ -117,6 +117,10 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private static final int LOCATION_HAS_SPEED = 4;
     private static final int LOCATION_HAS_BEARING = 8;
     private static final int LOCATION_HAS_ACCURACY = 16;
+    private static final int LOCATION_HAS_SOURCE_INFO = 0x20;
+    private static final int ULP_LOCATION_IS_FROM_HYBRID = 0x1;
+    private static final int ULP_LOCATION_IS_FROM_GNSS = 0x2;
+
 
 // IMPORTANT - the GPS_DELETE_* symbols here must match constants in gps.h
     private static final int GPS_DELETE_EPHEMERIS = 0x00000001;
@@ -780,6 +784,10 @@ public class GpsLocationProvider implements LocationProviderInterface {
         }
         return mStatus;
     }
+    public int getCapability() {
+        Log.d(TAG, "Entered getCapability and returned mEngineCapabilities: " + mEngineCapabilities);
+        return mEngineCapabilities;
+    }
 
     private void updateStatus(int status, int svCount) {
         if (status != mStatus || svCount != mSvCount) {
@@ -802,6 +810,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
     }
 
     private void handleEnableLocationTracking(boolean enable) {
+        Log.d(TAG, "In handleEnableLocationTracking. enable " +enable);
         if (enable) {
             mTTFF = 0;
             mLastFixTime = 0;
@@ -812,6 +821,10 @@ public class GpsLocationProvider implements LocationProviderInterface {
                 mAlarmManager.cancel(mTimeoutIntent);
             }
             stopNavigating();
+            // send an intent to notify that the GPS has been enabled or disabled.
+            Intent intent = new Intent(LocationManager.GPS_ENABLED_CHANGE_ACTION);
+            intent.putExtra(LocationManager.EXTRA_GPS_ENABLED, false);
+            mContext.sendBroadcast(intent);
         }
     }
 
@@ -847,6 +860,25 @@ public class GpsLocationProvider implements LocationProviderInterface {
                 }
             }
         }
+    }
+
+    public boolean updateCriteria(int action, long minTime, float minDistance,
+                                  boolean singleShot,Criteria criteria) {
+        boolean return_value = false;
+        if (DEBUG) Log.d(TAG, "updateCriteria with minTime " + minTime +" minDistance "+
+                               minDistance + " singleShot " + singleShot + " criteria: " + criteria);
+
+        if (criteria != null) {
+            //This is a ULP client app. Transalate criteria and push it down
+            return_value = native_update_criteria(action, minTime, minDistance, singleShot,
+                                                  criteria.getHorizontalAccuracy(),
+                                                  criteria.getPowerRequirement());
+        }
+        else
+        {   //This is a GPS provider app. Send the request down to the HAL
+            return_value = native_update_criteria(action, minTime, minDistance, singleShot, 0, 0);
+        }
+        return return_value;
     }
 
     public String getInternalState() {
@@ -1010,11 +1042,14 @@ public class GpsLocationProvider implements LocationProviderInterface {
             }
 
             int interval = (hasCapability(GPS_CAPABILITY_SCHEDULING) ? mFixInterval : 1000);
-            if (!native_set_position_mode(mPositionMode, GPS_POSITION_RECURRENCE_PERIODIC,
-                    interval, 0, 0)) {
-                mStarted = false;
-                Log.e(TAG, "set_position_mode failed in startNavigating()");
-                return;
+            //We want to suppress position mode updates if ULP capability is available
+            if(!hasCapability(LocationProviderInterface.ULP_CAPABILITY)) {
+                if (!native_set_position_mode(mPositionMode, GPS_POSITION_RECURRENCE_PERIODIC,
+                        interval, 0, 0)) {
+                    mStarted = false;
+                    Log.e(TAG, "set_position_mode failed in startNavigating()");
+                    return;
+                }
             }
             if (!native_start()) {
                 mStarted = false;
@@ -1069,7 +1104,8 @@ public class GpsLocationProvider implements LocationProviderInterface {
      * called from native code to update our position.
      */
     private void reportLocation(int flags, double latitude, double longitude, double altitude,
-            float speed, float bearing, float accuracy, long timestamp, byte[] rawData) {
+                                float speed, float bearing, float accuracy, long timestamp,
+                                int positionSource, byte[] rawData) {
         if (VERBOSE) Log.v(TAG, "reportLocation lat: " + latitude + " long: " + longitude +
                 " timestamp: " + timestamp);
 
@@ -1099,6 +1135,25 @@ public class GpsLocationProvider implements LocationProviderInterface {
                 mLocation.setAccuracy(accuracy);
             } else {
                 mLocation.removeAccuracy();
+            }
+            Log.d(TAG, "reportLocation.flag:" +flags);
+            if((flags & LOCATION_HAS_SOURCE_INFO) == LOCATION_HAS_SOURCE_INFO)  {
+
+                if(positionSource == ULP_LOCATION_IS_FROM_HYBRID) {
+                    Log.d(TAG, "reportLocation. Location has source information. src -hybrid");
+                    mLocationExtras.putBoolean("ProviderSourceIsUlp",true);
+                } else {
+                    mLocationExtras.remove("ProviderSourceIsUlp");
+                }
+                if(positionSource == ULP_LOCATION_IS_FROM_GNSS ) {
+                    Log.d(TAG, "reportLocation. Location has source information. src -gnss");
+                    mLocationExtras.putBoolean("ProviderSourceIsGnss",true);
+                } else {
+                    mLocationExtras.remove("ProviderSourceIsGnss");
+                }
+            } else {
+                    mLocationExtras.remove("ProviderSourceIsUlp");
+                    mLocationExtras.remove("ProviderSourceIsGnss");
             }
 
             if (rawData.length > 0) {
@@ -1384,6 +1439,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
      * called from native code to inform us what the GPS engine capabilities are
      */
     private void setEngineCapabilities(int capabilities) {
+        if (DEBUG) Log.d(TAG, "setEngineCapabilities " + capabilities );
         mEngineCapabilities = capabilities;
 
         if (!hasCapability(GPS_CAPABILITY_ON_DEMAND_TIME) && !mPeriodicTimeInjection) {
@@ -1583,6 +1639,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
         @Override
         public void handleMessage(Message msg) {
             int message = msg.what;
+            Log.d(TAG, "Gps MessageHandler. msg.what " + message);
             switch (message) {
                 case ENABLE:
                     if (msg.arg1 == 1) {
@@ -1691,6 +1748,9 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private native void native_cleanup();
     private native boolean native_set_position_mode(int mode, int recurrence, int min_interval,
             int preferred_accuracy, int preferred_time);
+    private native boolean native_update_criteria(int action, long minTime, float minDistance,
+                                                  boolean singleShot, int horizontalAccuracy,
+                                                  int powerRequirement);
     private native boolean native_start();
     private native boolean native_stop();
     private native void native_delete_aiding_data(int flags);

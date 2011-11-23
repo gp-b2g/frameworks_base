@@ -469,4 +469,11 @@ public class LocationProviderProxy implements LocationProviderInterface {
             }
         }
     }
+    public boolean updateCriteria(int action, long minTime, float minDistance,
+                                  boolean singleShot,Criteria criteria) {
+        return true;
+    }
+    public int getCapability(){
+        return 0;
+    }
 }

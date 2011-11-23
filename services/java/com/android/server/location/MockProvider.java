@@ -231,4 +231,11 @@ public class MockProvider implements LocationProviderInterface {
         pw.println(prefix + "mStatusUpdateTime=" + mStatusUpdateTime);
         pw.println(prefix + "mExtras=" + mExtras);
     }
+    public boolean updateCriteria(int action, long minTime, float minDistance,
+                                  boolean singleShot,Criteria criteria) {
+        return true;
+    }
+    public int getCapability(){
+        return 0;
+    }
 }

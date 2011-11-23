@@ -150,4 +150,13 @@ public class PassiveProvider implements LocationProviderInterface {
 
     public void removeListener(int uid) {
     }
+
+    public boolean updateCriteria(int action, long minTime, float minDistance,
+                                  boolean singleShot,Criteria criteria) {
+        return true;
+    }
+
+    public int getCapability(){
+        return 0;
+    }
 }

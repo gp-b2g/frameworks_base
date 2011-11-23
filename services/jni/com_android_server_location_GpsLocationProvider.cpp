@@ -81,7 +81,7 @@ static void location_callback(GpsLocation* location)
             (jdouble)location->altitude,
             (jfloat)location->speed, (jfloat)location->bearing,
             (jfloat)location->accuracy, (jlong)location->timestamp,
-             byteArray);
+            location->position_source, byteArray);
     env->DeleteLocalRef(byteArray);
     checkAndClearExceptionFromCallback(env, __FUNCTION__);
 }
@@ -255,7 +255,7 @@ static void android_location_GpsLocationProvider_class_init_native(JNIEnv* env, 
     int err;
     hw_module_t* module;
 
-    method_reportLocation = env->GetMethodID(clazz, "reportLocation", "(IDDDFFFJ[B)V");
+    method_reportLocation = env->GetMethodID(clazz, "reportLocation", "(IDDDFFFJI[B)V");
     method_reportStatus = env->GetMethodID(clazz, "reportStatus", "(I)V");
     method_reportSvStatus = env->GetMethodID(clazz, "reportSvStatus", "()V");
     method_reportAGpsStatus = env->GetMethodID(clazz, "reportAGpsStatus", "(III[B)V");
@@ -334,6 +334,38 @@ static jboolean android_location_GpsLocationProvider_set_position_mode(JNIEnv* e
         return (sGpsInterface->set_position_mode(mode, recurrence, min_interval, preferred_accuracy,
                 preferred_time) == 0);
     else
+        return false;
+}
+
+static jboolean android_location_GpsLocationProvider_update_criteria(JNIEnv* env, jobject obj,
+        jint action, jlong minTime, jfloat minDistance, jboolean singleShot, jint horizontalAccuracy,
+        jint powerRequirement)
+{
+    UlpLocationCriteria native_criteria;
+    LOGD("JNI:Inupdate_criteria: action:%d, minTime:%ld, minDistance:%f, singleShot:%d, horizontalAccuracy:%d, powerRequirement:%d \n",
+         action, minTime,minDistance, singleShot,horizontalAccuracy,powerRequirement );
+    native_criteria.valid_mask = (ULP_CRITERIA_HAS_ACTION | ULP_CRITERIA_HAS_PROVIDER_SOURCE | ULP_CRITERIA_HAS_RECURRENCE_TYPE |
+                                  ULP_CRITERIA_HAS_MIN_INTERVAL);
+    native_criteria.action = action;
+    native_criteria.min_interval = minTime;
+    native_criteria.min_distance = minDistance;
+    native_criteria.recurrence_type = singleShot? ULP_LOC_RECURRENCE_SINGLE:ULP_LOC_RECURRENCE_PERIODIC;
+    native_criteria.preferred_horizontal_accuracy = (UlpHorzAccuracyCriteria) horizontalAccuracy;
+    native_criteria.preferred_power_consumption = (UlpPowerCriteria)powerRequirement;
+    if((horizontalAccuracy != 0) || (powerRequirement != 0))
+    {
+       native_criteria.provider_source = ULP_PROVIDER_SOURCE_HYBRID;
+       native_criteria.valid_mask |= (ULP_CRITERIA_HAS_PREFERRED_HORIZONTAL_ACCURACY |
+                                  ULP_CRITERIA_HAS_PREFERRED_POWER_CONSUMPTION);
+    }
+    else
+        native_criteria.provider_source = ULP_PROVIDER_SOURCE_GNSS;
+    LOGD("JNI:Inupdate_criteria: After translation action:%d, minTime:%ld, minDistance:%f, singleShot:%d, horizontalAccuracy:%d, powerRequirement:%d \n",
+         native_criteria.action, native_criteria.min_interval,native_criteria.min_distance, native_criteria.recurrence_type,native_criteria.preferred_horizontal_accuracy,native_criteria.preferred_power_consumption );
+    if (sGpsInterface){
+        LOGD("JNI:Inupdate_criteria:Before call to interface->update_criteria(native_criteria)");
+        return (sGpsInterface->update_criteria(native_criteria) == 0);
+    } else
         return false;
 }
 
@@ -609,6 +641,7 @@ static JNINativeMethod sMethods[] = {
     {"native_init", "()Z", (void*)android_location_GpsLocationProvider_init},
     {"native_cleanup", "()V", (void*)android_location_GpsLocationProvider_cleanup},
     {"native_set_position_mode", "(IIIII)Z", (void*)android_location_GpsLocationProvider_set_position_mode},
+    {"native_update_criteria", "(IJFZII)Z", (void*)android_location_GpsLocationProvider_update_criteria},
     {"native_start", "()Z", (void*)android_location_GpsLocationProvider_start},
     {"native_stop", "()Z", (void*)android_location_GpsLocationProvider_stop},
     {"native_delete_aiding_data", "(I)V", (void*)android_location_GpsLocationProvider_delete_aiding_data},

@@ -28,6 +28,11 @@ import android.os.WorkSource;
  * {@hide}
  */
 public interface LocationProviderInterface {
+    //Ulp Definitions - these need to match the defines in gps.h
+    public static final int ULP_ADD_CRITERIA = 1;
+    public static final int ULP_REMOVE_CRITERIA = 2;
+    public static final int ULP_CAPABILITY = 0x0000020;
+
     String getName();
     boolean requiresNetwork();
     boolean requiresSatellite();
@@ -44,6 +49,7 @@ public interface LocationProviderInterface {
     void disable();
     int getStatus(Bundle extras);
     long getStatusUpdateTime();
+    public int getCapability();
     void enableLocationTracking(boolean enable);
     /* returns false if single shot is not supported */
     boolean requestSingleShotFix();
@@ -54,4 +60,6 @@ public interface LocationProviderInterface {
     boolean sendExtraCommand(String command, Bundle extras);
     void addListener(int uid);
     void removeListener(int uid);
+    boolean updateCriteria(int action, long minTime, float minDistance,
+               boolean singleShot,Criteria criteria);
 }
