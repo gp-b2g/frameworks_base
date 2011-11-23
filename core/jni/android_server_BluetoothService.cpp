@@ -444,6 +444,34 @@ static jint getDeviceServiceChannelNative(JNIEnv *env, jobject object,
     return -1;
 }
 
+static jstring getDeviceStringAttrValue(JNIEnv *env, jobject object,
+                                          jstring path,
+                                          jstring pattern, jint attr_id) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s",__FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    jobject eventLoop = env->GetObjectField(object, field_mEventLoop);
+    struct event_loop_native_data_t *eventLoopNat =
+            get_EventLoop_native_data(env, eventLoop);
+    if (nat && eventLoopNat) {
+        const char *c_pattern = env->GetStringUTFChars(pattern, NULL);
+        const char *c_path = env->GetStringUTFChars(path, NULL);
+        LOGV("... pattern = %s", c_pattern);
+        LOGV("... attr_id = %#X", attr_id);
+        DBusMessage *reply =
+            dbus_func_args(env, nat->conn, c_path,
+                           DBUS_DEVICE_IFACE, "GetServiceAttributeValue",
+                           DBUS_TYPE_STRING, &c_pattern,
+                           DBUS_TYPE_UINT16, &attr_id,
+                           DBUS_TYPE_INVALID);
+        env->ReleaseStringUTFChars(pattern, c_pattern);
+        env->ReleaseStringUTFChars(path, c_path);
+        return reply ? dbus_returns_string(env, reply) : NULL;
+    }
+#endif
+    return NULL;
+}
+
 static jboolean cancelDeviceCreationNative(JNIEnv *env, jobject object,
                                            jstring address) {
     LOGV("%s", __FUNCTION__);
@@ -902,6 +930,16 @@ static jboolean setDevicePropertyStringNative(JNIEnv *env, jobject object,
 #endif
 }
 
+static jboolean setDevicePropertyIntegerNative(JNIEnv *env, jobject object,
+                                                     jstring path, jstring key, jint value) {
+#ifdef HAVE_BLUETOOTH
+    return setDevicePropertyNative(env, object, path, key,
+                                        (void *)&value, DBUS_TYPE_UINT32);
+#else
+    return JNI_FALSE;
+#endif
+}
+
 static jboolean createDeviceNative(JNIEnv *env, jobject object,
                                                 jstring address) {
     LOGV("%s", __FUNCTION__);
@@ -1039,6 +1077,37 @@ static jboolean removeReservedServiceRecordsNative(JNIEnv *env, jobject object,
     return reply ? JNI_TRUE : JNI_FALSE;
 #endif
     return JNI_FALSE;
+}
+
+static jstring findDeviceNative(JNIEnv *env, jobject object,
+                                jstring address) {
+    LOGV(__FUNCTION__);
+#ifdef HAVE_BLUETOOTH
+    native_data_t *nat = get_native_data(env, object);
+    jobject eventLoop = env->GetObjectField(object, field_mEventLoop);
+    struct event_loop_native_data_t *eventLoopNat =
+            get_EventLoop_native_data(env, eventLoop);
+    if (nat && eventLoopNat) {
+        const char *c_address = env->GetStringUTFChars(address, NULL);
+        LOGV("... address = %s", c_address);
+        DBusMessage *reply = dbus_func_args(env, nat->conn,
+                           get_adapter_path(env, object),
+                           DBUS_ADAPTER_IFACE, "FindDevice",
+                           DBUS_TYPE_STRING, &c_address,
+                           DBUS_TYPE_INVALID);
+        env->ReleaseStringUTFChars(address, c_address);
+        if (reply == NULL) {
+            return NULL;
+        }
+        char *object_path = NULL;
+        if (dbus_message_get_args(reply, NULL,
+                                  DBUS_TYPE_OBJECT_PATH, &object_path,
+                                  DBUS_TYPE_INVALID)) {
+            return (jstring) env->NewStringUTF(object_path);
+        }
+     }
+#endif
+       return NULL;
 }
 
 static jint addRfcommServiceRecordNative(JNIEnv *env, jobject object,
@@ -1705,7 +1774,8 @@ static JNINativeMethod sMethods[] = {
     {"removeDeviceNative", "(Ljava/lang/String;)Z", (void *)removeDeviceNative},
     {"getDeviceServiceChannelNative", "(Ljava/lang/String;Ljava/lang/String;I)I",
       (void *)getDeviceServiceChannelNative},
-
+    {"getDeviceStringAttrValue", "(Ljava/lang/String;Ljava/lang/String;I)Ljava/lang/String;",
+    (void *)getDeviceStringAttrValue},
     {"setPairingConfirmationNative", "(Ljava/lang/String;ZI)Z",
             (void *)setPairingConfirmationNative},
     {"setPasskeyNative", "(Ljava/lang/String;II)Z", (void *)setPasskeyNative},
@@ -1718,12 +1788,16 @@ static JNINativeMethod sMethods[] = {
             (void *)setDevicePropertyBooleanNative},
     {"setDevicePropertyStringNative", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Z",
             (void *)setDevicePropertyStringNative},
+    {"setDevicePropertyIntegerNative", "(Ljava/lang/String;Ljava/lang/String;I)Z",
+             (void *)setDevicePropertyIntegerNative},
+
     {"createDeviceNative", "(Ljava/lang/String;)Z", (void *)createDeviceNative},
     {"discoverServicesNative", "(Ljava/lang/String;Ljava/lang/String;)Z", (void *)discoverServicesNative},
     {"addRfcommServiceRecordNative", "(Ljava/lang/String;JJS)I", (void *)addRfcommServiceRecordNative},
     {"removeServiceRecordNative", "(I)Z", (void *)removeServiceRecordNative},
     {"addReservedServiceRecordsNative", "([I)[I", (void *) addReservedServiceRecordsNative},
     {"removeReservedServiceRecordsNative", "([I)Z", (void *) removeReservedServiceRecordsNative},
+    {"findDeviceNative", "(Ljava/lang/String;)Ljava/lang/String;", (void*)findDeviceNative},
     {"setLinkTimeoutNative", "(Ljava/lang/String;I)Z", (void *)setLinkTimeoutNative},
     // HID functions
     {"connectInputDeviceNative", "(Ljava/lang/String;)Z", (void *)connectInputDeviceNative},

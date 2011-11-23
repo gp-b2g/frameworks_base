@@ -1,0 +1,7 @@
+# Script to start "l2cap_test" on the device, which has a very rudimentary
+# shell.
+#
+base=/system
+export CLASSPATH=$base/framework/l2cap_test.jar
+exec app_process $base/bin com.quicinc.l2cap_test.L2CapTest "$@"
+

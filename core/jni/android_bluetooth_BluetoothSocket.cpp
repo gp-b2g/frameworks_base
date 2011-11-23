@@ -1,5 +1,6 @@
 /*
  * Copyright 2009, The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +30,9 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 
+#include <cutils/properties.h>
+#include <string.h>
+
 #ifdef HAVE_BLUETOOTH
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
@@ -37,7 +41,11 @@
 #endif
 
 #define TYPE_AS_STR(t) \
-    ((t) == TYPE_RFCOMM ? "RFCOMM" : ((t) == TYPE_SCO ? "SCO" : "L2CAP"))
+    ((t) == TYPE_RFCOMM ? "RFCOMM" : ((t) == TYPE_SCO ? "SCO" : \
+     ((t) == TYPE_L2CAP ? "L2CAP" : "EL2CAP")))
+
+/* dscherba: HACK changing to 65000 to allow for ERTM overhead--hopefully this will not get tossed by the kernel in negotiations */
+#define L2CAP_MAX_MTU 65000
 
 namespace android {
 
@@ -53,9 +61,12 @@ static jclass    class_BluetoothSocket;
 /* Keep TYPE_RFCOMM etc in sync with BluetoothSocket.java */
 static const int TYPE_RFCOMM = 1;
 static const int TYPE_SCO = 2;
-static const int TYPE_L2CAP = 3;  // TODO: Test l2cap code paths
+static const int TYPE_L2CAP = 3;
+static const int TYPE_EL2CAP = 4;
 
 static const int RFCOMM_SO_SNDBUF = 70 * 1024;  // 70 KB send buffer
+static const int L2CAP_SO_SNDBUF = 400 * 1024;  // 400 KB send buffer
+static const int L2CAP_SO_RCVBUF = 400 * 1024;  // 400 KB receive buffer
 
 static void abortNative(JNIEnv *env, jobject obj);
 static void destroyNative(JNIEnv *env, jobject obj);
@@ -93,10 +104,11 @@ static void initSocketNative(JNIEnv *env, jobject obj) {
 
     int fd;
     int lm = 0;
-    int sndbuf;
+    int sndbuf, rcvbuf;
     jboolean auth;
     jboolean encrypt;
     jint type;
+    char value[PROPERTY_VALUE_MAX] = "";
 
     type = env->GetIntField(obj, field_mType);
 
@@ -109,6 +121,9 @@ static void initSocketNative(JNIEnv *env, jobject obj) {
         break;
     case TYPE_L2CAP:
         fd = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
+        break;
+    case TYPE_EL2CAP:
+        fd = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_L2CAP);
         break;
     default:
         jniThrowIOException(env, ENOSYS);
@@ -125,24 +140,42 @@ static void initSocketNative(JNIEnv *env, jobject obj) {
     encrypt = env->GetBooleanField(obj, field_mEncrypt);
 
     /* kernel does not yet support LM for SCO */
+
+    /* By default we request to be the MASTER of connection */
+    property_get("ro.bluetooth.request.master", value, "true");
     switch (type) {
     case TYPE_RFCOMM:
         lm |= auth ? RFCOMM_LM_AUTH : 0;
         lm |= encrypt ? RFCOMM_LM_ENCRYPT : 0;
-        lm |= (auth && encrypt) ? RFCOMM_LM_SECURE : 0;
+        if (!strcmp("true", value)) {
+            LOGI("Setting Master socket option");
+            lm |= RFCOMM_LM_MASTER;
+        }
         break;
     case TYPE_L2CAP:
+    case TYPE_EL2CAP:
         lm |= auth ? L2CAP_LM_AUTH : 0;
         lm |= encrypt ? L2CAP_LM_ENCRYPT : 0;
-        lm |= (auth && encrypt) ? L2CAP_LM_SECURE : 0;
+        if (!strcmp("true", value)) {
+            LOGI("Setting Master socket option");
+            lm |= L2CAP_LM_MASTER;
+        }
         break;
     }
 
     if (lm) {
-        if (setsockopt(fd, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm))) {
-            LOGV("setsockopt(RFCOMM_LM) failed, throwing");
-            jniThrowIOException(env, errno);
-            return;
+        if (type == TYPE_RFCOMM) {
+            if (setsockopt(fd, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm))) {
+                LOGV("setsockopt(RFCOMM_LM) failed, throwing");
+                jniThrowIOException(env, errno);
+                return;
+            }
+        } else if (type == TYPE_L2CAP || type == TYPE_EL2CAP) {
+            if (setsockopt(fd, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm))) {
+                LOGV("setsockopt(L2CAP_LM) failed, throwing");
+                jniThrowIOException(env, errno);
+                return;
+            }
         }
     }
 
@@ -155,12 +188,99 @@ static void initSocketNative(JNIEnv *env, jobject obj) {
         }
     }
 
+    /* Setting L2CAP socket options */
+    if (type == TYPE_L2CAP || type == TYPE_EL2CAP) {
+        struct l2cap_options opts;
+        int optlen = sizeof(opts), err;
+        err = getsockopt(fd, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen );
+        if (!err) {
+            /* setting MTU for [E]L2CAP */
+            opts.omtu = opts.imtu = L2CAP_MAX_MTU;
+
+            /* Enable ERTM for [E]L2CAP */
+            if (type == TYPE_EL2CAP) {
+                opts.flush_to = 0xffff; /* infinite */
+                opts.mode = L2CAP_MODE_ERTM;
+                opts.fcs = 1;
+                opts.txwin_size = 64;
+                opts.max_tx = 10;
+            }
+            err = setsockopt( fd, SOL_L2CAP, L2CAP_OPTIONS, &opts, optlen );
+        }
+
+        /* Set larger SNDBUF & RCVBUF for EL2CAP connections */
+        if (type == TYPE_EL2CAP) {
+            sndbuf = L2CAP_SO_SNDBUF;
+            if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf))) {
+                LOGV("setsockopt(SO_SNDBUF) failed, throwing");
+                jniThrowIOException(env, errno);
+                return;
+            }
+
+            rcvbuf = L2CAP_SO_RCVBUF;
+            if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf))) {
+                LOGV("setsockopt(SO_RCVBUF) failed, throwing");
+                jniThrowIOException(env, errno);
+                return;
+           }
+        }
+    }
+
+
     LOGV("...fd %d created (%s, lm = %x)", fd, TYPE_AS_STR(type), lm);
 
     initSocketFromFdNative(env, obj, fd);
     return;
 #endif
     jniThrowIOException(env, ENOSYS);
+}
+
+static void setAmpPolicyNative(JNIEnv *env, jobject obj, jint amppol) {
+#ifdef HAVE_BLUETOOTH
+    LOGV(__FUNCTION__);
+
+    struct asocket *s = get_socketData(env, obj);
+
+    if (!s)
+        return;
+
+    int err;
+    err = setsockopt(s->fd, SOL_BLUETOOTH, BT_AMP_POLICY, &amppol, sizeof(amppol));
+    if (err) {
+        LOGV("setsockopt() failed, throwing");
+        jniThrowIOException(env, errno);
+        return;
+    }
+
+    return;
+#endif
+    jniThrowIOException(env, ENOSYS);
+}
+
+static int getMtuNative(JNIEnv *env, jobject obj) {
+#ifdef HAVE_BLUETOOTH
+    LOGV(__FUNCTION__);
+
+    jint type = env->GetIntField(obj, field_mType);
+    struct asocket *s = get_socketData(env, obj);
+
+    if (type == TYPE_RFCOMM || !s)
+        return L2CAP_MAX_MTU;
+
+    struct l2cap_options opts;
+    int optlen = sizeof(opts), err;
+    err = getsockopt(s->fd, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen );
+    if (!err) {
+        return opts.omtu;
+    } else {
+        LOGV("getsockopt() failed, throwing");
+        jniThrowIOException(env, errno);
+    }
+
+    return L2CAP_MAX_MTU;
+#endif
+    jniThrowIOException(env, ENOSYS);
+    return -1;
 }
 
 static void connectNative(JNIEnv *env, jobject obj) {
@@ -215,6 +335,7 @@ static void connectNative(JNIEnv *env, jobject obj) {
 
         break;
     case TYPE_L2CAP:
+    case TYPE_EL2CAP:
         struct sockaddr_l2 addr_l2;
         addr = (struct sockaddr *)&addr_l2;
         addr_sz = sizeof(addr_l2);
@@ -299,6 +420,7 @@ static int bindListenNative(JNIEnv *env, jobject obj) {
         memcpy(&addr_sco.sco_bdaddr, &bdaddr, sizeof(bdaddr_t));
         break;
     case TYPE_L2CAP:
+    case TYPE_EL2CAP:
         struct sockaddr_l2 addr_l2;
         addr = (struct sockaddr *)&addr_l2;
         addr_sz = sizeof(addr_l2);
@@ -367,6 +489,7 @@ static jobject acceptNative(JNIEnv *env, jobject obj, int timeout) {
         memset(addr, 0, addr_sz);
         break;
     case TYPE_L2CAP:
+    case TYPE_EL2CAP:
         struct sockaddr_l2 addr_l2;
         addr = (struct sockaddr *)&addr_l2;
         addr_sz = sizeof(addr_l2);
@@ -557,6 +680,8 @@ static void throwErrnoNative(JNIEnv *env, jobject obj, jint err) {
 static JNINativeMethod sMethods[] = {
     {"initSocketNative", "()V",  (void*) initSocketNative},
     {"initSocketFromFdNative", "(I)V",  (void*) initSocketFromFdNative},
+    {"setAmpPolicyNative", "(I)V",  (void*) setAmpPolicyNative},
+    {"getMtuNative", "()I",  (void*) getMtuNative},
     {"connectNative", "()V", (void *) connectNative},
     {"bindListenNative", "()I", (void *) bindListenNative},
     {"acceptNative", "(I)Landroid/bluetooth/BluetoothSocket;", (void *) acceptNative},

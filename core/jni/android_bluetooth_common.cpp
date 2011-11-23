@@ -54,6 +54,7 @@ static Properties remote_device_properties[] = {
     {"LegacyPairing", DBUS_TYPE_BOOLEAN},
     {"RSSI", DBUS_TYPE_INT16},
     {"TX", DBUS_TYPE_UINT32},
+    {"Type", DBUS_TYPE_STRING},
     {"Broadcaster", DBUS_TYPE_BOOLEAN}
 };
 
@@ -69,6 +70,7 @@ static Properties adapter_properties[] = {
     {"Discovering", DBUS_TYPE_BOOLEAN},
     {"Devices", DBUS_TYPE_ARRAY},
     {"UUIDs", DBUS_TYPE_ARRAY},
+    {"Type", DBUS_TYPE_STRING},
 };
 
 static Properties input_properties[] = {
