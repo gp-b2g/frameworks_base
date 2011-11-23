@@ -54,6 +54,8 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
         // TODO(): DF_GSM can be 7F20 or 7F21 to handle backward compatibility.
         // Implement this after discussion with OEMs.
         switch(efid) {
+        case EF_FDN:
+        case EF_MSISDN:
         case EF_SMS:
             return MF_SIM + DF_TELECOM;
 
