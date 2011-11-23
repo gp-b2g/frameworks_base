@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2006, 2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,11 @@ public interface CallFailCause {
     static final int ACM_LIMIT_EXCEEDED             = 68;
     static final int CALL_BARRED                    = 240;
     static final int FDN_BLOCKED                    = 241;
+
+    // Stk Call Control
+    static final int DIAL_MODIFIED_TO_USSD = 244;
+    static final int DIAL_MODIFIED_TO_SS = 245;
+    static final int DIAL_MODIFIED_TO_DIAL = 246;
 
     static final int CDMA_LOCKED_UNTIL_POWER_CYCLE  = 1000;
     static final int CDMA_DROP                      = 1001;
