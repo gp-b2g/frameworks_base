@@ -169,6 +169,9 @@ public class IccCardProxy extends Handler implements IccCard {
         switch (msg.what) {
             case EVENT_RADIO_OFF_OR_UNAVAILABLE:
                 mRadioOn = false;
+                if (CommandsInterface.RadioState.RADIO_UNAVAILABLE == mCi.getRadioState()) {
+                    setExternalState(State.NOT_READY);
+                }
                 break;
             case EVENT_RADIO_ON:
                 mRadioOn = true;
@@ -180,10 +183,6 @@ public class IccCardProxy extends Handler implements IccCard {
                 if (mInitialized) {
                     updateIccAvailability();
                 }
-                break;
-            case EVENT_ICC_ABSENT:
-                mAbsentRegistrants.notifyRegistrants();
-                setExternalState(State.ABSENT);
                 break;
             case EVENT_ICC_LOCKED:
                 processLockedState();
@@ -217,10 +216,13 @@ public class IccCardProxy extends Handler implements IccCard {
         IccRecords newRecords = null;
         if (newCard != null) {
             state = newCard.getCardState();
+            Log.d(LOG_TAG,"Card State = " + state);
             newApp = newCard.getApplication(mCurrentAppType);
             if (newApp != null) {
                 newRecords = newApp.getIccRecords();
             }
+        } else {
+            Log.d(LOG_TAG,"No card available");
         }
 
         if (mIccRecords != newRecords || mUiccApplication != newApp || mUiccCard != newCard) {
@@ -241,12 +243,24 @@ public class IccCardProxy extends Handler implements IccCard {
         updateExternalState();
     }
     
+    /**
+     * When the radio is turned off, lower layers power down the card
+     * unless persist.radio.sim_not_pwdn property is set to '1'.
+     * When the property is not set and radio is turned off,
+     * broadcast NOT_READY
+     * When the property is set, broadcast what is the current state
+     * of the card
+     */
     private void updateExternalState() {
         if (mUiccCard == null || mUiccCard.getCardState() == CardState.CARDSTATE_ABSENT) {
-            if (mRadioOn) {
-                setExternalState(State.ABSENT);
+            if (0 == SystemProperties.getInt("persist.radio.apm_sim_not_pwdn", 0)) {
+                if (mRadioOn) {
+                    setExternalState(State.ABSENT);
+                } else {
+                    setExternalState(State.NOT_READY);
+                }
             } else {
-                setExternalState(State.NOT_READY);
+                setExternalState(State.ABSENT);
             }
             return;
         }
@@ -550,6 +564,10 @@ public class IccCardProxy extends Handler implements IccCard {
         SystemProperties.set(PROPERTY_SIM_STATE, mExternalState.toString());
         broadcastIccStateChangedIntent(mExternalState.getIntentString(),
                                        mExternalState.getReason());
+        // TODO: Need to notify registrants for other states as well.
+        if ( State.ABSENT == mExternalState) {
+            mAbsentRegistrants.notifyRegistrants();
+        }
     }
     private void setExternalState(State newState) {
         setExternalState(newState, false);
