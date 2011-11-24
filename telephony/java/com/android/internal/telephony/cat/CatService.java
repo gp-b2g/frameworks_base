@@ -229,6 +229,19 @@ public class CatService extends Handler implements AppInterface {
                     sendTerminalResponse(cmdParams.cmdDet, rilMsg.mResCode,
                             false, 0, null);
                 }
+            } else {
+                // Sometimes decoder could not even decode the COMMAND DETAILS
+                // because of invalid data. In that case fill 0x00 for COMMAND
+                // DETAILS. As per spec TS 102.223 section 6.8.1, the UICC shall
+                // interpret a Terminal Response with a command number '00' as
+                // belonging to the last sent proactive command.
+                CommandDetails lastCmdDet = new CommandDetails();
+                lastCmdDet.compRequired = true;
+                lastCmdDet.commandNumber = 0x00;
+                lastCmdDet.typeOfCommand = 0x00;
+                lastCmdDet.commandQualifier = 0x00;
+                sendTerminalResponse(lastCmdDet, rilMsg.mResCode,
+                       false, 0, null);
             }
             break;
         case MSG_ID_REFRESH:

@@ -48,13 +48,14 @@ class CommandDetails extends ValueObject implements Parcelable {
     }
 
     public CommandDetails(Parcel in) {
-        compRequired = true;
+        compRequired = (Boolean)in.readValue(null);
         commandNumber = in.readInt();
         typeOfCommand = in.readInt();
         commandQualifier = in.readInt();
     }
 
     public void writeToParcel(Parcel dest, int flags) {
+        dest.writeValue(compRequired);
         dest.writeInt(commandNumber);
         dest.writeInt(typeOfCommand);
         dest.writeInt(commandQualifier);
