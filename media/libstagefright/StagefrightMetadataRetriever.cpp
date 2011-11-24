@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- * Copyright (C) 2011 Code Aurora Forum
+ * Copyright (C) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,19 +30,21 @@
 #include <media/stagefright/OMXCodec.h>
 #include <media/stagefright/MediaDefs.h>
 
+#include <cutils/properties.h>
+
 namespace android {
 
 StagefrightMetadataRetriever::StagefrightMetadataRetriever()
     : mParsedMetaData(false),
       mAlbumArt(NULL) {
-    LOGV("StagefrightMetadataRetriever()");
+    LOGV("StagefrightMetadataRetriever() constructor %p ", this);
 
     DataSource::RegisterDefaultSniffers();
     CHECK_EQ(mClient.connect(), OK);
 }
 
 StagefrightMetadataRetriever::~StagefrightMetadataRetriever() {
-    LOGV("~StagefrightMetadataRetriever()");
+    LOGV("~StagefrightMetadataRetriever() %p", this);
 
     delete mAlbumArt;
     mAlbumArt = NULL;
@@ -52,7 +54,7 @@ StagefrightMetadataRetriever::~StagefrightMetadataRetriever() {
 
 status_t StagefrightMetadataRetriever::setDataSource(
         const char *uri, const KeyedVector<String8, String8> *headers) {
-    LOGV("setDataSource(%s)", uri);
+    LOGW("setDataSource(%s) %p", uri, this);
 
     mParsedMetaData = false;
     mMetaData.clear();
@@ -81,7 +83,7 @@ status_t StagefrightMetadataRetriever::setDataSource(
         int fd, int64_t offset, int64_t length) {
     fd = dup(fd);
 
-    LOGV("setDataSource(%d, %lld, %lld)", fd, offset, length);
+    LOGW("setDataSource(%d, %lld, %lld) %p", fd, offset, length, this);
 
     mParsedMetaData = false;
     mMetaData.clear();
@@ -281,7 +283,7 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
 VideoFrame *StagefrightMetadataRetriever::getFrameAtTime(
         int64_t timeUs, int option) {
 
-    LOGV("getFrameAtTime: %lld us option: %d", timeUs, option);
+    LOGW("getFrameAtTime: %lld us option: %d %p", timeUs, option, this);
 
     if (mExtractor.get() == NULL) {
         LOGV("no extractor.");
@@ -353,19 +355,33 @@ VideoFrame *StagefrightMetadataRetriever::getFrameAtTime(
         LOGV("Software codec is not being used for %s clips for thumbnail ",
             mime);
     } else {
-        frame = extractVideoFrameWithCodecFlags(
-                &mClient, trackMeta, source, OMXCodec::kSoftwareCodecsOnly,
+        char value[PROPERTY_VALUE_MAX];
+        if (property_get("debug.thumbnail.disablesw", value, NULL) &&
+            atoi(value)) {
+            LOGE("Dont use sw decoder for thumbnail");
+        }
+        else {
+            frame = extractVideoFrameWithCodecFlags(
+                &mClient, trackMeta, source, OMXCodec::kPreferSoftwareCodecs,
                 timeUs, option);
+        }
     }
 
-#ifdef TARGET8x60
     if (frame == NULL) {
         LOGV("Software decoder failed to extract thumbnail, "
              "trying hardware decoder.");
-            frame = extractVideoFrameWithCodecFlags(&mClient, trackMeta, source, 0,
+
+        char value[PROPERTY_VALUE_MAX];
+        int32_t flags = 0;
+        if (property_get("ro.product.device", value, "0")
+            && (!strncmp(value, "msm8660", sizeof("msm8660") - 1) ||
+                !strncmp(value, "msm8960", sizeof("msm8960") - 1))) {
+            flags |= OMXCodec::kEnableThumbnailMode;
+            frame = extractVideoFrameWithCodecFlags(&mClient, trackMeta,
+                        source, flags,
                         timeUs, option);
+        }
     }
-#endif
     return frame;
 }
 

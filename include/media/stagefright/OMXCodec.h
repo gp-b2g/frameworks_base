@@ -355,7 +355,7 @@ private:
 
     int64_t retrieveDecodingTimeUs(bool isCodecSpecific);
 
-    void parseFlags( uint32_t flags );
+    void parseFlags();
 
     OMXCodec(const OMXCodec &);
     OMXCodec &operator=(const OMXCodec &);
