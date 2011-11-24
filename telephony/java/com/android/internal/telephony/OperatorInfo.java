@@ -57,7 +57,7 @@ public class OperatorInfo implements Parcelable {
         return state;
     }
 
-    OperatorInfo(String operatorAlphaLong,
+    public OperatorInfo(String operatorAlphaLong,
                 String operatorAlphaShort,
                 String operatorNumeric,
                 State state) {

@@ -84,6 +84,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public static final int EVENT_MWI = 0;
     public static final int EVENT_CFI = 1;
     public static final int EVENT_SPN = 2;
+    public static final int EVENT_EONS = 3;
 
     public static final int EVENT_GET_ICC_RECORD_DONE = 100;
 

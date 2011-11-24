@@ -120,6 +120,7 @@ public class GSMPhone extends PhoneBase {
     private String mImei;
     private String mImeiSv;
     private String mVmNumber;
+    private String mMdn;
 
 
     // Constructors
@@ -715,6 +716,9 @@ public class GSMPhone extends PhoneBase {
             return mCT.dial(newDialString, uusInfo);
         } else if (mmi.isTemporaryModeCLIR()) {
             return mCT.dial(mmi.dialingNumber, mmi.getCLIRMode(), uusInfo);
+        } else if (SystemProperties.getBoolean("ro.config.multimode_cdma", false) &&
+                   mmi.isGlobalDevMmi()) {
+            return mCT.dial(mmi.dialingNumber, uusInfo);
         } else {
             mPendingMMIs.add(mmi);
             mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
@@ -860,6 +864,10 @@ public class GSMPhone extends PhoneBase {
         return mIccRecords.getMsisdnNumber();
     }
 
+    public String getMdn() {
+        return mMdn;
+    }
+
     public String getLine1AlphaTag() {
         return (mIccRecords != null) ? mIccRecords.getMsisdnAlphaTag() : "";
     }
@@ -971,7 +979,9 @@ public class GSMPhone extends PhoneBase {
 
     public void
     getAvailableNetworks(Message response) {
-        mCM.getAvailableNetworks(response);
+        Message msg;
+        msg = obtainMessage(EVENT_GET_NETWORKS_DONE,response);
+        mCM.getAvailableNetworks(msg);
     }
 
     /**
@@ -1162,7 +1172,10 @@ public class GSMPhone extends PhoneBase {
             break;
 
             case EVENT_RADIO_ON:
-            break;
+                if (SystemProperties.getBoolean("ro.config.multimode_cdma", false)) {
+                    mCM.getCDMASubscription(obtainMessage(EVENT_GET_MDN_DONE));
+                }
+                break;
 
             case EVENT_REGISTERED_TO_NETWORK:
                 syncClirSetting();
@@ -1329,6 +1342,46 @@ public class GSMPhone extends PhoneBase {
                 mmi.processSsData(ar);
                 break;
 
+            case EVENT_GET_NETWORKS_DONE:
+                ArrayList<OperatorInfo> eonsNetworkNames = null;
+
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception == null && mIccRecords != null) {
+                    eonsNetworkNames =
+                       ((SIMRecords)mIccRecords).getEonsForAvailableNetworks((ArrayList<OperatorInfo>)ar.result);
+                }
+
+                if (mIccRecords == null && ar.exception == null) {
+                    Log.w(LOG_TAG, "getEonsForAvailableNetworks() aborted. icc absent?");
+                    ar.exception = new RuntimeException("Sim card is absent.");
+
+                }
+
+                if (eonsNetworkNames != null) {
+                    Log.i(LOG_TAG, "[EONS] Populated EONS for available networks.");
+                } else {
+                    eonsNetworkNames = (ArrayList<OperatorInfo>)ar.result;
+                }
+
+                onComplete = (Message) ar.userObj;
+                if (onComplete != null) {
+                    AsyncResult.forMessage(onComplete, eonsNetworkNames, ar.exception);
+                    onComplete.sendToTarget();
+                } else {
+                    Log.e(LOG_TAG, "[EONS] In EVENT_GET_NETWORKS_DONE, onComplete is null!");
+                }
+                break;
+
+            case EVENT_GET_MDN_DONE:
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception != null) {
+                    Log.e(LOG_TAG, "Error while fetching Mdn");
+                    break;
+                }
+                String localTemp[] = (String[])ar.result;
+                mMdn = localTemp[0];
+                break;
+
              default:
                  super.handleMessage(msg);
         }
@@ -1370,6 +1423,12 @@ public class GSMPhone extends PhoneBase {
             case SIMRecords.EVENT_MWI:
                 notifyMessageWaitingIndicator();
                 break;
+            case SIMRecords.EVENT_SPN:
+                mSST.updateSpnDisplay();
+                break;
+            case SIMRecords.EVENT_EONS:
+                mSST.updateEons();
+                break;
         }
     }
 
@@ -1393,6 +1452,17 @@ public class GSMPhone extends PhoneBase {
             }
         }
         return false;
+    }
+
+    private void processIccEonsRecordsUpdated(int eventCode) {
+        switch (eventCode) {
+            case SIMRecords.EVENT_SPN:
+                mSST.updateSpnDisplay();
+                break;
+            case SIMRecords.EVENT_EONS:
+                mSST.updateEons();
+                break;
+        }
     }
 
     /**
