@@ -104,6 +104,7 @@ public class CDMAPhone extends PhoneBase {
     PhoneSubInfo mSubInfo;
     EriManager mEriManager;
     WakeLock mWakeLock;
+    UiccCard mRuimCard = null;
 
     // mNvLoadedRegistrants are informed after the EVENT_NV_READY
     private final RegistrantList mNvLoadedRegistrants = new RegistrantList();
@@ -254,6 +255,7 @@ public class CDMAPhone extends PhoneBase {
         mSST = null;
         mEriManager = null;
         mExitEcmRunnable = null;
+        mRuimCard = null;
         super.removeReferences();
     }
 
@@ -1095,10 +1097,12 @@ public class CDMAPhone extends PhoneBase {
                 }
                 mIccRecords = null;
                 mUiccApplication = null;
+                mRuimCard = null;
             }
             if (newUiccApplication != null) {
                 log("New Uicc application found");
                 mUiccApplication = newUiccApplication;
+                mRuimCard = mUiccApplication.getCard();
                 mIccRecords = mUiccApplication.getIccRecords();
                 registerForRuimRecordEvents();
                 mRuimPhoneBookInterfaceManager.updateIccRecords(mIccRecords);
@@ -1516,6 +1520,10 @@ public class CDMAPhone extends PhoneBase {
         }
         mIccRecords.unregisterForRecordsEvents(this);
         mIccRecords.unregisterForRecordsLoaded(this);
+    }
+
+    public UiccCard getUiccCard() {
+        return mRuimCard;
     }
 
     protected void log(String s) {

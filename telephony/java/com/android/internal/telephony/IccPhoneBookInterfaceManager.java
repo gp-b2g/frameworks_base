@@ -302,7 +302,9 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
     private int updateEfForIccType(int efid) {
         // Check if we are trying to read ADN records
         if (efid == IccConstants.EF_ADN) {
-            if (phone.getIccCard().isApplicationOnIcc(IccCardApplicationStatus.AppType.APPTYPE_USIM)) {
+            if (phone.getUiccCard() != null &&
+                    phone.getUiccCard().isApplicationOnIcc(
+                         IccCardApplicationStatus.AppType.APPTYPE_USIM)) {
                 return IccConstants.EF_PBR;
             }
         }

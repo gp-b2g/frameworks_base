@@ -389,6 +389,10 @@ public class UiccCardApplication {
         return mIccRecords;
     }
 
+    public UiccCard getCard() {
+        return mUiccCard;
+    }
+
     /**
      * Supply the ICC PIN to the ICC
      *
