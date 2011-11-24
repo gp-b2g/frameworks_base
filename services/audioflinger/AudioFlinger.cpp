@@ -50,6 +50,10 @@
 #include "AudioMixer.h"
 #include "AudioFlinger.h"
 
+#ifdef SRS_PROCESSING
+#include "srs_processing.h"
+#endif
+
 #include <media/EffectsFactoryApi.h>
 #include <audio_effects/effect_visualizer.h>
 #include <audio_effects/effect_ns.h>
@@ -758,10 +762,34 @@ status_t AudioFlinger::setParameters(int ioHandle, const String8& keyValuePairs)
         return PERMISSION_DENIED;
     }
 
+#ifdef SRS_PROCESSING
+    AudioParameter param = AudioParameter(keyValuePairs);
+    String8 key = String8(AudioParameter::keyRouting);
+    int device;
+    if (param.getInt(key, device) == NO_ERROR) {
+        if (mLPAOutput && mLPAStreamIsActive) {
+            LOGV("setParameters:: routing change to device %d", device);
+            SRS_Processing::ProcessOutRoute(SRS_Processing::AUTO, this, device);
+            if(ioHandle > 0) {
+                audioConfigChanged_l(AudioSystem::EFFECT_CONFIG_CHANGED, 0, NULL);
+            }
+        }
+    }
+#endif
+
     // ioHandle == 0 means the parameters are global to the audio hardware interface
     if (ioHandle == 0) {
         AutoMutex lock(mHardwareLock);
         mHardwareStatus = AUDIO_SET_PARAMETER;
+
+#ifdef SRS_PROCESSING
+        bool status = SRS_Processing::ParamsSet(SRS_Processing::AUTO, keyValuePairs);
+        if(status && mLPAOutput && mLPAStreamIsActive) {
+            LOGV("setParameters:: Notifying EFFECT_CONFIG_CHANGED");
+            audioConfigChanged_l(AudioSystem::EFFECT_CONFIG_CHANGED, 0, NULL);
+        }
+#endif
+
         status_t final_result = NO_ERROR;
         for (size_t i = 0; i < mAudioHwDevs.size(); i++) {
             audio_hw_device_t *dev = mAudioHwDevs[i];
@@ -840,6 +868,11 @@ String8 AudioFlinger::getParameters(int ioHandle, const String8& keys)
 
     if (ioHandle == 0) {
         String8 out_s8;
+
+#ifdef SRS_PROCESSING
+        out_s8 = SRS_Processing::ParamsGet(SRS_Processing::AUTO, keys);
+        if (out_s8 != "") out_s8 += ";";
+#endif
 
         for (size_t i = 0; i < mAudioHwDevs.size(); i++) {
             audio_hw_device_t *dev = mAudioHwDevs[i];
@@ -1930,6 +1963,11 @@ bool AudioFlinger::MixerThread::threadLoop()
 
     acquireWakeLock();
 
+#ifdef SRS_PROCESSING
+    LOGD("SRS_Processing - MixerThread - OutNotify_Init: %p TID %d\n", this, gettid());
+    SRS_Processing::ProcessOutNotify(SRS_Processing::AUTO, this, true);
+#endif
+
     while (!exitPending())
     {
 #ifdef DEBUG_CPU_USAGE
@@ -2059,6 +2097,13 @@ bool AudioFlinger::MixerThread::threadLoop()
              }
              // enable changes in effect chain
              unlockEffectChains(effectChains);
+
+#ifdef SRS_PROCESSING
+            if (mFormat == AUDIO_FORMAT_PCM_16_BIT) {
+                SRS_Processing::ProcessOut(SRS_Processing::AUTO, this, mMixBuffer, mixBufferSize, mSampleRate, mChannelCount);
+            }
+#endif
+
             mLastWriteTime = systemTime();
             mInWrite = true;
             mBytesWritten += mixBufferSize;
@@ -2100,6 +2145,11 @@ bool AudioFlinger::MixerThread::threadLoop()
     if (!mStandby) {
         mOutput->stream->common.standby(&mOutput->stream->common);
     }
+
+#ifdef SRS_PROCESSING
+    LOGD("SRS_Processing - MixerThread - OutNotify_Exit: %p TID %d\n", this, gettid());
+    SRS_Processing::ProcessOutNotify(SRS_Processing::AUTO, this, false);
+#endif
 
     releaseWakeLock();
 
@@ -2352,6 +2402,12 @@ bool AudioFlinger::MixerThread::checkForNewParameters_l()
         String8 keyValuePair = mNewParameters[0];
         AudioParameter param = AudioParameter(keyValuePair);
         int value;
+
+#ifdef SRS_PROCESSING
+        if (param.getInt(String8(AudioParameter::keyRouting), value) == NO_ERROR){
+            SRS_Processing::ProcessOutRoute(SRS_Processing::AUTO, this, value);
+        }
+#endif
 
         if (param.getInt(String8(AudioParameter::keySamplingRate), value) == NO_ERROR) {
             reconfig = true;
@@ -2995,6 +3051,12 @@ bool AudioFlinger::DuplicatingThread::threadLoop()
 
     acquireWakeLock();
 
+#ifdef SRS_PROCESSING
+    LOGD("SRS_Processing - DuplicatingThread - OutNotify_Init: %p TID %d\n", this, gettid());
+    SRS_Processing::ProcessOutNotify(SRS_Processing::AUTO, this, true);
+#endif
+
+
     while (!exitPending())
     {
         processConfigEvents();
@@ -3104,6 +3166,12 @@ bool AudioFlinger::DuplicatingThread::threadLoop()
             // enable changes in effect chain
             unlockEffectChains(effectChains);
 
+#ifdef SRS_PROCESSING
+            if (mFormat == AUDIO_FORMAT_PCM_16_BIT) {
+                SRS_Processing::ProcessOut(SRS_Processing::AUTO, this, mMixBuffer, mixBufferSize, mSampleRate, mChannelCount);
+            }
+#endif
+
             standbyTime = systemTime() + kStandbyTimeInNsecs;
             for (size_t i = 0; i < outputTracks.size(); i++) {
                 outputTracks[i]->write(mMixBuffer, writeFrames);
@@ -3126,6 +3194,11 @@ bool AudioFlinger::DuplicatingThread::threadLoop()
         // mEffectChains list during mixing or effects processing
         effectChains.clear();
     }
+
+#ifdef SRS_PROCESSING
+    LOGD("SRS_Processing - DuplicatingThread - OutNotify_Exit: %p TID %d\n", this, gettid());
+    SRS_Processing::ProcessOutNotify(SRS_Processing::AUTO, this, false);
+#endif
 
     releaseWakeLock();
 

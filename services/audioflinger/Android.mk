@@ -24,6 +24,14 @@ LOCAL_SHARED_LIBRARIES := \
     libdl \
     libpowermanager
 
+# SRS Processing
+ifeq ($(strip $(BOARD_USES_SRS_TRUEMEDIA)),true)
+LOCAL_SHARED_LIBRARIES += libsrsprocessing
+LOCAL_CFLAGS += -DSRS_PROCESSING
+LOCAL_C_INCLUDES += vendor/qcom/proprietary/mm-audio/audio-effects/srs/TruMedia
+endif
+# SRS Processing
+
 LOCAL_STATIC_LIBRARIES := \
     libcpustats \
     libmedia_helper
