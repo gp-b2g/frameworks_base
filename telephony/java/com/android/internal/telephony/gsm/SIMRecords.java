@@ -52,8 +52,6 @@ import java.util.ArrayList;
 public class SIMRecords extends IccRecords {
     protected static final String LOG_TAG = "GSM";
 
-    private static final boolean CRASH_RIL = false;
-
     protected static final boolean DBG = true;
 
     // ***** Instance Variables
@@ -136,11 +134,7 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_UPDATE_DONE = 14;
     private static final int EVENT_GET_PNN_DONE = 15;
     private static final int EVENT_GET_SST_DONE = 17;
-    private static final int EVENT_GET_ALL_SMS_DONE = 18;
-    private static final int EVENT_MARK_SMS_READ_DONE = 19;
     private static final int EVENT_SET_MBDN_DONE = 20;
-    private static final int EVENT_SMS_ON_SIM = 21;
-    private static final int EVENT_GET_SMS_DONE = 22;
     private static final int EVENT_GET_CFF_DONE = 24;
     private static final int EVENT_SET_CPHS_MAILBOX_DONE = 25;
     private static final int EVENT_GET_INFO_CPHS_DONE = 26;
@@ -183,7 +177,6 @@ public class SIMRecords extends IccRecords {
         // recordsToLoad is set to 0 because no requests are made yet
         recordsToLoad = 0;
 
-        mCi.setOnSmsOnSim(this, EVENT_SMS_ON_SIM, null);
         mCi.registerForIccRefresh(this, EVENT_SIM_REFRESH, null);
 
         // Start off by setting empty state
@@ -196,7 +189,6 @@ public class SIMRecords extends IccRecords {
         Log.d(LOG_TAG, "Disposing SIMRecords " + this);
         //Unregister for all events
         mCi.unregisterForIccRefresh(this);
-        mCi.unSetOnSmsOnSim(this);
         mParentApp.unregisterForReady(this);
         resetRecords();
         super.dispose();
@@ -911,48 +903,6 @@ public class SIMRecords extends IccRecords {
                 }
             break;
 
-            case EVENT_GET_ALL_SMS_DONE:
-                isRecordLoadResponse = true;
-
-                ar = (AsyncResult)msg.obj;
-                if (ar.exception != null)
-                    break;
-
-                handleSmses((ArrayList) ar.result);
-                break;
-
-            case EVENT_MARK_SMS_READ_DONE:
-                Log.i("ENF", "marked read: sms " + msg.arg1);
-                break;
-
-
-            case EVENT_SMS_ON_SIM:
-                isRecordLoadResponse = false;
-
-                ar = (AsyncResult)msg.obj;
-
-                int[] index = (int[])ar.result;
-
-                if (ar.exception != null || index.length != 1) {
-                    Log.e(LOG_TAG, "[SIMRecords] Error on SMS_ON_SIM with exp "
-                            + ar.exception + " length " + index.length);
-                } else {
-                    Log.d(LOG_TAG, "READ EF_SMS RECORD index=" + index[0]);
-                    mFh.loadEFLinearFixed(EF_SMS,index[0],
-                            obtainMessage(EVENT_GET_SMS_DONE));
-                }
-                break;
-
-            case EVENT_GET_SMS_DONE:
-                isRecordLoadResponse = false;
-                ar = (AsyncResult)msg.obj;
-                if (ar.exception == null) {
-                    handleSms((byte[])ar.result);
-                } else {
-                    Log.e(LOG_TAG, "[SIMRecords] Error on GET_SMS with exp "
-                            + ar.exception);
-                }
-                break;
             case EVENT_GET_SST_DONE:
                 isRecordLoadResponse = true;
 
@@ -1189,72 +1139,6 @@ public class SIMRecords extends IccRecords {
         }
     }
 
-    /**
-     * Dispatch 3GPP format message. Overridden for CDMA/LTE phones by
-     * {@link com.android.internal.telephony.cdma.CdmaLteUiccRecords}
-     * to send messages to the secondary 3GPP format SMS dispatcher.
-     */
-    protected int dispatchGsmMessage(SmsMessageBase message) {
-        mNewSmsRegistrants.notifyResult(message);
-        return 0;
-    }
-
-    private void handleSms(byte[] ba) {
-        if (ba[0] != 0)
-            Log.d("ENF", "status : " + ba[0]);
-
-        // 3GPP TS 51.011 v5.0.0 (20011-12)  10.5.3
-        // 3 == "received by MS from network; message to be read"
-        if (ba[0] == 3) {
-            int n = ba.length;
-
-            // Note: Data may include trailing FF's.  That's OK; message
-            // should still parse correctly.
-            byte[] pdu = new byte[n - 1];
-            System.arraycopy(ba, 1, pdu, 0, n - 1);
-            SmsMessage message = SmsMessage.createFromPdu(pdu);
-
-            dispatchGsmMessage(message);
-        }
-    }
-
-
-    private void handleSmses(ArrayList messages) {
-        int count = messages.size();
-
-        for (int i = 0; i < count; i++) {
-            byte[] ba = (byte[]) messages.get(i);
-
-            if (ba[0] != 0)
-                Log.i("ENF", "status " + i + ": " + ba[0]);
-
-            // 3GPP TS 51.011 v5.0.0 (20011-12)  10.5.3
-            // 3 == "received by MS from network; message to be read"
-
-            if (ba[0] == 3) {
-                int n = ba.length;
-
-                // Note: Data may include trailing FF's.  That's OK; message
-                // should still parse correctly.
-                byte[] pdu = new byte[n - 1];
-                System.arraycopy(ba, 1, pdu, 0, n - 1);
-                SmsMessage message = SmsMessage.createFromPdu(pdu);
-
-                dispatchGsmMessage(message);
-
-                // 3GPP TS 51.011 v5.0.0 (20011-12)  10.5.3
-                // 1 == "received by MS from network; message read"
-
-                ba[0] = 1;
-
-                if (false) { // XXX writing seems to crash RdoServD
-                    mFh.updateEFLinearFixed(EF_SMS,
-                            i, ba, null, obtainMessage(EVENT_MARK_SMS_READ_DONE, i));
-                }
-            }
-        }
-    }
-
     protected void onRecordLoaded() {
         // One record loaded successfully or failed, In either case
         // we need to update the recordsToLoad count
@@ -1378,24 +1262,6 @@ public class SIMRecords extends IccRecords {
         mFh.loadEFTransparent(EF_CSP_CPHS,obtainMessage(EVENT_GET_CSP_CPHS_DONE));
         recordsToLoad++;
 
-        // XXX should seek instead of examining them all
-        if (false) { // XXX
-            mFh.loadEFLinearFixedAll(EF_SMS, obtainMessage(EVENT_GET_ALL_SMS_DONE));
-            recordsToLoad++;
-        }
-
-        if (CRASH_RIL) {
-            String sms = "0107912160130310f20404d0110041007030208054832b0120"
-                         + "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-                         + "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-                         + "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-                         + "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-                         + "ffffffffffffffffffffffffffffff";
-            byte[] ba = IccUtils.hexStringToBytes(sms);
-
-            mFh.updateEFLinearFixed(EF_SMS, 1, ba, null,
-                            obtainMessage(EVENT_MARK_SMS_READ_DONE, 1));
-        }
         Log.d(LOG_TAG, "SIMRecords:fetchSimRecords " + recordsToLoad + " requested: " + recordsRequested);
 
     }

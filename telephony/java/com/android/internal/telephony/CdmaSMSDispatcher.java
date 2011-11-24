@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.cdma;
+package com.android.internal.telephony;
 
 
 import android.app.Activity;
@@ -25,6 +25,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.SQLException;
+import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
@@ -33,16 +34,11 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage.MessageClass;
 import android.util.Log;
-
-import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.SMSDispatcher;
-import com.android.internal.telephony.SmsHeader;
-import com.android.internal.telephony.SmsMessageBase;
+import com.android.internal.telephony.CommandsInterface.RadioTechnologyFamily;
 import com.android.internal.telephony.SmsMessageBase.TextEncodingDetails;
-import com.android.internal.telephony.SmsStorageMonitor;
-import com.android.internal.telephony.SmsUsageMonitor;
-import com.android.internal.telephony.TelephonyProperties;
-import com.android.internal.telephony.WspTypeDecoder;
+import com.android.internal.telephony.UiccManager.AppFamily;
+import com.android.internal.telephony.cdma.CDMAPhone;
+import com.android.internal.telephony.cdma.SmsMessage;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.util.HexDump;
@@ -63,20 +59,41 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
     private final boolean mCheckForDuplicatePortsInOmadmWapPush = Resources.getSystem().getBoolean(
             com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
 
-    CdmaSMSDispatcher(CDMAPhone phone, SmsStorageMonitor storageMonitor,
+    CdmaSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
         super(phone, storageMonitor, usageMonitor);
         mCm.setOnNewCdmaSms(this, EVENT_NEW_SMS, null);
+        Log.d(TAG, "CdmaSMSDispatcher created");
     }
 
     @Override
     public void dispose() {
         mCm.unSetOnNewCdmaSms(this);
+        super.dispose();
     }
 
     @Override
     protected String getFormat() {
         return android.telephony.SmsMessage.FORMAT_3GPP2;
+    }
+
+    /**
+     * Called when a Class2 SMS is  received.
+     *
+     * @param ar AsyncResult passed to this function. "ar.result" should
+     *           be representing the INDEX of SMS on SIM.
+     */
+    protected void handleSmsOnIcc(AsyncResult ar) {
+        Log.d(TAG, "handleSmsOnIcc function is not applicable for CDMA");
+    }
+
+    /**
+     * Called when a SMS on SIM is retrieved.
+     *
+     * @param ar AsyncResult passed to this function.
+     */
+    protected void handleGetIccSmsDone(AsyncResult ar) {
+        Log.d(TAG, "handleGetIccSmsDone function is not applicable for CDMA");
     }
 
     private void handleCdmaStatusReport(SmsMessage sms) {
@@ -99,7 +116,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
-    public int dispatchMessage(SmsMessageBase smsb) {
+    protected int dispatchMessage(SmsMessageBase smsb) {
 
         // If sms is null, means there was a parsing error.
         if (smsb == null) {
@@ -142,7 +159,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             SharedPreferences.Editor editor = sp.edit();
             editor.putInt(CDMAPhone.VM_COUNT_CDMA, voicemailCount);
             editor.apply();
-            mPhone.setVoiceMessageWaiting(1, voicemailCount);
+            updateMessageWaitingIndicator(voicemailCount);
             handled = true;
         } else if (((SmsEnvelope.TELESERVICE_WMT == teleService) ||
                 (SmsEnvelope.TELESERVICE_WEMT == teleService)) &&
@@ -248,7 +265,11 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
-        sendSubmitPdu(pdu, sentIntent, deliveryIntent);
+
+        HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, destPort, data, pdu);
+        SmsTracker tracker = SmsTrackerFactory(map, sentIntent, deliveryIntent,
+                getFormat());
+        sendSubmitPdu(tracker);
     }
 
     /** {@inheritDoc} */
@@ -257,7 +278,11 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null), null);
-        sendSubmitPdu(pdu, sentIntent, deliveryIntent);
+
+        HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, text, pdu);
+        SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+                deliveryIntent, getFormat());
+        sendSubmitPdu(tracker);
     }
 
     /** {@inheritDoc} */
@@ -289,15 +314,18 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         SmsMessage.SubmitPdu submitPdu = SmsMessage.getSubmitPdu(destinationAddress,
                 uData, (deliveryIntent != null) && lastPart);
 
-        sendSubmitPdu(submitPdu, sentIntent, deliveryIntent);
+        HashMap map =  SmsTrackerMapFactory(destinationAddress, scAddress,
+                message, submitPdu);
+        SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+                deliveryIntent, getFormat());
+        sendSubmitPdu(tracker);
     }
 
-    protected void sendSubmitPdu(SmsMessage.SubmitPdu pdu,
-            PendingIntent sentIntent, PendingIntent deliveryIntent) {
+    protected void sendSubmitPdu(SmsTracker tracker) {
         if (SystemProperties.getBoolean(TelephonyProperties.PROPERTY_INECM_MODE, false)) {
-            if (sentIntent != null) {
+            if (tracker.mSentIntent != null) {
                 try {
-                    sentIntent.send(SmsManager.RESULT_ERROR_NO_SERVICE);
+                    tracker.mSentIntent.send(SmsManager.RESULT_ERROR_NO_SERVICE);
                 } catch (CanceledException ex) {}
             }
             if (false) {
@@ -305,7 +333,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             }
             return;
         }
-        sendRawPdu(pdu.encodedScAddress, pdu.encodedMessage, sentIntent, deliveryIntent);
+        sendRawPdu(tracker);
     }
 
     /** {@inheritDoc} */
@@ -317,7 +345,13 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         byte pdu[] = (byte[]) map.get("pdu");
 
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
-        mCm.sendCdmaSms(pdu, reply);
+
+        if (tracker.mRetryCount > 0 || !isIms()) {
+            // this is retry, use old method
+            mCm.sendCdmaSms(pdu, reply);
+        } else {
+            mCm.sendImsCdmaSms(pdu, reply);
+        }
     }
 
     /** {@inheritDoc} */
@@ -389,5 +423,41 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             return true;
         }
         return false;
+    }
+
+    protected void updateIccAvailability() {
+        if (mUiccManager == null ) {
+            return;
+        }
+
+        UiccCardApplication newUiccApplication =
+                mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP2);
+
+        if (mUiccApplication != newUiccApplication) {
+            if (mUiccApplication != null) {
+                Log.d(TAG, "Removing stale icc objects.");
+                mIccRecords = null;
+                mUiccApplication = null;
+            }
+            if (newUiccApplication != null) {
+                Log.d(TAG, "New Uicc application found");
+                mUiccApplication = newUiccApplication;
+                mIccRecords = mUiccApplication.getIccRecords();
+            }
+        }
+    }
+
+    /*package*/ void
+    updateMessageWaitingIndicator(boolean mwi) {
+        updateMessageWaitingIndicator(mwi ? -1 : 0);
+    }
+
+    /* This function is overloaded to send number of voicemails instead of sending true/false */
+    /*package*/ void
+    updateMessageWaitingIndicator(int mwi) {
+        // this also calls notifyMessageWaitingIndicator()
+        if (mIccRecords != null) {
+            mIccRecords.setVoiceMessageWaiting(1, mwi);
+        }
     }
 }

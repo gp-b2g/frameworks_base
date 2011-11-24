@@ -41,6 +41,34 @@ public interface CommandsInterface {
         }
     }
 
+    public enum RadioTechnologyFamily {
+        RADIO_TECH_UNKNOWN,     /* Indicate that RIL is not initialized */
+        RADIO_TECH_3GPP,        /* 3GPP Technologies - GSM, WCDMA, LTE */
+        RADIO_TECH_3GPP2;       /* 3GPP2 Technologies - CDMA, EVDO */
+
+        public boolean isUnknown() {
+            return this == RADIO_TECH_UNKNOWN;
+        }
+
+        public boolean isGsm() {
+            return this == RADIO_TECH_3GPP;
+        }
+
+        public boolean isCdma() {
+            return this == RADIO_TECH_3GPP2;
+        }
+
+        public static RadioTechnologyFamily getRadioTechFamilyFromInt(int techInt) {
+            RadioTechnologyFamily ret = RADIO_TECH_UNKNOWN;
+            try {
+                ret = values()[techInt];
+            } catch (IndexOutOfBoundsException e) {
+                Log.e("RIL", "Invalid radio technology family : " + techInt);
+            }
+            return ret;
+        }
+    }
+
     public enum RadioTechnology {
         RADIO_TECH_UNKNOWN,
         RADIO_TECH_GPRS,
@@ -162,6 +190,16 @@ public interface CommandsInterface {
     void getVoiceRadioTechnology(Message result);
 
     /**
+     * response.obj.result is an int[2]
+     * response.obj.result[0] is registration state
+     *                        0 == IMS not registered or
+     *                        1 == IMS registered
+     * response.obj.result[1] is of type const RIL_RadioTechnologyFamily,
+     *                        corresponds to encoding type used for SMS over IMS.
+     */
+    void getImsRegistrationState(Message result);
+
+    /**
      * Fires on any RadioState transition
      * Always fires immediately as well
      *
@@ -174,6 +212,9 @@ public interface CommandsInterface {
 
     void registerForVoiceRadioTechChanged(Handler h, int what, Object obj);
     void unregisterForVoiceRadioTechChanged(Handler h);
+
+    void registerForImsNetworkStateChanged(Handler h, int what, Object obj);
+    void unregisterForImsNetworkStateChanged(Handler h);
 
     /**
      * Indications for tethered mode calls. ON/OFF indications should trigger
@@ -1081,6 +1122,22 @@ public interface CommandsInterface {
      * @param response sent when operation completes
      */
     void sendCdmaSms(byte[] pdu, Message response);
+
+    /**
+     * send SMS over IMS with 3GPP/GSM SMS encoding
+     * @param smscPDU is smsc address in PDU form GSM BCD format prefixed
+     *      by a length byte (as expected by TS 27.005) or NULL for default SMSC
+     * @param pdu is SMS in PDU format as an ASCII hex string
+     *      less the SMSC address
+     */
+    void sendImsGsmSms(String smscPDU, String pdu, Message response);
+
+    /**
+     * send SMS over IMS with 3GPP2/CDMA SMS encoding
+     * @param pdu is CDMA-SMS in internal pseudo-PDU format
+     * @param response sent when operation completes
+     */
+    void sendImsCdmaSms(byte[] pdu, Message response);
 
     /**
      * Deletes the specified SMS record from SIM memory (EF_SMS).

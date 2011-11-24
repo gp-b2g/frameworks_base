@@ -106,9 +106,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 27;
     //other
     protected static final int EVENT_SET_NETWORK_AUTOMATIC          = 28;
-    protected static final int EVENT_NEW_ICC_SMS                    = 29;
-    protected static final int EVENT_ICC_RECORD_EVENTS              = 30;
-    protected static final int EVENT_ICC_CHANGED                    = 31;
+    protected static final int EVENT_ICC_RECORD_EVENTS              = 29;
+    protected static final int EVENT_ICC_CHANGED                    = 30;
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
@@ -127,10 +126,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     boolean mIsVoiceCapable = true;
     protected UiccManager mUiccManager = null;
     public IccRecords mIccRecords;
-    public SmsStorageMonitor mSmsStorageMonitor;
-    public SmsUsageMonitor mSmsUsageMonitor;
     public UiccCardApplication mUiccApplication;
-    public SMSDispatcher mSMS;
 
     /**
      * Set a system property, unless we're in unit test mode
@@ -248,10 +244,6 @@ public abstract class PhoneBase extends Handler implements Phone {
         mCallRingDelay = SystemProperties.getInt(
                 TelephonyProperties.PROPERTY_CALL_RING_DELAY, 3000);
         Log.d(LOG_TAG, "mCallRingDelay=" + mCallRingDelay);
-
-        // Initialize device storage and outgoing SMS usage monitors for SMSDispatchers.
-        mSmsStorageMonitor = new SmsStorageMonitor(this);
-        mSmsUsageMonitor = new SmsUsageMonitor(context.getContentResolver());
     }
 
     public void dispose() {
@@ -260,16 +252,10 @@ public abstract class PhoneBase extends Handler implements Phone {
             // Must cleanup all connectionS and needs to use sendMessage!
             mDataConnectionTracker.cleanUpAllConnections(null);
             mIsTheCurrentActivePhone = false;
-            // Dispose the SMS usage and storage monitors
-            mSmsStorageMonitor.dispose();
-            mSmsUsageMonitor.dispose();
         }
     }
 
     public void removeReferences() {
-        mSmsStorageMonitor = null;
-        mSmsUsageMonitor = null;
-        mSMS = null;
         mIccRecords = null;
         mUiccApplication = null;
         mDataConnectionTracker = null;

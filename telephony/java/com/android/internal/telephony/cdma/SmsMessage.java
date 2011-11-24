@@ -453,8 +453,9 @@ public class SmsMessage extends SmsMessageBase {
      *  {@link com.android.internal.telephony.cdma.sms.SmsEnvelope#TELESERVICE_WEMT},
      *  {@link com.android.internal.telephony.cdma.sms.SmsEnvelope#TELESERVICE_VMN},
      *  {@link com.android.internal.telephony.cdma.sms.SmsEnvelope#TELESERVICE_WAP}
+     * @hide
     */
-    /* package */ int getTeleService() {
+    public int getTeleService() {
         return mEnvelope.teleService;
     }
 
@@ -464,8 +465,9 @@ public class SmsMessage extends SmsMessageBase {
      *  {@link com.android.internal.telephony.cdma.sms.SmsEnvelope#MESSAGE_TYPE_POINT_TO_POINT},
      *  {@link com.android.internal.telephony.cdma.sms.SmsEnvelope#MESSAGE_TYPE_BROADCAST},
      *  {@link com.android.internal.telephony.cdma.sms.SmsEnvelope#MESSAGE_TYPE_ACKNOWLEDGE},
+     * @hide
     */
-    /* package */ int getMessageType() {
+    public int getMessageType() {
         return mEnvelope.messageType;
     }
 
@@ -661,8 +663,9 @@ public class SmsMessage extends SmsMessageBase {
 
     /**
      * Parses a SMS message from its BearerData stream. (mobile-terminated only)
+     * @hide
      */
-    protected void parseSms() {
+    public void parseSms() {
         // Message Waiting Info Record defined in 3GPP2 C.S-0005, 3.7.5.6
         // It contains only an 8-bit number with the number of messages waiting
         if (mEnvelope.teleService == SmsEnvelope.TELESERVICE_MWI) {
@@ -939,7 +942,7 @@ public class SmsMessage extends SmsMessageBase {
     /** This function  shall be called to get the number of voicemails.
      * @hide
      */
-    /*package*/ int getNumOfVoicemails() {
+    public int getNumOfVoicemails() {
         return mBearerData.numberOfMessages;
     }
 
@@ -950,7 +953,7 @@ public class SmsMessage extends SmsMessageBase {
      * @return byte array uniquely identifying the message.
      * @hide
      */
-    /* package */ byte[] getIncomingSmsFingerprint() {
+    public byte[] getIncomingSmsFingerprint() {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
 
         output.write(mEnvelope.teleService);
