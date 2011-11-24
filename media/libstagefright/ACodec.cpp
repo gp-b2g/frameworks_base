@@ -1886,6 +1886,7 @@ status_t ACodec::LoadedToIdleState::allocateBuffers() {
 bool ACodec::LoadedToIdleState::onMessageReceived(const sp<AMessage> &msg) {
     switch (msg->what()) {
         case kWhatShutdown:
+        case kWhatFlush:
         {
             mCodec->deferMessage(msg);
             return true;
@@ -1930,6 +1931,7 @@ void ACodec::IdleToExecutingState::stateEntered() {
 
 bool ACodec::IdleToExecutingState::onMessageReceived(const sp<AMessage> &msg) {
     switch (msg->what()) {
+        case kWhatFlush:
         case kWhatShutdown:
         {
             mCodec->deferMessage(msg);
