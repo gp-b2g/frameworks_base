@@ -94,6 +94,8 @@ public final class ServerOperation implements Operation, BaseStream {
 
     private boolean mHasBody;
 
+    private boolean mEndofBody = true;
+
     public boolean mSingleResponseActive;
 
     public boolean mSrmGetActive;
@@ -466,31 +468,37 @@ public final class ServerOperation implements Operation, BaseStream {
                      * (End of Body) otherwise, we need to send 0x48 (Body)
                      */
                     if ((finalBitSet) || (mPrivateOutput.isClosed())) {
-                        if(VERBOSE) Log.e(TAG," write 0x49 + "+bodyLength);
-                        out.write(0x49);
+                        if (mEndofBody) {
+                            out.write(0x49);
+                            if(VERBOSE) Log.e(TAG," write 0x49 + "+bodyLength);
+                            bodyLength += 3;
+                            out.write((byte)(bodyLength >> 8));
+                            out.write((byte)bodyLength);
+                            out.write(body);
+                        }
                     } else {
-                        if(VERBOSE) Log.e(TAG," write 0x48 = "+bodyLength);
                         out.write(0x48);
+                        if(VERBOSE) Log.e(TAG," write 0x48 = "+bodyLength);
+                        bodyLength += 3;
+                        out.write((byte)(bodyLength >> 8));
+                        out.write((byte)bodyLength);
+                        out.write(body);
                     }
-
-                    bodyLength += 3;
-                    out.write((byte)(bodyLength >> 8));
-                    out.write((byte)bodyLength);
-                    out.write(body);
                 }
             }
 
             if ((finalBitSet) && (type == ResponseCodes.OBEX_HTTP_OK) && (orginalBodyLength <= 0)) {
-                out.write(0x49);
-                if(VERBOSE) Log.e(TAG,"type == ResponseCodes.OBEX_HTTP_OK write 0x49");
-                orginalBodyLength = 3;
-                out.write((byte)(orginalBodyLength >> 8));
-                out.write((byte)orginalBodyLength);
+                if (mEndofBody) {
+                    out.write(0x49);
+                    if(VERBOSE) Log.e(TAG,"type == ResponseCodes.OBEX_HTTP_OK write 0x49");
+                    orginalBodyLength = 3;
+                    out.write((byte)(orginalBodyLength >> 8));
+                    out.write((byte)orginalBodyLength);
+                }
             }
-
-	    mResponseSize = 3;
+            mResponseSize = 3;
             mParent.sendResponse(type, out.toByteArray());
-	}
+	    }
 
         if (type == ResponseCodes.OBEX_HTTP_CONTINUE) {
             if((!supressReceive) || (mSrmServerSession.getLocalSrmpWait())) {
@@ -822,6 +830,10 @@ public final class ServerOperation implements Operation, BaseStream {
      */
     public void streamClosed(boolean inStream) throws IOException {
 
+    }
+
+    public void noEndofBody() {
+        mEndofBody = false;
     }
 
     public boolean isAborted() {

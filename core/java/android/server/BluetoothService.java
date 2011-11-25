@@ -150,6 +150,7 @@ public class BluetoothService extends IBluetooth.Stub {
             BluetoothUuid.Handsfree,
             BluetoothUuid.HSP,
             BluetoothUuid.ObexObjectPush,
+            BluetoothUuid.MessageNotificationServer,
             BluetoothUuid.DirectPrinting,
             BluetoothUuid.ReferencePrinting,
             BluetoothUuid.PrintingStatus };

@@ -177,5 +177,7 @@ public interface Operation {
 
     void close() throws IOException;
 
+    void noEndofBody();
+
     int getMaxPacketSize();
 }

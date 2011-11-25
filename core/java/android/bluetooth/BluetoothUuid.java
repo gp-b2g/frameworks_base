@@ -139,6 +139,14 @@ public final class BluetoothUuid {
         return uuid.equals(DirectPrinting);
     }
 
+    public static boolean isMessageAccessServer(ParcelUuid uuid) {
+        return uuid.equals(MessageAccessServer);
+    }
+
+    public static boolean isMessageNotificationServer(ParcelUuid uuid) {
+        return uuid.equals(MessageNotificationServer);
+    }
+
     /**
      * Returns true if ParcelUuid is present in uuidArray
      *
