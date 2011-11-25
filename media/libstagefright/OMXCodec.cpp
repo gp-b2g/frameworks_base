@@ -178,6 +178,9 @@ static const CodecInfo kDecoderInfo[] = {
 //    { MEDIA_MIMETYPE_AUDIO_AMR_NB, "OMX.Nvidia.amrwb.decoder" },
     { MEDIA_MIMETYPE_AUDIO_AMR_WB, "OMX.TI.WBAMR.decode" },
     { MEDIA_MIMETYPE_AUDIO_AMR_WB, "OMX.google.amrwb.decoder" },
+#ifdef USE_AAC_HW_DEC
+    { MEDIA_MIMETYPE_AUDIO_AAC, "OMX.qcom.audio.decoder.aac" },
+#endif
 //    { MEDIA_MIMETYPE_AUDIO_AAC, "OMX.Nvidia.aac.decoder" },
     { MEDIA_MIMETYPE_AUDIO_AAC, "OMX.TI.AAC.decode" },
     { MEDIA_MIMETYPE_AUDIO_AAC, "OMX.google.aac.decoder" },
@@ -380,6 +383,12 @@ uint32_t OMXCodec::getComponentQuirks(
         quirks |= kRequiresFlushCompleteEmulation;
         quirks |= kSupportsMultipleFramesPerInputBuffer;
     }
+#ifdef USE_AAC_HW_DEC
+    if (!strcmp(componentName, "OMX.qcom.audio.decoder.aac")) {
+        quirks |= kRequiresAllocateBufferOnInputPorts;
+        quirks |= kRequiresAllocateBufferOnOutputPorts;
+    }
+#endif
     if (!strcmp(componentName, "OMX.qcom.audio.encoder.evrc")) {
         quirks |= kRequiresAllocateBufferOnInputPorts;
         quirks |= kRequiresAllocateBufferOnOutputPorts;
@@ -600,7 +609,18 @@ sp<MediaSource> OMXCodec::Create(
               componentName= "OMX.qcom.audio.decoder.wmaLossLess";
            }
         }
+#if USE_AAC_HW_DEC
+        int aacformattype = 0;
+        int aacLTPType = 0;
+        sp<MetaData> metadata = source->getFormat();
+        metadata->findInt32(kkeyAacFormatAdif, &aacformattype);
+        metadata->findInt32(kkeyAacFormatLtp, &aacLTPType);
 
+        if ((aacformattype == true)|| aacLTPType == true)  {
+            LOGE("This is ADIF/LTP clip , so using sw decoder ");
+            componentName= "OMX.google.aac.decoder";
+        }
+#endif
         if (!createEncoder
                 && (quirks & kOutputBuffersAreUnreadable)
                 && (flags & kClientNeedsFramebuffer)) {
@@ -2845,7 +2865,6 @@ void OMXCodec::onEvent(OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2) {
         {
             CODEC_LOGV("OMX_EventPortSettingsChanged(port=%ld, data2=0x%08lx)",
                        data1, data2);
-
             if (data2 == 0 || data2 == OMX_IndexParamPortDefinition) {
                 // There is no need to check whether mFilledBuffers is empty or not
                 // when the OMX_EventPortSettingsChanged is not meant for reallocating
@@ -3978,7 +3997,6 @@ status_t OMXCodec::setAACFormat(int32_t numChannels, int32_t sampleRate, int32_t
 
         profile.nChannels = numChannels;
         profile.nSampleRate = sampleRate;
-
         if(mIsAacFormatAdif){
             profile.eAACStreamFormat = OMX_AUDIO_AACStreamFormatADIF;
         }else{
