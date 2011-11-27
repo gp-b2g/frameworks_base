@@ -470,6 +470,8 @@ void SoftAAC::onQueueFilled(OMX_U32 portIndex) {
                 LOGV("mTempBufferDataLen %d inputBufferUsedLength %d ",
                      mTempBufferDataLen, mConfig->inputBufferUsedLength);
 
+                checkFragment = true;
+
                 // temp buffer has accumulated one frame size worth data
                 // copy it back to input buffer so that it is fed to decoder next
                 if ( mTempBufferDataLen >= mInputBufferSize ) {
@@ -479,9 +481,12 @@ void SoftAAC::onQueueFilled(OMX_U32 portIndex) {
                     memcpy((UChar*)(inHeader->pBuffer), mTempInputBuffer, mInputBufferSize );
                     mTempBufferDataLen -= mInputBufferSize;
                     inHeader->nFilledLen = mInputBufferSize;
+                    inHeader->nOffset= 0;
                     mConfig->inputBufferUsedLength = 0;
+
+                    checkFragment = false;
                 }
-                checkFragment = true;
+
                 //reset the output buffer size
                 numOutBytes = 0;
             }
@@ -500,6 +505,7 @@ void SoftAAC::onQueueFilled(OMX_U32 portIndex) {
                 memcpy( mTempInputBuffer,
                         mTempInputBuffer + mInputBufferSize,
                         mTempBufferDataLen );
+                checkFragment = true;
             }
         } else if(decoderErr != MP4AUDEC_SUCCESS && decoderErr != MP4AUDEC_INCOMPLETE_FRAME) {
             LOGW(" AAC decoder returned error %d, substituting silence",
@@ -515,6 +521,7 @@ void SoftAAC::onQueueFilled(OMX_U32 portIndex) {
                 memcpy( mTempInputBuffer,
                         mTempInputBuffer + mInputBufferSize,
                         mTempBufferDataLen );
+                checkFragment = true;
             }
 
             // fall through
