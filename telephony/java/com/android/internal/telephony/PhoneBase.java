@@ -138,6 +138,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     public UiccCardApplication mUiccApplication;
     private int mVmCount = 0;
 
+    // Flag that indicates that Out Of Service is considered as data call disconnect
+    protected boolean mOosIsDisconnect = SystemProperties.getBoolean(
+            TelephonyProperties.PROPERTY_OOS_IS_DISCONNECT, true);
+
     /**
      * Set a system property, unless we're in unit test mode
      */
@@ -254,6 +258,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         mCallRingDelay = SystemProperties.getInt(
                 TelephonyProperties.PROPERTY_CALL_RING_DELAY, 3000);
         Log.d(LOG_TAG, "mCallRingDelay=" + mCallRingDelay);
+        Log.d(LOG_TAG, "mOosIsDisconnect=" + mOosIsDisconnect);
     }
 
     public void dispose() {

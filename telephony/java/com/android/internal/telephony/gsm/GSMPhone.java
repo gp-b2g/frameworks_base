@@ -299,11 +299,12 @@ public class GSMPhone extends PhoneBase {
             // already been called
 
             ret = DataState.DISCONNECTED;
-        } else if (mSST.getCurrentGprsState()
-                != ServiceState.STATE_IN_SERVICE) {
+        } else if (mSST.getCurrentGprsState() != ServiceState.STATE_IN_SERVICE
+                && mOosIsDisconnect) {
             // If we're out of service, open TCP sockets may still work
             // but no data will flow
             ret = DataState.DISCONNECTED;
+            log("getDataConnectionState: Data is Out of Service. ret = " + ret);
         } else if (mDataConnectionTracker.isApnTypeEnabled(apnType) == false ||
                 mDataConnectionTracker.isApnTypeActive(apnType) == false) {
             //TODO: isApnTypeActive() is just checking whether ApnContext holds

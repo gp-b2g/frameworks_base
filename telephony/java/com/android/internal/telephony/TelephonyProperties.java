@@ -193,4 +193,9 @@ public interface TelephonyProperties
      * Type: boolean ( false = asynchronous, true = send next queued sms after
      * making sure previous sms was sent) */
     static final String SMS_SYNCHRONOUS_SENDING = "persist.radio.sms_sync_sending";
+
+    /**
+     * Indicates whether Out Of Service is considered as data call disconnect.
+     */
+    static final String PROPERTY_OOS_IS_DISCONNECT = "persist.telephony.oosisdc";
 }
