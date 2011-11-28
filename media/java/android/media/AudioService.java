@@ -370,6 +370,7 @@ public class AudioService extends IAudioService.Stub {
 
         intentFilter.addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
         intentFilter.addAction(BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED);
+        intentFilter.addAction(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED);
         intentFilter.addAction(TtyIntent.TTY_ENABLED_CHANGE_ACTION);
         intentFilter.addAction(Intent.ACTION_DOCK_EVENT);
         intentFilter.addAction(Intent.ACTION_USB_ANLG_HEADSET_PLUG);
