@@ -419,13 +419,13 @@ class KeyguardStatusViewManager implements OnClickListener {
         final boolean missingAndNotProvisioned = (!mUpdateMonitor.isDeviceProvisioned()
                 && (simState == IccCard.State.ABSENT || simState == IccCard.State.PERM_DISABLED));
 
-        // Assume we're NETWORK_LOCKED if not provisioned
-        simState = missingAndNotProvisioned ? State.NETWORK_LOCKED : simState;
+        // Assume we're PERSO_LOCKED if not provisioned
+        simState = missingAndNotProvisioned ? State.PERSO_LOCKED : simState;
         switch (simState) {
             case ABSENT:
                 return StatusMode.SimMissing;
-            case NETWORK_LOCKED:
-                return StatusMode.SimMissingLocked;
+            case PERSO_LOCKED:
+                return StatusMode.PersoLocked;
             case NOT_READY:
                 return StatusMode.SimMissing;
             case PIN_REQUIRED:
@@ -465,9 +465,9 @@ class KeyguardStatusViewManager implements OnClickListener {
                 carrierText = makeCarierString(mPlmn, mSpn);
                 break;
 
-            case NetworkLocked:
+            case PersoLocked:
                 carrierText = makeCarierString(mPlmn,
-                        getContext().getText(R.string.lockscreen_network_locked_message));
+                        getContext().getText(R.string.lockscreen_perso_locked_message));
                 carrierHelpTextId = R.string.lockscreen_instructions_when_pattern_disabled;
                 break;
 
@@ -523,7 +523,7 @@ class KeyguardStatusViewManager implements OnClickListener {
         /**
          * The sim card is 'network locked'.
          */
-        NetworkLocked(true),
+        PersoLocked(true),
 
         /**
          * The sim card is missing.

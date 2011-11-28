@@ -45,8 +45,8 @@ public interface IccCard {
     static public final String INTENT_VALUE_LOCKED_ON_PIN = "PIN";
     /* PUK means ICC is locked on PUK1 */
     static public final String INTENT_VALUE_LOCKED_ON_PUK = "PUK";
-    /* NETWORK means ICC is locked on NETWORK PERSONALIZATION */
-    static public final String INTENT_VALUE_LOCKED_NETWORK = "NETWORK";
+    /* PERSO means ICC is locked on PERSONALIZATION */
+    static public final String INTENT_VALUE_LOCKED_PERSO = "PERSO";
     /* PERM_DISABLED means ICC is permanently disabled due to puk fails */
     static public final String INTENT_VALUE_ABSENT_ON_PERM_DISABLED = "PERM_DISABLED";
 
@@ -60,7 +60,7 @@ public interface IccCard {
         ABSENT,
         PIN_REQUIRED,
         PUK_REQUIRED,
-        NETWORK_LOCKED,
+        PERSO_LOCKED,
         READY,
         NOT_READY,
         PERM_DISABLED;
@@ -71,7 +71,7 @@ public interface IccCard {
 
         public boolean iccCardExist() {
             return ((this == PIN_REQUIRED) || (this == PUK_REQUIRED)
-                    || (this == NETWORK_LOCKED) || (this == READY)
+                    || (this == PERSO_LOCKED) || (this == READY)
                     || (this == PERM_DISABLED));
         }
         
@@ -80,7 +80,7 @@ public interface IccCard {
                 case ABSENT: return INTENT_VALUE_ICC_ABSENT;
                 case PIN_REQUIRED: return INTENT_VALUE_ICC_LOCKED;
                 case PUK_REQUIRED: return INTENT_VALUE_ICC_LOCKED;
-                case NETWORK_LOCKED: return INTENT_VALUE_ICC_LOCKED;
+                case PERSO_LOCKED: return INTENT_VALUE_ICC_LOCKED;
                 case READY: return INTENT_VALUE_ICC_READY;
                 case NOT_READY: return INTENT_VALUE_ICC_NOT_READY;
                 case PERM_DISABLED: return INTENT_VALUE_ICC_LOCKED;
@@ -96,7 +96,7 @@ public interface IccCard {
             switch (this) {
                 case PIN_REQUIRED: return INTENT_VALUE_LOCKED_ON_PIN;
                 case PUK_REQUIRED: return INTENT_VALUE_LOCKED_ON_PUK;
-                case NETWORK_LOCKED: return INTENT_VALUE_LOCKED_NETWORK;
+                case PERSO_LOCKED: return INTENT_VALUE_LOCKED_PERSO;
                 case PERM_DISABLED: return INTENT_VALUE_ABSENT_ON_PERM_DISABLED;
                 default: return null;
             }
@@ -114,10 +114,10 @@ public interface IccCard {
     public void unregisterForAbsent(Handler h);
 
     /**
-     * Notifies handler of any transition into State.NETWORK_LOCKED
+     * Notifies handler of any transition into State.PERSO_LOCKED
      */
-    public void registerForNetworkLocked(Handler h, int what, Object obj);
-    public void unregisterForNetworkLocked(Handler h);
+    public void registerForPersoLocked(Handler h, int what, Object obj);
+    public void unregisterForPersoLocked(Handler h);
 
     /**
      * Notifies handler of any transition into State.isPinLocked()
@@ -153,7 +153,7 @@ public interface IccCard {
     public void supplyPuk (String puk, String newPin, Message onComplete);
     public void supplyPin2 (String pin2, Message onComplete);
     public void supplyPuk2 (String puk2, String newPin2, Message onComplete);
-    public void supplyNetworkDepersonalization (String pin, Message onComplete);
+    public void supplyDepersonalization (String pin, int type, Message onComplete);
 
     /**
      * Check whether ICC pin lock is enabled
