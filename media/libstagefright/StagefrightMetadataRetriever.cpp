@@ -354,7 +354,7 @@ VideoFrame *StagefrightMetadataRetriever::getFrameAtTime(
             mime);
     } else {
         frame = extractVideoFrameWithCodecFlags(
-                &mClient, trackMeta, source, OMXCodec::kPreferSoftwareCodecs,
+                &mClient, trackMeta, source, OMXCodec::kSoftwareCodecsOnly,
                 timeUs, option);
     }
 
