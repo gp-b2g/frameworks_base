@@ -455,46 +455,42 @@ static jint android_hardware_fmradio_FmReceiverJNI_setPINative
 static jint android_hardware_fmradio_FmReceiverJNI_startRTNative
     (JNIEnv * env, jobject thiz, jint fd, jstring radio_text, jint count )
 {
-    LOGE("->android_hardware_fmradio_FmReceiverJNI_startRTNative\n");
+    LOGD("->android_hardware_fmradio_FmReceiverJNI_startRTNative\n");
 
-    struct v4l2_control control;
     struct v4l2_ext_control ext_ctl;
-    ext_ctl.id = V4L2_CID_RDS_TX_RADIO_TEXT;
+    struct v4l2_ext_controls v4l2_ctls;
 
-    jboolean isCopy;
+    int err = 0;
+    jboolean isCopy = false;
     char* rt_string = (char*)env->GetStringUTFChars(radio_text, &isCopy);
-    if(rt_string == NULL){
+    if(rt_string == NULL ){
         return FM_JNI_FAILURE;
     }
 
+    ext_ctl.id     = V4L2_CID_RDS_TX_RADIO_TEXT;
     ext_ctl.string = rt_string;
-    LOGE("Size is %d",count);
-    ext_ctl.size = count;
+    ext_ctl.size   = count;
 
 
-    //form the ctrls data struct
-    struct v4l2_ext_controls v4l2_ctls;
-
+    /* form the ctrls data struct */
     v4l2_ctls.ctrl_class = V4L2_CTRL_CLASS_FM_TX,
     v4l2_ctls.count      = 1,
     v4l2_ctls.controls   = &ext_ctl;
 
 
-    LOGE("jbArray: %s", rt_string );
-
-    int err;
     err = ioctl(fd, VIDIOC_S_EXT_CTRLS, &v4l2_ctls );
-
-    LOGE("VIDIOC_S_EXT_CTRLS for start RT returned : %d\n", err);
-    LOGE( "ErrorNo: %d\n", errno );
     if(err < 0){
-
-         return FM_JNI_FAILURE;
+        LOGE("VIDIOC_S_EXT_CTRLS for start RT returned : %d\n", err);
+        env->ReleaseStringUTFChars(radio_text, rt_string);
+        return FM_JNI_FAILURE;
     }
 
+    LOGD("->android_hardware_fmradio_FmReceiverJNI_startRTNative is SUCCESS\n");
+    env->ReleaseStringUTFChars(radio_text, rt_string);
 
     return FM_JNI_SUCCESS;
 }
+
 static jint android_hardware_fmradio_FmReceiverJNI_stopRTNative
     (JNIEnv * env, jobject thiz, jint fd )
 {
@@ -514,41 +510,41 @@ static jint android_hardware_fmradio_FmReceiverJNI_stopRTNative
 static jint android_hardware_fmradio_FmReceiverJNI_startPSNative
     (JNIEnv * env, jobject thiz, jint fd, jstring buff, jint count )
 {
-    LOGE("->android_hardware_fmradio_FmReceiverJNI_startPSNative\n");
-    LOGE("PS Pointer : %d -> String: %s", buff, buff);
-    struct v4l2_control control;
-    struct v4l2_ext_control ext_ctl;
-    ext_ctl.id = V4L2_CID_RDS_TX_PS_NAME;
+    LOGD("->android_hardware_fmradio_FmReceiverJNI_startPSNative\n");
 
-    jboolean isCopy;
+    struct v4l2_ext_control ext_ctl;
+    struct v4l2_ext_controls v4l2_ctls;
+
+    int err = 0;
+    jboolean isCopy = false;
+
     char* ps_string = (char*)env->GetStringUTFChars(buff, &isCopy);
-    if(ps_string == NULL){
+    if(ps_string == NULL ){
         return FM_JNI_FAILURE;
     }
 
+    ext_ctl.id     = V4L2_CID_RDS_TX_PS_NAME;
     ext_ctl.string = ps_string;
-    LOGE("Size is %d",count);
-    ext_ctl.size = count;
+    ext_ctl.size   = count;
 
-    //form the ctrls data struct
-    struct v4l2_ext_controls v4l2_ctls;
-
+    /* form the ctrls data struct */
     v4l2_ctls.ctrl_class = V4L2_CTRL_CLASS_FM_TX,
     v4l2_ctls.count      = 1,
     v4l2_ctls.controls   = &ext_ctl;
 
-    int err;
     err = ioctl(fd, VIDIOC_S_EXT_CTRLS, &v4l2_ctls );
-
-    LOGE("VIDIOC_S_EXT_CTRLS for Start PS returned : %d\n", err);
-    LOGE( "ErrorNo: %d\n", errno );
-
     if(err < 0){
-            return FM_JNI_FAILURE;
+        LOGE("VIDIOC_S_EXT_CTRLS for Start PS returned : %d\n", err);
+        env->ReleaseStringUTFChars(buff, ps_string);
+        return FM_JNI_FAILURE;
     }
-    LOGE("->android_hardware_fmradio_FmReceiverJNI_startPSNative is SUCCESS\n");
+
+    LOGD("->android_hardware_fmradio_FmReceiverJNI_startPSNative is SUCCESS\n");
+    env->ReleaseStringUTFChars(buff, ps_string);
+
     return FM_JNI_SUCCESS;
 }
+
 static jint android_hardware_fmradio_FmReceiverJNI_stopPSNative
     (JNIEnv * env, jobject thiz, jint fd)
 {
