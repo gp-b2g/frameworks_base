@@ -353,6 +353,8 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
             return BluetoothA2dp.STATE_CONNECTED;
         if (value.equalsIgnoreCase("playing"))
             return BluetoothA2dp.STATE_PLAYING;
+        if (value.equalsIgnoreCase("disconnecting"))
+            return BluetoothA2dp.STATE_DISCONNECTING;
         return -1;
     }
 
