@@ -238,6 +238,9 @@ static const char *FourCC2MIME(uint32_t fourcc) {
         case FOURCC('m', 'p', '4', 'a'):
             return MEDIA_MIMETYPE_AUDIO_AAC;
 
+        case FOURCC('.', 'm', 'p', '3'):
+            return MEDIA_MIMETYPE_AUDIO_MPEG;
+
         case FOURCC('s', 'a', 'm', 'r'):
             return MEDIA_MIMETYPE_AUDIO_AMR_NB;
 
@@ -921,6 +924,7 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
         }
 
         case FOURCC('m', 'p', '4', 'a'):
+        case FOURCC('.', 'm', 'p', '3'):
         case FOURCC('s', 'a', 'm', 'r'):
         case FOURCC('s', 'a', 'w', 'b'):
         case FOURCC('s', 'e', 'v', 'c'):
@@ -964,8 +968,14 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
             mLastTrack->meta->setInt32(kKeyChannelCount, num_channels);
             mLastTrack->meta->setInt32(kKeySampleRate, sample_rate);
 
-            off64_t stop_offset = *offset + chunk_size;
-            *offset = data_offset + sizeof(buffer);
+            off_t stop_offset = *offset + chunk_size;
+            if (!strcasecmp(MEDIA_MIMETYPE_AUDIO_MPEG,
+                        FourCC2MIME(chunk_type))) {
+               // ESD is not required in mp3
+               *offset = stop_offset;
+            } else {
+               *offset = data_offset + sizeof(buffer);
+            }
             while (*offset < stop_offset) {
                 status_t err = parseChunk(offset, depth + 1);
                 if (err != OK) {
@@ -1746,12 +1756,12 @@ status_t MPEG4Extractor::updateAudioTrackInfoFromESDS_MPEG4Audio(
         return OK;
     }
 
-    if (objectTypeIndication  == 0x6b) {
-        // The media subtype is MP3 audio
-        // Our software MP3 audio decoder may not be able to handle
-        // packetized MP3 audio; for now, lets just return ERROR_UNSUPPORTED
-        LOGE("MP3 track in MP4/3GPP file is not supported");
-        return ERROR_UNSUPPORTED;
+    if (objectTypeIndication  == 0x6b
+        || objectTypeIndication  == 0x69) {
+        // This is mpeg1/2 audio content, set mimetype to mpeg
+        mLastTrack->meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_MPEG);
+        LOGD("objectTypeIndication:0x%x, set mimetype to mpeg ",objectTypeIndication);
+        return OK;
     }
 
     const uint8_t *csd;
