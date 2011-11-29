@@ -55,6 +55,8 @@ import android.os.ParcelFileDescriptor;
 import android.os.ParcelUuid;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemService;
+import android.os.SystemProperties;
 import android.provider.Settings;
 import android.util.Log;
 import android.util.Pair;
@@ -184,6 +186,14 @@ public class BluetoothService extends IBluetooth.Stub {
       "/data/misc/bluetooth/incoming_connection.conf";
     private HashMap<String, Pair<Integer, String>> mIncomingConnections;
     private HashMap<Integer, Pair<Integer, Integer>> mProfileConnectionState;
+
+    private int[] mDUNRecordHandle;
+    private boolean mDUNEnabled = false;
+
+    private int[] mFTPRecordHandle;
+    private boolean mFTPEnabled = false;
+    private int[] mSAPRecordHandle;
+    private boolean mSAPEnabled = false;
 
     private static class RemoteService {
         public String address;
@@ -476,6 +486,13 @@ public class BluetoothService extends IBluetooth.Stub {
         if (mAdapterSdpHandles != null) removeReservedServiceRecordsNative(mAdapterSdpHandles);
         setBluetoothTetheringNative(false, BluetoothPanProfileHandler.NAP_ROLE,
                 BluetoothPanProfileHandler.NAP_BRIDGE);
+
+        /*
+         * disable QC based profiles
+         */
+        disableFTP();
+        disableDUN();
+        disableSAP();
         tearDownNativeDataNative();
     }
 
@@ -576,6 +593,119 @@ public class BluetoothService extends IBluetooth.Stub {
         mAdapterSdpHandles = addReservedServiceRecordsNative(svcIdentifiers);
     }
 
+    private synchronized boolean enableFTP(){
+        if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.ftp", false) == false) {
+            Log.e(TAG, "FTP is not supported");
+            return false;
+        }
+
+        if(mFTPEnabled != true){
+            int[] svcIdentifiers = new int[1];
+            svcIdentifiers[0] =  BluetoothUuid.getServiceIdentifierFromParcelUuid(BluetoothUuid.FileTransfer);
+
+            mFTPRecordHandle = addReservedServiceRecordsNative(svcIdentifiers);
+            mFTPEnabled = true;
+            return true;
+        } else {
+            Log.e(TAG, "FTP already enabled");
+            return false;
+        }
+    }
+
+    private synchronized boolean disableFTP(){
+        if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.ftp", false) == false) {
+            Log.e(TAG, "FTP is not supported");
+            return false;
+        }
+
+        if(mFTPEnabled ==true){
+            removeReservedServiceRecordsNative(mFTPRecordHandle);
+            mFTPEnabled = false;
+            return true;
+        } else {
+            Log.e(TAG, "FTP already disabled");
+            return false;
+        }
+    }
+
+    private synchronized boolean enableDUN() {
+        if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.dun", false) == false) {
+            Log.e(TAG, "DUN is not supported");
+            return false;
+        }
+
+        if (mDUNEnabled != true) {
+            int[] svcIdentifiers = new int[1];
+            svcIdentifiers[0] =  BluetoothUuid.getServiceIdentifierFromParcelUuid(BluetoothUuid.DUN);
+
+            mDUNRecordHandle = addReservedServiceRecordsNative(svcIdentifiers);
+            Log.e(TAG, "Starting BT-DUN server");
+            SystemService.start("bt-dun");
+            mDUNEnabled = true;
+            return true;
+        } else {
+            Log.e(TAG, "DUN already enabled");
+            return false;
+        }
+    }
+
+    private synchronized boolean disableDUN() {
+        if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.dun", false) == false) {
+            Log.e(TAG, "DUN is not supported");
+            return false;
+        }
+
+        if (mDUNEnabled == true ) {
+            removeReservedServiceRecordsNative(mDUNRecordHandle);
+            Log.e(TAG, "Stop BT-DUN server");
+            SystemService.stop("bt-dun");
+            mDUNEnabled = false;
+            return true;
+        } else {
+            Log.e(TAG, "DUN already disabled");
+            return false;
+        }
+    }
+
+    private synchronized boolean enableSAP() {
+        if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.sap", false) == false) {
+            Log.e(TAG, "SAP is not supported");
+            return false;
+        }
+
+        if (mSAPEnabled != true) {
+            int[] svcIdentifiers = new int[1];
+            svcIdentifiers[0] =  BluetoothUuid.getServiceIdentifierFromParcelUuid(BluetoothUuid.SAP);
+
+            mSAPRecordHandle = addReservedServiceRecordsNative(svcIdentifiers);
+            Log.i(TAG, "Starting SAP server");
+            SystemService.start("bt-sap");
+            mSAPEnabled = true;
+            return true;
+        } else {
+            Log.e(TAG, "SAP already enabled");
+            return false;
+        }
+    }
+
+    private synchronized boolean disableSAP() {
+        if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.sap", false) == false) {
+            Log.e(TAG, "SAP is not supported");
+            return false;
+        }
+
+        if (mSAPEnabled == true) {
+            removeReservedServiceRecordsNative(mSAPRecordHandle);
+            Log.i(TAG, "Stop SAP server");
+            SystemService.stop("bt-sap");
+            mSAPEnabled = false;
+            return true;
+        } else {
+            Log.e(TAG, "SAP already disabled");
+            return false;
+        }
+    }
+
     private synchronized void updateSdpRecords() {
         ArrayList<ParcelUuid> uuids = new ArrayList<ParcelUuid>();
 
@@ -606,6 +736,12 @@ public class BluetoothService extends IBluetooth.Stub {
         for (int i = 0; i < uuids.size(); i++) {
             mAdapterUuids[i] = uuids.get(i);
         }
+
+        /* Enable all QC prop profiles
+           remove once dynamic enable/disable is up*/
+        enableFTP();
+        enableDUN();
+        enableSAP();
     }
 
     /**

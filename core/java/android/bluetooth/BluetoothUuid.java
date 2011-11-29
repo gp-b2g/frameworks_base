@@ -70,10 +70,17 @@ public final class BluetoothUuid {
             ParcelUuid.fromString("00001119-0000-1000-8000-00805f9b34fb");
     public static final ParcelUuid PrintingStatus =
             ParcelUuid.fromString("00001123-0000-1000-8000-00805f9b34fb");
+    public static final ParcelUuid DUN =
+            ParcelUuid.fromString("00001103-0000-1000-8000-00805F9B34FB");
+    public static final ParcelUuid SAP =
+            ParcelUuid.fromString("0000112D-0000-1000-8000-00805F9B34FB");
 
+    public static final ParcelUuid FileTransfer =
+            ParcelUuid.fromString("00001106-0000-1000-8000-00805f9b34fb");
     public static final ParcelUuid[] RESERVED_UUIDS = {
         AudioSink, AudioSource, AdvAudioDist, HSP, Handsfree, AvrcpController, AvrcpTarget,
-        ObexObjectPush, PANU, NAP, DirectPrinting, ReferencePrinting, PrintingStatus };
+        ObexObjectPush, PANU, NAP, DirectPrinting, ReferencePrinting, PrintingStatus,
+        DUN, SAP,FileTransfer };
 
     public static boolean isAudioSource(ParcelUuid uuid) {
         return uuid.equals(AudioSource);
