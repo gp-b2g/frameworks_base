@@ -678,6 +678,10 @@ public abstract class PhoneBase extends Handler implements Phone {
         //throw new Exception("getIccCard Shouldn't be called from PhoneBase");
     }
 
+    public UiccCard getUiccCard() {
+        return null;
+    }
+
     public UiccCardApplication getUiccApplication() {
         return mUiccApplication;
     }
