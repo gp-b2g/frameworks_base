@@ -156,7 +156,8 @@ LOCAL_SRC_FILES:= \
 	android_content_res_Configuration.cpp \
 	android_animation_PropertyValuesHolder.cpp \
 	com_android_internal_app_ActivityTrigger.cpp \
-	org_codeaurora_Performance.cpp
+	org_codeaurora_Performance.cpp \
+	android_hardware_fm.cpp
 
 LOCAL_C_INCLUDES += \
 	$(JNI_H_INCLUDE) \
@@ -184,7 +185,18 @@ LOCAL_C_INCLUDES += \
 	external/harfbuzz/src \
 	external/zlib \
 	frameworks/opt/emoji \
-	libcore/include
+	libcore/include \
+	$(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+
+LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
+LOCAL_CFLAGS += -include bionic/libc/kernel/arch-arm/asm/posix_types.h
+LOCAL_CFLAGS += -include bionic/libc/kernel/arch-arm/asm/byteorder.h
+LOCAL_CFLAGS += -include bionic/libc/kernel/common/linux/posix_types.h
+LOCAL_CFLAGS += -include bionic/libc/kernel/common/linux/types.h
+LOCAL_CFLAGS += -include bionic/libc/kernel/common/linux/socket.h
+LOCAL_CFLAGS += -include bionic/libc/kernel/common/linux/in.h
+
 
 LOCAL_SHARED_LIBRARIES := \
 	libexpat \
