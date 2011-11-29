@@ -537,7 +537,7 @@ public class NetworkController extends BroadcastReceiver {
         } else if (!isCdma()) {
             // GSM case, we have to check also the sim state
             if (mSimState == IccCard.State.READY || mSimState == IccCard.State.UNKNOWN) {
-                if (hasService() && mDataState == TelephonyManager.DATA_CONNECTED) {
+                if (mDataState == TelephonyManager.DATA_CONNECTED) {
                     switch (mDataActivity) {
                         case TelephonyManager.DATA_ACTIVITY_IN:
                             iconId = mDataIconList[1];
@@ -563,7 +563,7 @@ public class NetworkController extends BroadcastReceiver {
             }
         } else {
             // CDMA case, mDataActivity can be also DATA_ACTIVITY_DORMANT
-            if (hasService() && mDataState == TelephonyManager.DATA_CONNECTED) {
+            if (mDataState == TelephonyManager.DATA_CONNECTED) {
                 switch (mDataActivity) {
                     case TelephonyManager.DATA_ACTIVITY_IN:
                         iconId = mDataIconList[1];
