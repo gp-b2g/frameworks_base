@@ -138,7 +138,7 @@ public class Camera {
     private static final int CAMERA_MSG_COMPRESSED_IMAGE = 0x100;
     private static final int CAMERA_MSG_RAW_IMAGE_NOTIFY = 0x200;
     private static final int CAMERA_MSG_STATS_DATA       = 0x4000;
-	private static final int CAMERA_MSG_META_DATA        = 0x8000;
+    private static final int CAMERA_MSG_META_DATA        = 0x8000;
     private static final int CAMERA_MSG_PREVIEW_METADATA = 0x400;
     private static final int CAMERA_MSG_ALL_MSGS         = 0x4FF;
 
@@ -1626,12 +1626,13 @@ public class Camera {
         private static final String KEY_VIDEO_SNAPSHOT_SUPPORTED = "video-snapshot-supported";
         private static final String KEY_VIDEO_STABILIZATION = "video-stabilization";
         private static final String KEY_VIDEO_STABILIZATION_SUPPORTED = "video-stabilization-supported";
-		private static final String KEY_SHARPNESS = "sharpness";
+        private static final String KEY_SHARPNESS = "sharpness";
         private static final String KEY_MAX_SHARPNESS = "max-sharpness";
         private static final String KEY_CONTRAST = "contrast";
         private static final String KEY_MAX_CONTRAST = "max-contrast";
         private static final String KEY_SATURATION = "saturation";
         private static final String KEY_MAX_SATURATION = "max-saturation";
+        private static final String KEY_DENOISE = "denoise";
         private static final String KEY_CONTINUOUS_AF = "continuous-af";
         private static final String KEY_SELECTABLE_ZONE_AF = "selectable-zone-af";
         private static final String KEY_FACE_DETECTION = "face-detection";
@@ -1945,11 +1946,13 @@ public class Camera {
         private static final String PIXEL_FORMAT_RGB565 = "rgb565";
         private static final String PIXEL_FORMAT_JPEG = "jpeg";
         private static final String PIXEL_FORMAT_BAYER_RGGB = "bayer-rggb";
-		
+
         //Values for Continuous AF
 
         public static final String CONTINUOUS_AF_OFF = "caf-off";
         public static final String CONTINUOUS_AF_ON = "caf-on";
+        public static final String DENOISE_OFF = "denoise-off";
+        public static final String DENOISE_ON = "denoise-on";
 
         // Values for selectable zone af settings.
         public static final String SELECTABLE_ZONE_AF_AUTO = "auto";
@@ -3741,14 +3744,24 @@ public class Camera {
         public List<Area> getFocusAreas() {
             return splitArea(get(KEY_FOCUS_AREAS));
         }
-		 /**
+        /**
+         * Gets the current DENOISE  setting.
+         *
+         * @return one of DENOISE_XXX string constant. null if Denoise
+         *         setting is not supported.
+         *
+         */
+         public String getDenoise() {
+         return get(KEY_DENOISE);
+         }
+        /**
          * Gets the current Continuous AF setting.
          *
          * @return one of CONTINUOUS_AF_XXX string constant. null if continuous AF
          *         setting is not supported.
          *
          */
-		 public String getContinuousAf() {
+         public String getContinuousAf() {
             return get(KEY_CONTINUOUS_AF);
         }
 
@@ -3761,12 +3774,21 @@ public class Camera {
         public void setFocusAreas(List<Area> focusAreas) {
             set(KEY_FOCUS_AREAS, focusAreas);
         }
-		/**
+        /**
+         * Sets the current Denoise  mode.
+         * @param value DENOISE_XXX string constants.
+         *
+         */
+
+         public void setDenoise(String value) {
+             set(KEY_DENOISE, value);
+         }
+        /**
          * Sets the current Continuous AF mode.
          * @param value CONTINUOUS_AF_XXX string constants.
          *
          */
-		 public void setContinuousAf(String value) {
+         public void setContinuousAf(String value) {
             set(KEY_CONTINUOUS_AF, value);
         }
 
@@ -3825,18 +3847,30 @@ public class Camera {
         public List<Area> getMeteringAreas() {
             return splitArea(get(KEY_METERING_AREAS));
         }
-		
-		/**
+
+        /**
          * Gets the supported Continuous AF modes.
          *
          * @return a List of CONTINUOUS_AF_XXX string constant. null if continuous AF
          *         setting is not supported.
          *
          */
-		 public List<String> getSupportedContinuousAfModes() {
+         public List<String> getSupportedContinuousAfModes() {
             String str = get(KEY_CONTINUOUS_AF + SUPPORTED_VALUES_SUFFIX);
             return split(str);
         }
+        /**
+         * Gets the supported DENOISE  modes.
+         *
+         * @return a List of DENOISE_XXX string constant. null if DENOISE
+         *         setting is not supported.
+         *
+         */
+         public List<String> getSupportedDenoiseModes() {
+             String str = get(KEY_DENOISE + SUPPORTED_VALUES_SUFFIX);
+             return split(str);
+         }
+
 
         /**
          * Sets metering areas. See {@link #getMeteringAreas()} for
@@ -3845,16 +3879,16 @@ public class Camera {
          * @param meteringAreas the metering areas
          * @see #getMeteringAreas()
          */
-        public void setMeteringAreas(List<Area> meteringAreas) {
+         public void setMeteringAreas(List<Area> meteringAreas) {
             set(KEY_METERING_AREAS, meteringAreas);
         }
-		/**
+        /**
          * Gets the current selectable zone af setting.
          *
          * @return one of SELECTABLE_ZONE_AF_XXX string constant. null if selectable zone af
          *         setting is not supported.
          */
-		 public String getSelectableZoneAf() {
+         public String getSelectableZoneAf() {
             return get(KEY_SELECTABLE_ZONE_AF);
         }
 
@@ -3867,15 +3901,15 @@ public class Camera {
          * @return the maximum number of detected face supported by the camera.
          * @see #startFaceDetection()
          */
-        public int getMaxNumDetectedFaces() {
+         public int getMaxNumDetectedFaces() {
             return getInt(KEY_MAX_NUM_DETECTED_FACES_HW, 0);
         }
-		/**
+        /**
          * Sets the current selectable zone af setting.
          *
          * @param value SELECTABLE_ZONE_AF_XXX string constants.
          */
-		public void setSelectableZoneAf(String value) {
+         public void setSelectableZoneAf(String value) {
             set(KEY_SELECTABLE_ZONE_AF, value);
         }
 
@@ -3900,8 +3934,8 @@ public class Camera {
         public void setRecordingHint(boolean hint) {
             set(KEY_RECORDING_HINT, hint ? TRUE : FALSE);
         }
-		
-		/**
+
+        /**
          * Gets the supported selectable zone af setting.
          *
          * @return a List of SELECTABLE_ZONE_AF_XXX string constants. null if selectable zone af
@@ -3939,8 +3973,8 @@ public class Camera {
             String str = get(KEY_VIDEO_SNAPSHOT_SUPPORTED);
             return TRUE.equals(str);
         }
-		
-		 /**
+
+        /**
          * Gets the current face detection setting.
          *
          * @return one of FACE_DETECTION_XXX string constant. null if face detection
@@ -3975,8 +4009,8 @@ public class Camera {
         public void setVideoStabilization(boolean toggle) {
             set(KEY_VIDEO_STABILIZATION, toggle ? TRUE : FALSE);
         }
-		
-		/**
+
+        /**
          * Sets the auto scene detect. Other settings like Touch AF/AEC might be
          * changed after setting face detection.
          *
@@ -4014,8 +4048,8 @@ public class Camera {
             String str = get(KEY_VIDEO_STABILIZATION_SUPPORTED);
             return TRUE.equals(str);
         }
-		
-		 /**
+
+        /**
          * Gets the supported face detection modes.
          *
          * @return a List of FACE_DETECTION_XXX string constant. null if face detection

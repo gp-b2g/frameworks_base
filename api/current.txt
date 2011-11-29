@@ -9343,6 +9343,7 @@ package android.hardware {
     method public java.lang.String getColorEffect();
     method public java.lang.String getContinuousAf();
     method public int getContrast();
+    method public java.lang.String getDenoise();
     method public int getExposureCompensation();
     method public float getExposureCompensationStep();
     method public java.lang.String getFaceDetectionMode();
@@ -9386,6 +9387,7 @@ package android.hardware {
     method public java.util.List<java.lang.String> getSupportedAutoexposure();
     method public java.util.List<java.lang.String> getSupportedColorEffects();
     method public java.util.List<java.lang.String> getSupportedContinuousAfModes();
+    method public java.util.List<java.lang.String> getSupportedDenoiseModes();
     method public java.util.List<java.lang.String> getSupportedFaceDetectionModes();
     method public java.util.List<java.lang.String> getSupportedFlashModes();
     method public java.util.List<java.lang.String> getSupportedFocusModes();
@@ -9431,6 +9433,7 @@ package android.hardware {
     method public void setColorEffect(java.lang.String);
     method public void setContinuousAf(java.lang.String);
     method public void setContrast(int);
+    method public void setDenoise(java.lang.String);
     method public void setExifDateTime(java.lang.String);
     method public void setExposureCompensation(int);
     method public void setFaceDetectionMode(java.lang.String);
@@ -9482,6 +9485,8 @@ package android.hardware {
     field public static final java.lang.String AUTO_EXPOSURE_SPOT_METERING = "spot-metering";
     field public static final java.lang.String CONTINUOUS_AF_OFF = "caf-off";
     field public static final java.lang.String CONTINUOUS_AF_ON = "caf-on";
+    field public static final java.lang.String DENOISE_OFF = "denoise-off";
+    field public static final java.lang.String DENOISE_ON = "denoise-on";
     field public static final java.lang.String EFFECT_AQUA = "aqua";
     field public static final java.lang.String EFFECT_BLACKBOARD = "blackboard";
     field public static final java.lang.String EFFECT_MONO = "mono";
