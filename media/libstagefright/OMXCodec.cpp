@@ -2560,7 +2560,7 @@ int64_t OMXCodec::retrieveDecodingTimeUs(bool isCodecSpecific) {
 }
 
 void OMXCodec::on_message(const omx_message &msg) {
-    if (mState == ERROR) {
+    if (mState == ERROR && !strncmp(mComponentName, "OMX.google.", 11)) {
         LOGW("Dropping OMX message - we're in ERROR state.");
         return;
     }
