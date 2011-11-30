@@ -318,6 +318,11 @@ public abstract class DataConnectionTracker extends Handler {
     /* Once disposed dont handle any messages */
     protected boolean mIsDisposed = false;
 
+    // Flags introduced for FMC (fixed mobile convergence) to trigger
+    // data call even when there is no service on mobile networks.
+    protected boolean mCheckForConnectivity = true;
+    protected boolean mCheckForSubscription = true;
+
     protected BroadcastReceiver mIntentReceiver = new BroadcastReceiver ()
     {
         @Override
@@ -577,6 +582,8 @@ public abstract class DataConnectionTracker extends Handler {
      * (e.g: MPDN not supported), disconnect a lower priority call
      */
     protected abstract boolean disconnectOneLowerPriorityCall(String apnType);
+    protected abstract void setDataReadinessChecks(
+            boolean checkConnectivity, boolean checkSubscription, boolean tryDataCalls);
 
     @Override
     public void handleMessage(Message msg) {
@@ -1165,5 +1172,13 @@ public abstract class DataConnectionTracker extends Handler {
         for (DataConnection dc : mDataConnections.values()) {
             dc.resetRetryCount();
         }
+    }
+
+    public boolean checkForConnectivity() {
+        return mCheckForConnectivity;
+    }
+
+    public boolean checkForSubscription() {
+        return mCheckForSubscription;
     }
 }

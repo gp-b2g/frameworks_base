@@ -1165,6 +1165,12 @@ public abstract class PhoneBase extends Handler implements Phone {
         mNotifier.notifyDataConnectionFailed(this, reason, apnType);
     }
 
+    public void setDataReadinessChecks(
+        boolean checkConnectivity, boolean checkSubscription, boolean tryDataCalls) {
+        mDataConnectionTracker.setDataReadinessChecks(
+                                checkConnectivity, checkSubscription, tryDataCalls);
+    }
+
     /**
      * {@inheritDoc}
      */
