@@ -205,6 +205,8 @@ public class AudioSystem
     public static final int DEVICE_OUT_ANLG_DOCK_HEADSET = 0x800;
     public static final int DEVICE_OUT_DGTL_DOCK_HEADSET = 0x1000;
     public static final int DEVICE_OUT_FM = 0x2000;
+    public static final int DEVICE_OUT_ANC_HEADSET = 0x4000;
+    public static final int DEVICE_OUT_ANC_HEADPHONE = 0x8000;
     public static final int DEVICE_OUT_FM_TX = 0x10000;
     public static final int DEVICE_OUT_DEFAULT = 0x80000;
     // input devices
@@ -216,6 +218,9 @@ public class AudioSystem
     public static final int DEVICE_IN_BLUETOOTH_SCO_HEADSET = 0x2000000;
     public static final int DEVICE_IN_WIRED_HEADSET = 0x4000000;
     public static final int DEVICE_IN_AUX_DIGITAL = 0x8000000;
+    public static final int DEVICE_IN_ANC_HEADSET = 0x10000000;
+    public static final int DEVICE_IN_FM_RX = 0x20000000;
+    public static final int DEVICE_IN_FM_RX_A2DP = 0x40000000;
     public static final int DEVICE_IN_DEFAULT = 0x80000000;
 
     // device states, must match AudioSystem::device_connection_state
