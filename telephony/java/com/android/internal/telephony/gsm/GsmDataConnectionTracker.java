@@ -2046,7 +2046,8 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
      */
     private void createAllApnList() {
         mAllApns = new ArrayList<DataProfile>();
-        String operator = mPhone.mIccRecords.getOperatorNumeric();
+        String operator = mIccRecords == null ?
+                        null : mIccRecords.getOperatorNumeric();
         if (operator != null) {
             String selection = "numeric = '" + operator + "'";
             // query only enabled apn.
