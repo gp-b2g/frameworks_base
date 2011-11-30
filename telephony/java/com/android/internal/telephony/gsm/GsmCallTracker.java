@@ -836,6 +836,11 @@ public final class GsmCallTracker extends CallTracker {
     handleMessage (Message msg) {
         AsyncResult ar;
 
+        if (!phone.mIsTheCurrentActivePhone) {
+            Log.e(LOG_TAG, "Received message " + msg +
+                    "[" + msg.what + "] while being destroyed. Ignoring.");
+            return;
+        }
         switch (msg.what) {
             case EVENT_POLL_CALLS_RESULT:
                 ar = (AsyncResult)msg.obj;

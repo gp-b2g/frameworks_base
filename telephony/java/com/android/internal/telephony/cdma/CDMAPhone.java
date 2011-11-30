@@ -967,6 +967,11 @@ public class CDMAPhone extends PhoneBase {
         AsyncResult ar;
         Message     onComplete;
 
+        if (!mIsTheCurrentActivePhone) {
+            Log.e(LOG_TAG, "Received message " + msg +
+                    "[" + msg.what + "] while being destroyed. Ignoring.");
+            return;
+        }
         switch(msg.what) {
             case EVENT_RADIO_AVAILABLE: {
                 mCM.getBasebandVersion(obtainMessage(EVENT_GET_BASEBAND_VERSION_DONE));

@@ -1001,6 +1001,10 @@ public final class CdmaCallTracker extends CallTracker {
     handleMessage (Message msg) {
         AsyncResult ar;
 
+        if (!phone.mIsTheCurrentActivePhone) {
+            Log.w(LOG_TAG, "Ignoring events received on inactive CdmaPhone");
+            return;
+        }
         switch (msg.what) {
             case EVENT_POLL_CALLS_RESULT:{
                 Log.d(LOG_TAG, "Event EVENT_POLL_CALLS_RESULT Received");
