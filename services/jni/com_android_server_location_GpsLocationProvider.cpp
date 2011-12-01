@@ -41,11 +41,13 @@ static jmethodID method_setEngineCapabilities;
 static jmethodID method_xtraDownloadRequest;
 static jmethodID method_reportNiNotification;
 static jmethodID method_requestRefLocation;
+static jmethodID method_requestNetworkLocation;
 static jmethodID method_requestPhoneContext;
 static jmethodID method_requestSetID;
 static jmethodID method_requestUtcTime;
 
 static const GpsInterface* sGpsInterface = NULL;
+static const UlpNetworkInterface* sUlpNetworkInterface = NULL;
 static const GpsXtraInterface* sGpsXtraInterface = NULL;
 static const AGpsInterface* sAGpsInterface = NULL;
 static const GpsNiInterface* sGpsNiInterface = NULL;
@@ -252,6 +254,18 @@ AGpsRilCallbacks sAGpsRilCallbacks = {
     agps_request_ref_location,
     create_thread_callback,
 };
+//ULP Network Location Callback
+static void ulp_network_location_request (UlpNetworkRequestPos* req)
+{
+    JNIEnv* env = AndroidRuntime::getJNIEnv();
+    env->CallVoidMethod(mCallbacksObj, method_requestNetworkLocation, req->request_type,req->interval_ms,req->desired_position_source );
+    checkAndClearExceptionFromCallback(env, __FUNCTION__);
+}
+
+UlpNetworkLocationCallbacks sUlpNetworkLocationCallbacks = {
+    ulp_network_location_request,
+};
+
 static void ulp_request_phone_context(UlpPhoneContextRequest *req)
 {
     JNIEnv* env = AndroidRuntime::getJNIEnv();
@@ -274,6 +288,7 @@ static void android_location_GpsLocationProvider_class_init_native(JNIEnv* env, 
     method_reportAGpsStatus = env->GetMethodID(clazz, "reportAGpsStatus", "(III[B)V");
     method_reportNmea = env->GetMethodID(clazz, "reportNmea", "(J)V");
     method_setEngineCapabilities = env->GetMethodID(clazz, "setEngineCapabilities", "(I)V");
+    method_requestNetworkLocation = env->GetMethodID(clazz, "requestNetworkLocation", "(III)V");
     method_requestPhoneContext = env->GetMethodID(clazz, "requestPhoneContext", "(II)V");
     method_xtraDownloadRequest = env->GetMethodID(clazz, "xtraDownloadRequest", "()V");
     method_reportNiNotification = env->GetMethodID(clazz, "reportNiNotification",
@@ -304,6 +319,8 @@ static void android_location_GpsLocationProvider_class_init_native(JNIEnv* env, 
             (const AGpsRilInterface*)sGpsInterface->get_extension(AGPS_RIL_INTERFACE);
         sInjectRawCmdInterface =
             (const InjectRawCmdInterface*)sGpsInterface->get_extension(ULP_RAW_CMD_INTERFACE);
+        sUlpNetworkInterface =
+            (const UlpNetworkInterface*)sGpsInterface->get_extension(ULP_NETWORK_INTERFACE);
         sUlpPhoneContextInterface =
             (const UlpPhoneContextInterface*)sGpsInterface->get_extension(ULP_PHONE_CONTEXT_INTERFACE);
     }
@@ -335,7 +352,9 @@ static jboolean android_location_GpsLocationProvider_init(JNIEnv* env, jobject o
         sAGpsRilInterface->init(&sAGpsRilCallbacks);
     if (sUlpPhoneContextInterface)
         sUlpPhoneContextInterface->init(&sUlpPhoneContextCallbacks);
-
+    if (sUlpNetworkInterface)
+        if (sUlpNetworkInterface->init(&sUlpNetworkLocationCallbacks) != 0)
+            sUlpNetworkInterface = NULL;
     return true;
 }
 
@@ -541,6 +560,21 @@ static void android_location_GpsLocationProvider_inject_location(JNIEnv* env, jo
         sGpsInterface->inject_location(latitude, longitude, accuracy);
 }
 
+static void android_location_GpsLocationProvider_send_network_location(JNIEnv* env, jobject obj,
+        jdouble latitude, jdouble longitude, jfloat accuracy)
+{
+    LOGD("send_network_location.\n");
+    if(sUlpNetworkInterface != NULL) {
+        UlpNetworkPositionReport position_report;
+        position_report.valid_flag = ULP_NETWORK_POSITION_REPORT_HAS_POSITION;
+        position_report.position.latitude = latitude;
+        position_report.position.longitude = longitude;
+        position_report.position.HEPE = accuracy;
+        position_report.position.pos_source = ULP_NETWORK_POSITION_SRC_UNKNOWN;
+        sUlpNetworkInterface->ulp_send_network_position(&position_report);
+    }
+}
+
 static jboolean android_location_GpsLocationProvider_supports_xtra(JNIEnv* env, jobject obj)
 {
     return (sGpsXtraInterface != NULL);
@@ -685,6 +719,7 @@ static JNINativeMethod sMethods[] = {
     {"native_read_nmea", "([BI)I", (void*)android_location_GpsLocationProvider_read_nmea},
     {"native_inject_time", "(JJI)V", (void*)android_location_GpsLocationProvider_inject_time},
     {"native_inject_location", "(DDF)V", (void*)android_location_GpsLocationProvider_inject_location},
+    {"native_send_network_location", "(DDF)V", (void*)android_location_GpsLocationProvider_send_network_location},
     {"native_supports_xtra", "()Z", (void*)android_location_GpsLocationProvider_supports_xtra},
     {"native_inject_xtra_data", "([BI)V", (void*)android_location_GpsLocationProvider_inject_xtra_data},
     {"native_inject_raw_command", "([BI)Z", (void*)android_location_GpsLocationProvider_inject_raw_command},
