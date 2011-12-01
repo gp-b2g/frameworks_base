@@ -62,4 +62,6 @@ public interface LocationProviderInterface {
     void removeListener(int uid);
     boolean updateCriteria(int action, long minTime, float minDistance,
                boolean singleShot,Criteria criteria);
+    boolean updateSettings(boolean gpsSetting,boolean networkProvSetting,
+                                  boolean wifiSetting,boolean agpsSetting);
 }

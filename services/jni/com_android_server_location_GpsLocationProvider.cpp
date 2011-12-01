@@ -41,6 +41,7 @@ static jmethodID method_setEngineCapabilities;
 static jmethodID method_xtraDownloadRequest;
 static jmethodID method_reportNiNotification;
 static jmethodID method_requestRefLocation;
+static jmethodID method_requestPhoneContext;
 static jmethodID method_requestSetID;
 static jmethodID method_requestUtcTime;
 
@@ -51,6 +52,7 @@ static const GpsNiInterface* sGpsNiInterface = NULL;
 static const GpsDebugInterface* sGpsDebugInterface = NULL;
 static const AGpsRilInterface* sAGpsRilInterface = NULL;
 static const InjectRawCmdInterface* sInjectRawCmdInterface = NULL;
+static const UlpPhoneContextInterface* sUlpPhoneContextInterface = NULL;
 
 // temporary storage for GPS callbacks
 static GpsSvStatus  sGpsSvStatus;
@@ -250,6 +252,17 @@ AGpsRilCallbacks sAGpsRilCallbacks = {
     agps_request_ref_location,
     create_thread_callback,
 };
+static void ulp_request_phone_context(UlpPhoneContextRequest *req)
+{
+    JNIEnv* env = AndroidRuntime::getJNIEnv();
+    env->CallVoidMethod(mCallbacksObj, method_requestPhoneContext,req->context_type ,
+                        req->request_type );
+    checkAndClearExceptionFromCallback(env, __FUNCTION__);
+}
+
+UlpPhoneContextCallbacks sUlpPhoneContextCallbacks = {
+    ulp_request_phone_context,
+};
 
 static void android_location_GpsLocationProvider_class_init_native(JNIEnv* env, jclass clazz) {
     int err;
@@ -261,6 +274,7 @@ static void android_location_GpsLocationProvider_class_init_native(JNIEnv* env, 
     method_reportAGpsStatus = env->GetMethodID(clazz, "reportAGpsStatus", "(III[B)V");
     method_reportNmea = env->GetMethodID(clazz, "reportNmea", "(J)V");
     method_setEngineCapabilities = env->GetMethodID(clazz, "setEngineCapabilities", "(I)V");
+    method_requestPhoneContext = env->GetMethodID(clazz, "requestPhoneContext", "(II)V");
     method_xtraDownloadRequest = env->GetMethodID(clazz, "xtraDownloadRequest", "()V");
     method_reportNiNotification = env->GetMethodID(clazz, "reportNiNotification",
             "(IIIIILjava/lang/String;Ljava/lang/String;IILjava/lang/String;)V");
@@ -290,6 +304,8 @@ static void android_location_GpsLocationProvider_class_init_native(JNIEnv* env, 
             (const AGpsRilInterface*)sGpsInterface->get_extension(AGPS_RIL_INTERFACE);
         sInjectRawCmdInterface =
             (const InjectRawCmdInterface*)sGpsInterface->get_extension(ULP_RAW_CMD_INTERFACE);
+        sUlpPhoneContextInterface =
+            (const UlpPhoneContextInterface*)sGpsInterface->get_extension(ULP_PHONE_CONTEXT_INTERFACE);
     }
 }
 
@@ -317,6 +333,8 @@ static jboolean android_location_GpsLocationProvider_init(JNIEnv* env, jobject o
         sGpsNiInterface->init(&sGpsNiCallbacks);
     if (sAGpsRilInterface)
         sAGpsRilInterface->init(&sAGpsRilCallbacks);
+    if (sUlpPhoneContextInterface)
+        sUlpPhoneContextInterface->init(&sUlpPhoneContextCallbacks);
 
     return true;
 }
@@ -369,6 +387,23 @@ static jboolean android_location_GpsLocationProvider_update_criteria(JNIEnv* env
         return false;
 }
 
+static jboolean android_location_GpsLocationProvider_update_settings(JNIEnv* env, jobject obj,
+        jint currentContextType,jboolean currentGpsSetting, jboolean currentAgpsSetting,
+        jboolean currentNetworkProvSetting,jboolean currentWifiSetting)
+{
+    if (sUlpPhoneContextInterface->ulp_phone_context_settings_update ) {
+        UlpPhoneContextSettings settings;
+        settings.context_type = currentContextType;
+        settings.is_gps_enabled = currentGpsSetting;
+        settings.is_agps_enabled = currentAgpsSetting;
+        settings.is_network_position_available = currentNetworkProvSetting;
+        settings.is_wifi_setting_enabled = currentWifiSetting;
+        return sUlpPhoneContextInterface->ulp_phone_context_settings_update(&settings);
+    }
+    else
+        return false;
+
+}
 static jboolean android_location_GpsLocationProvider_start(JNIEnv* env, jobject obj)
 {
     if (sGpsInterface)
@@ -642,6 +677,7 @@ static JNINativeMethod sMethods[] = {
     {"native_cleanup", "()V", (void*)android_location_GpsLocationProvider_cleanup},
     {"native_set_position_mode", "(IIIII)Z", (void*)android_location_GpsLocationProvider_set_position_mode},
     {"native_update_criteria", "(IJFZII)Z", (void*)android_location_GpsLocationProvider_update_criteria},
+    {"native_update_settings", "(IZZZZ)Z", (void*)android_location_GpsLocationProvider_update_settings},
     {"native_start", "()Z", (void*)android_location_GpsLocationProvider_start},
     {"native_stop", "()Z", (void*)android_location_GpsLocationProvider_stop},
     {"native_delete_aiding_data", "(I)V", (void*)android_location_GpsLocationProvider_delete_aiding_data},

@@ -57,6 +57,7 @@ import android.provider.Settings;
 import android.util.Log;
 import android.util.Slog;
 import android.util.PrintWriterPrinter;
+import android.content.ContentValues;
 
 import com.android.internal.content.PackageMonitor;
 import com.android.internal.location.GpsNetInitiatedHandler;
@@ -430,6 +431,35 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
 
     private final class SettingsObserver implements Observer {
         public void update(Observable o, Object arg) {
+            //Settings update only for GPS/ULP Provider
+            LocationProviderInterface p = mProvidersByName.get(LocationManager.GPS_PROVIDER);
+            if(p != null) {
+                if((p.getCapability() & LocationProviderInterface.ULP_CAPABILITY)
+                   == LocationProviderInterface.ULP_CAPABILITY) {
+                    if (LOCAL_LOGV) {
+                      Slog.d(TAG,  "SettingsObserver.update invoked and p.getCapability(): "+ p.getCapability());
+                    }
+                    //Will read the Settings values & determine if anything changed there
+                    Map<String, ContentValues> kvs = ((ContentQueryMap)o).getRows();
+                    if (null != kvs && !kvs.isEmpty()) {
+                        Log.v(TAG, "in Settings.Secure.LOCATION_PROVIDERS_ALLOWED - "
+                        +kvs.get(Settings.Secure.LOCATION_PROVIDERS_ALLOWED).toString());
+                        String providers = kvs.get(Settings.Secure.LOCATION_PROVIDERS_ALLOWED).toString();
+                        boolean gpsSetting = providers.contains("gps");
+                        boolean networkProvSetting = providers.contains("network");
+                        boolean wifiSetting =  kvs.get(Settings.Secure.WIFI_ON).toString().contains("1");
+                        boolean agpsSetting =  kvs.get(Settings.Secure.ASSISTED_GPS_ENABLED).toString().contains("1");
+
+                        if (LOCAL_LOGV) {
+                          Slog.d(TAG,  "SettingsObserver.update invoked and setting values. Gps:"+
+                                 gpsSetting +" GNP:"+ networkProvSetting+" WiFi:"+ wifiSetting+
+                                 " Agps:"+ agpsSetting);
+                        }
+
+                        p.updateSettings(gpsSetting,networkProvSetting,wifiSetting,agpsSetting);
+                     }
+                }
+            }
             synchronized (mLock) {
                 updateProvidersLocked();
             }
@@ -545,10 +575,14 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
 
         // listen for settings changes
         ContentResolver resolver = mContext.getContentResolver();
-        Cursor settingsCursor = resolver.query(Settings.Secure.CONTENT_URI, null,
-                "(" + Settings.System.NAME + "=?)",
-                new String[]{Settings.Secure.LOCATION_PROVIDERS_ALLOWED},
-                null);
+        Cursor settingsCursor = resolver.query(Settings.Secure.CONTENT_URI,
+                new String[] {Settings.System.NAME,Settings.System.VALUE},
+                "(" + Settings.System.NAME + "=?) or ("
+                    + Settings.System.NAME + "=?) or ("
+                    + Settings.System.NAME + "=?) ",
+                new String[]{Settings.Secure.LOCATION_PROVIDERS_ALLOWED,
+                    Settings.Secure.WIFI_ON, Settings.Secure.ASSISTED_GPS_ENABLED},
+                    null);
         mSettings = new ContentQueryMap(settingsCursor, Settings.System.NAME, true, mLocationHandler);
         SettingsObserver settingsObserver = new SettingsObserver();
         mSettings.addObserver(settingsObserver);
@@ -564,6 +598,7 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
     }
 
     private boolean isAllowedBySettingsLocked(String provider) {
+        boolean providerSetting = false;
         if (mEnabledProviders.contains(provider)) {
             return true;
         }
@@ -572,8 +607,25 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         }
         // Use system settings
         ContentResolver resolver = mContext.getContentResolver();
+        LocationProviderInterface p = mProvidersByName.get(provider);
+        if(p != null) {
+            if ((LocationManager.GPS_PROVIDER.equals(provider)) &&
+                ((p.getCapability() & LocationProviderInterface.ULP_CAPABILITY) ==
+                 LocationProviderInterface.ULP_CAPABILITY)){
 
-        return Settings.Secure.isLocationProviderEnabled(resolver, provider);
+                //Even if GPS is turned off the ULP/Hybrid engine is still active
+                //as long as WiFi service is available
+                try {
+                    providerSetting = ((Settings.Secure.isLocationProviderEnabled(resolver, provider)) ||
+                             (Settings.Secure.getInt(resolver,Settings.Secure.WIFI_ON) == 1));
+                }catch (Exception e) {
+                    Slog.e(TAG, "isAllowedBySettingsLocked got exception:", e);
+                }
+            } else {
+                providerSetting = Settings.Secure.isLocationProviderEnabled(resolver, provider);
+            }
+        }
+        return providerSetting;
     }
 
     private String checkPermissionsSafe(String provider, String lastPermission) {

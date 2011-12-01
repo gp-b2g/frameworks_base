@@ -470,8 +470,12 @@ public class LocationProviderProxy implements LocationProviderInterface {
         }
     }
     public boolean updateCriteria(int action, long minTime, float minDistance,
-                                  boolean singleShot,Criteria criteria) {
+               boolean singleShot,Criteria criteria) {
         return true;
+    }
+    public boolean updateSettings(boolean gpsSetting,boolean networkProvSetting,
+                                  boolean wifiSetting,boolean agpsSetting){
+       return true;
     }
     public int getCapability(){
         return 0;
