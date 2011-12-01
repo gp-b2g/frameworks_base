@@ -122,6 +122,17 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     static final String APN_ID = "apn_id";
     private boolean canSetPreferApn = false;
 
+    /*
+     * If this property is set to true then android assumes that multiple PDN is
+     * going to be supported in modem/nw. However if second PDN requests fails,
+     * then behavior is going to be determined by the
+     * SUPPORT_SERVICE_ARBITRATION property below. If MPDN is set to false, then
+     * android will ensure that the higher priority service is active. Low
+     * priority data calls may be pro-actively torn down to ensure this.
+     */
+    private static final boolean SUPPORT_MPDN = SystemProperties.getBoolean(
+            "persist.telephony.mpdn", true);
+
     @Override
     protected void onActionIntentReconnectAlarm(Intent intent) {
         if (DBG) log("GPRS reconnect alarm. Previous state was " + mState);
@@ -178,6 +189,8 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         mApnContexts = new ConcurrentHashMap<String, ApnContext>();
         initApnContextsAndDataConnection();
         broadcastMessenger();
+
+        log("SUPPORT_MPDN = " + SUPPORT_MPDN);
     }
 
     @Override
@@ -619,6 +632,8 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     private void setupDataOnReadyApns(String reason) {
         // Stop reconnect alarms on all data connections pending
         // retry. Reset ApnContext state to IDLE.
+        log("setupDataOnReadyApns: " + reason);
+
         for (DataConnectionAc dcac : mDataConnectionAsyncChannels.values()) {
             if (dcac.getReconnectIntentSync() != null) {
                 cancelReconnectAlarm(dcac);
@@ -640,7 +655,8 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         }
 
         // Only check for default APN state
-        for (ApnContext apnContext : mApnContexts.values()) {
+        for (ApnContext apnContext :
+                    getPrioritySortedApnContextList().toArray(new ApnContext[0])) {
             if (apnContext.getState() == State.FAILED) {
                 // By this time, alarms for all failed Apns
                 // should be stopped if any.
@@ -697,6 +713,11 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         }
 
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
+
+        if (SUPPORT_MPDN == false) {
+            if (disconnectOneLowerPriorityCall(apnContext.getApnType()))
+                return false;
+        }
 
         if ((apnContext.getState() == State.IDLE || apnContext.getState() == State.SCANNING) &&
                 isDataAllowed(apnContext) && getAnyDataEnabled() && !isEmergency()) {
@@ -1355,7 +1376,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         removeCallbacks(mPollNetStat);
         if (DBG) log("stopNetStatPoll");
     }
-    
+
     @Override
     protected DataProfile fetchDunApn() {
         Context c = mPhone.getContext();
@@ -1366,6 +1387,30 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
 
         apnData = c.getResources().getString(R.string.config_tether_apndata);
         return (DataProfile)ApnSetting.fromString(apnData);
+    }
+
+    @Override
+    protected boolean disconnectOneLowerPriorityCall(String apnType) {
+        boolean disconnect = false;
+
+        ApnContext apnContext = mApnContexts.get(apnType);
+
+        for (ApnContext apnContextEntry :
+            getPrioritySortedApnContextList().toArray(new ApnContext[0])) {
+                if (apnContextEntry.getState() == State.CONNECTED &&
+                        apnContextEntry.isLowerPriority(apnContext)) {
+                    disconnect = true;
+
+                    // Found a lower priority call, disconnect it.
+                    apnContext.setReason(Phone.REASON_SINGLE_PDN_ARBITRATION);
+                    cleanUpConnection(true, apnContextEntry);
+                    break;
+                }
+        }
+
+        log("disconnectOneLowerPriorityCall:" + apnContext.getApnType() + " " + disconnect);
+
+        return disconnect;
     }
 
     @Override
@@ -1957,6 +2002,9 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
             apnContext.setDataConnection(null);
             apnContext.setDataConnectionAc(null);
         }
+
+        if (SUPPORT_MPDN == false)
+            setupDataOnReadyApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
     }
 
     protected void onPollPdp() {
