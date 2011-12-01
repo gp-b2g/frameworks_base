@@ -635,7 +635,7 @@ rinse_repeat:
 
             // fall through
         } else {
-            LOGE("Cannot find sequence number %d in playlist "
+            LOGV("Cannot find sequence number %d in playlist "
                  "(contains %d - %d)",
                  mSeqNumber, firstSeqNumberInPlaylist,
                  firstSeqNumberInPlaylist + mPlaylist->size() - 1);

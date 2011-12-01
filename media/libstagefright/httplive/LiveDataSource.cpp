@@ -23,7 +23,8 @@
 #include <media/stagefright/foundation/ABuffer.h>
 #include <media/stagefright/foundation/ADebug.h>
 
-#define SAVE_BACKUP     0
+#include <cutils/properties.h>
+
 
 namespace android {
 
@@ -31,10 +32,14 @@ LiveDataSource::LiveDataSource()
     : mOffset(0),
       mFinalResult(OK),
       mBackupFile(NULL) {
-#if SAVE_BACKUP
-    mBackupFile = fopen("/data/misc/backup.ts", "wb");
-    CHECK(mBackupFile != NULL);
-#endif
+
+      char value[PROPERTY_VALUE_MAX];
+      if(property_get("livedatasource.save.backup", value, "0") && (!strcmp(value, "1")
+                || !strcasecmp(value, "true"))){
+            mBackupFile = fopen("/data/misc/backup.ts", "wb");
+            if(!mBackupFile)
+               LOGE("File open failed ");
+      }
 }
 
 LiveDataSource::~LiveDataSource() {
@@ -140,13 +145,14 @@ void LiveDataSource::queueBuffer(const sp<ABuffer> &buffer) {
         return;
     }
 
-#if SAVE_BACKUP
-    if (mBackupFile != NULL) {
+    char value[PROPERTY_VALUE_MAX];
+    if(property_get("livedatasource.save.backup", value, "0") && (!strcmp(value, "1")
+        || !strcasecmp(value, "true"))){
+        if (mBackupFile != NULL) {
         CHECK_EQ(fwrite(buffer->data(), 1, buffer->size(), mBackupFile),
                  buffer->size());
+        }
     }
-#endif
-
     mBufferQueue.push_back(buffer);
     mCondition.broadcast();
 }
