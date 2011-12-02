@@ -343,23 +343,7 @@ public final class ServerOperation implements Operation, BaseStream {
             requestHeader.setHeader(HeaderSet.SINGLE_RESPONSE_MODE_PARAMETER, ObexHelper.OBEX_SRM_PARAM_NONE);
             sendReply(ResponseCodes.OBEX_HTTP_CONTINUE, mSingleResponseActive,mSrmGetActive);
 
-            if (mSrmGetActive == ObexHelper.LOCAL_SRM_ENABLED) {
-                if (VERBOSE) Log.v(TAG, "continueOperation: Server SRM enabled");
-                if (mSrmServerSession.getLocalSrmpWait()) {
-                    if (mSingleResponseModeParameter == ObexHelper.OBEX_SRM_PARAM_WAIT) {
-                        if (VERBOSE) Log.v(TAG, "continueOperation: Server sent SRMP NONE to stop SRMP WAIT");
-                        mSrmGetActive = ObexHelper.LOCAL_SRM_ENABLED;
-                        mSrmServerSession.setLocalSrmpWait(false);
-                    } else {
-                        if (VERBOSE) Log.v(TAG, "continueOperation: Server SRMP WAIT");
-                        mSrmGetActive = ObexHelper.LOCAL_SRM_DISABLED;
-                        mSingleResponseModeParameter = ObexHelper.OBEX_SRM_PARAM_WAIT;
-                    }
-                }
-            } else {
-                if (VERBOSE) Log.v(TAG, "continueOperation: Server SRM disabled");
-            }
-            if (VERBOSE) Log.v(TAG, "Srm status:"+mSrmGetActive);
+            if (VERBOSE) Log.v(TAG, "Get continueOperation");
             return true;
         }
     }

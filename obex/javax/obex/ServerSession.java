@@ -323,14 +323,14 @@ public final class ServerSession extends ObexSession implements Runnable {
             Byte srm = (Byte)op.requestHeader.getHeader(HeaderSet.SINGLE_RESPONSE_MODE);
             if (VERBOSE)  Log.v(TAG, "handleGetRequest srm status" + srm );
             if (srm == ObexHelper.OBEX_SRM_ENABLED) {
-                if (VERBOSE)  Log.v(TAG, "handlePutRequest srm == ObexHelper.OBEX_SRM_ENABLED");
+                if (VERBOSE)  Log.v(TAG, "handleGetRequest srm == ObexHelper.OBEX_SRM_ENABLED");
                 if (mSrmServer.getLocalSrmCapability() == ObexHelper.SRM_CAPABLE) {
                     if (VERBOSE)  Log.v(TAG, "ObexHelper.getLocalSrmCapability()" +
                                                                        "=ObexHelper.SRM_CAPABLE");
                     op.replyHeader.setHeader(HeaderSet.SINGLE_RESPONSE_MODE,
                                                                      ObexHelper.OBEX_SRM_ENABLED);
                     if (mSrmServer.getLocalSrmpWait()) {
-                        if (VERBOSE)  Log.v(TAG, "PutRequest:Server SRMP header set to WAIT");
+                        if (VERBOSE)  Log.v(TAG, "GetRequest:Server SRMP header set to WAIT");
                         op.replyHeader.setHeader(HeaderSet.SINGLE_RESPONSE_MODE_PARAMETER,
                                                                   ObexHelper.OBEX_SRM_PARAM_WAIT);
                     }
