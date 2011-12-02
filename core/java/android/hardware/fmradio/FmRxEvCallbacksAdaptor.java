@@ -42,6 +42,7 @@ public class FmRxEvCallbacksAdaptor implements FmRxEvCallbacks {
     public void FmRxEvStereoStatus(boolean stereo) {};
     public void FmRxEvServiceAvailable(boolean service) {};
     public void FmRxEvSearchInProgress() {};
+    public void FmRxEvSearchCancelled() {};
     public void FmRxEvSearchComplete(int freq) {};
     public void FmRxEvSearchListComplete() {};
     public void FmRxEvRdsGroupData() {};

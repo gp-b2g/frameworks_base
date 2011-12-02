@@ -408,9 +408,13 @@ public class FmReceiver extends FmTransceiver
          Log.d(TAG, "enable: FM already turned On and running");
          return status;
       }
+      else if (state == subPwrLevel_FMRx_Starting) {
+         Log.v(TAG, "FM is in the process of turning On.Pls wait for sometime.");
+         return status;
+      }
 
       setFMPowerState(subPwrLevel_FMRx_Starting);
-      Log.d(TAG, "enable: CURRENT-STATE : FMOff ---> NEW-STATE : FMRxStarting");
+      Log.v(TAG, "enable: CURRENT-STATE : FMOff ---> NEW-STATE : FMRxStarting");
       status = super.enable(configSettings, FmTransceiver.FM_RX);
 
       if( status == true ) {
@@ -420,8 +424,8 @@ public class FmReceiver extends FmTransceiver
       }
       else {
          status = false;
-         Log.d(TAG, "enable: Error while turning FM On");
-         Log.d(TAG, "enable: CURRENT-STATE : FMRxStarting ---> NEW-STATE : FMOff");
+         Log.e(TAG, "enable: Error while turning FM On");
+         Log.e(TAG, "enable: CURRENT-STATE : FMRxStarting ---> NEW-STATE : FMOff");
          setFMPowerState(FMState_Turned_Off);
       }
       return status;
@@ -457,9 +461,21 @@ public class FmReceiver extends FmTransceiver
          Log.d(TAG, "FM already tuned Off.");
          return false;
       case FMState_Srch_InProg:
-         Log.d(TAG, "disable: Cancelling the on going search operation prior to disabling FM");
+         Log.v(TAG, "disable: Cancelling the on going search operation prior to disabling FM");
          setSearchState(subSrchLevel_SrchAbort);
          cancelSearch();
+         Log.v(TAG, "disable: Wait for the state to change from : Search ---> FMRxOn");
+         try {
+            /*
+             *    The delay of 50ms here is very important.
+             *    This delay is useful for the cleanup purpose
+             *    when HS is abruptly plugged out when search
+             *    is in progress.
+            */
+            Thread.sleep(50);
+         } catch (InterruptedException e) {
+            e.printStackTrace();
+         }
          break;
       case subPwrLevel_FMRx_Starting:
       /*
@@ -475,34 +491,28 @@ public class FmReceiver extends FmTransceiver
          /* Check for the state of FM device */
          state = getFMState();
          if(state == subPwrLevel_FMRx_Starting) {
-            Log.d(TAG, "disable: FM in bad state");
+            Log.e(TAG, "disable: FM in bad state");
             return status;
          }
          break;
-      }
-
-      Log.d(TAG, "disable: Wait for the state to change from : Search ---> FMRxOn");
-      try {
-         /*
-          *    The delay of 50ms here is very important.
-          *    This delay is useful for the cleanup purpose
-          *    when HS is abruptly plugged out when search
-          *    is in progress.
-         */
-         Thread.sleep(50);
-      } catch (InterruptedException e) {
-         e.printStackTrace();
+      case subPwrLevel_FMTurning_Off:
+      /*
+       * If, FM is in the process of turning Off, then wait for
+       * the turn off operation to complete.
+      */
+         Log.v(TAG, "disable: FM is getting turned Off.");
+            return status;
       }
 
       setFMPowerState(subPwrLevel_FMTurning_Off);
-      Log.d(TAG, "disable: CURRENT-STATE : FMRxOn ---> NEW-STATE : FMTurningOff");
+      Log.v(TAG, "disable: CURRENT-STATE : FMRxOn ---> NEW-STATE : FMTurningOff");
       status = unregisterClient();
       if( status == true ) {
           status = super.disable();
       }
       else {
           status = false;
-          Log.d(TAG, "disable: Error while turning FM Off");
+          Log.e(TAG, "disable: Error while turning FM Off");
       }
 
       return status;
@@ -670,7 +680,7 @@ public class FmReceiver extends FmTransceiver
 
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "searchStations: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "searchStations: Device currently busy in executing another command.");
           return false;
       }
 
@@ -706,6 +716,7 @@ public class FmReceiver extends FmTransceiver
             setSearchState(subSrchLevel_SeekInPrg);
          else if (mode == FM_RX_SRCH_MODE_SCAN)
             setSearchState(subSrchLevel_ScanInProg);
+         Log.v(TAG, "searchStations: CURRENT-STATE : FMRxOn ---> NEW-STATE : SearchInProg");
       }
       return true;
    }
@@ -841,7 +852,7 @@ public class FmReceiver extends FmTransceiver
       int state = getFMState();
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "searchStations: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "searchStations: Device currently busy in executing another command.");
           return false;
       }
 
@@ -913,7 +924,7 @@ public class FmReceiver extends FmTransceiver
    *    time a list-based search completes, the client will be
    *    notified via an FmRxEvSearchListComplete event.
    *    <p>
-   *    On completion or cancellation of the search, the originally tuned station
+   *    On completion of the search, the originally tuned station
    *    will be tuned and the following events will be generated:
    *    FmRxEvSearchListComplete - The search has completed.
    *    FmRxEvRadioTuneStatus - The original frequency has been
@@ -924,8 +935,9 @@ public class FmReceiver extends FmTransceiver
    *    <p>
    *    The search can be canceled at any time by using API
    *    cancelSearch (). A cancelled search is treated as a completed
-   *    search and the same events will be generated. However, the
-   *    search list generated may only contain a partial list.
+   *    search and the following events will be generated:
+   *    FmRxEvSearchComplete  - The search has completed.
+   *    FmRxEvRadioTuneStatus - The original frequency has been re-tuned.
    *    <p>
    *    Valid Values for argument 'mode':
    *    <ul>
@@ -968,10 +980,9 @@ public class FmReceiver extends FmTransceiver
                                      int pty){
 
       int state = getFMState();
-      Log.d(TAG, "searchStationList: Currents state is : " + state);
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "searchStationList: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "searchStationList: Device currently busy in executing another command.");
           return false;
       }
 
@@ -1013,6 +1024,7 @@ public class FmReceiver extends FmTransceiver
            re = mControl.searchStationList(sFd, mode, maximumStations, direction, pty);
 
          setSearchState(subSrchLevel_SrchListInProg);
+         Log.v(TAG, "searchStationList: CURRENT-STATE : FMRxOn ---> NEW-STATE : SearchInProg");
       }
 
       if (re == 0)
@@ -1047,8 +1059,17 @@ public class FmReceiver extends FmTransceiver
    *   @see #searchStationList
    */
    public boolean cancelSearch () {
-      mControl.cancelSearch(sFd);
-      return true;
+      boolean status = false;
+      int state = getFMState();
+      /* Check current state of FM device */
+      if (state == FMState_Srch_InProg) {
+         Log.v(TAG, "cancelSearch: Cancelling the on going search operation");
+         setSearchState(subSrchLevel_SrchAbort);
+         mControl.cancelSearch(sFd);
+         return true;
+      } else
+         Log.d(TAG, "cancelSearch: No on going search operation to cancel");
+      return status;
    }
 
    /*==============================================================
@@ -1076,7 +1097,7 @@ public class FmReceiver extends FmTransceiver
       int state = getFMState();
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "setMuteMode: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "setMuteMode: Device currently busy in executing another command.");
           return false;
       }
       switch (mode)
@@ -1116,7 +1137,7 @@ public class FmReceiver extends FmTransceiver
       int state = getFMState();
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "setStereoMode: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "setStereoMode: Device currently busy in executing another command.");
           return false;
       }
       int re = mControl.stereoControl(sFd, stereoEnable);
@@ -1156,7 +1177,7 @@ public class FmReceiver extends FmTransceiver
       int state = getFMState();
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "setSignalThreshold: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "setSignalThreshold: Device currently busy in executing another command.");
           return false;
       }
       boolean bStatus = true;
@@ -1238,7 +1259,7 @@ public class FmReceiver extends FmTransceiver
       int state = getFMState();
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "getTunedFrequency: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "getTunedFrequency: Device currently busy in executing another command.");
           return ERROR;
       }
 
@@ -1531,7 +1552,7 @@ public class FmReceiver extends FmTransceiver
       int state = getFMState();
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "getSignalThreshold: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "getSignalThreshold: Device currently busy in executing another command.");
           return ERROR;
       }
      int threshold = FM_RX_SIGNAL_STRENGTH_VERY_WEAK, signalStrength;
@@ -1635,7 +1656,7 @@ public class FmReceiver extends FmTransceiver
       int state = getFMState();
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "setRdsGroupOptions: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "setRdsGroupOptions: Device currently busy in executing another command.");
           return false;
       }
       // Enable RDS
@@ -1708,12 +1729,16 @@ public class FmReceiver extends FmTransceiver
    */
    public boolean registerRdsGroupProcessing (int fmGrpsToProc){
 
+      if (mRdsData == null)
+         return false;
+
       int state = getFMState();
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "registerRdsGroupProcessing: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "registerRdsGroupProcessing: Device currently busy in executing another command.");
           return false;
       }
+
       // Enable RDS
       int re = mRdsData.rdsOn(true);
 
@@ -1751,7 +1776,7 @@ public class FmReceiver extends FmTransceiver
       int state = getFMState();
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "enableAFjump: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "enableAFjump: Device currently busy in executing another command.");
           return false;
       }
       // Enable RDS
@@ -1789,7 +1814,7 @@ public class FmReceiver extends FmTransceiver
       int state = getFMState();
       /* Check current state of FM device */
       if (state == FMState_Turned_Off || state == FMState_Srch_InProg) {
-          Log.d(TAG, "getStationList: Device currently busy in executing another command. Please try later");
+          Log.d(TAG, "getStationList: Device currently busy in executing another command.");
           return null;
       }
       int[] stnList = new int [100];
@@ -1901,6 +1926,24 @@ public class FmReceiver extends FmTransceiver
    public void setHiLoInj(int inj)
    {
       int re =  mControl.setHiLoInj(sFd, inj);
+   }
+
+/*==============================================================
+   FUNCTION:  getRmssiDelta
+   ==============================================================*/
+   /**
+   *    Gets the value of currently set RMSSI Delta
+   *
+   *    <p>
+   *    This method gets the currently set RMSSI Delta value.
+   *
+   *    <p>
+   */
+   public int getRmssiDelta()
+   {
+      int re =  mControl.getRmssiDelta(sFd);
+      Log.d (TAG, "The value of RMSSI Delta is " + re);
+      return re;
    }
 
 /*==============================================================

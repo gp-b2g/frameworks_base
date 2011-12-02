@@ -180,6 +180,8 @@ public class FmTransmitter extends FmTransceiver
    */
    public boolean setRdsOn (){
 
+      if (mRdsData == null)
+         return false;
       // Enable RDS
       int re = mRdsData.rdsOn(true);
 

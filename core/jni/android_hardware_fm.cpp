@@ -46,6 +46,9 @@
 #define SEARCH_DOWN 0
 #define SEARCH_UP 1
 #define TUNE_MULT 16000
+#define HIGH_BAND 2
+#define LOW_BAND  1
+#define CAL_DATA_SIZE 71
 #define V4L2_CTRL_CLASS_USER 0x00980000
 #define V4L2_CID_PRIVATE_IRIS_SET_CALIBRATION           (V4L2_CTRL_CLASS_USER + 0x92A)
 #define V4L2_CID_PRIVATE_TAVARUA_ON_CHANNEL_THRESHOLD   (V4L2_CTRL_CLASS_USER + 0x92B)
@@ -102,7 +105,7 @@ static jint android_hardware_fmradio_FmReceiverJNI_acquireFdNative
 
     property_set("ctl.start", "fm_dl");
     sleep(1);
-    for(i=0;i<6;i++) {
+    for(i=0;i<9;i++) {
         property_get("hw.fm.init", &value, NULL);
        if(value == '1') {
             init_success = 1;
@@ -191,6 +194,39 @@ static jint android_hardware_fmradio_FmReceiverJNI_setControlNative
     return FM_JNI_FAILURE;
 }
 
+static jint android_hardware_fmradio_FmReceiverJNI_SetCalibrationNative
+     (JNIEnv * env, jobject thiz, jint fd, jbyteArray buff)
+{
+
+    struct v4l2_ext_control ext_ctl;
+    char tmp[CAL_DATA_SIZE] = {0x00};
+    int err;
+    FILE* cal_file;
+
+    cal_file = fopen("/data/app/Riva_fm_cal", "r" );
+    if(cal_file != NULL) {
+        ext_ctl.id = V4L2_CID_PRIVATE_IRIS_SET_CALIBRATION;
+        if (fread(&tmp[0],1,CAL_DATA_SIZE,cal_file) < CAL_DATA_SIZE)
+        {
+            LOGE("File read failed");
+            return FM_JNI_FAILURE;
+        }
+        ext_ctl.string = tmp;
+        ext_ctl.size = CAL_DATA_SIZE;
+        struct v4l2_ext_controls v4l2_ctls;
+
+        v4l2_ctls.ctrl_class = V4L2_CTRL_CLASS_USER,
+        v4l2_ctls.count   = 1,
+        v4l2_ctls.controls  = &ext_ctl;
+        err = ioctl(fd, VIDIOC_S_EXT_CTRLS, &v4l2_ctls );
+        if(err >= 0){
+            return FM_JNI_SUCCESS;
+        }
+    }else {
+        return FM_JNI_SUCCESS;
+    }
+  return FM_JNI_SUCCESS;
+}
 /* native interface */
 static jint android_hardware_fmradio_FmReceiverJNI_getControlNative
     (JNIEnv * env, jobject thiz, jint fd, jint id)
@@ -356,12 +392,14 @@ static jint android_hardware_fmradio_FmReceiverJNI_getRawRdsNative
 }
 
 /* native interface */
-static void android_hardware_fmradio_FmReceiverJNI_setNotchFilterNative(JNIEnv * env, jobject thiz, jboolean aValue)
+static jint android_hardware_fmradio_FmReceiverJNI_setNotchFilterNative(JNIEnv * env, jobject thiz,jint fd, jint id, jboolean aValue)
 {
     int i = 0;
     char value = 0;
     int init_success = 0;
-
+    char notch[20] = {0x00};
+    struct v4l2_control control;
+    int err;
     /*Enable/Disable the WAN avoidance*/
     if (aValue)
        property_set("hw.fm.mode", "wa_enable");
@@ -372,9 +410,27 @@ static void android_hardware_fmradio_FmReceiverJNI_setNotchFilterNative(JNIEnv *
     sleep(1);
     property_get("hw.fm.init", &value, NULL);
     if(value == '1') {
-            init_success = 1;
+       init_success = 1;
     }
     LOGE("init_success:%d after %d seconds \n", init_success, i);
+
+    property_get("notch.value", notch, NULL);
+    LOGE("Notch = %s",notch);
+    if(!strncmp("HIGH",notch,strlen("HIGH")))
+      value = HIGH_BAND;
+    else if(!strncmp("LOW",notch,strlen("LOW")))
+      value = LOW_BAND;
+    else
+      value = 0;
+
+    LOGE("Notch value : %d", value);
+    control.id = id;
+    control.value = value;
+    err = ioctl(fd, VIDIOC_S_CTRL,&control );
+    if(err < 0){
+          return FM_JNI_FAILURE;
+    }
+    return FM_JNI_SUCCESS;
 }
 
 
@@ -634,7 +690,7 @@ static JNINativeMethod gMethods[] = {
             (void*)android_hardware_fmradio_FmReceiverJNI_setMonoStereoNative},
         { "getRawRdsNative", "(I[BI)I",
             (void*)android_hardware_fmradio_FmReceiverJNI_getRawRdsNative},
-       { "setNotchFilterNative", "(Z)V",
+       { "setNotchFilterNative", "(IIZ)I",
             (void*)android_hardware_fmradio_FmReceiverJNI_setNotchFilterNative},
         { "startRTNative", "(ILjava/lang/String;I)I",
             (void*)android_hardware_fmradio_FmReceiverJNI_startRTNative},
@@ -654,6 +710,8 @@ static JNINativeMethod gMethods[] = {
             (void*)android_hardware_fmradio_FmReceiverJNI_setTxPowerLevelNative},
        { "setAnalogModeNative", "(Z)I",
             (void*)android_hardware_fmradio_FmReceiverJNI_setAnalogModeNative},
+        { "SetCalibrationNative", "(I)I",
+            (void*)android_hardware_fmradio_FmReceiverJNI_SetCalibrationNative},
 
 };
 

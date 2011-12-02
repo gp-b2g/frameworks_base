@@ -175,9 +175,14 @@ class FmReceiverJNI {
     static native int getRawRdsNative (int fd, byte  buff[], int count);
 
     /**
-     * native method: Set Notch filter
+     * native method: set v4l2 control
+     * @param fd file descriptor of device
+     * @param id v4l2 control to be set
+     * @param value value to be set
+     * @return {@link #FM_JNI_SUCCESS}
+     *         {@link #FM_JNI_FAILURE}
      */
-    static native void setNotchFilterNative(boolean value);
+    static native int setNotchFilterNative(int fd, int id, boolean value);
 
     /**
      * native method: enable/disable Analog Mode
@@ -256,4 +261,11 @@ class FmReceiverJNI {
      *         {@link #FM_JNI_FAILURE}
      */
     static native int setTxPowerLevelNative(int fd, int powLevel);
+   /**
+     * native method: Sets the calibration
+     * @param fd file descriptor of device
+     * @return {@link #FM_JNI_SUCCESS}
+     *         {@link #FM_JNI_FAILURE}
+     */
+    static native int SetCalibrationNative(int fd);
 }

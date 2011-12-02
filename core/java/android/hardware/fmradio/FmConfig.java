@@ -170,15 +170,16 @@ public class FmConfig {
 
         Log.d (TAG, "In fmConfigure");
 
-        re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_EMPHASIS, configSettings.getEmphasis());
-        re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_RDS_STD, configSettings.getRdsStd() );
-        re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_SPACING, configSettings.getChSpacing() );
         re = FmReceiverJNI.setBandNative    (fd, configSettings.getLowerLimit(), configSettings.getUpperLimit() );
 
         if (configSettings.mRadioBand == FM_US_BAND)
             re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_REGION, FM_US_BAND );
         else
             re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_REGION, FM_USER_DEFINED_BAND );
+
+	re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_EMPHASIS, configSettings.getEmphasis());
+        re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_RDS_STD, configSettings.getRdsStd() );
+        re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_SPACING, configSettings.getChSpacing() );
 
         /* setControlNative for V4L2_CID_PRIVATE_TAVARUA_REGION triggers the config change*/
         if (re < 0)
