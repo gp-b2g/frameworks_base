@@ -49,9 +49,13 @@ import java.io.PrintWriter;
  *                           V    |------------------------<   | SCAN_MODE_CHANGED
  *                          (HotOff)-------------------------->- PER_PROCESS_TURN_ON
  *                           /    ^
- *                          /     |  SERVICE_RECORD_LOADED
+ *                          /     |  POWER_STATE_CHANGED
  *                         |      |
  *              TURN_COLD  |   (Warmup)
+ *                         |      ^
+ *                         |      |  SERVICE_RECORD_LOADED
+ *                         |      |
+ *                         | (PreWarmUp)
  *                         \      ^
  *                          \     |  TURN_HOT/TURN_ON
  *                           |    |  AIRPLANE_MODE_OFF(when Bluetooth was on before)
@@ -121,6 +125,7 @@ final class BluetoothAdapterStateMachine extends StateMachine {
     private Switching mSwitching;
     private HotOff mHotOff;
     private WarmUp mWarmUp;
+    private PreWarmUp mPreWarmUp;
     private PowerOff mPowerOff;
     private PerProcessState mPerProcessState;
 
@@ -145,6 +150,7 @@ final class BluetoothAdapterStateMachine extends StateMachine {
         mSwitching = new Switching();
         mHotOff = new HotOff();
         mWarmUp = new WarmUp();
+        mPreWarmUp = new PreWarmUp();
         mPowerOff = new PowerOff();
         mPerProcessState = new PerProcessState();
 
@@ -152,6 +158,7 @@ final class BluetoothAdapterStateMachine extends StateMachine {
         addState(mSwitching);
         addState(mHotOff);
         addState(mWarmUp);
+        addState(mPreWarmUp);
         addState(mPowerOff);
         addState(mPerProcessState);
 
@@ -175,7 +182,7 @@ final class BluetoothAdapterStateMachine extends StateMachine {
             switch(message.what) {
                 case USER_TURN_ON:
                     // starts turning on BT module, broadcast this out
-                    transitionTo(mWarmUp);
+                    transitionTo(mPreWarmUp);
                     broadcastState(BluetoothAdapter.STATE_TURNING_ON);
                     if (prepareBluetooth()) {
                         // this is user request, save the setting
@@ -192,18 +199,18 @@ final class BluetoothAdapterStateMachine extends StateMachine {
                     break;
                 case TURN_HOT:
                     if (prepareBluetooth()) {
-                        transitionTo(mWarmUp);
+                        transitionTo(mPreWarmUp);
                     }
                     break;
                 case AIRPLANE_MODE_OFF:
                     if (getBluetoothPersistedSetting()) {
                         // starts turning on BT module, broadcast this out
-                        transitionTo(mWarmUp);
+                        transitionTo(mPreWarmUp);
                         broadcastState(BluetoothAdapter.STATE_TURNING_ON);
                         if (prepareBluetooth()) {
                             // We will continue turn the BT on all the way to the BluetoothOn state
                             deferMessage(obtainMessage(TURN_ON_CONTINUE));
-                            transitionTo(mWarmUp);
+                            transitionTo(mPreWarmUp);
                         } else {
                             Log.e(TAG, "failed to prepare bluetooth, abort turning on");
                             transitionTo(mPowerOff);
@@ -216,7 +223,7 @@ final class BluetoothAdapterStateMachine extends StateMachine {
                     break;
                 case PER_PROCESS_TURN_ON:
                     if (prepareBluetooth()) {
-                        transitionTo(mWarmUp);
+                        transitionTo(mPreWarmUp);
                     }
                     deferMessage(obtainMessage(PER_PROCESS_TURN_ON));
                     break;
@@ -288,6 +295,52 @@ final class BluetoothAdapterStateMachine extends StateMachine {
      * Turning on Bluetooth module's power, loading firmware, starting
      * event loop thread to listen on Bluetooth module event changes.
      */
+    private class PreWarmUp extends State {
+
+        @Override
+        public void enter() {
+            if (DBG) log("Enter PreWarmUp: " + getCurrentMessage().what);
+        }
+
+        @Override
+        public boolean processMessage(Message message) {
+            log("PreWarmUp process message: " + message.what);
+
+            boolean retValue = HANDLED;
+            switch(message.what) {
+                case SERVICE_RECORD_LOADED:
+                    transitionTo(mWarmUp);
+                    break;
+                case PREPARE_BLUETOOTH_TIMEOUT:
+                    Log.e(TAG, "Bluetooth adapter SDP failed to load");
+                    shutoffBluetooth();
+                    transitionTo(mPowerOff);
+                    broadcastState(BluetoothAdapter.STATE_OFF);
+                    break;
+                case USER_TURN_ON: // handle this at HotOff state
+                case TURN_ON_CONTINUE: // Once in HotOff state, continue turn bluetooth
+                                       // on to the BluetoothOn state
+                case AIRPLANE_MODE_ON:
+                case AIRPLANE_MODE_OFF:
+                case PER_PROCESS_TURN_ON:
+                case PER_PROCESS_TURN_OFF:
+                case POWER_STATE_CHANGED: // handle this at WarmUp state
+                    deferMessage(message);
+                    break;
+                case USER_TURN_OFF:
+                    Log.w(TAG, "WarmUp received: " + message.what);
+                    break;
+                default:
+                    return NOT_HANDLED;
+            }
+            return retValue;
+        }
+
+    }
+
+    /**
+     * Turn on Bluetooth Module, Load firmware, and SDP loaded.
+     */
     private class WarmUp extends State {
 
         @Override
@@ -301,12 +354,20 @@ final class BluetoothAdapterStateMachine extends StateMachine {
 
             boolean retValue = HANDLED;
             switch(message.what) {
-                case SERVICE_RECORD_LOADED:
-                    removeMessages(PREPARE_BLUETOOTH_TIMEOUT);
-                    transitionTo(mHotOff);
+                case POWER_STATE_CHANGED:
+                    if (!((Boolean) message.obj)) {
+                        removeMessages(PREPARE_BLUETOOTH_TIMEOUT);
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+                        transitionTo(mHotOff);
+                    }
                     break;
                 case PREPARE_BLUETOOTH_TIMEOUT:
-                    Log.e(TAG, "Bluetooth adapter SDP failed to load");
+                    Log.e(TAG, "Bluetooth switch not connectable failed");
                     shutoffBluetooth();
                     transitionTo(mPowerOff);
                     broadcastState(BluetoothAdapter.STATE_OFF);
@@ -769,6 +830,8 @@ final class BluetoothAdapterStateMachine extends StateMachine {
         IState currentState = getCurrentState();
         if (currentState == mPowerOff) {
             pw.println("Bluetooth OFF - power down\n");
+        } else if (currentState == mPreWarmUp) {
+            pw.println("Bluetooth OFF - pre warm up\n");
         } else if (currentState == mWarmUp) {
             pw.println("Bluetooth OFF - warm up\n");
         } else if (currentState == mHotOff) {
