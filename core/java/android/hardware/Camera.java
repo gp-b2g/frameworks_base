@@ -2062,7 +2062,7 @@ public class Camera {
 
         private void set(String key, List<Area> areas) {
             if (areas == null) {
-                set(key, "(0,0,0,0,0)");
+                set(key, "(-2000,-2000,-2000,-2000,0)");    //@Punit: to show invalid values
             } else {
                 StringBuilder buffer = new StringBuilder();
                 for (int i = 0; i < areas.size(); i++) {
