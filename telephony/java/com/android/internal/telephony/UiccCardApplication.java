@@ -42,7 +42,7 @@ import com.android.internal.telephony.ims.IsimUiccRecords;
 public class UiccCardApplication {
     private static final String LOG_TAG = "RIL_UiccCardApplication";
     private static final boolean DBG = true;
-    
+
     private static final int EVENT_QUERY_FACILITY_FDN_DONE = 1;
     private static final int EVENT_CHANGE_FACILITY_FDN_DONE = 2;
 
@@ -65,11 +65,11 @@ public class UiccCardApplication {
     private IccFileHandler mIccFh;
 
     private boolean mDestroyed = false; //set to true once this App is commanded to be disposed of.
-    
+
     private RegistrantList mReadyRegistrants = new RegistrantList();
     private RegistrantList mPinLockedRegistrants = new RegistrantList();
     private RegistrantList mPersoLockedRegistrants = new RegistrantList();
-    
+
     UiccCardApplication(UiccCard uiccCard, IccCardApplicationStatus as, Context c, CommandsInterface ci) {
         log("Creating UiccApp: " + as);
         mUiccCard = uiccCard;
@@ -176,7 +176,7 @@ public class UiccCardApplication {
                 return null;
         }
     }
-    
+
     private void queryFdn() {
         //This shouldn't change run-time. So needs to be called only once.
         int serviceClassX;
@@ -208,13 +208,13 @@ public class UiccCardApplication {
                 mIccFdnEnabled = (ints[0] == 1) ? true : false;
                 mIccFdnAvailable = true;
             }
-                log("Query facility FDN : FDN service available: "+ mIccFdnAvailable
-                                                     +" enabled: "  + mIccFdnEnabled);
+            log("Query facility FDN : FDN service available: "+ mIccFdnAvailable
+                    +" enabled: "  + mIccFdnEnabled);
         } else {
             loge("Bogus facility lock response");
         }
     }
-    
+
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg){
@@ -397,11 +397,14 @@ public class UiccCardApplication {
     }
 
     public boolean isPersoLocked() {
-        boolean isPersoLocked = false;
-        for (PersoSubState ps : PersoSubState.values()) {
-            if (mPersoSubState == ps) isPersoLocked = true;
+        switch (mPersoSubState) {
+            case PERSOSUBSTATE_UNKNOWN:
+            case PERSOSUBSTATE_IN_PROGRESS:
+            case PERSOSUBSTATE_READY:
+                return false;
+            default:
+                return true;
         }
-        return isPersoLocked;
     }
 
     /**
@@ -459,7 +462,7 @@ public class UiccCardApplication {
                pinState == PinState.PINSTATE_ENABLED_VERIFIED ||
                pinState == PinState.PINSTATE_ENABLED_BLOCKED ||
                pinState == PinState.PINSTATE_ENABLED_PERM_BLOCKED;
-     }
+    }
 
     /**
      * Check whether ICC fdn (fixed dialing number) is enabled
