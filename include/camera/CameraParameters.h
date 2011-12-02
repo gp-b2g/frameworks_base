@@ -582,6 +582,11 @@ public:
     static const char KEY_MEMORY_COLOR_ENHANCEMENT[];
     static const char KEY_SUPPORTED_MEM_COLOR_ENHANCE_MODES[];
 
+    static const char KEY_ZSL[];
+    static const char KEY_SUPPORTED_ZSL_MODES[];
+
+    static const char KEY_CAMERA_MODE[];
+
     static const char KEY_VIDEO_HIGH_FRAME_RATE[];
     static const char KEY_SUPPORTED_VIDEO_HIGH_FRAME_RATE_MODES[];
     static const char KEY_HIGH_DYNAMIC_RANGE_IMAGING[];
@@ -806,6 +811,10 @@ public:
     // Values for MCE settings.
     static const char MCE_ENABLE[];
     static const char MCE_DISABLE[];
+
+    // Values for ZSL settings.
+    static const char ZSL_OFF[];
+    static const char ZSL_ON[];
 
     // Values for HFR settings.
     static const char VIDEO_HFR_OFF[];

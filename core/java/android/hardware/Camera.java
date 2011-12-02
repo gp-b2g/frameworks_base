@@ -211,6 +211,16 @@ public class Camera {
         public static final int CAMERA_FACING_FRONT = 1;
 
         /**
+         * The facing of the camera is the same as that of the screen.
+         */
+        public static final int CAMERA_SUPPORT_MODE_ZSL = 2;
+
+        /**
+         * The facing of the camera is the same as that of the screen.
+         */
+        public static final int CAMERA_SUPPORT_MODE_NONZSL = 3;
+
+        /**
          * The direction that the camera faces. It should be
          * CAMERA_FACING_BACK or CAMERA_FACING_FRONT.
          */
@@ -1651,6 +1661,9 @@ public class Camera {
         private static final String KEY_MEMORY_COLOR_ENHANCEMENT = "mce";
 	private static final String KEY_REDEYE_REDUCTION = "redeye-reduction";
 
+        private static final String KEY_ZSL = "zsl";
+        private static final String KEY_CAMERA_MODE = "camera-mode";
+
         // Parameter key suffix for supported values.
         private static final String SUPPORTED_VALUES_SUFFIX = "-values";
 
@@ -1715,6 +1728,10 @@ public class Camera {
         // Values for MCE settings.
         public static final String MCE_ENABLE = "enable";
         public static final String MCE_DISABLE = "disable";
+
+        // Values for ZSL settings.
+        public static final String ZSL_ON = "on";
+        public static final String ZSL_OFF = "off";
 
         // Values for flash mode settings.
         /**
@@ -3699,6 +3716,55 @@ public class Camera {
             String str = get(KEY_MEMORY_COLOR_ENHANCEMENT + SUPPORTED_VALUES_SUFFIX);
             return split(str);
         }
+
+         /**
+         * Gets the current ZSL Mode.
+         *
+         * @return ZSL mode value
+         */
+         public String getZSLMode() {
+            return get(KEY_ZSL);
+         }
+
+         /**
+         * Sets the current ZSL Mode. ZSL mode is set as a 0th bit in KEY_CAMERA_MODE.
+         *
+         * @return null
+         */
+        public void setZSLMode(String zsl) {
+            set(KEY_ZSL, zsl);
+        }
+
+         /**
+         * Gets the supported ZSL modes.
+         *
+         * @return a List of ZSL_OFF/OFF string constants. null if ZSL mode
+         * setting is not supported.
+         */
+        public List<String> getSupportedZSLModes() {
+            String str = get(KEY_ZSL + SUPPORTED_VALUES_SUFFIX);
+            return split(str);
+        }
+
+          /**
+          * Gets the current Camera Mode Flag. Camera mode includes a
+          * flag(byte) which indicates different camera modes.
+          * For now support for ZSL added at bit0
+          *
+          * @return Camera Mode.
+          */
+         public String getCameraMode() {
+            return get(KEY_CAMERA_MODE);
+         }
+
+          /**
+          * Sets the current Camera Mode.
+          *
+          * @return null
+          */
+         public void setCameraMode(int cameraMode) {
+            set(KEY_CAMERA_MODE, cameraMode);
+         }
 
         /**
          * Gets the distances from the camera to where an object appears to be
