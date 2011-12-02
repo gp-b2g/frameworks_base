@@ -455,6 +455,32 @@ static int parse_pair(const char *str, int *first, int *second, char delim,
     return 0;
 }
 
+// Parse string like "(1, 2, 3, 4, ..., N)"
+// num is pointer to an allocated array of size N
+static int parseNDimVector(const char *str, int *num, int N, char delim = ',')
+{
+    char *start, *end;
+    if(num == NULL) {
+        LOGE("Invalid output array (num == NULL)");
+        return -1;
+    }
+    //check if string starts and ends with parantheses
+    if(str[0] != '(' || str[strlen(str)-1] != ')') {
+        LOGE("Invalid format of string %s, valid format is (n1, n2, n3, n4 ...)", str);
+        return -1;
+    }
+    start = (char*) str;
+    start++;
+    for(int i=0; i<N; i++) {
+        *(num+i) = (int) strtol(start, &end, 10);
+        if(*end != delim && i < N-1) {
+            LOGE("Cannot find delimeter '%c' in string \"%s\". end = %c", delim, str, *end);
+            return -1;
+        }
+        start = end+1;
+    }
+    return 0;
+}
 static void parseSizesList(const char *sizesStr, Vector<Size> &sizes)
 {
     if (sizesStr == 0) {
@@ -654,6 +680,21 @@ void CameraParameters::setTouchIndexAf(int x, int y)
     char str[32];
     snprintf(str, sizeof(str), "%dx%d", x, y);
     set(KEY_TOUCH_INDEX_AF, str);
+}
+
+void CameraParameters::getMeteringAreaCenter(int *x, int *y) const
+{
+    //Default invalid values
+    *x = -2000;
+    *y = -2000;
+
+    const char *p = get(KEY_METERING_AREAS);
+    if(p != NULL) {
+        int arr[5] = {-2000, -2000, -2000, -2000, 0};
+        parseNDimVector(p, arr, 5); //p = "(x1, y1, x2, y2, weight)"
+        *x = (arr[0] + arr[2])/2; //center_x = (x1+x2)/2
+        *y = (arr[1] + arr[3])/2; //center_y = (y1+y2)/2
+    }
 }
 
 void CameraParameters::getTouchIndexAf(int *x, int *y) const

@@ -117,6 +117,8 @@ public:
     void setTouchIndexAf(int x, int y);
     void getTouchIndexAf(int *x, int *y) const;
 
+    void getMeteringAreaCenter(int * x, int *y) const;
+
     void dump() const;
     status_t dump(int fd, const Vector<String16>& args) const;
 
