@@ -3161,12 +3161,12 @@ void AudioFlinger::DuplicatingThread::removeOutputTrack(MixerThread *thread)
 
 void AudioFlinger::DuplicatingThread::updateWaitTime()
 {
-    mWaitTimeMs = UINT_MAX;
+    mWaitTimeMs = 0;
     for (size_t i = 0; i < mOutputTracks.size(); i++) {
         sp<ThreadBase> strong = mOutputTracks[i]->thread().promote();
         if (strong != NULL) {
             uint32_t waitTimeMs = (strong->frameCount() * 2 * 1000) / strong->sampleRate();
-            if (waitTimeMs < mWaitTimeMs) {
+            if (waitTimeMs > mWaitTimeMs) {
                 mWaitTimeMs = waitTimeMs;
             }
         }
