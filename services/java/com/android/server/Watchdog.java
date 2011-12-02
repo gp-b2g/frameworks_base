@@ -385,7 +385,6 @@ public class Watchdog extends Thread {
         while (true) {
             mCompleted = false;
             mHandler.sendEmptyMessage(MONITOR);
-
             synchronized (this) {
                 long timeout = TIME_TO_WAIT;
 
@@ -460,10 +459,23 @@ public class Watchdog extends Thread {
             } catch (InterruptedException ignored) {}
 
             // Only kill the process if the debugger is not attached.
-            if (!Debug.isDebuggerConnected()) {
-                Slog.w(TAG, "*** WATCHDOG KILLING SYSTEM PROCESS: " + name);
-                Process.killProcess(Process.myPid());
-                System.exit(10);
+            if(!Debug.isDebuggerConnected()) {
+               if(SystemProperties.getInt("debug.watchdog.disabled", 0) == 0) {
+                  Process.sendSignal(Process.myPid(), 6);
+                  SystemClock.sleep(2000);
+                  Process.sendSignal(Process.myPid(), 6);
+                  SystemClock.sleep(2000);
+
+                  Slog.w(TAG, "*** WATCHDOG KILLING SYSTEM PROCESS: " + name);
+                  Process.killProcess(Process.myPid());
+                  System.exit(10);
+                }
+                else {
+                  Slog.w(TAG, "*** WATCHDOG NOT KILLING SYSTEM PROCESS: " + name);
+                  // Send the SIGSTOP to the System Process for DEBUG purposes
+                  Process.sendSignal(Process.myPid(), 19);
+                  break;
+                }
             } else {
                 Slog.w(TAG, "Debugger connected: Watchdog is *not* killing the system process");
             }
