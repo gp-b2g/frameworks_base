@@ -1423,9 +1423,16 @@ status_t StagefrightRecorder::setupCameraSource(
                 mTimeBetweenTimeLapseFrameCaptureUs);
         *cameraSource = mCameraSourceTimeLapse;
     } else {
+
+        bool useMeta = true;
+        char value[PROPERTY_VALUE_MAX];
+        if (property_get("debug.camcorder.disablemeta", value, NULL) &&
+            atoi(value)) {
+            useMeta = false;
+        }
         *cameraSource = CameraSource::CreateFromCamera(
                 mCamera, mCameraProxy, mCameraId, videoSize, mFrameRate,
-                mPreviewSurface, false);
+                mPreviewSurface, useMeta);
     }
     mCamera.clear();
     mCameraProxy.clear();
@@ -1567,6 +1574,7 @@ status_t StagefrightRecorder::setupVideoEncoder(
 
     uint32_t encoder_flags = 0;
     if (mIsMetaDataStoredInVideoBuffers) {
+        LOGW("Camera source supports metadata mode, create OMXCodec for metadata");
         encoder_flags |= OMXCodec::kHardwareCodecsOnly;
         encoder_flags |= OMXCodec::kStoreMetaDataInVideoBuffers;
     }
