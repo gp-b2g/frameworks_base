@@ -198,7 +198,7 @@ public final class RuimRecords extends IccRecords {
      * Returns the 5 or 6 digit MCC/MNC of the operator that
      *  provided the RUIM card. Returns null of RUIM is not yet ready
      */
-    public String getRUIMOperatorNumeric() {
+    public String getOperatorNumeric() {
         if (mImsi == null) {
             return null;
         }
@@ -458,7 +458,7 @@ public final class RuimRecords extends IccRecords {
 
                 Log.d(LOG_TAG, "IMSI: " + mImsi.substring(0, 6) + "xxxxxxxxx");
 
-                String operatorNumeric = getRUIMOperatorNumeric();
+                String operatorNumeric = getOperatorNumeric();
                 if (operatorNumeric != null) {
                     if(operatorNumeric.length() <= 6){
                         MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
@@ -608,7 +608,7 @@ public final class RuimRecords extends IccRecords {
 
         // Further records that can be inserted are Operator/OEM dependent
 
-        String operator = getRUIMOperatorNumeric();
+        String operator = getOperatorNumeric();
         SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
 
         if (mImsi != null) {
@@ -634,7 +634,7 @@ public final class RuimRecords extends IccRecords {
 
         Log.v(LOG_TAG, "RuimRecords:fetchRuimRecords " + recordsToLoad);
 
-        mCi.getIMSI(obtainMessage(EVENT_GET_IMSI_DONE));
+        mCi.getIMSIForApp(mParentApp.getAid(), obtainMessage(EVENT_GET_IMSI_DONE));
         recordsToLoad++;
 
         mFh.loadEFTransparent(EF_ICCID,

@@ -267,10 +267,6 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
             return true;
         }
 
-        int psState = mCdmaPhone.mSST.getCurrentDataConnectionState();
-        boolean roaming = mPhone.getServiceState().getRoaming();
-        boolean desiredPowerState = mCdmaPhone.mSST.getDesiredPowerState();
-
         if ((mState == State.IDLE || mState == State.SCANNING) &&
                 isDataAllowed() && getAnyDataEnabled() && !isEmergency()) {
             boolean retValue = setupData(reason);
@@ -562,16 +558,17 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
     }
 
     protected void onRecordsLoaded() {
-        Log.d(LOG_TAG, "OMH: onRecordsLoaded(): calling readDataProfilesFromModem()");
+        log("onRecordsLoaded(): calling readDataProfilesFromModem()");
         /* query for data profiles stored in the modem */
-        boolean needModemProfiles = mDpt.readDataProfilesFromModem();
+        mDpt.loadProfiles();
 
         if (mState == State.FAILED) {
             cleanUpAllConnections(null);
         }
 
-        if (!needModemProfiles) {
-            Log.d(LOG_TAG, "OMH: " + Phone.REASON_SIM_LOADED);
+        if (!mDpt.isOmhEnabled()) {
+            log("onRecordsLoaded(): Profiles are ready - trigger setup_data with reason: " +
+                    Phone.REASON_SIM_LOADED);
             sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, Phone.REASON_SIM_LOADED));
         }
     }

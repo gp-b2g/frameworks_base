@@ -1374,4 +1374,8 @@ public abstract class DataConnectionTracker extends Handler {
     public boolean checkForSubscription() {
         return mCheckForSubscription;
     }
+
+    public IccRecords getIccRecords() {
+        return mIccRecords;
+    }
 }

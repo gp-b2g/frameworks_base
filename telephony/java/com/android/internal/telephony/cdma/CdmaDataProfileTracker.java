@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -35,7 +35,8 @@ import android.os.Handler;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
-import android.content.Context;
+import android.provider.Telephony;
+import android.database.Cursor;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -43,7 +44,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.DataProfile;
 import com.android.internal.telephony.cdma.DataProfileCdma;
 import com.android.internal.telephony.cdma.DataProfileOmh.DataProfileTypeModem;
@@ -58,6 +58,7 @@ public final class CdmaDataProfileTracker extends Handler {
     protected final String LOG_TAG = "CDMA";
 
     private CDMAPhone mPhone;
+    private CdmaSubscriptionSourceManager mCdmaSsm;
 
     /**
      * mDataProfilesList holds all the Data profiles for cdma
@@ -119,6 +120,8 @@ public final class CdmaDataProfileTracker extends Handler {
 
     CdmaDataProfileTracker(CDMAPhone phone) {
         mPhone = phone;
+        mCdmaSsm = CdmaSubscriptionSourceManager.getInstance (phone.getContext(), phone.mCM, this,
+                EVENT_LOAD_PROFILES, null);
 
         mOmhServicePriorityMap = new HashMap<String, Integer>();
 
@@ -130,19 +133,36 @@ public final class CdmaDataProfileTracker extends Handler {
     /**
      * Load the CDMA profiles
      */
-    private void loadProfiles() {
-        log("Creating default profiles...");
+    void loadProfiles() {
+        log("loadProfiles...");
+        mDataProfilesList.clear();
 
+        readNaiListFromDatabase();
+
+        log("Got " + mDataProfilesList.size() + " profiles from database");
+
+        if (mDataProfilesList.size() == 0) {
+            // Create default cdma profiles since nothing was found in database
+            createDefaultDataProfiles();
+        }
+
+        // Set the active profile as the default one
+        setActiveDpToDefault();
+
+        // Last thing - trigger reading omh profiles
+        readDataProfilesFromModem();
+    }
+
+    /**
+     * - Create the default profiles.
+     * - One for DUN and another for all the default profiles supported
+     */
+    private void createDefaultDataProfiles() {
+        log("Creating default profiles...");
         String ipProto = SystemProperties.get(
                 TelephonyProperties.PROPERTY_CDMA_IPPROTOCOL, "IP");
         String roamingIpProto = SystemProperties.get(
                 TelephonyProperties.PROPERTY_CDMA_ROAMING_IPPROTOCOL, "IP");
-
-        /**
-         * - Create the default profiles.
-         * - One for DUN and another for all the default profiles supported
-         * - Set the active profile as the default one
-         */
         CdmaDataConnectionTracker cdmaDct =
             (CdmaDataConnectionTracker)(mPhone.mDataConnectionTracker);
 
@@ -155,8 +175,6 @@ public final class CdmaDataProfileTracker extends Handler {
         dp.setProfileId(RILConstants.DATA_PROFILE_DEFAULT);
         mDataProfilesList.add((DataProfile)dp);
 
-        mActiveDp = dp;
-
         String[] types = {Phone.APN_TYPE_DUN};
 
         dp = new DataProfileCdma(
@@ -166,6 +184,95 @@ public final class CdmaDataProfileTracker extends Handler {
                 mPhone.getServiceState().getRadioTechnology());
         dp.setProfileId(RILConstants.DATA_PROFILE_TETHERED);
         mDataProfilesList.add((DataProfile)dp);
+    }
+
+    private void setActiveDpToDefault() {
+        mActiveDp = getDataProfile(Phone.APN_TYPE_DEFAULT);
+    }
+
+    private String getOperatorNumeric() {
+        String result = null;
+        CdmaDataConnectionTracker cdmaDct =
+            (CdmaDataConnectionTracker)(mPhone.mDataConnectionTracker);
+        if (mCdmaSsm.getCdmaSubscriptionSource() ==
+                        CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV) {
+            result = SystemProperties.get(CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
+            log("operatorNumeric for NV " + result);
+        } else if (cdmaDct.getIccRecords() != null) {
+            result = cdmaDct.getIccRecords().getOperatorNumeric();
+            log("operatorNumeric for icc " + result);
+        } else {
+            log("IccRecords == null -> operatorNumeric = null");
+        }
+        return result;
+    }
+
+    /**
+     * Based on the operator, create a list of
+     * cdma data profiles.
+     */
+    private void readNaiListFromDatabase() {
+        String operator = getOperatorNumeric();
+        if (operator == null || operator.length() < 2) {
+            loge("operatorNumeric invalid. Won't read database");
+            return;
+        }
+
+        log("Loading data profiles for operator = " + operator);
+        String selection = "numeric = '" + operator + "'" + " and profile_type = 'nai'";
+        // query only enabled nai.
+        // carrier_enabled : 1 means enabled nai, 0 disabled nai.
+        selection += " and carrier_enabled = 1";
+        log("readNaiListFromDatabase: selection=" + selection);
+
+        Cursor cursor = mPhone.getContext().getContentResolver().query(
+                Telephony.Carriers.CONTENT_URI, null, selection, null, null);
+
+        if (cursor != null) {
+            if (cursor.getCount() > 0) {
+                populateDataProfilesList(cursor);
+            }
+            cursor.close();
+        }
+    }
+
+    private void populateDataProfilesList(Cursor cursor) {
+        if (cursor.moveToFirst()) {
+            do {
+                String[] types = parseTypes(
+                        cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.TYPE)));
+                DataProfileCdma nai = new DataProfileCdma(
+                        cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers._ID)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.NUMERIC)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.NAME)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.USER)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.PASSWORD)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.AUTH_TYPE)),
+                        types,
+                        cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.PROTOCOL)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(
+                                Telephony.Carriers.ROAMING_PROTOCOL)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.BEARER)));
+                 mDataProfilesList.add(nai);
+
+            } while (cursor.moveToNext());
+        }
+    }
+
+    /**
+     * @param types comma delimited list of data service types
+     * @return array of data service types
+     */
+    private String[] parseTypes(String types) {
+        String[] result;
+        // If unset, set to DEFAULT.
+        if (types == null || types.equals("")) {
+            result = new String[1];
+            result[0] = Phone.APN_TYPE_ALL;
+        } else {
+            result = types.split(",");
+        }
+        return result;
     }
 
     public void dispose() {
@@ -213,15 +320,12 @@ public final class CdmaDataProfileTracker extends Handler {
     /*
      * Trigger modem read for data profiles
      */
-    public boolean readDataProfilesFromModem() {
-        boolean retVal = false;
+    private void readDataProfilesFromModem() {
         if (mIsOmhEnabled) {
             sendMessage(obtainMessage(EVENT_READ_MODEM_PROFILES));
-            retVal = true;
         } else {
             log("OMH is disabled, ignoring request!");
         }
-        return retVal;
     }
 
     /*
@@ -345,15 +449,12 @@ public final class CdmaDataProfileTracker extends Handler {
         // Go through all the profiles to find one
         for (DataProfile dp: mDataProfilesList) {
             if (dp.canHandleType(serviceType)) {
-                profile = dp;
-
-                if (mIsOmhEnabled && dp.getDataProfileType()
-                        == DataProfile.DataProfileType.PROFILE_TYPE_OMH) {
-                    profile = dp; // Found an OMH profile
-                } else {
-                    continue;     // Continue to look through all profiles for OMH
+                if (mIsOmhEnabled &&
+                    dp.getDataProfileType() != DataProfile.DataProfileType.PROFILE_TYPE_OMH) {
+                    // OMH enabled - Keep looking for OMH profile
+                    continue;
                 }
-
+                profile = dp;
                 break;
             }
         }
@@ -450,5 +551,9 @@ public final class CdmaDataProfileTracker extends Handler {
 
     protected void log(String s) {
         Log.d(LOG_TAG, "[CdmaDataProfileTracker] " + s);
+    }
+
+    protected void loge(String s) {
+        Log.e(LOG_TAG, "[CdmaDataProfileTracker] " + s);
     }
 }

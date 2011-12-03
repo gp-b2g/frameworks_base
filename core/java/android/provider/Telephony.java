@@ -1962,6 +1962,11 @@ public final class Telephony {
           * but currently only used for LTE(14) and EHRPD(13).
           */
         public static final String BEARER = "bearer";
+
+        /**
+         * "APN" or "NAI". Default is "APN".
+         */
+        public static final String PROFILE_TYPE = "profile_type";
     }
 
     public static final class Intents {
