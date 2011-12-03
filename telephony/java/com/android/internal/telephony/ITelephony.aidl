@@ -285,5 +285,16 @@ interface ITelephony {
      * or {@link PHone#LTE_ON_CDMA_TRUE}
      */
     int getLteOnCdmaMode();
+
+    /**
+      * Sets the transmit power
+      *
+      * @param powerLevel Transmit power level to set. One of:
+      *            TRANSMIT_POWER_DEFAULT      -  restore default transmit power
+      *            TRANSMIT_POWER_WIFI_HOTSPOT -  reduce transmit power as per FCC
+      *                                regulations (CFR47 2.1093) for WiFi hotspot
+      * @return true if success
+      */
+     boolean setTransmitPower(int powerLevel);
 }
 

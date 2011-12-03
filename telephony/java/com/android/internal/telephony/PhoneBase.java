@@ -1170,4 +1170,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void setVoiceMessageWaiting(int line, int countWaiting) {
         mIccRecords.setVoiceMessageWaiting(line, countWaiting);
     }
+
+    public void setTransmitPower(int powerLevel, Message onCompleted) {
+        return;
+    }
 }

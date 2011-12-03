@@ -952,4 +952,8 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone = null;
         mCommandsInterface = null;
     }
+
+    public void setTransmitPower(int powerLevel, Message onCompleted) {
+        mCommandsInterface.setTransmitPower(powerLevel, onCompleted);
+    }
 }

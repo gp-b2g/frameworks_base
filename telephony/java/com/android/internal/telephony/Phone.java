@@ -1799,4 +1799,13 @@ public interface Phone {
      * Remove references to external object stored in this object.
      */
     void removeReferences();
+
+    /**
+     * Sets the transmit power
+     *
+     * @param powerLevel Transmit power level to set
+     * @param onCompleted Callback message contains the information of
+     *            SUCCESS/FAILURE
+     */
+    void setTransmitPower(int powerLevel, Message onCompleted);
 }
