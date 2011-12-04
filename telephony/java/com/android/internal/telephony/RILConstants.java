@@ -64,6 +64,7 @@ public interface RILConstants {
     int SS_MODIFIED_TO_DIAL = 23;             /* SS request modified to DIAL */
     int SS_MODIFIED_TO_USSD = 24;             /* SS request modified to USSD */
     int SS_MODIFIED_TO_SS = 25;               /* SS request modified to different SS request */
+    int SUBSCRIPTION_NOT_SUPPORTED = 26;      /* Subscription not supported */
 
     /* NETWORK_MODE_* See ril.h RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE */
     int NETWORK_MODE_WCDMA_PREF     = 0; /* GSM/WCDMA (WCDMA preferred) */
@@ -285,6 +286,11 @@ cat include/telephony/ril.h | \
     int RIL_REQUEST_IMS_REGISTRATION_STATE = 107;
     int RIL_REQUEST_IMS_SEND_SMS = 108;
     int RIL_REQUEST_GET_DATA_CALL_PROFILE = 109;
+    int RIL_REQUEST_SET_UICC_SUBSCRIPTION = 110;
+    int RIL_REQUEST_SET_DATA_SUBSCRIPTION = 111;
+    int RIL_REQUEST_GET_UICC_SUBSCRIPTION = 112;
+    int RIL_REQUEST_GET_DATA_SUBSCRIPTION = 113;
+    int RIL_REQUEST_SET_SUBSCRIPTION_MODE = 114;
     int RIL_REQUEST_SET_TRANSMIT_POWER = 115;
     int RIL_UNSOL_RESPONSE_BASE = 1000;
     int RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED = 1000;
@@ -328,4 +334,5 @@ cat include/telephony/ril.h | \
     int RIL_UNSOL_DATA_NETWORK_STATE_CHANGED = 1038;
     int RIL_UNSOL_ON_SS = 1039;
     int RIL_UNSOL_STK_CC_ALPHA_NOTIFY = 1040;
+    int RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED = 1041;
 }

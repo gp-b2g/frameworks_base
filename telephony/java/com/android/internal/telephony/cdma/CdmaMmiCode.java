@@ -21,6 +21,7 @@ import android.content.Context;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.MmiCode;
+import com.android.internal.telephony.Phone;
 
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -155,6 +156,11 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
     public CharSequence
     getMessage() {
         return message;
+    }
+
+    public Phone
+    getPhone() {
+        return ((Phone) phone);
     }
 
     // inherited javadoc suffices

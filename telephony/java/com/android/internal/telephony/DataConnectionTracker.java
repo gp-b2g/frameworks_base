@@ -431,7 +431,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected DataConnectionTracker(PhoneBase phone) {
         super();
         mPhone = phone;
-        mUiccManager = UiccManager.getInstance(phone.getContext(), phone.mCM);
+        mUiccManager = UiccManager.getInstance();
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
 
         mPhone.mCM.registerForTetheredModeStateChanged(this,

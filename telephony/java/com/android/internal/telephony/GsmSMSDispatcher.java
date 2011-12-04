@@ -37,6 +37,8 @@ import com.android.internal.telephony.SmsMessageBase.TextEncodingDetails;
 import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.gsm.SmsCbHeader;
 import com.android.internal.telephony.gsm.SmsMessage;
+import com.android.internal.telephony.Subscription;
+import com.android.internal.telephony.SubscriptionManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -281,13 +283,29 @@ final class GsmSMSDispatcher extends SMSDispatcher {
         }
     }
 
+    protected UiccCardApplication getUiccCardApplication() {
+        SubscriptionManager subMgr = SubscriptionManager.getInstance();
+        if (subMgr == null) {
+            return mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP);
+        } else {
+            Subscription subscriptionData = subMgr.getCurrentSubscription(mPhone.getSubscription());
+            if (subscriptionData != null) {
+                return  mUiccManager.getUiccCardApplication(subscriptionData.slotId,
+                        AppFamily.APP_FAM_3GPP);
+            }
+        }
+        return null;
+    }
+
     protected void updateIccAvailability() {
         if (mUiccManager == null ) {
             return;
         }
 
-        UiccCardApplication newUiccApplication =
-                mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP);
+        UiccCardApplication newUiccApplication = getUiccCardApplication();
+        if (newUiccApplication == null) {
+            return;
+        }
 
         if (mUiccApplication != newUiccApplication) {
             if (mUiccApplication != null) {

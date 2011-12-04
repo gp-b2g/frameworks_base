@@ -276,6 +276,25 @@ public class UiccCard {
         return null;
     }
 
+    public int getGsmUmtsSubscriptionAppIndex() {
+        return mGsmUmtsSubscriptionAppIndex;
+    }
+
+    public int getCdmaSubscriptionAppIndex() {
+        return mCdmaSubscriptionAppIndex;
+    }
+
+    /* Returns number of applications on this card */
+    public int getNumApplications() {
+        int count = 0;
+        for (UiccCardApplication a : mUiccApplications) {
+            if (a != null) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     private void log(String msg) {
         if (DBG) Log.d(LOG_TAG, msg);
     }

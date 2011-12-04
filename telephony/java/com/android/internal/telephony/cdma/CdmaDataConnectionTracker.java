@@ -55,7 +55,7 @@ import java.util.ArrayList;
 /**
  * {@hide}
  */
-public final class CdmaDataConnectionTracker extends DataConnectionTracker {
+public class CdmaDataConnectionTracker extends DataConnectionTracker {
     protected final String LOG_TAG = "CDMA";
 
     private CDMAPhone mCdmaPhone;
@@ -280,7 +280,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
      * @param tearDown true if the underlying DataConnection should be disconnected.
      * @param reason for the clean up.
      */
-    private void cleanUpConnection(boolean tearDown, String reason) {
+    protected void cleanUpConnection(boolean tearDown, String reason) {
         if (DBG) log("cleanUpConnection: reason: " + reason);
 
         // Clear the reconnect alarm, if set.
@@ -987,12 +987,17 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
         return false;
     }
 
+    protected IccRecords getUiccCardApplication() {
+        return  mUiccManager.getIccRecords(AppFamily.APP_FAM_3GPP2);
+    }
+
     protected void updateIccAvailability() {
         if (mUiccManager == null ) {
             return;
         }
 
-        IccRecords newIccRecords = mUiccManager.getIccRecords(AppFamily.APP_FAM_3GPP2);
+        IccRecords newIccRecords = getUiccCardApplication();
+        if (newIccRecords == null) return;
 
         if (mIccRecords != newIccRecords) {
             if (mIccRecords != null) {

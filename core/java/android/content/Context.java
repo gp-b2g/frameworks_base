@@ -1676,6 +1676,16 @@ public abstract class Context {
 
     /**
      * Use with {@link #getSystemService} to retrieve a
+     * {@link android.telephony.MSimTelephonyManager} for handling the management
+     * of the telephony features of the multi sim device.
+     *
+     * @see #getSystemService
+     * @see android.telephony.MSimTelephonyManager
+     */
+    public static final String MSIM_TELEPHONY_SERVICE = "phone_msim";
+
+    /**
+     * Use with {@link #getSystemService} to retrieve a
      * {@link android.text.ClipboardManager} for accessing and modifying
      * the contents of the global clipboard.
      *

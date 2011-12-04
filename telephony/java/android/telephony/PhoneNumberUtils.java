@@ -35,6 +35,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseIntArray;
 
+import static com.android.internal.telephony.MSimConstants.SUBSCRIPTION_KEY;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_IDP_STRING;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY;
@@ -152,6 +153,8 @@ public class PhoneNumberUtils
 
         Uri uri = intent.getData();
         String scheme = uri.getScheme();
+        int subscription = intent.getIntExtra(SUBSCRIPTION_KEY,
+                MSimTelephonyManager.getDefault().getDefaultSubscription());
 
         if (scheme.equals("tel") || scheme.equals("sip")) {
             return uri.getSchemeSpecificPart();
@@ -160,6 +163,10 @@ public class PhoneNumberUtils
         // TODO: We don't check for SecurityException here (requires
         // CALL_PRIVILEGED permission).
         if (scheme.equals("voicemail")) {
+            if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                return MSimTelephonyManager.getDefault()
+                        .getCompleteVoiceMailNumber(subscription);
+            }
             return TelephonyManager.getDefault().getCompleteVoiceMailNumber();
         }
 
@@ -1627,7 +1634,13 @@ public class PhoneNumberUtils
         String vmNumber;
 
         try {
-            vmNumber = TelephonyManager.getDefault().getVoiceMailNumber();
+            if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                int subscription = MSimTelephonyManager.getDefault()
+                        .getPreferredVoiceSubscription();
+                vmNumber = MSimTelephonyManager.getDefault().getVoiceMailNumber(subscription);
+            } else {
+                vmNumber = TelephonyManager.getDefault().getVoiceMailNumber();
+            }
         } catch (SecurityException ex) {
             return false;
         }

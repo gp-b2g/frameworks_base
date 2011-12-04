@@ -781,6 +781,8 @@ public abstract class SMSDispatcher extends Handler {
         Intent intent = new Intent(Intents.SMS_RECEIVED_ACTION);
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", getFormat());
+        intent.putExtra(MSimConstants.SUBSCRIPTION_KEY,
+                 mPhone.getSubscription()); //Subscription information to be passed in an intent
         dispatch(intent, RECEIVE_SMS_PERMISSION);
     }
 
@@ -795,6 +797,8 @@ public abstract class SMSDispatcher extends Handler {
         Intent intent = new Intent(Intents.DATA_SMS_RECEIVED_ACTION, uri);
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", getFormat());
+        intent.putExtra(MSimConstants.SUBSCRIPTION_KEY,
+                 mPhone.getSubscription()); //Subscription information to be passed in an intent
         dispatch(intent, RECEIVE_SMS_PERMISSION);
     }
 

@@ -118,8 +118,8 @@ public class GSMPhone extends PhoneBase {
     Thread debugPortThread;
     ServerSocket debugSocket;
 
-    private String mImei;
-    private String mImeiSv;
+    protected String mImei;
+    protected String mImeiSv;
     private String mVmNumber;
     private String mMdn;
     private String mPrlVersion;
@@ -139,12 +139,14 @@ public class GSMPhone extends PhoneBase {
         if (ci instanceof SimulatedRadioControl) {
             mSimulatedRadioControl = (SimulatedRadioControl) ci;
         }
-        mUiccManager = UiccManager.getInstance(context, ci);
+
+        mUiccManager = UiccManager.getInstance();
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mCM.setPhoneType(Phone.PHONE_TYPE_GSM);
         mCT = new GsmCallTracker(this);
-        mSST = new GsmServiceStateTracker (this);
-        mDataConnectionTracker = new GsmDataConnectionTracker (this);
+
+        initSubscriptionSpecifics();
+
         if (!unitTestMode) {
             mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
             mSubInfo = new PhoneSubInfo(this);
@@ -195,10 +197,18 @@ public class GSMPhone extends PhoneBase {
                 Log.w(LOG_TAG, "Failure to open com.android.internal.telephony.debug socket", ex);
             }
         }
+        setProperties();
+    }
 
+    protected void setProperties() {
         //Change the system property
         SystemProperties.set(TelephonyProperties.CURRENT_ACTIVE_PHONE,
                 new Integer(Phone.PHONE_TYPE_GSM).toString());
+    }
+
+    protected void initSubscriptionSpecifics() {
+        mSST = new GsmServiceStateTracker(this);
+        mDataConnectionTracker = new GsmDataConnectionTracker (this);
     }
 
     @Override
@@ -425,7 +435,7 @@ public class GSMPhone extends PhoneBase {
     /**
      * {@inheritDoc}
      */
-    public final void
+    public void
     setSystemProperty(String property, String value) {
         super.setSystemProperty(property, value);
     }
@@ -807,7 +817,7 @@ public class GSMPhone extends PhoneBase {
         mSST.setRadioPower(power);
     }
 
-    private void storeVoiceMailNumber(String number) {
+    protected void storeVoiceMailNumber(String number) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
         SharedPreferences.Editor editor = sp.edit();
         editor.putString(VM_NUMBER, number);
@@ -830,7 +840,7 @@ public class GSMPhone extends PhoneBase {
         return sp.getString(VM_SIM_IMSI, null);
     }
 
-    private void setVmSimImsi(String imsi) {
+    protected void setVmSimImsi(String imsi) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
         SharedPreferences.Editor editor = sp.edit();
         editor.putString(VM_SIM_IMSI, imsi);
@@ -1426,12 +1436,17 @@ public class GSMPhone extends PhoneBase {
         }
     }
 
+    protected UiccCardApplication getUiccCardApplication() {
+        return  mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP);
+    }
+
     protected void updateIccAvailability() {
         if (mUiccManager == null ) {
             return;
         }
 
-        UiccCardApplication newUiccApplication = mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP);
+        UiccCardApplication newUiccApplication = getUiccCardApplication();
+        if (newUiccApplication == null) return;
 
         if (mUiccApplication != newUiccApplication) {
             if (mUiccApplication != null) {
@@ -1687,7 +1702,7 @@ public class GSMPhone extends PhoneBase {
     }
 
     /** gets the voice mail count from preferences */
-    private int getStoredVoiceMessageCount() {
+    protected int getStoredVoiceMessageCount() {
         int countVoiceMessages = 0;
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
         String imsi = sp.getString(VM_ID, null);

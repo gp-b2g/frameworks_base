@@ -39,13 +39,14 @@ public class PhoneFactory {
 
     //***** Class Variables
 
-    static private Phone sProxyPhone = null;
-    static private CommandsInterface sCommandsInterface = null;
+    static protected Phone sProxyPhone = null;
+    static protected CommandsInterface sCommandsInterface = null;
 
-    static private boolean sMadeDefaults = false;
-    static private PhoneNotifier sPhoneNotifier;
-    static private Looper sLooper;
-    static private Context sContext;
+    static protected boolean sMadeDefaults = false;
+    static protected PhoneNotifier sPhoneNotifier;
+    static protected Looper sLooper;
+    static protected Context sContext;
+    static protected UiccManager mUiccManager;
 
     static final int preferredCdmaSubscription = RILConstants.PREFERRED_CDMA_SUBSCRIPTION;
 
@@ -134,6 +135,8 @@ public class PhoneFactory {
 
                 //reads the system properties and makes commandsinterface
                 sCommandsInterface = new RIL(context, networkMode, cdmaSubscription);
+
+                mUiccManager = UiccManager.getInstance(context, sCommandsInterface);
 
                 int phoneType = getPhoneType(networkMode);
                 if (phoneType == Phone.PHONE_TYPE_GSM) {

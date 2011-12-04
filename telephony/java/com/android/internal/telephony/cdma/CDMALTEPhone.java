@@ -84,7 +84,7 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     protected void initSstIcc() {
-        mUiccManager = UiccManager.getInstance(mContext, mCM);
+        mUiccManager = UiccManager.getInstance();
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mSST = new CdmaLteServiceStateTracker(this);
     }

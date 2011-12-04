@@ -462,6 +462,10 @@ public class UiccCardApplication {
         return mAid;
     }
 
+    public String getAppLabel() {
+        return mAppLabel;
+    }
+
     public PinState getPin1State() {
         if (mPin1Replaced) {
             return mUiccCard.getUniversalPinState();

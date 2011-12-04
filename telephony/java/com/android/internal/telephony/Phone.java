@@ -1811,4 +1811,9 @@ public interface Phone {
      *            SUCCESS/FAILURE
      */
     void setTransmitPower(int powerLevel, Message onCompleted);
+
+    /**
+     * Returns the subscription id.
+     */
+    public int getSubscription();
 }

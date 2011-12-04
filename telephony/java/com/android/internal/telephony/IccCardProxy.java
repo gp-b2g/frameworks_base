@@ -57,7 +57,7 @@ public class IccCardProxy extends Handler implements IccCard {
     private static final int EVENT_ICC_ABSENT = 4;
     private static final int EVENT_ICC_LOCKED = 5;
     private static final int EVENT_APP_READY = 6;
-    private static final int EVENT_RECORDS_LOADED = 7;
+    protected static final int EVENT_RECORDS_LOADED = 7;
     private static final int EVENT_IMSI_READY = 8;
     private static final int EVENT_PERSO_LOCKED = 9;
     private static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 11;
@@ -70,20 +70,20 @@ public class IccCardProxy extends Handler implements IccCard {
     private RegistrantList mPinLockedRegistrants = new RegistrantList();
     private RegistrantList mPersoLockedRegistrants = new RegistrantList();
 
-    private AppFamily mCurrentAppType = AppFamily.APP_FAM_3GPP; //default to 3gpp?
-    private UiccManager mUiccManager = null;
-    private UiccCard mUiccCard = null;
-    private UiccCardApplication mUiccApplication = null;
-    private IccRecords mIccRecords = null;
+    protected AppFamily mCurrentAppType = AppFamily.APP_FAM_3GPP; //default to 3gpp?
+    protected UiccManager mUiccManager = null;
+    protected UiccCard mUiccCard = null;
+    protected UiccCardApplication mUiccApplication = null;
+    protected IccRecords mIccRecords = null;
     private CdmaSubscriptionSourceManager mCdmaSSM = null;
     private boolean mRadioOn = false;
     private boolean mCdmaSubscriptionFromNv = false;
     private boolean mIsMultimodeCdmaPhone =
             SystemProperties.getBoolean("ro.config.multimode_cdma", false);
-    private boolean mQuietMode = false; // when set to true IccCardProxy will not broadcast
+    protected boolean mQuietMode = false; // when set to true IccCardProxy will not broadcast
                                         // ACTION_SIM_STATE_CHANGED intents
     private boolean mInitialized = false;
-    private IccCard.State mExternalState = State.UNKNOWN;
+    protected IccCard.State mExternalState = State.UNKNOWN;
 
     public IccCardProxy(Context context, CommandsInterface ci) {
         log("Creating");
@@ -91,7 +91,7 @@ public class IccCardProxy extends Handler implements IccCard {
         this.mCi = ci;
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context,
                 ci, this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
-        mUiccManager = UiccManager.getInstance(context, ci);
+        mUiccManager = UiccManager.getInstance();
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         ci.registerForOn(this,EVENT_RADIO_ON, null);
         ci.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
@@ -251,7 +251,7 @@ public class IccCardProxy extends Handler implements IccCard {
      * When the property is set, broadcast what is the current state
      * of the card
      */
-    private void updateExternalState() {
+    protected void updateExternalState() {
         if (mUiccCard == null || mUiccCard.getCardState() == CardState.CARDSTATE_ABSENT) {
             if (0 == SystemProperties.getInt("persist.radio.apm_sim_not_pwdn", 0)) {
                 if (mRadioOn) {
@@ -295,7 +295,7 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
-    private void registerUiccCardEvents() {
+    protected void registerUiccCardEvents() {
         if (mUiccCard != null) mUiccCard.registerForAbsent(this, EVENT_ICC_ABSENT, null);
         if (mUiccApplication != null) mUiccApplication.registerForReady(this, EVENT_APP_READY, null);
         if (mUiccApplication != null) mUiccApplication.registerForLocked(this, EVENT_ICC_LOCKED, null);
@@ -304,7 +304,7 @@ public class IccCardProxy extends Handler implements IccCard {
         if (mIccRecords != null) mIccRecords.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
     }
 
-    private void unregisterUiccCardEvents() {
+    protected void unregisterUiccCardEvents() {
         if (mUiccCard != null) mUiccCard.unregisterForAbsent(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForReady(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForLocked(this);
@@ -583,7 +583,7 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
-    private void setExternalState(State newState, boolean override) {
+    protected void setExternalState(State newState, boolean override) {
         if (!override && newState == mExternalState) {
             return;
         }
@@ -622,11 +622,11 @@ public class IccCardProxy extends Handler implements IccCard {
         return false;
     }
 
-    private void log(String msg) {
+    protected void log(String msg) {
         if (DBG) Log.d(LOG_TAG, msg);
     }
 
-    private void loge(String msg) {
+    protected void loge(String msg) {
         Log.e(LOG_TAG, msg);
     }
 }

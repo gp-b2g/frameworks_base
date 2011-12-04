@@ -24,6 +24,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.telephony.AdnRecord;
@@ -224,9 +225,9 @@ public class SIMRecords extends IccRecords {
         adnCache.reset();
         mEons.reset();
 
-        SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, null);
-        SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, null);
-        SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, null);
+        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, null);
+        setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, null);
+        setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, null);
 
         // recordsRequested is set to false indicating that the SIM
         // read requests made so far are not valid. This is set to
@@ -497,6 +498,17 @@ public class SIMRecords extends IccRecords {
         // length of mcc = 3 (TS 23.003 Section 2.2)
         return imsi.substring(0, 3 + mncLength);
     }
+
+    /** Returns the country code associated with the SIM
+     * i.e the first 3 digits of IMSI.
+     */
+    public String getCountryCode() {
+         if (imsi == null) {
+             return null;
+         }
+         return (imsi.substring(0,3));
+     }
+
 
     // ***** Overridden from Handler
     public void handleMessage(Message msg) {
@@ -1073,7 +1085,7 @@ public class SIMRecords extends IccRecords {
                 spnDisplayCondition = 0xff & data[0];
                 spn = IccUtils.adnStringFieldToString(data, 1, data.length - 1);
 
-                SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, spn);
+                setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, spn);
 
                 // When device enters or exits Home Zone, certain operators update
                 // EF_SPN file. This helps to know if the device is in Home Zone or
@@ -1225,10 +1237,10 @@ public class SIMRecords extends IccRecords {
 
         // Some fields require more than one SIM record to set
 
-        SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
 
         if (imsi != null) {
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
+            setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
                     MccTable.countryCodeForMcc(Integer.parseInt(imsi.substring(0,3))));
         }
         else {
@@ -1434,7 +1446,7 @@ public class SIMRecords extends IccRecords {
 
                     if (DBG) log("Load EF_SPN: " + spn
                             + " spnDisplayCondition: " + spnDisplayCondition);
-                    SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, spn);
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, spn);
 
                     spnState = Get_Spn_Fsm_State.IDLE;
                 } else {
@@ -1456,7 +1468,7 @@ public class SIMRecords extends IccRecords {
                             data, 0, data.length - 1 );
 
                     if (DBG) log("Load EF_SPN_CPHS: " + spn);
-                    SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, spn);
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, spn);
 
                     spnState = Get_Spn_Fsm_State.IDLE;
                 } else {
@@ -1474,7 +1486,7 @@ public class SIMRecords extends IccRecords {
                             data, 0, data.length - 1);
 
                     if (DBG) log("Load EF_SPN_SHORT_CPHS: " + spn);
-                    SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, spn);
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, spn);
                 }else {
                     if (DBG) log("No SPN loaded in either CHPS or 3GPP");
                 }
@@ -1654,5 +1666,13 @@ public class SIMRecords extends IccRecords {
             Log.d(LOG_TAG, " VoiceMessageCount from SIM CPHS = " + countVoiceMessages);
         }
         return countVoiceMessages;
+    }
+
+    private void setSystemProperty(String key, String val) {
+        // Update the system properties only in case NON-DSDS.
+        // TODO: Shall have a better approach!
+        if (!TelephonyManager.getDefault().isMultiSimEnabled()) {
+            SystemProperties.set(key, val);
+        }
     }
 }

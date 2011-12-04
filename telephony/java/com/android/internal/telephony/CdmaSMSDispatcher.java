@@ -41,6 +41,8 @@ import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.SmsMessage;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.cdma.sms.UserData;
+import com.android.internal.telephony.Subscription;
+import com.android.internal.telephony.SubscriptionManager;
 import com.android.internal.util.HexDump;
 
 import java.io.ByteArrayOutputStream;
@@ -438,13 +440,27 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         return false;
     }
 
+    protected UiccCardApplication getUiccCardApplication() {
+        SubscriptionManager subMgr = SubscriptionManager.getInstance();
+        if (subMgr == null) {
+            return mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP2);
+        } else {
+            Subscription subscriptionData = subMgr.getCurrentSubscription(mPhone.getSubscription());
+            if (subscriptionData != null) {
+                return  mUiccManager.getUiccCardApplication(subscriptionData.slotId,
+                        AppFamily.APP_FAM_3GPP2);
+            }
+        }
+        return null;
+    }
+
     protected void updateIccAvailability() {
         if (mUiccManager == null ) {
             return;
         }
 
-        UiccCardApplication newUiccApplication =
-                mUiccManager.getUiccCardApplication(AppFamily.APP_FAM_3GPP2);
+        UiccCardApplication newUiccApplication = getUiccCardApplication();
+        if (newUiccApplication == null) return;
 
         if (mUiccApplication != newUiccApplication) {
             if (mUiccApplication != null) {
