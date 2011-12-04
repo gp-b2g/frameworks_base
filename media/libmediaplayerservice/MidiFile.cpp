@@ -487,6 +487,8 @@ int MidiFile::render() {
         // LOGV("MidiFile::render - updating state");
         EAS_GetLocation(mEasData, mEasHandle, &mPlayTime);
         EAS_State(mEasData, mEasHandle, &mState);
+        if((mState != EAS_STATE_STOPPED) && (mPlayTime >= mDuration))
+            mState = EAS_STATE_STOPPED;
         mMutex.unlock();
 
         // create audio output track if necessary

@@ -660,6 +660,11 @@ void MediaPlayer::notify(int msg, int ext1, int ext2, const Parcel *obj)
         // ext1: Media framework error code.
         // ext2: Implementation dependant error code.
         LOGE("error (%d, %d)", ext1, ext2);
+        if ( ext1 == MEDIA_ERROR_SERVER_DIED ) {
+            LOGE("Mediaserver died in %d state",mCurrentState);
+            mAudioSessionId = AudioSystem::newAudioSessionId();
+			AudioSystem::acquireAudioSessionId(mAudioSessionId);
+        }
         mCurrentState = MEDIA_PLAYER_STATE_ERROR;
         if (mPrepareSync)
         {
