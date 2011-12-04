@@ -428,4 +428,7 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
 
     public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message response) {
     }
+
+    public void setTransmitPower(int powerLevel, Message result) {
+    }
 }

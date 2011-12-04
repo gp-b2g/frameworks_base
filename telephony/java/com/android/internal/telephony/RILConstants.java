@@ -172,6 +172,10 @@ cat include/telephony/ril.h | \
     int RIL_TETHERED_MODE_ON = 1;
     int RIL_TETHERED_MODE_OFF = 0;
 
+    /* Modem transmit power levels. See ril.h RIL_REQUEST_SET_TRANSMIT_POWER */
+    static final int TRANSMIT_POWER_DEFAULT = 0;
+    static final int TRANSMIT_POWER_WIFI_HOTSPOT = 1;
+
     int RIL_REQUEST_GET_SIM_STATUS = 1;
     int RIL_REQUEST_ENTER_SIM_PIN = 2;
     int RIL_REQUEST_ENTER_SIM_PUK = 3;
@@ -280,6 +284,7 @@ cat include/telephony/ril.h | \
     int RIL_REQUEST_VOICE_RADIO_TECH = 106;
     int RIL_REQUEST_IMS_REGISTRATION_STATE = 107;
     int RIL_REQUEST_IMS_SEND_SMS = 108;
+    int RIL_REQUEST_SET_TRANSMIT_POWER = 115;
     int RIL_UNSOL_RESPONSE_BASE = 1000;
     int RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED = 1000;
     int RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED = 1001;

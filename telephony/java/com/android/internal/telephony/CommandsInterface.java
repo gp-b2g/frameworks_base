@@ -1682,4 +1682,15 @@ public interface CommandsInterface {
      * @param response a callback message with the String response in the obj field
      */
     public void requestIsimAuthentication(String nonce, Message response);
+
+    /**
+     * Sets the transmit power
+     *
+     * @param powerLevel Transmit power level to set. One of:
+     *            TRANSMIT_POWER_DEFAULT
+     *            TRANSMIT_POWER_WIFI_HOTSPOT
+     * @param result Callback message contains the information of
+     *            SUCCESS/FAILURE.
+     */
+    void setTransmitPower(int powerLevel, Message result);
 }
