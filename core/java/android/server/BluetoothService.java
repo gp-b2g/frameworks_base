@@ -194,6 +194,8 @@ public class BluetoothService extends IBluetooth.Stub {
     private boolean mFTPEnabled = false;
     private int[] mSAPRecordHandle;
     private boolean mSAPEnabled = false;
+    private int[] mMAPRecordHandle;
+    private boolean mMAPEnabled = false;
 
     private static class RemoteService {
         public String address;
@@ -493,6 +495,7 @@ public class BluetoothService extends IBluetooth.Stub {
         disableFTP();
         disableDUN();
         disableSAP();
+        disableMAP();
         tearDownNativeDataNative();
     }
 
@@ -706,6 +709,53 @@ public class BluetoothService extends IBluetooth.Stub {
         }
     }
 
+    private synchronized boolean enableMAP() {
+        /* TODO:
+         * 1> if map property is not present it return true, Need to address
+         *    once feature property is added
+         * 2> Adds records for both MAS0 and MAS1. Need to address with
+         *    different interfaces if needed
+         */
+        if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.map", true) == false) {
+            Log.e(TAG, "MAP is not supported");
+            return false;
+        }
+
+        if (mMAPEnabled != true) {
+            int[] svcIdentifiers = new int[1];
+            svcIdentifiers[0] =  BluetoothUuid.getServiceIdentifierFromParcelUuid(BluetoothUuid.MessageAccessServer);
+            Log.e(TAG, "calling addReservedServiceRecordsNative");
+            mMAPRecordHandle = addReservedServiceRecordsNative(svcIdentifiers);
+            mMAPEnabled = true;
+            return true;
+        } else {
+            Log.e(TAG, "MAP already enabled");
+            return false;
+        }
+    }
+
+    private synchronized boolean disableMAP() {
+        /* TODO:
+         * 1> if map property is not present it return true, Need to address
+         *    once feature property is added
+         * 2> Removes records for both MAS0 and MAS1. Need to address with
+         *    different interfaces if needed
+         */
+        if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.map", true) == false) {
+            Log.e(TAG, "MAP is not supported");
+            return false;
+        }
+
+        if (mMAPEnabled == true) {
+            removeReservedServiceRecordsNative(mMAPRecordHandle);
+            mMAPEnabled = false;
+            return true;
+        } else {
+            Log.e(TAG, "MAP already disabled");
+            return false;
+        }
+    }
+
     private synchronized void updateSdpRecords() {
         ArrayList<ParcelUuid> uuids = new ArrayList<ParcelUuid>();
 
@@ -742,6 +792,7 @@ public class BluetoothService extends IBluetooth.Stub {
         enableFTP();
         enableDUN();
         enableSAP();
+        enableMAP();
     }
 
     /**
