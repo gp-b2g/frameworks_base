@@ -299,6 +299,12 @@ class HTML5Audio extends Handler
         }
     }
 
+    private void setVolume(float volume) {
+        if (mState >= PREPARED) {
+            mMediaPlayer.setVolume(volume, volume);
+        }
+    }
+
     /**
      * Called only over JNI when WebKit is happy to
      * destroy the media player.
