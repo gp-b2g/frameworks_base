@@ -391,6 +391,7 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
     }
 
     private synchronized void onBluetoothDisable() {
+        mAudioManager.setParameters(BLUETOOTH_ENABLED + "=false");
         if (!mAudioDevices.isEmpty()) {
             BluetoothDevice[] devices = new BluetoothDevice[mAudioDevices.size()];
             devices = mAudioDevices.keySet().toArray(devices);
@@ -413,7 +414,6 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
             mAudioDevices.clear();
         }
 
-        mAudioManager.setParameters(BLUETOOTH_ENABLED + "=false");
     }
 
     private synchronized boolean isConnectSinkFeasible(BluetoothDevice device) {
