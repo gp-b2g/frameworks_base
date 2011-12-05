@@ -226,6 +226,7 @@ public class WebSettings {
     private boolean         mLoadWithOverviewMode = false;
     private boolean         mEnableSmoothTransition = false;
     private boolean         mForceUserScalable = false;
+    private boolean         mWOFFEnabled = true;
 
     // AutoFill Profile data
     /**
@@ -1810,6 +1811,16 @@ public class WebSettings {
      */
     public synchronized AutoFillProfile getAutoFillProfile() {
         return mAutoFillProfile;
+    }
+
+    /**
+     * @hide
+     */
+    public synchronized void setWOFFEnabled(boolean flag) {
+        if (mWOFFEnabled != flag) {
+            mWOFFEnabled = flag;
+            postSync();
+        }
     }
 
     int getDoubleTapToastCount() {
