@@ -284,12 +284,6 @@ status_t LPAPlayer::start(bool sourceAlreadyStarted) {
     mFirstBufferResult = mSource->read(&mFirstBuffer);
     if (mFirstBufferResult == INFO_FORMAT_CHANGED) {
         LOGV("INFO_FORMAT_CHANGED!!!");
-        //After format change start giving input buffers from starting
-        if (!(mInternalSeeking || mSeeking)) {
-            mInternalSeeking = true;
-            mReachedEOS = false;
-            mSeekTimeUs = 0;
-        }
         CHECK(mFirstBuffer == NULL);
         mFirstBufferResult = OK;
         mIsFirstBuffer = false;
