@@ -137,7 +137,7 @@ public class Camera {
     private static final int CAMERA_MSG_RAW_IMAGE        = 0x080;
     private static final int CAMERA_MSG_COMPRESSED_IMAGE = 0x100;
     private static final int CAMERA_MSG_RAW_IMAGE_NOTIFY = 0x200;
-    private static final int CAMERA_MSG_STATS_DATA       = 0x4000;
+    private static final int CAMERA_MSG_STATS_DATA       = 0x800;
     private static final int CAMERA_MSG_META_DATA        = 0x8000;
     private static final int CAMERA_MSG_PREVIEW_METADATA = 0x400;
     private static final int CAMERA_MSG_ALL_MSGS         = 0x4FF;
@@ -713,8 +713,12 @@ public class Camera {
                 return;
 
             case CAMERA_MSG_STATS_DATA:
+                int statsdata[] = new int[257];
+                for(int i =0; i<257; i++ ) {
+                   statsdata[i] = byteToInt( (byte[])msg.obj, i*4);
+                }
                 if (mCameraDataCallback != null) {
-                    mCameraDataCallback.onCameraData((int[])msg.obj, mCamera);
+                     mCameraDataCallback.onCameraData(statsdata, mCamera);
                 }
                 return;
 
@@ -761,6 +765,14 @@ public class Camera {
         }
     }
 
+    private static int byteToInt(byte[] b, int offset) {
+        int value = 0;
+        for (int i = 0; i < 4; i++) {
+            int shift = (4 - 1 - i) * 8;
+            value += (b[(3-i) + offset] & 0x000000FF) << shift;
+        }
+        return value;
+    }
     private static void postEventFromNative(Object camera_ref,
                                             int what, int arg1, int arg2, Object obj)
     {
