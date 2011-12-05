@@ -85,12 +85,14 @@ public final class BluetoothDeviceProfileState extends StateMachine {
     public static final int CONNECT_OTHER_PROFILES = 103;
     private static final int CONNECTION_ACCESS_REQUEST_REPLY = 104;
     private static final int CONNECTION_ACCESS_REQUEST_EXPIRY = 105;
+    private static final int UNPAIR_COMPLETE = 106;
 
     private static final int CONNECT_OTHER_PROFILES_DELAY = 4000; // 4 secs
     private static final int CONNECTION_ACCESS_REQUEST_EXPIRY_TIMEOUT = 7000; // 7 secs
     private static final int CONNECTION_ACCESS_UNDEFINED = -1;
     private static final long INIT_INCOMING_REJECT_TIMER = 1000; // 1 sec
     private static final long MAX_INCOMING_REJECT_TIMER = 3600 * 1000 * 4; // 4 hours
+    private static final int UNPAIR_COMPLETE_DELAY = 2000; // 2 secs delay in bluez
 
     private static final String ACCESS_AUTHORITY_PACKAGE = "com.android.settings";
     private static final String ACCESS_AUTHORITY_CLASS =
@@ -122,6 +124,7 @@ public final class BluetoothDeviceProfileState extends StateMachine {
     private PowerManager.WakeLock mWakeLock;
     private PowerManager mPowerManager;
     private boolean mPairingRequestRcvd = false;
+    private boolean mUnpairStarted = false;
 
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -315,20 +318,42 @@ public final class BluetoothDeviceProfileState extends StateMachine {
             log("ACL Connected State -> Processing Message: " + message.what);
             switch(message.what) {
                 case CONNECT_HFP_OUTGOING:
+                    if (mUnpairStarted == true) {
+                        log("Discarding message " + message.what);
+                    } else {
+                        transitionTo(mOutgoingHandsfree);
+                    }
+                    break;
                 case DISCONNECT_HFP_OUTGOING:
                     transitionTo(mOutgoingHandsfree);
                     break;
                 case CONNECT_HFP_INCOMING:
-                    transitionTo(mIncomingHandsfree);
+                    if (mUnpairStarted == true) {
+                        log("Discarding message " + message.what);
+                    } else {
+                        transitionTo(mIncomingHandsfree);
+                    }
                     break;
                 case DISCONNECT_HFP_INCOMING:
                     transitionTo(mIncomingHandsfree);
                     break;
                 case CONNECT_A2DP_OUTGOING:
+                    if (mUnpairStarted == true) {
+                        log("Discarding message " + message.what);
+                    } else {
+                        transitionTo(mOutgoingA2dp);
+                    }
+                    break;
                 case DISCONNECT_A2DP_OUTGOING:
                     transitionTo(mOutgoingA2dp);
                     break;
                 case CONNECT_A2DP_INCOMING:
+                    if (mUnpairStarted == true) {
+                        log("Discarding message " + message.what);
+                    } else {
+                        transitionTo(mIncomingA2dp);
+                    }
+                    break;
                 case DISCONNECT_A2DP_INCOMING:
                     transitionTo(mIncomingA2dp);
                     break;
@@ -413,6 +438,9 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                     break;
                 case TRANSITION_TO_STABLE:
                     // ignore.
+                    break;
+                case UNPAIR_COMPLETE:
+                    processCommand(UNPAIR_COMPLETE);
                     break;
                 default:
                     return NOT_HANDLED;
@@ -520,6 +548,7 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                     break; // ignore
                 case DISCONNECT_PBAP_OUTGOING:
                 case UNPAIR:
+                case UNPAIR_COMPLETE:
                 case AUTO_CONNECT_PROFILES:
                 case CONNECT_OTHER_PROFILES:
                     deferMessage(message);
@@ -618,6 +647,7 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                      break; // ignore
                 case DISCONNECT_PBAP_OUTGOING:
                 case UNPAIR:
+                case UNPAIR_COMPLETE:
                 case AUTO_CONNECT_PROFILES:
                 case CONNECT_OTHER_PROFILES:
                     deferMessage(message);
@@ -728,6 +758,7 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                     break; // ignore
                 case DISCONNECT_PBAP_OUTGOING:
                 case UNPAIR:
+                case UNPAIR_COMPLETE:
                 case AUTO_CONNECT_PROFILES:
                 case CONNECT_OTHER_PROFILES:
                     deferMessage(message);
@@ -824,6 +855,7 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                      break; // ignore
                 case DISCONNECT_PBAP_OUTGOING:
                 case UNPAIR:
+                case UNPAIR_COMPLETE:
                 case AUTO_CONNECT_PROFILES:
                 case CONNECT_OTHER_PROFILES:
                     deferMessage(message);
@@ -1235,7 +1267,15 @@ public final class BluetoothDeviceProfileState extends StateMachine {
             case UNPAIR:
                 writeTimerValue(INIT_INCOMING_REJECT_TIMER);
                 setTrust(CONNECTION_ACCESS_UNDEFINED);
+                Message msg = obtainMessage(UNPAIR_COMPLETE);
+                sendMessageDelayed(msg, UNPAIR_COMPLETE_DELAY);
+                mUnpairStarted = true;
                 return mService.removeBondInternal(mDevice.getAddress());
+            case UNPAIR_COMPLETE:
+                // unpair process in bluez will get triggered, unblocking
+                // UI requests
+                mUnpairStarted = false;
+                break;
             default:
                 Log.e(TAG, "Error: Unknown Command");
         }
