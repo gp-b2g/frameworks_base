@@ -1591,7 +1591,7 @@ public class GSMPhone extends PhoneBase {
     }
 
     public boolean isCspPlmnEnabled() {
-        return (mIccRecords != null) ? mIccRecords.isCspPlmnEnabled() : false;
+        return (mIccRecords != null) ? mIccRecords.isCspPlmnEnabled() : true;
     }
 
     public boolean isManualNetSelAllowed() {
