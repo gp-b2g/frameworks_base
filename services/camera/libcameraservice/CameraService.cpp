@@ -885,6 +885,13 @@ status_t CameraService::Client::sendCommand(int32_t cmd, int32_t arg1, int32_t a
     } else if (cmd == CAMERA_CMD_PLAY_RECORDING_SOUND) {
         mCameraService->playSound(SOUND_RECORDING);
     }
+    else if (cmd == CAMERA_CMD_HISTOGRAM_ON ) {
+        enableMsgType(CAMERA_MSG_STATS_DATA);
+    }
+    else if (cmd ==  CAMERA_CMD_HISTOGRAM_OFF) {
+        disableMsgType(CAMERA_MSG_STATS_DATA);
+    }
+
 
     return mHardware->sendCommand(cmd, arg1, arg2);
 }
