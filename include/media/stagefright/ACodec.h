@@ -60,6 +60,7 @@ private:
     struct ExecutingToIdleState;
     struct IdleToLoadedState;
     struct FlushingState;
+    struct FlushingOutputState;
 
     enum {
         kWhatSetup                   = 'setu',
@@ -103,6 +104,7 @@ private:
     sp<ExecutingToIdleState> mExecutingToIdleState;
     sp<IdleToLoadedState> mIdleToLoadedState;
     sp<FlushingState> mFlushingState;
+    sp<FlushingOutputState> mFlushingOutputState;
 
     AString mComponentName;
     sp<IOMX> mOMX;
