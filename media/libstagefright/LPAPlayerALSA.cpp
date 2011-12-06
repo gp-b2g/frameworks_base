@@ -523,22 +523,12 @@ void LPAPlayer::pause(bool playPendingSamples) {
             timePlayed += (nanoseconds_to_microseconds(systemTime(SYSTEM_TIME_MONOTONIC)) - timeStarted);
         }
     }
-    CHECK(mSource != NULL);
-    mSource->pause();
 }
 
 void LPAPlayer::resume() {
     LOGV("resume: isPaused %d",isPaused);
     if ( isPaused) {
         CHECK(mStarted);
-#ifdef IS_PAUSED_API
-        if (mSource->isPaused()==true) 
-#endif
-        {
-            CHECK(mSource != NULL);
-            mSource->start();
-        }
-
         if (!bIsA2DPEnabled) {
             LOGE("LPAPlayer::resume - Resuming Driver");
             if(mPauseEventPending) {

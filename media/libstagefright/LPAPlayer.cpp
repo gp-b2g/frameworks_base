@@ -489,8 +489,6 @@ void LPAPlayer::pause(bool playPendingSamples) {
             timePlayed += (nanoseconds_to_microseconds(systemTime(SYSTEM_TIME_MONOTONIC)) - timeStarted);
         }
     }
-    CHECK(mSource != NULL);
-    mSource->pause();
 }
 
 void LPAPlayer::resume() {
@@ -498,15 +496,6 @@ void LPAPlayer::resume() {
     Mutex::Autolock autoLock(resumeLock);
     if ( isPaused) {
         CHECK(mStarted);
-#ifdef IS_PAUSED_API
-        if (mSource->isPaused()==true)
-#endif
-        {
-
-            CHECK(mSource != NULL);
-            mSource->start();
-        }
-        /* TODO: Check A2dp variable */
         if (bIsA2DPEnabled && a2dpDisconnectPause) {
             isPaused = false;
             mInternalSeeking = true;
@@ -543,7 +532,7 @@ void LPAPlayer::resume() {
 
         } else {
             if (!bIsA2DPEnabled) {
-                LOGE("LPAPlayer::resume - Resuming Driver");
+                LOGV("LPAPlayer::resume - Resuming Driver");
 
                 if(mPauseEventPending) {
                     LOGV("Resume(): Cancelling the puaseTimeout event");
@@ -1536,7 +1525,6 @@ size_t LPAPlayer::fillBuffer(void *data, size_t size) {
             //       mInputBuffer->range_length(),
             //      mPositionTimeMediaUs / 1E6, mPositionTimeRealUs / 1E6);
         }
-        LOGV("if (mInputBuffer->range_length() == 0)");
         if (mInputBuffer->range_length() == 0) {
             mInputBuffer->release();
             mInputBuffer = NULL;
