@@ -609,6 +609,7 @@ void CameraService::Client::setPreviewCallbackFlag(int callback_flag) {
 // start preview mode
 status_t CameraService::Client::startPreview() {
     LOG1("startPreview (pid %d)", getCallingPid());
+    enableMsgType(CAMERA_MSG_PREVIEW_METADATA);
     return startCameraMode(CAMERA_PREVIEW_MODE);
 }
 
@@ -694,6 +695,7 @@ status_t CameraService::Client::startRecordingMode() {
 // stop preview mode
 void CameraService::Client::stopPreview() {
     LOG1("stopPreview (pid %d)", getCallingPid());
+    disableMsgType(CAMERA_MSG_PREVIEW_METADATA);
     Mutex::Autolock lock(mLock);
     if (checkPidAndHardware() != NO_ERROR) return;
 
@@ -793,7 +795,7 @@ status_t CameraService::Client::takePicture(int msgType) {
                            CAMERA_MSG_RAW_IMAGE |
                            CAMERA_MSG_RAW_IMAGE_NOTIFY |
                            CAMERA_MSG_COMPRESSED_IMAGE);
-
+    disableMsgType(CAMERA_MSG_PREVIEW_METADATA);
     enableMsgType(picMsgType);
 
     return mHardware->takePicture();
