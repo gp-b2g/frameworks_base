@@ -191,18 +191,29 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
         boolean desiredPowerState = mCdmaPhone.mSST.getDesiredPowerState();
         boolean subscriptionFromNv = (mCdmaSSM.getCdmaSubscriptionSource() == RILConstants.SUBSCRIPTION_FROM_NV);
 
-        boolean allowed =
+        boolean allowed = true;
+
+        if (mCheckForConnectivity) {
+            allowed = allowed &&
                     (psState == ServiceState.STATE_IN_SERVICE ||
                             mAutoAttachOnCreation) &&
-                    (subscriptionFromNv ||
-                            mIccRecords != null && mIccRecords.getRecordsLoaded()) &&
                     (mCdmaPhone.mSST.isConcurrentVoiceAndDataAllowed() ||
                             mPhone.getState() == Phone.State.IDLE) &&
                     !roaming &&
-                    internalDataEnabled &&
-                    desiredPowerState &&
-                    !mPendingRestartRadio &&
-                    !mCdmaPhone.needsOtaServiceProvisioning();
+                    internalDataEnabled;
+        }
+
+        if (mCheckForSubscription) {
+            allowed = allowed &&
+                (subscriptionFromNv ||
+                mIccRecords != null && mIccRecords.getRecordsLoaded());
+        }
+
+        allowed = allowed &&
+                desiredPowerState &&
+                !mPendingRestartRadio &&
+                !mCdmaPhone.needsOtaServiceProvisioning();
+
         if (!allowed && DBG) {
             String reason = "";
             if (!((psState == ServiceState.STATE_IN_SERVICE) || mAutoAttachOnCreation)) {
@@ -223,6 +234,10 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
             if (mCdmaPhone.needsOtaServiceProvisioning()) reason += " - needs Provisioning";
             log("Data not allowed due to" + reason);
         }
+
+        if (DBG) log("FMC: mCheckForConnectivity:" + mCheckForConnectivity +
+                    "mCheckForSubscription:" + mCheckForSubscription);
+
         return allowed;
     }
 
@@ -563,9 +578,6 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
         if (mState == State.FAILED) {
             cleanUpAllConnections(null);
         }
-
-        // TODO: Request for OMH Data Profiles here and follow up with EVENT_TRY_SETUP_DATA
-        // Add arbitration logic etc in CdmaDCT.
 
         sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, Phone.REASON_SIM_LOADED));
     }
@@ -994,6 +1006,17 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
                 mIccRecords = newIccRecords;
                 mIccRecords.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
             }
+        }
+    }
+
+    protected void setDataReadinessChecks(
+            boolean checkConnectivity, boolean checkSubscription, boolean tryDataCalls) {
+        mCheckForConnectivity = checkConnectivity;
+        mCheckForSubscription = checkSubscription;
+
+        if (tryDataCalls) {
+            sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA,
+                    Phone.REASON_DATA_READINESS_CHECKS_MODIFIED));
         }
     }
 

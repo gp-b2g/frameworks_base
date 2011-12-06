@@ -2459,6 +2459,11 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         }
     }
 
+    protected void setDataReadinessChecks(
+            boolean checkConnectivity, boolean checkSubscription, boolean tryDataCalls) {
+        // Not used for GSM
+    }
+
     @Override
     protected void log(String s) {
         Log.d(LOG_TAG, "[GsmDCT] "+ s);

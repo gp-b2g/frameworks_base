@@ -184,6 +184,7 @@ public interface Phone {
     static final String REASON_LINK_PROPERTIES_CHANGED = "linkPropertiesChanged";
     static final String REASON_TETHERED_MODE_STATE_CHANGED = "tetheredModeStateChanged";
     static final String REASON_SINGLE_PDN_ARBITRATION = "SinglePdnArbitration";
+    static final String REASON_DATA_READINESS_CHECKS_MODIFIED = "dataReadinessChecksModified";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
@@ -297,6 +298,17 @@ public interface Phone {
      * Gets the context for the phone, as set at initialization time.
      */
     Context getContext();
+
+    /**
+     * Modify data readiness checks performed during data call setup
+     *
+     * @param checkConnectivity - check for network state in service, roaming and data in roaming enabled.
+     * @param checkSubscription - check for icc/nv ready and icc records loaded.
+     * @param tryDataCalls - set to true to attempt data calls if data call is not already active.
+     *
+     */
+    public void setDataReadinessChecks(
+            boolean checkConnectivity, boolean checkSubscription, boolean tryDataCalls);
 
     /**
      * Disables the DNS check (i.e., allows "0.0.0.0").
