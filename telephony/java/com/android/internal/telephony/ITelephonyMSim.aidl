@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -167,7 +167,7 @@ interface ITelephonyMSim {
      *        pin The new pin to be set in SIM
      * @return whether the operation was a success.
      */
-    boolean supplyPuk(String puk, String pin);
+    boolean supplyPuk(String puk, String pin, int subscription);
 
     /**
      * Handles PIN MMI commands (PIN/PIN2/PUK/PUK2), which are initiated
@@ -346,5 +346,7 @@ interface ITelephonyMSim {
      * @return true if success
      */
     boolean setPreferredDataSubscription(int subscription);
+
+    boolean isSimPukLocked(int subscription);
 }
 

@@ -65,7 +65,7 @@ public class IccCardProxy extends Handler implements IccCard {
     private CommandsInterface mCi;
 
     private RegistrantList mReadyRegistrants = new RegistrantList();
-    private RegistrantList mAbsentRegistrants = new RegistrantList();
+    protected RegistrantList mAbsentRegistrants = new RegistrantList();
     private RegistrantList mPinLockedRegistrants = new RegistrantList();
     private RegistrantList mPersoLockedRegistrants = new RegistrantList();
 
