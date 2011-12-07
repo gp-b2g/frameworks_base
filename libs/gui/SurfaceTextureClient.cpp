@@ -22,6 +22,7 @@
 #include <surfaceflinger/SurfaceComposerClient.h>
 
 #include <utils/Log.h>
+#include <qcom_ui.h>
 
 namespace android {
 
@@ -316,10 +317,27 @@ int SurfaceTextureClient::perform(int operation, va_list args)
         res = dispatchDisconnect(args);
         break;
     default:
-        res = NAME_NOT_FOUND;
+        res = dispatchPerformQcomOperation(operation, args);
         break;
     }
     return res;
+}
+
+int SurfaceTextureClient::dispatchPerformQcomOperation(int operation,
+                                                       va_list args) {
+    int num_args = getNumberOfArgsForOperation(operation);
+    if (-EINVAL == num_args) {
+        LOGE("%s: invalid arguments for operation (operation = 0x%x)",
+             __FUNCTION__, operation);
+        return -1;
+    }
+
+    LOGV("%s: num_args = %d", __FUNCTION__, num_args);
+    int arg[3] = {0, 0, 0};
+    for (int i =0; i < num_args; i++) {
+        arg[i] = va_arg(args, int);
+    }
+    return performQcomOperation(operation, arg[0], arg[1], arg[2]);
 }
 
 int SurfaceTextureClient::dispatchConnect(va_list args) {
@@ -394,6 +412,13 @@ int SurfaceTextureClient::dispatchUnlockAndPost(va_list args) {
     return unlockAndPost();
 }
 
+int SurfaceTextureClient::performQcomOperation(int operation, int arg1,
+                                               int arg2, int arg3) {
+    LOGV("SurfaceTextureClient::performQcomOperation");
+    Mutex::Autolock lock(mMutex);
+    int err = mSurfaceTexture->performQcomOperation(operation, arg1, arg2, arg3);
+    return err;
+}
 
 int SurfaceTextureClient::connect(int api) {
     LOGV("SurfaceTextureClient::connect");

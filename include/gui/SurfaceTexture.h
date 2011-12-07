@@ -96,6 +96,8 @@ public:
 
     virtual int query(int what, int* value);
 
+    virtual int performQcomOperation(int operation, int arg1, int arg2, int arg3);
+
     // setSynchronousMode set whether dequeueBuffer is synchronous or
     // asynchronous. In synchronous mode, dequeueBuffer blocks until
     // a buffer is available, the currently bound buffer can be dequeued and
@@ -468,6 +470,7 @@ private:
     // around a GL driver limitation on the number of FBO attachments, which the
     // browser's tile cache exceeds.
     const GLenum mTexTarget;
+
 };
 
 // ----------------------------------------------------------------------------

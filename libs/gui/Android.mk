@@ -28,7 +28,9 @@ LOCAL_SHARED_LIBRARIES := \
 	libui \
 	libEGL \
 	libGLESv2 \
+        libQcomUI
 
+LOCAL_C_INCLUDES := hardware/qcom/display/libqcomui
 
 LOCAL_MODULE:= libgui
 
