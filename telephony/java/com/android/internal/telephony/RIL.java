@@ -2858,15 +2858,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
                 // Initial conditions
                 //setRadioPower(false, null);
-                if (mPreferredNetworkType < RILConstants.NETWORK_MODE_WCDMA_PREF) {
-                    if (RILJ_LOGD)
-                        riljLog("RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE not sent on init, " +
-                                "unsupported network mode in database");
-                } else {
-                    setPreferredNetworkType(mPreferredNetworkType, null);
-                }
-                setCdmaSubscriptionSource(mCdmaSubscription, null);
-                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
+                //setPreferredNetworkType(mPreferredNetworkType, null);
+                //setCdmaSubscriptionSource(mCdmaSubscription, null);
+                //notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
             }
             case RIL_UNSOL_TETHERED_MODE_STATE_CHANGED:
