@@ -336,8 +336,6 @@ static jboolean setUpEventLoop(native_data_t *nat) {
             return JNI_FALSE;
         }
 
-        return JNI_TRUE;
-
         const char *watcher_path = "/android/bluetooth/watcher";
         if (register_watcher_path(nat, watcher_path) < 0) {
             dbus_connection_unregister_object_path (nat->conn, watcher_path);
