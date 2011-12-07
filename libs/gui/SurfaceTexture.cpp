@@ -35,7 +35,7 @@
 
 #include <utils/Log.h>
 #include <utils/String8.h>
-
+#include <qcom_ui.h>
 
 #define ALLOW_DEQUEUE_CURRENT_BUFFER    false
 
@@ -112,7 +112,8 @@ SurfaceTexture::SurfaceTexture(GLuint tex, bool allowSynchronousMode,
     mAllowSynchronousMode(allowSynchronousMode),
     mConnectedApi(NO_CONNECTED_API),
     mAbandoned(false),
-    mTexTarget(texTarget) {
+    mTexTarget(texTarget),
+    mReqSize(0) {
     // Choose a name using the PID and a process-unique ID.
     mName = String8::format("unnamed-%d-%d", getpid(), createProcessUniqueId());
 
@@ -418,6 +419,7 @@ status_t SurfaceTexture::dequeueBuffer(int *outBuf, uint32_t w, uint32_t h,
         if (updateFormat) {
             mPixelFormat = format;
         }
+        checkBuffer((native_handle_t *)graphicBuffer->handle, mReqSize, usage);
         mSlots[buf].mGraphicBuffer = graphicBuffer;
         mSlots[buf].mRequestBufferCalled = false;
         if (mSlots[buf].mEglImage != EGL_NO_IMAGE_KHR) {
@@ -651,6 +653,9 @@ status_t SurfaceTexture::performQcomOperation(int operation, int arg1, int arg2,
      ST_LOGV("SurfaceTexture::performQcomOperation operation=%d", operation);
 
      switch(operation) {
+        case NATIVE_WINDOW_SET_BUFFERS_SIZE:
+            mReqSize = arg1;
+            break;
         default: return BAD_VALUE;
      };
      return OK;

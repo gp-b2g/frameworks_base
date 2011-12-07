@@ -471,6 +471,8 @@ private:
     // browser's tile cache exceeds.
     const GLenum mTexTarget;
 
+    // mReqSize is the required buffer size speficied by the client.
+    int mReqSize;
 };
 
 // ----------------------------------------------------------------------------
