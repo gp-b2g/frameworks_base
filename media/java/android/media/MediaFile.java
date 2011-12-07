@@ -256,6 +256,8 @@ public class MediaFile {
         addFileType("MKV", FILE_TYPE_MKV, "video/x-matroska");
         addFileType("WEBM", FILE_TYPE_WEBM, "video/webm");
         addFileType("TS", FILE_TYPE_MP2TS, "video/mp2ts");
+        addFileType("MPG", FILE_TYPE_MP2TS, "video/mp2ts");
+
         addFileType("AVI", FILE_TYPE_AVI, "video/avi");
 
         if (isWMVEnabled()) {
