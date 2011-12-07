@@ -2767,6 +2767,7 @@ public class WifiStateMachine extends StateMachine {
 
                     //TODO: make supplicant modification to push this in events
                     mWifiInfo.setSSID(fetchSSID());
+                    fetchRssiAndLinkSpeedNative();
                     mWifiInfo.setBSSID(mLastBssid);
                     mWifiInfo.setNetworkId(mLastNetworkId);
                     if (mNextWifiActionExplicit &&
