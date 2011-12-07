@@ -374,7 +374,7 @@ status_t AudioSource::dataCallbackTimestamp(
     }
 
     buffer->set_range(0, bufferSize);
-    timestampUs += ((1000000LL * (bufferSize >> 1)) +
+    timestampUs += ((1000000LL * (bufferSize / (2 * mRecord->channelCount()))) +
                     (mSampleRate >> 1)) / mSampleRate;
 
     if (mNumFramesReceived == 0) {
