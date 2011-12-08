@@ -100,6 +100,7 @@ SurfaceFlinger::SurfaceFlinger()
         mLastTransactionTime(0),
         mBootFinished(false),
         mConsoleSignals(0),
+        mCanSkipComposition(false),
         mSecureFrameBuffer(0),
         mHDMIOutput(false)
 {
@@ -472,12 +473,17 @@ bool SurfaceFlinger::threadLoop()
         logger.log(GraphicLog::SF_REPAINT, index);
         handleRepaint();
 
-        // inform the h/w that we're done compositing
-        logger.log(GraphicLog::SF_COMPOSITION_COMPLETE, index);
-        hw.compositionComplete();
+        if (!mCanSkipComposition) {
+            // inform the h/w that we're done compositing
+            logger.log(GraphicLog::SF_COMPOSITION_COMPLETE, index);
+            hw.compositionComplete();
 
-        logger.log(GraphicLog::SF_SWAP_BUFFERS, index);
-        postFramebuffer();
+            logger.log(GraphicLog::SF_SWAP_BUFFERS, index);
+            postFramebuffer();
+        } else {
+            HWComposer& hwc(graphicPlane(0).displayHardware().getHwComposer());
+            hwc.commit();
+        }
 
         logger.log(GraphicLog::SF_REPAINT_DONE, index);
     } else {
@@ -722,6 +728,7 @@ void SurfaceFlinger::computeVisibleRegions(
             // as well, as the old visible region
             dirty.orSelf(layer->visibleRegionScreen);
             layer->contentDirty = false;
+            layer->setIsUpdating(true);
         } else {
             /* compute the exposed region:
              *   the exposed region consists of two components:
@@ -903,7 +910,8 @@ void SurfaceFlinger::handleRepaint()
     }
 
     setupHardwareComposer(mDirtyRegion);
-    composeSurfaces(mDirtyRegion);
+    if (!mCanSkipComposition)
+        composeSurfaces(mDirtyRegion);
 
     // update the swap region and clear the dirty region
     mSwapRegion.orSelf(mDirtyRegion);
@@ -943,6 +951,7 @@ void SurfaceFlinger::setupHardwareComposer(Region& dirtyInOut)
     status_t err = hwc.prepare();
     LOGE_IF(err, "HWComposer::prepare failed (%s)", strerror(-err));
 
+    mCanSkipComposition = (hwc.getFlags() & HWC_SKIP_COMPOSITION) ? true : false;
     if (err == NO_ERROR) {
         // what's happening here is tricky.
         // we want to clear all the layers with the CLEAR_FB flags
@@ -995,7 +1004,7 @@ void SurfaceFlinger::setupHardwareComposer(Region& dirtyInOut)
         /*
          *  clear the area of the FB that need to be transparent
          */
-        if (!transparent.isEmpty()) {
+        if (!transparent.isEmpty() && !mCanSkipComposition) {
             glClearColor(0,0,0,0);
             Region::const_iterator it = transparent.begin();
             Region::const_iterator const end = transparent.end();

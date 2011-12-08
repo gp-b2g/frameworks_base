@@ -60,10 +60,12 @@ Layer::Layer(SurfaceFlinger* flinger,
         mOpaqueLayer(true),
         mNeedsDithering(false),
         mSecure(false),
-        mProtectedByApp(false)
+        mProtectedByApp(false),
+        mLayerQcomFlags(0)
 {
     mCurrentCrop.makeInvalid();
     glGenTextures(1, &mTextureName);
+    updateLayerQcomFlags(LAYER_UPDATE_STATUS, true, mLayerQcomFlags);
 }
 
 void Layer::onFirstRef()
@@ -246,6 +248,7 @@ void Layer::setPerFrameData(hwc_layer_t* hwcl) {
     } else {
         hwcl->handle = buffer->handle;
     }
+    hwcl->flags = getPerFrameFlags(hwcl->flags, mLayerQcomFlags);
 }
 
 void Layer::onDraw(const Region& clip) const
@@ -351,6 +354,11 @@ bool Layer::isProtected() const
             (activeBuffer->getUsage() & GRALLOC_USAGE_PROTECTED);
 }
 
+void Layer::setIsUpdating(bool isUpdating)
+{
+    updateLayerQcomFlags(LAYER_UPDATE_STATUS, isUpdating, mLayerQcomFlags);
+}
+
 uint32_t Layer::doTransaction(uint32_t flags)
 {
     const Layer::State& front(drawingState());
@@ -436,6 +444,8 @@ void Layer::lockPageFlip(bool& recomputeVisibleRegions)
             recomputeVisibleRegions = true;
             return;
         }
+
+        updateLayerQcomFlags(LAYER_UPDATE_STATUS, true, mLayerQcomFlags);
 
         // update the active buffer
         mActiveBuffer = mSurfaceTexture->getCurrentBuffer();
@@ -527,6 +537,8 @@ void Layer::lockPageFlip(bool& recomputeVisibleRegions)
                     bufWidth, bufHeight, mCurrentTransform,
                     front.requested_w, front.requested_h);
         }
+    } else {
+        updateLayerQcomFlags(LAYER_UPDATE_STATUS, false, mLayerQcomFlags);
     }
 }
 
