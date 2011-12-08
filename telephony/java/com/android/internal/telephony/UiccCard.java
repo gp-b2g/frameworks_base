@@ -86,7 +86,6 @@ public class UiccCard {
 
     public void dispose() {
         log("Disposing card");
-        if (mCatService != null) mCatService.dispose();
         for (UiccCardApplication app : mUiccApplications) {
             if (app != null) {
                 app.dispose();
@@ -129,15 +128,11 @@ public class UiccCard {
         }
 
         if (mUiccApplications.length > 0 && mUiccApplications[0] != null) {
-            // Initialize or Reinitialize CatService
-            mCatService = CatService.getInstance(mCi,
-                                                 mContext,
-                                                 this);
-        } else {
-            if (mCatService != null) {
-                mCatService.dispose();
-            }
-            mCatService = null;
+            if (mCatService == null)
+                // Initialize or Reinitialize CatService
+                mCatService = CatService.getInstance(mCi,
+                                                     mContext,
+                                                     this);
         }
         // The following logic does not account for Sim being powered down
         // when we go into air plane mode. Commenting it out till we fix it.
@@ -151,6 +146,7 @@ public class UiccCard {
         //} else if (oldState == CardState.CARDSTATE_ABSENT && mCardState != CardState.CARDSTATE_ABSENT) {
         //    mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_ADDED, null));
         //}
+
     }
 
     protected void finalize() {

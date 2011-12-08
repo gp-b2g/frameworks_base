@@ -38,6 +38,18 @@ public class IccRefreshResponse {
                                                   0x30, 0x30, 0x30 */
                                                /* Example: a0000000871002f310ffff89080000ff */
 
+    public static Result
+        refreshResultFromRIL(int refreshResult) throws ATParseEx {
+        switch(refreshResult) {
+
+            case 0: return Result.ICC_FILE_UPDATE;
+            case 1: return Result.ICC_INIT;
+            case 2: return Result.ICC_RESET;
+            default:
+                throw new ATParseEx("Sim Refresh response is Unknown " + refreshResult);
+        }
+    }
+
     public String toString() {
         return "{" + refreshResult + ", " + aidPtr +", " + efId + "}";
     }

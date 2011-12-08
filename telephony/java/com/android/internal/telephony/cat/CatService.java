@@ -30,6 +30,9 @@ import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.UiccCard;
 import com.android.internal.telephony.UiccCardApplication;
+import com.android.internal.telephony.UiccManager;
+import com.android.internal.telephony.IccCardStatus.CardState;
+import com.android.internal.telephony.IccRefreshResponse;
 
 
 import java.io.ByteArrayOutputStream;
@@ -124,12 +127,16 @@ public class CatService extends Handler implements AppInterface {
     // Protects singleton instance lazy initialization.
     private static final Object sInstanceLock = new Object();
     private static CatService sInstance;
+    private static HandlerThread handlerThread;
     private CommandsInterface mCmdIf;
     private Context mContext;
     private CatCmdMessage mCurrntCmd = null;
     private CatCmdMessage mMenuCmd = null;
 
     private RilMessageDecoder mMsgDecoder = null;
+
+    private UiccManager mUiccManager;
+    private CardState mCardState;
 
     // Service constants.
     static final int MSG_ID_SESSION_END              = 1;
@@ -144,7 +151,10 @@ public class CatService extends Handler implements AppInterface {
     static final int MSG_ID_RIL_MSG_DECODED          = 10;
 
     // Events to signal SIM presence or absent in the device.
-    private static final int MSG_ID_ICC_RECORDS_LOADED       = 20;
+    private static final int MSG_ID_ICC_CHANGED      = 20;
+
+    //Events to signal SIM REFRESH notificatations
+    private static final int MSG_ID_ICC_REFRESH  = 30;
 
     private static final int DEV_ID_KEYPAD      = 0x01;
     private static final int DEV_ID_DISPLAY     = 0x02;
@@ -171,7 +181,7 @@ public class CatService extends Handler implements AppInterface {
         mCmdIf.setOnCatProactiveCmd(this, MSG_ID_PROACTIVE_COMMAND, null);
         mCmdIf.setOnCatEvent(this, MSG_ID_EVENT_NOTIFY, null);
         mCmdIf.setOnCatCallSetUp(this, MSG_ID_CALL_SETUP, null);
-        //mCmdIf.setOnSimRefresh(this, MSG_ID_REFRESH, null);
+        mCmdIf.registerForIccRefresh(this, MSG_ID_ICC_REFRESH, null);
         mCmdIf.setOnCatCcAlphaNotify(this, MSG_ID_ALPHA_NOTIFY, null);
 
         mIccRecords = ir;
@@ -179,20 +189,28 @@ public class CatService extends Handler implements AppInterface {
 
         // Register for SIM ready event.
         mUiccApplication.registerForReady(this, MSG_ID_SIM_READY, null);
-        if (ir != null) {
-            // Register for SIM ready event
-            mIccRecords.registerForRecordsLoaded(this, MSG_ID_ICC_RECORDS_LOADED, null);
-        }
+
+        mUiccManager = UiccManager.getInstance(mContext, mCmdIf);
+        mUiccManager.registerForIccChanged(this, MSG_ID_ICC_CHANGED, null);
+
         CatLog.d(this, "CatService running");
     }
 
     public void dispose() {
-        mIccRecords.unregisterForRecordsLoaded(this);
+
+        // Clean up stk icon if dispose is called
+        broadcastCardStateAndIccRefreshResp(CardState.CARDSTATE_ABSENT, null);
+
         mCmdIf.unSetOnCatSessionEnd(this);
         mCmdIf.unSetOnCatProactiveCmd(this);
         mCmdIf.unSetOnCatEvent(this);
         mCmdIf.unSetOnCatCallSetUp(this);
         mCmdIf.unSetOnCatCcAlphaNotify(this);
+        mCmdIf.unregisterForIccRefresh(this);
+        mUiccManager.unregisterForIccChanged(this);
+        sInstance = null;
+        handlerThread.quit();
+        handlerThread = null;
 
         this.removeCallbacksAndMessages(null);
     }
@@ -652,15 +670,11 @@ public class CatService extends Handler implements AppInterface {
                         || ic == null) {
                     return null;
                 }
-                HandlerThread thread = new HandlerThread("Cat Telephony service");
-                thread.start();
+                handlerThread = new HandlerThread("Cat Telephony service");
+                handlerThread.start();
                 sInstance = new CatService(ci, ca, ir, context, fh, ic);
                 CatLog.d(sInstance, "NEW sInstance");
             } else if ((ir != null) && (mIccRecords != ir)) {
-                if (mIccRecords != null) {
-                    mIccRecords.unregisterForRecordsLoaded(sInstance);
-                }
-
                 if (mUiccApplication != null) {
                     mUiccApplication.unregisterForReady(sInstance);
                 }
@@ -668,8 +682,6 @@ public class CatService extends Handler implements AppInterface {
                 mIccRecords = ir;
                 mUiccApplication = ca;
 
-                // re-Register for SIM ready event.
-                mIccRecords.registerForRecordsLoaded(sInstance, MSG_ID_ICC_RECORDS_LOADED, null);
                 mUiccApplication.registerForReady(sInstance, MSG_ID_SIM_READY, null);
                 CatLog.d(sInstance, "sr changed reinitialize and return current sInstance");
             }
@@ -720,8 +732,6 @@ public class CatService extends Handler implements AppInterface {
         case MSG_ID_CALL_SETUP:
             mMsgDecoder.sendStartDecodingMessageParams(new RilMessage(msg.what, null));
             break;
-        case MSG_ID_ICC_RECORDS_LOADED:
-            break;
         case MSG_ID_RIL_MSG_DECODED:
             handleRilMsg((RilMessage) msg.obj);
             break;
@@ -749,9 +759,57 @@ public class CatService extends Handler implements AppInterface {
                 CatLog.d(this, "STK Alpha message: msg.obj is null");
             }
             break;
+        case MSG_ID_ICC_CHANGED:
+            CatLog.d(this, "MSG_ID_ICC_CHANGED");
+            updateIccAvailability();
+            break;
+        case MSG_ID_ICC_REFRESH:
+            if (msg.obj != null) {
+                AsyncResult ar = (AsyncResult) msg.obj;
+                if (ar != null && ar.result != null) {
+                    broadcastCardStateAndIccRefreshResp(CardState.CARDSTATE_PRESENT,
+                                  (IccRefreshResponse) ar.result);
+                } else {
+                    CatLog.d(this,"Icc REFRESH with exception: " + ar.exception);
+                }
+            } else {
+                CatLog.d(this, "IccRefresh Message is null");
+            }
+            break;
         default:
             throw new AssertionError("Unrecognized CAT command: " + msg.what);
         }
+    }
+
+    /**
+     ** This function sends a CARD status (ABSENT, PRESENT, REFRESH) to STK_APP.
+     ** This is triggered during ICC_REFRESH or CARD STATE changes. In case
+     ** REFRESH, additional information is sent in 'refresh_result'
+     **
+     **/
+    private void  broadcastCardStateAndIccRefreshResp(CardState cardState,
+            IccRefreshResponse IccRefreshState) {
+        Intent intent = new Intent(AppInterface.CAT_ICC_STATUS_CHANGE);
+        boolean cardStatus = true;
+
+        if (IccRefreshState != null) {
+            //This case is when MSG_ID_ICC_REFRESH is received.
+            intent.putExtra(AppInterface.REFRESH_RESULT,IccRefreshState.refreshResult.ordinal());
+            CatLog.d(this, "Sending IccResult with Result: "
+                    +IccRefreshState.refreshResult);
+        }
+
+        if(cardState != CardState.CARDSTATE_PRESENT)
+            cardStatus = false;
+
+        // This sends an intent with CARD_ABSENT (0 - false) /CARD_PRESENT (1 - true).
+        // In case of CARD_ABSENT, StkAppService
+        // will clean up the Idle mode Text and Stk toolkit icon
+        intent.putExtra(AppInterface.CARD_STATUS, cardStatus);
+        CatLog.d(this, "Sending Card Status: "
+                + cardState + " " + "cardStatus: " + cardStatus);
+
+        mContext.sendBroadcast(intent);
     }
 
     public synchronized void onCmdResponse(CatResponseMessage resMsg) {
@@ -889,5 +947,22 @@ public class CatService extends Handler implements AppInterface {
         sendTerminalResponse(cmdDet, resMsg.resCode, resMsg.includeAdditionalInfo,
                              resMsg.additionalInfo, resp);
         mCurrntCmd = null;
+    }
+
+    void updateIccAvailability() {
+        CardState newState = CardState.CARDSTATE_ABSENT;
+        if(null == mUiccManager)
+            return;
+        UiccCard newCard = mUiccManager.getUiccCard();
+        if (newCard != null) {
+            newState = newCard.getCardState();
+        }
+        CardState oldState = mCardState;
+        mCardState = newState;
+        CatLog.d(this,"New Card State = " + newState + " " + "Old Card State = " + oldState);
+        if (oldState == CardState.CARDSTATE_PRESENT &&
+                newState != CardState.CARDSTATE_PRESENT) {
+            broadcastCardStateAndIccRefreshResp(newState, null);
+        }
     }
 }
