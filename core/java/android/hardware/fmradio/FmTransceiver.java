@@ -69,23 +69,23 @@ public class FmTransceiver
    /**
     * FMConfigure FM Radio band setting for US/Europe
     */
-   public static final int FM_US_BAND        =0;
+   public static final int FM_US_BAND              = 0;
    /**
     * FMConfigure FM Radio band setting for US/Europe
     */
-   public static final int FM_EU_BAND        =1;
+   public static final int FM_EU_BAND              = 1;
    /**
     * FMConfigure FM Radio band setting for Japan
     */
-   public static final int FM_JAPAN_WIDE_BAND       =2;
+   public static final int FM_JAPAN_STANDARD_BAND  = 2;
    /**
     * FMConfigure FM Radio band setting for Japan-Wideband
     */
-   public static final int FM_JAPAN_STANDARD_BAND   =3;
+   public static final int FM_JAPAN_WIDE_BAND      = 3;
    /**
     * FMConfigure FM Radio band setting for "User defined" band
     */
-   public static final int FM_USER_DEFINED_BAND     =4;
+   public static final int FM_USER_DEFINED_BAND    = 4;
 
    /**
     * FM channel spacing settings = 200KHz

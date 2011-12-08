@@ -29,6 +29,7 @@
 package android.hardware.fmradio;
 
 import android.util.Log;
+import android.os.SystemProperties;
 
 
 /**
@@ -38,33 +39,13 @@ import android.util.Log;
  */
 public class FmConfig {
 
-
-    /**
-     * FMConfigure FM Radio band setting for US/Europe
-     */
-     private static final int FM_US_BAND        =0;
-    /**
-     * FMConfigure FM Radio band setting for US/Europe
-     */
-     private static final int FM_EU_BAND        =1;
-   /**
-     * FMConfigure FM Radio band setting for Japan
-     */
-     private static final int FM_JAPAN_WIDE_BAND       =2;
-   /**
-     * FMConfigure FM Radio band setting for Japan-Wideband
-     */
-     private static final int FM_JAPAN_STANDARD_BAND   =3;
-   /**
-     * FMConfigure FM Radio band setting for "User defined" band
-     */
-     private static final int FM_USER_DEFINED_BAND     =4;
-
-     private static final int V4L2_CID_PRIVATE_BASE                 =0x8000000;
-     private static final int V4L2_CID_PRIVATE_TAVARUA_REGION       =V4L2_CID_PRIVATE_BASE + 7;
-     private static final int V4L2_CID_PRIVATE_TAVARUA_EMPHASIS     =V4L2_CID_PRIVATE_BASE + 12;
-     private static final int V4L2_CID_PRIVATE_TAVARUA_RDS_STD      =V4L2_CID_PRIVATE_BASE + 13;
-     private static final int V4L2_CID_PRIVATE_TAVARUA_SPACING      =V4L2_CID_PRIVATE_BASE + 14;
+    /* V4l2 Controls */
+     private static final int V4L2_CID_PRIVATE_BASE                   = 0x8000000;
+     private static final int V4L2_CID_PRIVATE_TAVARUA_REGION         = V4L2_CID_PRIVATE_BASE + 7;
+     private static final int V4L2_CID_PRIVATE_TAVARUA_EMPHASIS       = V4L2_CID_PRIVATE_BASE + 12;
+     private static final int V4L2_CID_PRIVATE_TAVARUA_RDS_STD        = V4L2_CID_PRIVATE_BASE + 13;
+     private static final int V4L2_CID_PRIVATE_TAVARUA_SPACING        = V4L2_CID_PRIVATE_BASE + 14;
+     private static final int V4L2_CID_PRIVATE_TAVARUA_SRCH_ALGORITHM = V4L2_CID_PRIVATE_BASE + 0x2B;
 
      private static final String TAG = "FmConfig";
 
@@ -168,19 +149,29 @@ public class FmConfig {
 
         int re;
 
-        Log.d (TAG, "In fmConfigure");
-
-        re = FmReceiverJNI.setBandNative    (fd, configSettings.getLowerLimit(), configSettings.getUpperLimit() );
-
-        if (configSettings.mRadioBand == FM_US_BAND)
-            re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_REGION, FM_US_BAND );
-        else
-            re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_REGION, FM_USER_DEFINED_BAND );
+        Log.v (TAG, "In fmConfigure");
 
 	re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_EMPHASIS, configSettings.getEmphasis());
         re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_RDS_STD, configSettings.getRdsStd() );
         re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_SPACING, configSettings.getChSpacing() );
 
+        boolean fmSrchAlg = SystemProperties.getBoolean("persist.fm.new.srch.algorithm",false);
+        if (fmSrchAlg) {
+          Log.v (TAG, "fmConfigure() : FM Srch Alg : NEW ");
+          re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_SRCH_ALGORITHM, 1);
+        }
+        else {
+          Log.v (TAG, "fmConfigure() : FM Srch Alg : OLD ");
+          re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_SRCH_ALGORITHM, 0);
+        }
+        if (re < 0)
+          return false;
+
+        re = FmReceiverJNI.setBandNative (fd, configSettings.getLowerLimit(), configSettings.getUpperLimit());
+        if (re < 0)
+          return false;
+
+        re = FmReceiverJNI.setControlNative (fd, V4L2_CID_PRIVATE_TAVARUA_REGION, configSettings.mRadioBand);
         /* setControlNative for V4L2_CID_PRIVATE_TAVARUA_REGION triggers the config change*/
         if (re < 0)
           return false;
