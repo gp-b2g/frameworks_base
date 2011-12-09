@@ -3173,7 +3173,11 @@ void OMXCodec::onStateChange(OMX_STATETYPE newState) {
 
                 setState(IDLE_TO_EXECUTING);
             } else {
-                CHECK_EQ((int)mState, (int)EXECUTING_TO_IDLE);
+                if(mState == ERROR) {
+                    CODEC_LOGV("mState in ERROR when moving from Executing to Idle\n");
+                } else {
+                    CHECK_EQ((int)mState, (int)EXECUTING_TO_IDLE);
+                }
 
                 CHECK_EQ(
                     countBuffersWeOwn(mPortBuffers[kPortIndexInput]),
@@ -3213,14 +3217,17 @@ void OMXCodec::onStateChange(OMX_STATETYPE newState) {
 
         case OMX_StateExecuting:
         {
-            CHECK_EQ((int)mState, (int)IDLE_TO_EXECUTING);
+            if(mState == ERROR) {
+                CODEC_LOGV("mState in ERROR when moving from Idle to Executing\n");
+            } else {
+                CHECK_EQ((int)mState, (int)IDLE_TO_EXECUTING);
 
-            CODEC_LOGV("Now Executing.");
+                CODEC_LOGV("Now Executing.");
 
-            mOutputPortSettingsChangedPending = false;
+                mOutputPortSettingsChangedPending = false;
 
-            setState(EXECUTING);
-
+                setState(EXECUTING);
+            }
             // Buffers will be submitted to the component in the first
             // call to OMXCodec::read as mInitialBufferSubmit is true at
             // this point. This ensures that this on_message call returns,
