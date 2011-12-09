@@ -186,7 +186,7 @@ public interface TelephonyProperties
     /**
      * Set to true to indicates support for simultaneous voice and data.
      */
-    static final String PROPERTY_SVDATA = "ro.config.svlte1x";
+    static final String PROPERTY_SVDATA = "ro.ril.svlte1x";
 
     /**
      * Indicates whether sms should be sent in synchronous manner.
