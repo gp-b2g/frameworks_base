@@ -76,6 +76,7 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.net.InetAddress;
+import java.util.UUID;
 
 /**
  * A GPS implementation of LocationProvider used by LocationManager.
@@ -121,9 +122,12 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private static final int LOCATION_HAS_BEARING = 8;
     private static final int LOCATION_HAS_ACCURACY = 16;
     private static final int LOCATION_HAS_SOURCE_INFO = 0x20;
+    private static final int LOCATION_HAS_IS_INDOOR = 0x40;
+    private static final int LOCATION_HAS_FLOOR_NUMBER = 0x80;
+    private static final int LOCATION_HAS_MAP_URL = 0x100;
+    private static final int LOCATION_HAS_MAP_INDEX = 0x200;
     private static final int ULP_LOCATION_IS_FROM_HYBRID = 0x1;
     private static final int ULP_LOCATION_IS_FROM_GNSS = 0x2;
-
 
 // IMPORTANT - the GPS_DELETE_* symbols here must match constants in gps.h
     private static final int GPS_DELETE_EPHEMERIS = 0x00000001;
@@ -1408,8 +1412,8 @@ public class GpsLocationProvider implements LocationProviderInterface {
      * called from native code to update our position.
      */
     private void reportLocation(int flags, double latitude, double longitude, double altitude,
-                                float speed, float bearing, float accuracy, long timestamp,
-                                int positionSource, byte[] rawData) {
+            float speed, float bearing, float accuracy, long timestamp, int positionSource, byte[] rawData,
+            boolean isIndoor, float floorNumber, String mapUrl, UUID mapIndex) {
         if (VERBOSE) Log.v(TAG, "reportLocation lat: " + latitude + " long: " + longitude +
                 " timestamp: " + timestamp);
 
@@ -1465,6 +1469,23 @@ public class GpsLocationProvider implements LocationProviderInterface {
             } else {
                 mLocationExtras.remove("RawData");
             }
+
+            if ((flags & LOCATION_HAS_IS_INDOOR) == LOCATION_HAS_IS_INDOOR) {
+                mLocationExtras.putBoolean("isIndoor", isIndoor);
+            }
+
+            if ((flags & LOCATION_HAS_FLOOR_NUMBER) == LOCATION_HAS_FLOOR_NUMBER) {
+                mLocationExtras.putFloat("floorNumber", floorNumber);
+            }
+
+            if ((flags & LOCATION_HAS_MAP_URL) == LOCATION_HAS_MAP_URL) {
+                mLocationExtras.putCharSequence("mapUrl", mapUrl);
+            }
+
+            if ((flags & LOCATION_HAS_MAP_INDEX) == LOCATION_HAS_MAP_INDEX) {
+                mLocationExtras.putCharSequence("mapIndex", mapIndex.toString());
+            }
+
             mLocation.setExtras(mLocationExtras);
 
             try {
