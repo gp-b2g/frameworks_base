@@ -113,6 +113,8 @@ enum {
 
     kKeyValidSamples      = 'valD',  // int32_t
 
+    kKeyEditOffset        = 'edof',  // bool (int64_t)
+
     kKeyIsUnreadable      = 'unre',  // bool (int32_t)
     kKeyRawCodecSpecificData = 'rcsd',  // raw data - added to support mmParser
     kKeyDivXVersion       = 'DivX',  // int32_t
