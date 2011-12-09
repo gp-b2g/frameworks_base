@@ -458,16 +458,20 @@ status_t AwesomePlayer::setDataSource_l(const sp<MediaExtractor> &extractor) {
                 stat->mMIME = mime.string();
             }
         } else if (!haveAudio && !strncasecmp(mime.string(), "audio/", 6)) {
-            setAudioSource(extractor->getTrack(i));
-            haveAudio = true;
+            char disableAudio[PROPERTY_VALUE_MAX];
+            property_get("persist.debug.sf.noaudio", disableAudio, "0");
+            if(atoi(disableAudio) != 1){
+                setAudioSource(extractor->getTrack(i));
+                haveAudio = true;
 
-            {
-                Mutex::Autolock autoLock(mStatsLock);
-                mStats.mAudioTrackIndex = mStats.mTracks.size();
-                mStats.mTracks.push();
-                TrackStat *stat =
-                    &mStats.mTracks.editItemAt(mStats.mAudioTrackIndex);
-                stat->mMIME = mime.string();
+                {
+                    Mutex::Autolock autoLock(mStatsLock);
+                    mStats.mAudioTrackIndex = mStats.mTracks.size();
+                    mStats.mTracks.push();
+                    TrackStat *stat =
+                        &mStats.mTracks.editItemAt(mStats.mAudioTrackIndex);
+                    stat->mMIME = mime.string();
+                }
             }
 
             if (!strcasecmp(mime.string(), MEDIA_MIMETYPE_AUDIO_VORBIS)) {
