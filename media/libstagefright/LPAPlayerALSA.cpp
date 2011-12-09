@@ -780,10 +780,16 @@ void LPAPlayer::decoderThreadEntry() {
                     }
                 } else {
                     /* Put the buffer back into requestQ */
+                    /* This is zero byte buffer - no need to put in response Q*/
                     pthread_mutex_lock(&pmem_request_mutex);
                     pmemBuffersRequestQueue.push_back(buf);
                     pthread_mutex_unlock(&pmem_request_mutex);
-                    /* This is zero byte buffer - no need to put in response Q*/
+                    /*Post EOS to Awesome player when i/p EOS is reached,
+                      all input buffers have been decoded and response queue is empty*/
+                    if(mObserver && mReachedEOS && pmemBuffersResponseQueue.empty()) {
+                        LOGV("Posting EOS event..zero byte buffer and response queue is empty");
+                        mObserver->postAudioEOS();
+                    }
                     continue;
                 }
             }
