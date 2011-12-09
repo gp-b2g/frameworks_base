@@ -189,20 +189,11 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
     @Override
     protected void pollStateDone() {
-        // determine data NetworkType from both LET and CDMA SS
-        if (mLteSS.getState() == ServiceState.STATE_IN_SERVICE) {
-            //in LTE service
-            newNetworkType = mLteSS.getRadioTechnology();
-            mNewDataConnectionState = mLteSS.getState();
-            newSS.setRadioTechnology(newNetworkType);
-            log("pollStateDone LTE/eHRPD STATE_IN_SERVICE newNetworkType = " + newNetworkType);
-        } else {
-            // LTE out of service, get CDMA Service State
-            newNetworkType = newSS.getRadioTechnology();
-            mNewDataConnectionState = radioTechnologyToDataServiceState(newNetworkType);
-            log("pollStateDone CDMA STATE_IN_SERVICE newNetworkType = " + newNetworkType +
-                " mNewDataConnectionState = " + mNewDataConnectionState);
-        }
+        newNetworkType = mLteSS.getRadioTechnology();
+        mNewDataConnectionState = mLteSS.getState();
+        newSS.setRadioTechnology(newNetworkType);
+        log("pollStateDone CdmaLTEServiceState STATE_IN_SERVICE newNetworkType = "
+                + newNetworkType);
 
         // TODO: Add proper support for LTE Only, we should be looking at
         //       the preferred network mode, to know when newSS state should
@@ -437,7 +428,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
     @Override
     public boolean isConcurrentVoiceAndDataAllowed() {
-        if (RadioTechnology.getRadioTechFromInt(mLteSS.getRadioTechnology()) != 
+        if (RadioTechnology.getRadioTechFromInt(mLteSS.getRadioTechnology()) !=
                     RadioTechnology.RADIO_TECH_1xRTT)
             return SystemProperties.getBoolean(TelephonyProperties.PROPERTY_SVDATA, false);
         else
