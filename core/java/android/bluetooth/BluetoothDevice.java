@@ -1172,6 +1172,20 @@ public final class BluetoothDevice implements Parcelable {
     }
 
     /**
+     * Construct a SCO socket for WBS ready to start an outgoing connection.
+     * Call #connect on the returned #BluetoothSocket to begin the connection.
+     * <p>Requires {@link android.Manifest.permission#BLUETOOTH_ADMIN}
+     *
+     * @return a SCO BluetoothSocket
+     * @throws IOException on error, for example Bluetooth not available, or
+     *                     insufficient permissions.
+     * @hide
+     */
+    public BluetoothSocket createScoWbsSocket() throws IOException {
+        return new BluetoothSocket(BluetoothSocket.TYPE_SCO_WBS, -1, true, true, this, -1, null);
+    }
+
+    /**
      * Check that a pin is valid and convert to byte array.
      *
      * Bluetooth pin's are 1 to 16 bytes of UTF-8 characters.

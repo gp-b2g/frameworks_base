@@ -81,6 +81,7 @@ public final class BluetoothSocket implements Closeable {
     /*package*/ static final int TYPE_SCO = 2;
     /*package*/ static final int TYPE_L2CAP = 3;
     /*package*/ static final int TYPE_EL2CAP = 4;
+    /*package*/ static final int TYPE_SCO_WBS = 5;
 
     /** Keep BT_AMP_POLICY fields in sync with bluetooth/bluetooth.h */
     /** @hide */ public static final int BT_AMP_POLICY_REQUIRE_BR_EDR = 0;
