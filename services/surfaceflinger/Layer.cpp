@@ -38,6 +38,7 @@
 #include "Layer.h"
 #include "SurfaceFlinger.h"
 #include "SurfaceTextureLayer.h"
+#include <qcom_ui.h>
 
 #define DEBUG_RESIZE    0
 
@@ -274,6 +275,11 @@ void Layer::onDraw(const Region& clip) const
         if (!holes.isEmpty()) {
             clearWithOpenGL(holes, 0, 0, 0, 1);
         }
+        return;
+    }
+
+    if (!isGPUSupportedFormat(mActiveBuffer->format)) {
+         clearWithOpenGL(clip, 0, 0, 0, 1);
         return;
     }
 

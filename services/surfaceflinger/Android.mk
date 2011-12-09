@@ -39,7 +39,8 @@ LOCAL_SHARED_LIBRARIES := \
 	libGLESv1_CM \
 	libbinder \
 	libui \
-	libgui
+	libgui \
+        libQcomUI
 
 # this is only needed for DDMS debugging
 LOCAL_SHARED_LIBRARIES += libdvm libandroid_runtime
@@ -47,7 +48,8 @@ LOCAL_SHARED_LIBRARIES += libdvm libandroid_runtime
 LOCAL_C_INCLUDES := \
 	$(call include-path-for, corecg graphics)
 
-LOCAL_C_INCLUDES += hardware/libhardware/modules/gralloc
+LOCAL_C_INCLUDES += hardware/libhardware/modules/gralloc \
+                    hardware/qcom/display/libqcomui
 
 LOCAL_MODULE:= libsurfaceflinger
 
