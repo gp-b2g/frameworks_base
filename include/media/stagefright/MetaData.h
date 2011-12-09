@@ -127,7 +127,6 @@ enum {
     kKeyWMAFormatTag      = 'fmtt',  // int64_t
     kKeyWMABitspersample  = 'bsps',  // int64_t
     kKeyWMAVirPktSize     = 'vpks',  // int64_t
-    kKeyWMVProfile        = 'wmvp',   //int32_t
 
     // An indication that a video buffer has been rendered.
     kKeyRendered          = 'rend',  // bool (int32_t)
@@ -145,6 +144,9 @@ enum {
     // 3D Video Flag
     kKey3D                = '3Dvf',  // bool (int32_t)
     kKeyHFR               = 'hfr ',  // int32_t
+
+    //Extractor sets this
+    kKeyUseArbitraryMode  = 'ArbM'  //bool (int32_t)
 };
 
 enum {
@@ -158,11 +160,6 @@ enum {
     kTypeDivXVer_5,
     kTypeDivXVer_6,
 };
-enum {
-    kTypeWMVSimple,
-    kTypeWMVAdvance,
-};
-
 enum {
     kTypeWMA,
     kTypeWMAPro,
