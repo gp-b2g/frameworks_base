@@ -473,6 +473,14 @@ private:
 
     // mReqSize is the required buffer size speficied by the client.
     int mReqSize;
+
+    struct BufferInfo {
+        int width;
+        int height;
+        int format;
+    };
+
+    BufferInfo mNextBufferInfo;
 };
 
 // ----------------------------------------------------------------------------

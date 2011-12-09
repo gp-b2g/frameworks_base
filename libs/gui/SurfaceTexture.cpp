@@ -123,6 +123,9 @@ SurfaceTexture::SurfaceTexture(GLuint tex, bool allowSynchronousMode,
     mNextCrop.makeInvalid();
     memcpy(mCurrentTransformMatrix, mtxIdentity,
             sizeof(mCurrentTransformMatrix));
+    mNextBufferInfo.width = 0;
+    mNextBufferInfo.height = 0;
+    mNextBufferInfo.format = 0;
 }
 
 SurfaceTexture::~SurfaceTexture() {
@@ -400,10 +403,20 @@ status_t SurfaceTexture::dequeueBuffer(int *outBuf, uint32_t w, uint32_t h,
     mSlots[buf].mBufferState = BufferSlot::DEQUEUED;
 
     const sp<GraphicBuffer>& buffer(mSlots[buf].mGraphicBuffer);
+    qBufGeometry currentGeometry;
+    if (buffer != NULL)
+        currentGeometry.set(buffer->width, buffer->height, buffer->format);
+    else
+        currentGeometry.set(0, 0, 0);
+
+    qBufGeometry requiredGeometry;
+    requiredGeometry.set(w, h, format);
+
+    qBufGeometry updatedGeometry;
+    updatedGeometry.set(mNextBufferInfo.width, mNextBufferInfo.height,
+                        mNextBufferInfo.format);
     if ((buffer == NULL) ||
-        (uint32_t(buffer->width)  != w) ||
-        (uint32_t(buffer->height) != h) ||
-        (uint32_t(buffer->format) != format) ||
+        needNewBuffer(currentGeometry, requiredGeometry, updatedGeometry) ||
         ((uint32_t(buffer->usage) & usage) != usage))
     {
         usage |= GraphicBuffer::USAGE_HW_TEXTURE;
@@ -521,6 +534,13 @@ status_t SurfaceTexture::queueBuffer(int buf, int64_t timestamp,
         mSlots[buf].mTransform = mNextTransform;
         mSlots[buf].mScalingMode = mNextScalingMode;
         mSlots[buf].mTimestamp = timestamp;
+
+        // Update the buffer Geometry if required
+        qBufGeometry updatedGeometry;
+        updatedGeometry.set(mNextBufferInfo.width,
+                            mNextBufferInfo.height, mNextBufferInfo.format);
+        updateBufferGeometry(mSlots[buf].mGraphicBuffer, updatedGeometry);
+        sp<GraphicBuffer> buffer = mSlots[buf].mGraphicBuffer;
         mDequeueCondition.signal();
 
         *outWidth = mDefaultWidth;
@@ -655,6 +675,11 @@ status_t SurfaceTexture::performQcomOperation(int operation, int arg1, int arg2,
      switch(operation) {
         case NATIVE_WINDOW_SET_BUFFERS_SIZE:
             mReqSize = arg1;
+            break;
+        case NATIVE_WINDOW_UPDATE_BUFFERS_GEOMETRY:
+            mNextBufferInfo.width = arg1;
+            mNextBufferInfo.height = arg2;
+            mNextBufferInfo.format = arg3;
             break;
         default: return BAD_VALUE;
      };
