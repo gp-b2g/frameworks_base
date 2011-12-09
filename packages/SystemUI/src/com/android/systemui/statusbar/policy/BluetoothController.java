@@ -52,16 +52,25 @@ public class BluetoothController extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        int state = intent.getIntExtra(BluetoothAdapter.EXTRA_CONNECTION_STATE,
-                BluetoothAdapter.STATE_DISCONNECTED);
+        String action = intent.getAction();
         int contentDescriptionResId = 0;
-
-        if (state == BluetoothAdapter.STATE_CONNECTED) {
-            mIconId = R.drawable.stat_sys_data_bluetooth_connected;
-            contentDescriptionResId = R.string.accessibility_bluetooth_connected;
-        } else {
-            mIconId = R.drawable.stat_sys_data_bluetooth;
-            contentDescriptionResId = R.string.accessibility_bluetooth_disconnected;
+        if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
+           int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+           mEnabled = state == BluetoothAdapter.STATE_ON;
+           mIconId = R.drawable.stat_sys_data_bluetooth;
+           contentDescriptionResId = R.string.accessibility_bluetooth_disconnected;
+        } else if (action.equals(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)) {
+            int state = intent.getIntExtra(BluetoothAdapter.EXTRA_CONNECTION_STATE,
+                               BluetoothAdapter.STATE_DISCONNECTED);
+            if (state == BluetoothAdapter.STATE_CONNECTED) {
+               mEnabled = state == BluetoothAdapter.STATE_CONNECTED;
+               mIconId = R.drawable.stat_sys_data_bluetooth_connected;
+               contentDescriptionResId = R.string.accessibility_bluetooth_connected;
+             } else {
+                 mEnabled = state == BluetoothAdapter.STATE_DISCONNECTED;
+                 mIconId = R.drawable.stat_sys_data_bluetooth;
+                 contentDescriptionResId = R.string.accessibility_bluetooth_disconnected;
+             }
         }
 
         int N = mIconViews.size();
