@@ -374,10 +374,11 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
                 logd("IccFileHandler: read EF IMG");
                 mCi.iccIOForApp(COMMAND_READ_RECORD, lc.efid, getEFPath(lc.efid),
-                         lc.recordNum,
-                         READ_RECORD_MODE_ABSOLUTE,
-                         lc.recordSize, null, null,
-                         mAid, obtainMessage(EVENT_READ_IMG_DONE, lc));
+                        lc.recordNum,
+                        READ_RECORD_MODE_ABSOLUTE,
+                        lc.recordSize, null, null,
+                        mAid, obtainMessage(EVENT_READ_IMG_DONE, IccConstants.EF_IMG,
+                                0, response));
                 break;
             case EVENT_READ_IMG_DONE:
                 logd("IccFileHandler: read IMG done");
