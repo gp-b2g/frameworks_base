@@ -1096,7 +1096,7 @@ static jboolean removeReservedServiceRecordsNative(JNIEnv *env, jobject object,
 
 static jstring findDeviceNative(JNIEnv *env, jobject object,
                                 jstring address) {
-    LOGV(__FUNCTION__);
+    LOGV("%s", __FUNCTION__);
 #ifdef HAVE_BLUETOOTH
     native_data_t *nat = get_native_data(env, object);
     jobject eventLoop = env->GetObjectField(object, field_mEventLoop);
@@ -1754,7 +1754,7 @@ static jobject getChannelFdNative(JNIEnv *env, jobject object, jstring channelPa
 }
 
 static jobjectArray getGattServicePropertiesNative(JNIEnv *env, jobject object, jstring path) {
-    LOGV(__FUNCTION__);
+    LOGV("%s", __FUNCTION__);
 #ifdef HAVE_BLUETOOTH
     native_data_t *nat = get_native_data(env, object);
     if (nat) {
@@ -1784,9 +1784,7 @@ static jobjectArray getGattServicePropertiesNative(JNIEnv *env, jobject object, 
             str_array =  parse_gatt_service_properties(env, &iter);
         dbus_message_unref(reply);
 
-        env->PopLocalFrame(NULL);
-
-        return str_array;
+        return (jobjectArray) env->PopLocalFrame(str_array);
     }
 #endif
     return NULL;
@@ -1794,7 +1792,7 @@ static jobjectArray getGattServicePropertiesNative(JNIEnv *env, jobject object, 
 
 static jboolean discoverCharacteristicsNative(JNIEnv *env, jobject object,
                                               jstring path) {
-    LOGV(__FUNCTION__);
+    LOGV("%s", __FUNCTION__);
 #ifdef HAVE_BLUETOOTH
     native_data_t *nat = get_native_data(env, object);
     jobject eventLoop = env->GetObjectField(object, field_mEventLoop);
@@ -1826,7 +1824,7 @@ static jboolean discoverCharacteristicsNative(JNIEnv *env, jobject object,
 }
 
 static jobjectArray getCharacteristicPropertiesNative(JNIEnv *env, jobject object, jstring path) {
-    LOGV(__FUNCTION__);
+    LOGV("%s", __FUNCTION__);
 #ifdef HAVE_BLUETOOTH
     native_data_t *nat = get_native_data(env, object);
     if (nat) {
@@ -1856,9 +1854,7 @@ static jobjectArray getCharacteristicPropertiesNative(JNIEnv *env, jobject objec
             str_array =  parse_gatt_characteristic_properties(env, &iter);
         dbus_message_unref(reply);
 
-        env->PopLocalFrame(NULL);
-
-        return str_array;
+        return (jobjectArray) env->PopLocalFrame(str_array);
     }
 #endif
     return NULL;
@@ -1867,7 +1863,7 @@ static jobjectArray getCharacteristicPropertiesNative(JNIEnv *env, jobject objec
 static jboolean setCharacteristicPropertyNative(JNIEnv *env, jobject object, jstring path,
                                          jstring key, jbyteArray value, int len) {
 #ifdef HAVE_BLUETOOTH
-    LOGV(__FUNCTION__);
+    LOGV("%s", __FUNCTION__);
     native_data_t *nat = get_native_data(env, object);
     jobject eventLoop = env->GetObjectField(object, field_mEventLoop);
     struct event_loop_native_data_t *eventLoopNat =
@@ -1952,7 +1948,7 @@ static jboolean setCharacteristicPropertyNative(JNIEnv *env, jobject object, jst
 
 static jboolean updateCharacteristicValueNative(JNIEnv *env, jobject object,
                                                 jstring path) {
-    LOGV(__FUNCTION__);
+    LOGV("%s", __FUNCTION__);
 #ifdef HAVE_BLUETOOTH
     native_data_t *nat = get_native_data(env, object);
     jobject eventLoop = env->GetObjectField(object, field_mEventLoop);
@@ -1985,7 +1981,7 @@ static jboolean updateCharacteristicValueNative(JNIEnv *env, jobject object,
 
 static jboolean registerCharacteristicsWatcherNative(JNIEnv *env, jobject object,
                                               jstring path) {
-    LOGV(__FUNCTION__);
+    LOGV("%s", __FUNCTION__);
 #ifdef HAVE_BLUETOOTH
     native_data_t *nat = get_native_data(env, object);
     if (nat) {
@@ -2009,7 +2005,7 @@ static jboolean registerCharacteristicsWatcherNative(JNIEnv *env, jobject object
 
 static jboolean deregisterCharacteristicsWatcherNative(JNIEnv *env, jobject object,
                                               jstring path) {
-    LOGV(__FUNCTION__);
+    LOGV("%s", __FUNCTION__);
 #ifdef HAVE_BLUETOOTH
     native_data_t *nat = get_native_data(env, object);
     if (nat) {
@@ -2033,7 +2029,7 @@ static jboolean deregisterCharacteristicsWatcherNative(JNIEnv *env, jobject obje
 
 static void disconnectNative(JNIEnv *env, jobject object,
                                               jstring path) {
-    LOGV(__FUNCTION__);
+    LOGV("%s", __FUNCTION__);
 #ifdef HAVE_BLUETOOTH
     native_data_t *nat = get_native_data(env, object);
     if (nat) {

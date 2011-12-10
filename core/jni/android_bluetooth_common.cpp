@@ -43,7 +43,6 @@ static Properties remote_device_properties[] = {
     {"Icon", DBUS_TYPE_STRING},
     {"Class", DBUS_TYPE_UINT32},
     {"UUIDs", DBUS_TYPE_ARRAY},
-    {"Services", DBUS_TYPE_ARRAY},
     {"Paired", DBUS_TYPE_BOOLEAN},
     {"Connected", DBUS_TYPE_BOOLEAN},
     {"Trusted", DBUS_TYPE_BOOLEAN},
