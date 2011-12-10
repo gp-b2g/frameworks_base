@@ -9325,6 +9325,8 @@ package android.hardware {
     ctor public Camera.CameraInfo();
     field public static final int CAMERA_FACING_BACK = 0; // 0x0
     field public static final int CAMERA_FACING_FRONT = 1; // 0x1
+    field public static final int CAMERA_SUPPORT_MODE_NONZSL = 3; // 0x3
+    field public static final int CAMERA_SUPPORT_MODE_ZSL = 2; // 0x2
     field public int facing;
     field public int orientation;
   }
@@ -9368,6 +9370,7 @@ package android.hardware {
     method public java.lang.String getAutoExposure();
     method public boolean getAutoExposureLock();
     method public boolean getAutoWhiteBalanceLock();
+    method public java.lang.String getCameraMode();
     method public java.lang.String getColorEffect();
     method public java.lang.String getContinuousAf();
     method public int getContrast();
@@ -9440,11 +9443,13 @@ package android.hardware {
     method public java.util.List<java.lang.String> getSupportedTouchAfAec();
     method public java.util.List<android.hardware.Camera.Size> getSupportedVideoSizes();
     method public java.util.List<java.lang.String> getSupportedWhiteBalance();
+    method public java.util.List<java.lang.String> getSupportedZSLModes();
     method public java.lang.String getTouchAfAec();
     method public android.hardware.Camera.Coordinate getTouchIndexAec();
     method public android.hardware.Camera.Coordinate getTouchIndexAf();
     method public float getVerticalViewAngle();
     method public java.lang.String getWhiteBalance();
+    method public java.lang.String getZSLMode();
     method public int getZoom();
     method public java.util.List<java.lang.Integer> getZoomRatios();
     method public boolean isAutoExposureLockSupported();
@@ -9460,6 +9465,7 @@ package android.hardware {
     method public void setAutoExposure(java.lang.String);
     method public void setAutoExposureLock(boolean);
     method public void setAutoWhiteBalanceLock(boolean);
+    method public void setCameraMode(int);
     method public void setColorEffect(java.lang.String);
     method public void setContinuousAf(java.lang.String);
     method public void setContrast(int);
@@ -9505,6 +9511,7 @@ package android.hardware {
     method public void setTouchIndexAec(int, int);
     method public void setTouchIndexAf(int, int);
     method public void setWhiteBalance(java.lang.String);
+    method public void setZSLMode(java.lang.String);
     method public void setZoom(int);
     method public void unflatten(java.lang.String);
     field public static final java.lang.String ANTIBANDING_50HZ = "50hz";
@@ -9598,6 +9605,8 @@ package android.hardware {
     field public static final java.lang.String WHITE_BALANCE_SHADE = "shade";
     field public static final java.lang.String WHITE_BALANCE_TWILIGHT = "twilight";
     field public static final java.lang.String WHITE_BALANCE_WARM_FLUORESCENT = "warm-fluorescent";
+    field public static final java.lang.String ZSL_OFF = "off";
+    field public static final java.lang.String ZSL_ON = "on";
   }
 
   public static abstract interface Camera.PictureCallback {

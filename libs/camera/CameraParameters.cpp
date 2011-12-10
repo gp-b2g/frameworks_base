@@ -121,6 +121,9 @@ const char CameraParameters::KEY_RECORDING_HINT[] = "recording-hint";
 const char CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED[] = "video-snapshot-supported";
 const char CameraParameters::KEY_VIDEO_STABILIZATION[] = "video-stabilization";
 const char CameraParameters::KEY_VIDEO_STABILIZATION_SUPPORTED[] = "video-stabilization-supported";
+const char CameraParameters::KEY_ZSL[] = "zsl";
+const char CameraParameters::KEY_SUPPORTED_ZSL_MODES[] = "zsl-values";
+const char CameraParameters::KEY_CAMERA_MODE[] = "camera-mode";
 
 const char CameraParameters::TRUE[] = "true";
 const char CameraParameters::FALSE[] = "false";
@@ -288,6 +291,10 @@ const char CameraParameters::REDEYE_REDUCTION_DISABLE[] = "disable";
 // Values for HDR settings.
 const char CameraParameters::HDR_ENABLE[] = "enable";
 const char CameraParameters::HDR_DISABLE[] = "disable";
+
+// Values for ZSL settings.
+const char CameraParameters::ZSL_OFF[] = "off";
+const char CameraParameters::ZSL_ON[] = "on";
 
 static const char* portrait = "portrait";
 static const char* landscape = "landscape";
