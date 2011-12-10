@@ -112,6 +112,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_ICC_CHANGED                    = 31;
     protected static final int EVENT_GET_NETWORKS_DONE              = 32;
     protected static final int EVENT_GET_MDN_DONE                   = 33;
+    protected static final int EVENT_CDMA_PRL_VERSION_CHANGED       = 35;
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
@@ -901,8 +902,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     public String getCdmaPrlVersion(){
-        //  This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("getCdmaPrlVersion");
+        //  This function should be overridden. Not implemented in SIPPhone.
+        Log.e(LOG_TAG, "Error! getCdmaPrlVersion() in PhoneBase should not be " +
+                "called, GSMPhone & CDMAPhone inactive.");
         return null;
     }
 
