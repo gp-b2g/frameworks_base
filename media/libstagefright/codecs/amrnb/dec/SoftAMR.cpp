@@ -246,8 +246,12 @@ bool SoftAMR::isConfigured() const {
 }
 
 static size_t getFrameSize(unsigned FT) {
-    static const size_t kFrameSizeWB[9] = {
-        132, 177, 253, 285, 317, 365, 397, 461, 477
+    static const size_t kFrameSizeWB[16] = {
+        132, 177, 253, 285, 317, 365, 397, 461, 477,
+        40, // SID
+        0, 0, 0, 0, // future use
+        0, // speech lost
+        0 // no data
     };
 
     size_t frameSize = kFrameSizeWB[FT];
@@ -324,7 +328,17 @@ void SoftAMR::onQueueFilled(OMX_U32 portIndex) {
             }
         } else {
             int16 mode = ((inputPtr[0] >> 3) & 0x0f);
+            if ((mode > 9 && mode < 14) || mode > 15) {
+                LOGE("Error: mode is either between 9 and 14 or is greater "\
+                     "than 15.");
+
+                notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
+                mSignalledError = true;
+
+                return;
+            }
             size_t frameSize = getFrameSize(mode);
+
             CHECK_GE(inHeader->nFilledLen, frameSize);
 
             int16 frameType;
