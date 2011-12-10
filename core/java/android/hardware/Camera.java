@@ -1649,6 +1649,7 @@ public class Camera {
         private static final String KEY_SELECTABLE_ZONE_AF = "selectable-zone-af";
         private static final String KEY_FACE_DETECTION = "face-detection";
         private static final String KEY_MEMORY_COLOR_ENHANCEMENT = "mce";
+	private static final String KEY_REDEYE_REDUCTION = "redeye-reduction";
 
         // Parameter key suffix for supported values.
         private static final String SUPPORTED_VALUES_SUFFIX = "-values";
@@ -1965,6 +1966,9 @@ public class Camera {
         public static final String CONTINUOUS_AF_ON = "caf-on";
         public static final String DENOISE_OFF = "denoise-off";
         public static final String DENOISE_ON = "denoise-on";
+	// Values for Redeye Reduction settings.
+        public static final String REDEYE_REDUCTION_ENABLE = "enable";
+        public static final String REDEYE_REDUCTION_DISABLE = "disable";
 
         // Values for selectable zone af settings.
         public static final String SELECTABLE_ZONE_AF_AUTO = "auto";
@@ -2987,6 +2991,40 @@ public class Camera {
             return getInt(KEY_MAX_SATURATION);
         }
 
+        /**
+         * Gets the current redeye reduction setting.
+         *
+         * @return one of REDEYE_REDUCTION_XXX string constant. null if redeye reduction
+         *         setting is not supported.
+         *
+         */
+        public String getRedeyeReductionMode() {
+            return get(KEY_REDEYE_REDUCTION);
+        }
+
+	/**
+         * Sets the redeye reduction. Other parameters may be changed after changing
+         * redeye reduction. After setting redeye reduction,
+         * applications should call getParameters to know if some parameters are
+         * changed.
+         *
+         * @param value REDEYE_REDUCTION_XXX string constants.
+         *
+         */
+        public void setRedeyeReductionMode(String value) {
+            set(KEY_REDEYE_REDUCTION, value);
+        }
+        /**
+         * Gets the supported redeye reduction modes.
+         *
+         * @return a List of REDEYE_REDUCTION_XXX string constant. null if redeye reduction
+         *         setting is not supported.
+         *
+         */
+        public List<String> getSupportedRedeyeReductionModes() {
+            String str = get(KEY_REDEYE_REDUCTION + SUPPORTED_VALUES_SUFFIX);
+            return split(str);
+        }
         /**
          * Gets the current antibanding setting.
          *

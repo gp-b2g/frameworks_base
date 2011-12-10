@@ -9406,6 +9406,7 @@ package android.hardware {
     method public deprecated int getPreviewFrameRate();
     method public java.lang.String getPreviewFrameRateMode();
     method public android.hardware.Camera.Size getPreviewSize();
+    method public java.lang.String getRedeyeReductionMode();
     method public int getSaturation();
     method public java.lang.String getSceneDetectMode();
     method public java.lang.String getSceneMode();
@@ -9431,6 +9432,7 @@ package android.hardware {
     method public java.util.List<java.lang.String> getSupportedPreviewFrameRateModes();
     method public deprecated java.util.List<java.lang.Integer> getSupportedPreviewFrameRates();
     method public java.util.List<android.hardware.Camera.Size> getSupportedPreviewSizes();
+    method public java.util.List<java.lang.String> getSupportedRedeyeReductionModes();
     method public java.util.List<java.lang.String> getSupportedSceneDetectModes();
     method public java.util.List<java.lang.String> getSupportedSceneModes();
     method public java.util.List<java.lang.String> getSupportedSelectableZoneAf();
@@ -9492,6 +9494,7 @@ package android.hardware {
     method public void setPreviewFrameRateMode(java.lang.String);
     method public void setPreviewSize(int, int);
     method public void setRecordingHint(boolean);
+    method public void setRedeyeReductionMode(java.lang.String);
     method public void setRotation(int);
     method public void setSaturation(int);
     method public void setSceneDetectMode(java.lang.String);
@@ -9557,6 +9560,8 @@ package android.hardware {
     field public static final java.lang.String MCE_ENABLE = "enable";
     field public static final int PREVIEW_FPS_MAX_INDEX = 1; // 0x1
     field public static final int PREVIEW_FPS_MIN_INDEX = 0; // 0x0
+    field public static final java.lang.String REDEYE_REDUCTION_DISABLE = "disable";
+    field public static final java.lang.String REDEYE_REDUCTION_ENABLE = "enable";
     field public static final java.lang.String SCENE_DETECT_OFF = "off";
     field public static final java.lang.String SCENE_DETECT_ON = "on";
     field public static final java.lang.String SCENE_MODE_ACTION = "action";
