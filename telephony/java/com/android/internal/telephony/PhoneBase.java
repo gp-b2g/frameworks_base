@@ -42,6 +42,7 @@ import com.android.internal.telephony.gsm.UsimServiceTable;
 import com.android.internal.telephony.ims.IsimRecords;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.gsm.SIMRecords;
+import com.android.internal.telephony.QosSpec;
 
 import java.util.Locale;
 
@@ -1072,6 +1073,30 @@ public abstract class PhoneBase extends Handler implements Phone {
     public boolean isDataConnectivityPossible(String apnType) {
         return ((mDataConnectionTracker != null) &&
                 (mDataConnectionTracker.isDataPossible(apnType)));
+    }
+
+    public int enableQos(QosSpec qosSpec, String type) {
+        return mDataConnectionTracker.enableQos(qosSpec, type);
+    }
+
+    public int disableQos(int qosId) {
+        return mDataConnectionTracker.disableQos(qosId);
+    }
+
+    public int modifyQos(int qosId, QosSpec qosSpec) {
+        return mDataConnectionTracker.modifyQos(qosId, qosSpec);
+    }
+
+    public int suspendQos(int qosId) {
+        return mDataConnectionTracker.suspendQos(qosId);
+    }
+
+    public int resumeQos(int qosId) {
+        return mDataConnectionTracker.resumeQos(qosId);
+    }
+
+    public int getQosStatus(int qosId) {
+        return mDataConnectionTracker.getQosStatus(qosId);
     }
 
     /**

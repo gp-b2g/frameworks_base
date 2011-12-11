@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2009, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ package com.android.internal.telephony;
 import android.os.Bundle;
 import java.util.List;
 import android.telephony.NeighboringCellInfo;
+import com.android.internal.telephony.QosSpec;
+
 
 /**
  * Interface used to interact with the phone.  Mostly this is used by the
@@ -197,6 +199,55 @@ interface ITelephony {
      * Disable a specific APN type.
      */
     int disableApnType(String type);
+
+    /**
+     * Enable QoS
+     * @param qosSpec QoS spec containing various QoS parameters
+     * @param type Type of data connection (any of Phone.APN_TYPE_*)
+     * @return Phone.QOS_REQUEST_SUCCESS - success, else failure
+     * {@hide}
+     */
+    int enableQos(in QosSpec qosSpec, String type);
+
+    /**
+     * Disable QoS
+     * @param qosId QoS Identifier
+     * @return Phone.QOS_REQUEST_SUCCESS - success, else failure
+     * {@hide}
+     */
+    int disableQos(int qosId);
+
+    /**
+     * Modify QoS
+     * @param qosId QoS Identifier
+     * @return Phone.QOS_REQUEST_SUCCESS - success, else failure
+     * {@hide}
+     */
+    int modifyQos(int qosId, in QosSpec qosSpec);
+
+    /**
+     * Suspend QoS
+     * @param qosId QoS Identifier
+     * @return Phone.QOS_REQUEST_SUCCESS - success, else failure
+     * {@hide}
+     */
+    int suspendQos(int qosId);
+
+    /**
+     * Resume QoS
+     * @param qosId QoS Identifier
+     * @return Phone.QOS_REQUEST_SUCCESS - success, else failure
+     * {@hide}
+     */
+    int resumeQos(int qosId);
+
+    /**
+     * Get QoS
+     * @param qosId QoS Identifier
+     * @return Phone.QOS_REQUEST_SUCCESS - success, else failure
+     * {@hide}
+     */
+    int getQosStatus(int qosId);
 
     /**
      * Allow mobile data connections.

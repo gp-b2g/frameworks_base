@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -246,6 +247,11 @@ public class TelephonyIntents {
      */
     public static final String ACTION_UNSOL_RESPONSE_OEM_HOOK_RAW
             = "android.intent.action.ACTION_UNSOL_RESPONSE_OEM_HOOK_RAW";
+
+    /**
+     * QoS State Intent. Used to indicate the status of QoS for the data connection.
+     */
+    public static final String ACTION_QOS_STATE_IND = "android.intent.action.ACTION_QOS_STATE_IND";
 
     /**
      * Broadcast Action: The default subscription has changed.  This has the following

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,12 +49,13 @@ import com.android.internal.telephony.DataConnection.FailCause;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.telephony.DataProfile;
-
+import com.android.internal.telephony.QosSpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -658,6 +660,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected abstract void setState(State s);
     protected abstract void gotoIdleAndNotifyDataConnection(String reason);
 
+    protected abstract DataConnection getActiveDataConnection(String type);
     protected abstract boolean onTrySetupData(String reason);
     protected abstract void onRoamingOff();
     protected abstract void onRoamingOn();
@@ -1107,6 +1110,94 @@ public abstract class DataConnectionTracker extends Handler {
             reason = (String) ar.userObj;
         }
         gotoIdleAndNotifyDataConnection(reason);
+    }
+
+    public int enableQos(QosSpec qosSpec, String type) {
+        int result = Phone.QOS_REQUEST_FAILURE;
+
+        log("enableQos: type:" + type +
+                " userData:" + qosSpec.getUserData());
+
+        DataConnection dc = getActiveDataConnection(type);
+
+        if (dc != null) {
+            dc.qosSetup(qosSpec);
+            result = Phone.QOS_REQUEST_SUCCESS;
+        } else {
+            log("enableQos: Did not find a data connection!");
+        }
+
+        return result;
+    }
+
+    public int disableQos(int qosId) {
+        int result = Phone.QOS_REQUEST_FAILURE;
+        log("disableQos:" + qosId);
+
+        DataConnection dc = getDataConnectionByQosId(qosId);
+        if (dc != null) {
+            dc.qosRelease(qosId);
+            result = Phone.QOS_REQUEST_SUCCESS;
+        }
+        return result;
+    }
+
+    public int modifyQos(int qosId, QosSpec qosSpec) {
+        int result = Phone.QOS_REQUEST_FAILURE;
+        log("modifyQos:" + qosId);
+
+        DataConnection dc = getDataConnectionByQosId(qosId);
+        if (dc != null) {
+            dc.qosModify(qosId, qosSpec);
+            result = Phone.QOS_REQUEST_SUCCESS;
+        }
+        return result;
+    }
+
+    public int suspendQos(int qosId) {
+        int result = Phone.QOS_REQUEST_FAILURE;
+        log("suspendQos:" + qosId);
+
+        DataConnection dc = getDataConnectionByQosId(qosId);
+        if (dc != null) {
+            dc.qosSuspend(qosId);
+            result = Phone.QOS_REQUEST_SUCCESS;
+        }
+        return result;
+    }
+
+    public int resumeQos(int qosId) {
+        int result = Phone.QOS_REQUEST_FAILURE;
+        log("resumeQos:" + qosId);
+
+        DataConnection dc = getDataConnectionByQosId(qosId);
+        if (dc != null) {
+            dc.qosResume(qosId);
+            result = Phone.QOS_REQUEST_SUCCESS;
+        }
+        return result;
+    }
+
+    public int getQosStatus(int qosId) {
+        int result = Phone.QOS_REQUEST_FAILURE;
+        log("getQosStatus:" + qosId);
+
+        DataConnection dc = getDataConnectionByQosId(qosId);
+        if (dc != null) {
+            dc.getQosStatus(qosId);
+            result = Phone.QOS_REQUEST_SUCCESS;
+        }
+        return result;
+    }
+
+    private DataConnection getDataConnectionByQosId(int qosId) {
+        for (Integer dcKey : mDataConnections.keySet()) {
+            DataConnection dc = mDataConnections.get(dcKey);
+            if (dc.isValidQos(qosId)) {
+                return dc;
+            }
+        }
+        return null;
     }
 
     /**

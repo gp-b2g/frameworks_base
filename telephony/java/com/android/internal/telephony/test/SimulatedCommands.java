@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -965,6 +966,30 @@ public final class SimulatedCommands extends BaseCommands
     public void setupDataCall(String radioTechnology, String profile,
             String apn, String user, String password, String authType,
             String protocol, Message result) {
+        unimplemented(result);
+    }
+
+    public void setupQosReq (int callId, ArrayList<String> qosFlows, Message result) {
+        unimplemented(result);
+    }
+
+    public void releaseQos (int qosId, Message result) {
+        unimplemented(result);
+    }
+
+    public void modifyQos (int qosId, ArrayList<String> qosFlows, Message result) {
+        unimplemented(result);
+    }
+
+    public void suspendQos (int qosId, Message result) {
+        unimplemented(result);
+    }
+
+    public void resumeQos (int qosId, Message result) {
+        unimplemented(result);
+    }
+
+    public void getQosStatus (int qosId, Message result) {
         unimplemented(result);
     }
 

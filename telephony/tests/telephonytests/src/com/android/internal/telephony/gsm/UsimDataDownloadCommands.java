@@ -27,6 +27,7 @@ import com.android.internal.telephony.IccIoResult;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 
+import java.util.ArrayList;
 import junit.framework.Assert;
 
 /**
@@ -661,4 +662,21 @@ class UsimDataDownloadCommands extends BaseCommands {
     public void getVoiceRadioTechnology(Message result) {
     }
 
+    public void setupQosReq (int callId, ArrayList<String> qosFlows, Message result) {
+    }
+
+    public void releaseQos (int qosId, Message result) {
+    }
+
+    public void modifyQos (int qosId, ArrayList<String> qosFlows, Message result) {
+    }
+
+    public void suspendQos (int qosId, Message result) {
+    }
+
+    public void resumeQos (int qosId, Message result) {
+    }
+
+    public void getQosStatus (int qosId, Message result) {
+    }
 }
