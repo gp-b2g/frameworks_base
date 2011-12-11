@@ -74,7 +74,10 @@ enum {
     GET_EFFECT_DESCRIPTOR,
     CREATE_EFFECT,
     MOVE_EFFECTS,
-    SET_FM_VOLUME
+    SET_FM_VOLUME,
+    CREATE_SESSION,
+    DELETE_SESSION,
+    APPLY_EFFECTS
 };
 
 class BpAudioFlinger : public BpInterface<IAudioFlinger>
@@ -130,6 +133,61 @@ public:
             *status = lStatus;
         }
         return track;
+    }
+
+    virtual void createSession(
+                        pid_t pid,
+                        uint32_t sampleRate,
+                        int channelCount,
+                        int *sessionId,
+                        status_t *status)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(pid);
+        data.writeInt32(sampleRate);
+        data.writeInt32(channelCount);
+        int lSessionId = 0;
+        if (sessionId != NULL) {
+            lSessionId = *sessionId;
+        }
+        data.writeInt32(lSessionId);
+        status_t lStatus = remote()->transact(CREATE_SESSION, data, &reply);
+        if (lStatus != NO_ERROR) {
+            LOGE("openRecord error: %s", strerror(-lStatus));
+        } else {
+            lSessionId = reply.readInt32();
+            if (sessionId != NULL) {
+                *sessionId = lSessionId;
+            }
+            lStatus = reply.readInt32();
+        }
+        if (status) {
+            *status = lStatus;
+        }
+    }
+
+    virtual void deleteSession()
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        status_t lStatus = remote()->transact(DELETE_SESSION, data, &reply);
+        if (lStatus != NO_ERROR) {
+            LOGE("deleteSession error: %s", strerror(-lStatus));
+        }
+    }
+
+    virtual void applyEffectsOn(int16_t *inBuffer, int16_t *outBuffer, int size)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32((int32_t)inBuffer);
+        data.writeInt32((int32_t)outBuffer);
+        data.writeInt32(size);
+        status_t lStatus = remote()->transact(APPLY_EFFECTS, data, &reply);
+        if (lStatus != NO_ERROR) {
+            LOGE("applyEffectsOn error: %s", strerror(-lStatus));
+        }
     }
 
     virtual sp<IAudioRecord> openRecord(
@@ -762,6 +820,31 @@ status_t BnAudioFlinger::onTransact(
             reply->writeInt32(sessionId);
             reply->writeInt32(status);
             reply->writeStrongBinder(track->asBinder());
+            return NO_ERROR;
+        } break;
+        case CREATE_SESSION: {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            pid_t pid = data.readInt32();
+            uint32_t sampleRate = data.readInt32();
+            int channelCount = data.readInt32();
+            int sessionId = data.readInt32();
+            status_t status;
+            createSession(pid, sampleRate, channelCount, &sessionId, &status);
+            reply->writeInt32(sessionId);
+            reply->writeInt32(status);
+            return NO_ERROR;
+        } break;
+        case DELETE_SESSION: {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            deleteSession();
+            return NO_ERROR;
+        } break;
+        case APPLY_EFFECTS: {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            int16_t *inBuffer = (int16_t*)data.readInt32();
+            int16_t *outBuffer = (int16_t*)data.readInt32();
+            int size = data.readInt32();
+            applyEffectsOn(inBuffer, outBuffer, size);
             return NO_ERROR;
         } break;
         case OPEN_RECORD: {

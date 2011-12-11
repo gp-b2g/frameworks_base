@@ -57,6 +57,20 @@ public:
                                 int *sessionId,
                                 status_t *status) = 0;
 
+    virtual     void        createSession(
+                                pid_t pid,
+                                uint32_t sampleRate,
+                                int channelCount,
+                                int *sessionId,
+                                status_t *status) = 0;
+
+    virtual     void        deleteSession() = 0;
+
+    virtual     void        applyEffectsOn(
+                                int16_t *buffer1,
+                                int16_t *buffer2,
+                                int size) = 0;
+
     virtual sp<IAudioRecord> openRecord(
                                 pid_t pid,
                                 int input,

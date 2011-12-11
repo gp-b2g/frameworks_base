@@ -855,13 +855,9 @@ void LPAPlayer::decoderThreadEntry() {
                 if (!asyncReset) {
                     pthread_mutex_lock(&apply_effect_mutex);
                     LOGV("decoderThread: applying effects on pmem buf with fd %d", buf.pmemFd);
-#ifdef EFFECTS_ENABLED
                     mAudioFlinger->applyEffectsOn((int16_t*)buf.localBuf,
                                                   (int16_t*)buf.pmemBuf,
                                                   (int)buf.bytesToWrite);
-#else
-                    memcpy((char*)buf.pmemBuf,(char*)buf.localBuf,(int)buf.bytesToWrite);
-#endif
 
                     pthread_mutex_unlock(&apply_effect_mutex);
 
@@ -1246,11 +1242,9 @@ void LPAPlayer::EffectsThreadEntry() {
 
             pthread_mutex_lock(&apply_effect_mutex);
             LOGV("effectsThread: applying effects on %p fd %d", buf.pmemBuf, (int)buf.pmemFd);
-#ifdef EFFECTS_ENABLED
             mAudioFlinger->applyEffectsOn((int16_t*)buf.localBuf,
                                           (int16_t*)buf.pmemBuf,
                                           (int)buf.bytesToWrite);
-#endif
             pthread_mutex_unlock(&apply_effect_mutex);
             effectsQueue.erase(it);
         }
