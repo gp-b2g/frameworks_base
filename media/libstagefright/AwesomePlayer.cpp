@@ -941,13 +941,17 @@ status_t AwesomePlayer::play_l() {
                     durationUs = 0;
 
                 LOGV("LPAPlayer::getObjectsAlive() %d",LPAPlayer::objectsAlive);
+                int32_t isFormatAdif = 0;
+                format->findInt32(kkeyAacFormatAdif, &isFormatAdif);
 
                 char lpaDecode[128];
                 property_get("lpa.decode",lpaDecode,"0");
                 if(strcmp("true",lpaDecode) == 0)
                 {
                     LOGV("LPAPlayer::getObjectsAlive() %d",LPAPlayer::objectsAlive);
-                    if ( durationUs > 60000000 && (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG) || !strcasecmp(mime,MEDIA_MIMETYPE_AUDIO_AAC)) && LPAPlayer::objectsAlive == 0 && mVideoSource == NULL) {
+                    if ( durationUs > 60000000 && !isFormatAdif
+                         &&(!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG) || !strcasecmp(mime,MEDIA_MIMETYPE_AUDIO_AAC))
+                         && LPAPlayer::objectsAlive == 0 && mVideoSource == NULL) {
                         LOGE("LPAPlayer created, LPA MODE detected mime %s duration %d\n", mime, durationUs);
                         bool initCheck =  false;
                         mAudioPlayer = new LPAPlayer(mAudioSink, initCheck, this);
