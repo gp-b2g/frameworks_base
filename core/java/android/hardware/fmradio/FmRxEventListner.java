@@ -76,10 +76,6 @@ class FmRxEventListner {
 
                         if (eventCount >= 0)
                             Log.d(TAG, "Received event. Count: " + eventCount);
-                        else {
-                            Log.d(TAG, "Exiting the FM Rx Event Listener");
-                            break;
-                        }
 
                         for (  index = 0; index < eventCount; index++ ) {
                             Log.d(TAG, "Received <" +buff[index]+ ">" );
