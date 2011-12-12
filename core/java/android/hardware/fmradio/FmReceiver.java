@@ -62,6 +62,13 @@ public class FmReceiver extends FmTransceiver
    public static final int FM_RX_SEARCHDIR_UP=1;
 
    /**
+   * Scan dwell (Preview) duration = 0 seconds
+   *
+   * @see #searchStations(int, int, int)
+   * @see #searchStations(int, int, int, int, int)
+   */
+   public static final int FM_RX_DWELL_PERIOD_0S=0;
+  /**
    * Scan dwell (Preview) duration = 1 second
    *
    * @see #searchStations(int, int, int)
@@ -695,7 +702,7 @@ public class FmReceiver extends FmTransceiver
          Log.d (TAG, "Invalid search mode: " + mode );
          bStatus = false;
       }
-      if ( (dwellPeriod < FM_RX_DWELL_PERIOD_1S) ||
+      if ( (dwellPeriod < FM_RX_DWELL_PERIOD_0S ) ||
            (dwellPeriod > FM_RX_DWELL_PERIOD_7S))
       {
          Log.d (TAG, "Invalid dwelling time: " + dwellPeriod);
