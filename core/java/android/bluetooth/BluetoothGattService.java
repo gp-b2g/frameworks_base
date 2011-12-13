@@ -104,6 +104,10 @@ public class BluetoothGattService {
         return mHelper.doDiscovery();
     }
 
+    public boolean isDiscoveryDone() {
+        return mHelper.discoveryDone();
+    }
+
     public String[] getCharacteristicPaths() {
 
             String value = "";
