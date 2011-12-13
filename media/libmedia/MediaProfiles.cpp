@@ -410,9 +410,22 @@ MediaProfiles::createVideoEditorCap(const char **atts, MediaProfiles *profiles)
           !strcmp("maxOutputFrameWidth", atts[4]) &&
           !strcmp("maxOutputFrameHeight", atts[6]));
 
-    MediaProfiles::VideoEditorCap *pVideoEditorCap =
-        new MediaProfiles::VideoEditorCap(atoi(atts[1]), atoi(atts[3]),
-                atoi(atts[5]), atoi(atts[7]));
+    char mDeviceName[PROPERTY_VALUE_MAX] = {0};
+    property_get("ro.board.platform",mDeviceName,"0");
+    MediaProfiles::VideoEditorCap *pVideoEditorCap = NULL;
+    if (strncmp(mDeviceName, "msm8660" ,7) == 0)
+    {
+        /* The VideoEditor App sets the default aspect ratio to be 16:9 which
+           corresponds to FWVGA, 720P, 1080P. Hence selecting the lowest - FWVGA
+           due to memory constraints */
+        pVideoEditorCap = new MediaProfiles::VideoEditorCap(854, 480,
+                    854, 480);
+    }
+    else {
+        /* Selecting the value coming from media_profiles.xml which is 1080P */
+        pVideoEditorCap = new MediaProfiles::VideoEditorCap(atoi(atts[1]),
+                    atoi(atts[3]), atoi(atts[5]), atoi(atts[7]));
+    }
 
     logVideoEditorCap(*pVideoEditorCap);
     profiles->mVideoEditorCap = pVideoEditorCap;
