@@ -1,5 +1,6 @@
 /*
 ** Copyright 2006, The Android Open Source Project
+** Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -286,6 +287,61 @@ done:
     return reply;
 }
 
+/*
+ * This generic version of the function will take the service path
+ * as an argument and call the methods on the given service, path and
+ * interface.
+ * This can be used to call any interface on any services that are
+ * connected to D-Bus
+ */
+DBusMessage * dbus_func_args_generic_timeout_valist(JNIEnv *env,
+                                            DBusConnection *conn,
+                                            int timeout_ms,
+                                            DBusError *err,
+                                            const char *service,
+                                            const char *path,
+                                            const char *ifc,
+                                            const char *func,
+                                            int first_arg_type,
+                                            va_list args) {
+
+    DBusMessage *msg = NULL, *reply = NULL;
+    const char *name;
+    bool return_error = (err != NULL);
+
+    if (!return_error) {
+        err = (DBusError*)malloc(sizeof(DBusError));
+        dbus_error_init(err);
+    }
+
+    /* Compose the command */
+    msg = dbus_message_new_method_call(service, path, ifc, func);
+
+    if (msg == NULL) {
+        LOGE("Could not allocate D-Bus message object!");
+        goto done;
+    }
+
+    /* append arguments */
+    if (!dbus_message_append_args_valist(msg, first_arg_type, args)) {
+        LOGE("Could not append argument to method call!");
+        goto done;
+    }
+
+    /* Make the call. */
+    reply = dbus_connection_send_with_reply_and_block(conn, msg, timeout_ms, err);
+    if (!return_error && dbus_error_is_set(err)) {
+        LOG_AND_FREE_DBUS_ERROR_WITH_MSG(err, msg);
+    }
+
+done:
+    if (!return_error) {
+        free(err);
+    }
+    if (msg) dbus_message_unref(msg);
+    return reply;
+}
+
 DBusMessage * dbus_func_args_timeout(JNIEnv *env,
                                      DBusConnection *conn,
                                      int timeout_ms,
@@ -299,6 +355,31 @@ DBusMessage * dbus_func_args_timeout(JNIEnv *env,
     va_start(lst, first_arg_type);
     ret = dbus_func_args_timeout_valist(env, conn, timeout_ms, NULL,
                                         path, ifc, func,
+                                        first_arg_type, lst);
+    va_end(lst);
+    return ret;
+}
+
+/*
+ * This generic version of the function will take the service path
+ * as an argument and call the methods on the given service, path and
+ * interface.
+ * This can be used to call any interface on any services that are
+ * connected to D-Bus
+ */
+DBusMessage * dbus_func_args_generic(JNIEnv *env,
+                             DBusConnection *conn,
+                             const char *service,
+                             const char *path,
+                             const char *ifc,
+                             const char *func,
+                             int first_arg_type,
+                             ...) {
+    DBusMessage *ret;
+    va_list lst;
+    va_start(lst, first_arg_type);
+    ret = dbus_func_args_generic_timeout_valist(env, conn, -1, NULL,
+                                        service, path, ifc, func,
                                         first_arg_type, lst);
     va_end(lst);
     return ret;

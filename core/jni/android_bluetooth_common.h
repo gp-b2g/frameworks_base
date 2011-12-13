@@ -138,6 +138,15 @@ DBusMessage * dbus_func_args(JNIEnv *env,
                              int first_arg_type,
                              ...);
 
+DBusMessage * dbus_func_args_generic(JNIEnv *env,
+                             DBusConnection *conn,
+                             const char *service,
+                             const char *path,
+                             const char *ifc,
+                             const char *func,
+                             int first_arg_type,
+                             ...);
+
 DBusMessage * dbus_func_args_error(JNIEnv *env,
                                    DBusConnection *conn,
                                    DBusError *err,

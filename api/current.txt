@@ -4612,7 +4612,7 @@ package android.bluetooth {
   public abstract interface IBluetoothThermometerServices implements android.os.IInterface {
     method public abstract boolean clearNotifyIndicate(android.os.ParcelUuid) throws android.os.RemoteException;
     method public abstract boolean closeThermometerService(android.bluetooth.BluetoothDevice, android.os.ParcelUuid) throws android.os.RemoteException;
-    method public abstract java.lang.String getServiceName() throws android.os.RemoteException;
+    method public abstract java.lang.String getServiceName(android.os.ParcelUuid) throws android.os.RemoteException;
     method public abstract boolean notifyIndicateValue(android.os.ParcelUuid) throws android.os.RemoteException;
     method public abstract void readCharacteristicsValue(android.os.ParcelUuid) throws android.os.RemoteException;
     method public abstract int readClientCharConf(android.os.ParcelUuid) throws android.os.RemoteException;

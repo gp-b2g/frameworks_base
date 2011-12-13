@@ -33,6 +33,8 @@ import android.os.Message;
 import android.os.ParcelUuid;
 import android.os.PowerManager;
 import android.util.Log;
+import android.content.IntentFilter;
+import android.content.BroadcastReceiver;
 
 import java.util.HashMap;
 import java.util.List;
@@ -52,6 +54,7 @@ class BluetoothEventLoop {
 
     private final HashMap<String, Integer> mPasskeyAgentRequestData;
     private final HashMap<String, Integer> mAuthorizationAgentRequestData;
+    private final HashMap<String, Integer> mAuthorizationRequestData;
     private final BluetoothService mBluetoothService;
     private final BluetoothAdapter mAdapter;
     private final BluetoothAdapterStateMachine mBluetoothState;
@@ -76,6 +79,11 @@ class BluetoothEventLoop {
 
     private static final String BLUETOOTH_ADMIN_PERM = android.Manifest.permission.BLUETOOTH_ADMIN;
     private static final String BLUETOOTH_PERM = android.Manifest.permission.BLUETOOTH;
+
+    // package and class name to which we send intent to check sap access permission
+    private static final String ACCESS_REQUEST_PACKAGE = "com.android.settings";
+    private static final String ACCESS_REQUEST_CLASS =
+                         "com.android.settings.bluetooth.BluetoothPermissionRequest";
 
     private final Handler mHandler = new Handler() {
         @Override
@@ -122,6 +130,7 @@ class BluetoothEventLoop {
         mBluetoothState = bluetoothState;
         mPasskeyAgentRequestData = new HashMap<String, Integer>();
         mAuthorizationAgentRequestData = new HashMap<String, Integer>();
+        mAuthorizationRequestData = new HashMap<String, Integer>();
         mAdapter = adapter;
         //WakeLock instantiation in BluetoothEventLoop class
         PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
@@ -165,6 +174,10 @@ class BluetoothEventLoop {
 
     /* package */ HashMap<String, Integer> getAuthorizationAgentRequestData() {
         return mAuthorizationAgentRequestData;
+    }
+
+    /* package */ HashMap<String, Integer> getAuthorizationRequestData() {
+        return mAuthorizationRequestData;
     }
 
     /* package */ void start() {
@@ -317,7 +330,9 @@ class BluetoothEventLoop {
             mBluetoothService.setBondState(address.toUpperCase(), BluetoothDevice.BOND_NONE,
                 BluetoothDevice.UNBOND_REASON_REMOVED);
             mBluetoothService.setRemoteDeviceProperty(address, "UUIDs", null);
+            mBluetoothService.setRemoteDeviceProperty(address, "Services", null);
             mBluetoothService.setRemoteDeviceProperty(address, "Trusted", "false");
+            mBluetoothService.clearRemoteDeviceGattServices(address);
         }
     }
 
@@ -449,6 +464,8 @@ class BluetoothEventLoop {
             intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
             mContext.sendBroadcast(intent, BLUETOOTH_PERM);
         } else if (name.equals("Connected")) {
+            Log.d(TAG, "Device property Connected: " + propValues[1]);
+
             mBluetoothService.setRemoteDeviceProperty(address, name, propValues[1]);
             Intent intent = null;
             if (propValues[1].equals("true")) {
@@ -501,7 +518,7 @@ class BluetoothEventLoop {
             }
             mBluetoothService.setRemoteDeviceProperty(address, name, services);
 
-            mBluetoothService.sendGattIntent(address);
+            mBluetoothService.sendGattIntent(address, BluetoothDevice.GATT_RESULT_SUCCESS);
 
         } else if (name.equals("Paired")) {
             if (propValues[1].equals("true")) {
@@ -580,6 +597,24 @@ class BluetoothEventLoop {
                                               BluetoothPan.LOCAL_PANU_ROLE);
             }
         }
+    }
+
+    private String checkAuthorizationRequestAndGetAddress(String objectPath, int nativeData) {
+        String address = mBluetoothService.getAddressFromObjectPath(objectPath);
+        if (address == null) {
+            Log.e(TAG, "Unable to get device address in checkAuthorizationRequestAndGetAddress, " +
+                  "returning null");
+            return null;
+        }
+        address = address.toUpperCase();
+        mAuthorizationRequestData.put(address, new Integer(nativeData));
+
+        if (mBluetoothService.getBluetoothState() == BluetoothAdapter.STATE_TURNING_OFF) {
+            // shutdown path
+            mBluetoothService.sapAuthorize(address, false);
+            return null;
+        }
+        return address;
     }
 
     private String checkPairingRequestAndGetAddress(String objectPath, int nativeData) {
@@ -688,17 +723,56 @@ class BluetoothEventLoop {
         return;
     }
 
-    /**
-     * Called by native code on a RequestPinCode method call to
-     * org.bluez.Agent.
-     *
-     * @param objectPath the path of the device requesting a PIN code
-     * @param nativeData a native pointer to the original D-Bus message
-     */
-    private void onRequestPinCode(String objectPath, int nativeData) {
+    private void onSapAuthorize(String objectPath, String uuid, int nativeData) {
+        Log.i(TAG, "onSapAuthorize" + objectPath + uuid);
+        String address = checkAuthorizationRequestAndGetAddress(objectPath, nativeData);
+        if (address == null) {
+            Log.e(TAG, "address is null");
+            return;
+        }
+        /*Get the Trust state of the device*/
+        boolean trusted = mBluetoothService.getTrustState(address);
+        if (trusted) {
+            /*Say as authorized to lower layers without popping up to
+            user*/
+            mBluetoothService.sapAuthorize(address, true);
+        } else {
+            BluetoothDevice remoteDevice = mBluetoothService.getRemoteDevice(address);
+            Intent intent = new
+                Intent(BluetoothDevice.ACTION_CONNECTION_ACCESS_REQUEST);
+            intent.setClassName(ACCESS_REQUEST_PACKAGE, ACCESS_REQUEST_CLASS);
+            intent.putExtra(BluetoothDevice.EXTRA_ACCESS_REQUEST_TYPE,
+                            BluetoothDevice.REQUEST_TYPE_SIM_ACCESS);
+            intent.putExtra(BluetoothDevice.EXTRA_DEVICE, remoteDevice);
+            mContext.sendBroadcast(intent, BLUETOOTH_ADMIN_PERM);
+        }
+    }
+    private void onSapStateChanged(String objectPath, String state, int nativeData) {
+        Log.i(TAG, "onSapStateChanged" + objectPath + state);
+
+        String address = mBluetoothService.getAddressFromObjectPath(objectPath);
+        if (address == null) {
+            Log.e(TAG, "Unable to get device address , " +
+                  "returning null");
+            return;
+        }
+        address = address.toUpperCase();
+
+        int sapState;
+        if(state.equals("Connected")) {
+                sapState = 1;
+        } else  {
+                sapState = 0;
+        }
+        Intent intent = new Intent(BluetoothService.SAP_STATECHANGE_INTENT);
+        intent.putExtra(BluetoothDevice.EXTRA_DEVICE,  mAdapter.getRemoteDevice(address));
+        intent.putExtra("state", sapState);
+        mContext.sendBroadcast(intent, BLUETOOTH_ADMIN_PERM);
+    }
+    private void onRequestPinCode(String objectPath, int nativeData, boolean secure) {
         String address = checkPairingRequestAndGetAddress(objectPath, nativeData);
         if (address == null) return;
-
+        Log.i(TAG, "Secure pairing is "+ secure);
         String pendingOutgoingAddress =
                 mBluetoothService.getPendingOutgoingBonding();
         BluetoothClass btClass = new BluetoothClass(mBluetoothService.getRemoteClass(address));
@@ -747,6 +821,7 @@ class BluetoothEventLoop {
         Intent intent = new Intent(BluetoothDevice.ACTION_PAIRING_REQUEST);
         intent.putExtra(BluetoothDevice.EXTRA_DEVICE, mAdapter.getRemoteDevice(address));
         intent.putExtra(BluetoothDevice.EXTRA_PAIRING_VARIANT, BluetoothDevice.PAIRING_VARIANT_PIN);
+        intent.putExtra(BluetoothDevice.EXTRA_SECURE_PAIRING, secure);
         mContext.sendBroadcast(intent, BLUETOOTH_ADMIN_PERM);
         // Release wakelock to allow the LCD to go off after the PIN popup notification.
         mWakeLock.release();
@@ -945,6 +1020,10 @@ class BluetoothEventLoop {
         if (address == null) return;
 
         // We don't parse the xml here, instead just query Bluez for the properties.
+        if (address == null) {
+            Log.e(TAG, "Unexpected error! address is null");
+            return;
+        }
         if (result) {
             mBluetoothService.updateRemoteDevicePropertiesCache(address);
         }
@@ -980,6 +1059,7 @@ class BluetoothEventLoop {
             // fall-through
         case CREATE_DEVICE_FAILED:
             mBluetoothService.sendUuidIntent(address);
+            mBluetoothService.sendGattIntent(address, BluetoothDevice.GATT_RESULT_FAIL);
             mBluetoothService.makeServiceChannelCallbacks(address);
             break;
         case CREATE_DEVICE_SUCCESS:
@@ -1139,10 +1219,12 @@ class BluetoothEventLoop {
 
     private void onDiscoverCharacteristicsResult(String serviceObjectPath, boolean result) {
 
+        Log.d(TAG, "onDiscoverCharacteristicsResult: " + result);
+
         if (result) {
             mBluetoothService.updateGattServicePropertiesCache(serviceObjectPath);
         }
-        mBluetoothService.makeDiscoverCharacteristicsCallback(serviceObjectPath);
+        mBluetoothService.makeDiscoverCharacteristicsCallback(serviceObjectPath, result);
     }
 
     private void onSetCharacteristicPropertyResult(String path, String property, boolean result) {

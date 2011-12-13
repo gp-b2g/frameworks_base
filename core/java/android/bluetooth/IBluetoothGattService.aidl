@@ -22,7 +22,7 @@ package android.bluetooth;
  * {@hide}
  */
 interface IBluetoothGattService {
-    void onCharacteristicsDiscovered(in String[] paths);
+    void onCharacteristicsDiscovered(in String[] paths, in boolean result);
     void onSetCharacteristicProperty(in String path, in String property, in boolean result);
     void onValueChanged(in String path, in String value);
     void onCharacteristicValueUpdated(in String path, in boolean result);

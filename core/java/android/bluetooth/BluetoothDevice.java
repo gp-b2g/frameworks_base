@@ -213,6 +213,10 @@ public final class BluetoothDevice implements Parcelable {
       */
     public static final String EXTRA_PREVIOUS_BOND_STATE =
             "android.bluetooth.device.extra.PREVIOUS_BOND_STATE";
+
+    /** @hide */
+    public static final String EXTRA_SECURE_PAIRING = "android.bluetooth.device.extra.SECURE";
+
     /**
      * Indicates the remote device is not bonded (paired).
      * <p>There is no shared link key with the remote device, so communication
@@ -317,6 +321,9 @@ public final class BluetoothDevice implements Parcelable {
 
     /**@hide*/
     public static final int REQUEST_TYPE_MESSAGE_ACCESS = 4;
+
+    /**@hide*/
+    public static final int REQUEST_TYPE_SIM_ACCESS = 5;
 
     /**
      * Used as an extra field in {@link #ACTION_CONNECTION_ACCESS_REQUEST} intents,
@@ -479,7 +486,28 @@ public final class BluetoothDevice implements Parcelable {
      * @hide
      */
     public static final String EXTRA_GATT = "android.bluetooth.device.extra.GATT";
+    /**
+     * Used as an extra field in ACTION_GATT intent.
+     * Contains the result code for GATT service discovery.
+     * @hide
+     */
+    public static final String EXTRA_GATT_RESULT = "android.bluetooth.device.extra.GATT_RESULT";
 
+    /** A GATT service discovery was successful.
+     * @hide */
+    public static final int GATT_RESULT_SUCCESS = 0;
+    /** A GATT service discovery failed due to timeout.
+     * @hide */
+    public static final int GATT_RESULT_TIMEOUT = 1;
+    /** A GATT service discovery failed.
+     * @hide */
+    public static final int GATT_RESULT_FAIL = 2;
+
+    /**
+     * Used as an extra field for SAP state change events.
+     * @hide
+     */
+    public static final String SAP_STATE_CHANGED = "com.android.bluetooth.sap.statechanged";
     /**
      * Lazy initialization. Guaranteed final after first object constructed, or
      * getService() called.

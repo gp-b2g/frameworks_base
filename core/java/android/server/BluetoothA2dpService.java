@@ -133,6 +133,10 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
                 }
             } else if (action.equals(BluetoothDevice.ACTION_ACL_DISCONNECTED)) {
                 synchronized (this) {
+                    if (device == null) {
+                        Log.e(TAG, "Error! device is null");
+                        return;
+                    }
                     if (mAudioDevices.containsKey(device)) {
                         int state = mAudioDevices.get(device);
                         handleSinkStateChange(device, state, BluetoothA2dp.STATE_DISCONNECTED);
