@@ -10474,6 +10474,7 @@ package android.media {
     method public boolean isBluetoothA2dpOn();
     method public boolean isBluetoothScoAvailableOffCall();
     method public boolean isBluetoothScoOn();
+    method public boolean isFMActive();
     method public boolean isMicrophoneMute();
     method public boolean isMusicActive();
     method public boolean isSpeakerphoneOn();
