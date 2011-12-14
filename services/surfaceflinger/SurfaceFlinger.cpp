@@ -45,6 +45,8 @@
 #include <pixelflinger/pixelflinger.h>
 #include <GLES/gl.h>
 
+#include <testframework/TestFramework.h>
+
 #include "clz.h"
 #include "GLExtensions.h"
 #include "DdmConnection.h"
@@ -401,7 +403,12 @@ status_t SurfaceFlinger::postMessageSync(const sp<MessageBase>& msg,
 bool SurfaceFlinger::threadLoop()
 {
     waitForEvent();
-
+#ifdef GFX_TESTFRAMEWORK
+    nsecs_t startTime = systemTime();
+    static nsecs_t lastTimeStamp = 0;
+    int glfinishTIme = 0;
+    int compositionTime = 0;
+#endif
     // check for transactions
     if (UNLIKELY(mConsoleSignals)) {
         handleConsoleEvents();
@@ -434,6 +441,10 @@ bool SurfaceFlinger::threadLoop()
 
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
     if (LIKELY(hw.canDraw())) {
+#ifdef GFX_TESTFRAMEWORK
+        TF_PRINT(TF_EVENT_START, "SF", "Composition",
+                 "THREAD:SurfaceFlinger compose start");
+#endif
         // repaint the framebuffer (if needed)
 
         const int index = hw.getCurrentBufferIndex();
@@ -445,20 +456,41 @@ bool SurfaceFlinger::threadLoop()
         if (!mCanSkipComposition) {
             // inform the h/w that we're done compositing
             logger.log(GraphicLog::SF_COMPOSITION_COMPLETE, index);
+#ifdef GFX_TESTFRAMEWORK
+            nsecs_t startgf = systemTime();
+            TF_PRINT(TF_EVENT_START, "SF", "glfinish",
+                     "THREAD:SurfaceFlinger glfinish start");
+#endif
             hw.compositionComplete();
-
+#ifdef GFX_TESTFRAMEWORK
+            nsecs_t endgf = systemTime();
+            glfinishTIme = ns2ms(endgf - startgf);
+            TF_PRINT(TF_EVENT_STOP, "SF", "glfinish",
+                     "THREAD:SurfaceFlinger glfinish stop");
+#endif
             logger.log(GraphicLog::SF_SWAP_BUFFERS, index);
             postFramebuffer();
         } else {
             HWComposer& hwc(graphicPlane(0).displayHardware().getHwComposer());
             hwc.commit();
         }
-
         logger.log(GraphicLog::SF_REPAINT_DONE, index);
+#ifdef GFX_TESTFRAMEWORK
+        nsecs_t endTime = systemTime();
+        compositionTime = ns2ms(endTime - startTime);
+        int waitTime = ns2ms(startTime - lastTimeStamp);
+        lastTimeStamp = endTime;
+        TF_PRINT(TF_EVENT_STOP, "SF", "Composition",
+                 "THREAD:SurfaceFlinger compose end, CompositionTime %d glFinishTime %d "
+                 "waittime %d", compositionTime, glfinishTIme, waitTime);
+#endif
     } else {
         // pretend we did the post
         hw.compositionComplete();
         usleep(16667); // 60 fps period
+#ifdef GFX_TESTFRAMEWORK
+        lastTimeStamp = systemTime();
+#endif
     }
     return true;
 }

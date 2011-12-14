@@ -40,7 +40,7 @@
 #include <hardware/gralloc.h>
 
 #include <private/ui/android_natives_priv.h>
-
+#include <testframework/TestFramework.h>
 // ----------------------------------------------------------------------------
 namespace android {
 // ----------------------------------------------------------------------------
@@ -211,7 +211,12 @@ int FramebufferNativeWindow::dequeueBuffer(ANativeWindow* window,
     framebuffer_device_t* fb = self->fbDev;
 
     int index = self->mBufferHead;
-
+#ifdef GFX_TESTFRAMEWORK
+    char eventID[TF_EVENT_ID_SIZE_MAX];
+    snprintf(eventID, TF_EVENT_ID_SIZE_MAX, "Dequeue-%d", index);
+    nsecs_t start = systemTime();
+    TF_PRINT(TF_EVENT_START, "FBNW", eventID, "BUFFER:FBNW dequeue start");
+#endif
     GraphicLog& logger(GraphicLog::getInstance());
     logger.log(GraphicLog::SF_FB_DEQUEUE_BEFORE, index);
 
@@ -231,7 +236,13 @@ int FramebufferNativeWindow::dequeueBuffer(ANativeWindow* window,
     self->mCurrentBufferIndex = index;
 
     *buffer = self->buffers[index].get();
-
+#ifdef GFX_TESTFRAMEWORK
+    nsecs_t end = systemTime();
+    int dqtime = ns2ms(end - start);
+    TF_PRINT(TF_EVENT_STOP, "FBNW", eventID,
+             "BUFFER:FBNW dequeue end, DequeueTime %d on buf %d",
+             dqtime, index);
+#endif
     logger.log(GraphicLog::SF_FB_DEQUEUE_AFTER, index);
     return 0;
 }
@@ -243,18 +254,30 @@ int FramebufferNativeWindow::lockBuffer(ANativeWindow* window,
     framebuffer_device_t* fb = self->fbDev;
     int index = -1;
 
+#ifdef GFX_TESTFRAMEWORK
+    char eventID[TF_EVENT_ID_SIZE_MAX];
+    index = self->mCurrentBufferIndex;
+    snprintf(eventID, TF_EVENT_ID_SIZE_MAX, "lock-%d", index);
+    nsecs_t start = systemTime();
+    TF_PRINT(TF_EVENT_START, "FBNW", eventID, "BUFFER:FBNW lock start");
+#endif
     {
         Mutex::Autolock _l(self->mutex);
         index = self->mCurrentBufferIndex;
     }
-
     GraphicLog& logger(GraphicLog::getInstance());
     logger.log(GraphicLog::SF_FB_LOCK_BEFORE, index);
 
     fb->lockBuffer(fb, index);
 
     logger.log(GraphicLog::SF_FB_LOCK_AFTER, index);
-
+#ifdef GFX_TESTFRAMEWORK
+    nsecs_t end = systemTime();
+    int lktime = ns2ms(end - start);
+    TF_PRINT(TF_EVENT_STOP, "FBNW", eventID,
+             "BUFFER:FBNW lock end, LockTime %d on buf %d",
+             lktime, index);
+#endif
     return NO_ERROR;
 }
 
@@ -262,11 +285,19 @@ int FramebufferNativeWindow::queueBuffer(ANativeWindow* window,
         ANativeWindowBuffer* buffer)
 {
     FramebufferNativeWindow* self = getSelf(window);
+    int index = -1;
+#ifdef GFX_TESTFRAMEWORK
+    char eventID[TF_EVENT_ID_SIZE_MAX];
+    index = self->mCurrentBufferIndex;
+    snprintf(eventID, TF_EVENT_ID_SIZE_MAX, "Queue-%d", index);
+    nsecs_t start = systemTime();
+    TF_PRINT(TF_EVENT_START, "FBNW", eventID, "BUFFER:FBNW Queue start");
+#endif
     Mutex::Autolock _l(self->mutex);
     framebuffer_device_t* fb = self->fbDev;
     buffer_handle_t handle = static_cast<NativeBuffer*>(buffer)->handle;
 
-    const int index = self->mCurrentBufferIndex;
+    index = self->mCurrentBufferIndex;
     GraphicLog& logger(GraphicLog::getInstance());
     logger.log(GraphicLog::SF_FB_POST_BEFORE, index);
 
@@ -277,6 +308,14 @@ int FramebufferNativeWindow::queueBuffer(ANativeWindow* window,
     self->front = static_cast<NativeBuffer*>(buffer);
     self->mNumFreeBuffers++;
     self->mCondition.broadcast();
+#ifdef GFX_TESTFRAMEWORK
+    nsecs_t end = systemTime();
+    int qtime = ns2ms(end - start);
+    TF_PRINT(TF_EVENT_STOP, "FBNW", eventID,
+             "BUFFER:FBNW Queue end, QueueTime %d on buf %d",
+             qtime, index);
+    //todo: need add detailed stats like SFClient
+#endif
     return res;
 }
 

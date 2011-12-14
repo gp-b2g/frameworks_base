@@ -24,7 +24,18 @@
 #include <utils/Log.h>
 #include <qcom_ui.h>
 
+#include <testframework/TestFramework.h>
+
 namespace android {
+
+#ifdef GFX_TESTFRAMEWORK
+    //holds time stats for dequeue, lock, queue operations on buffers
+    static nsecs_t sDequeueStartTime[SurfaceTexture::NUM_BUFFER_SLOTS];
+    static nsecs_t sDequeueEndTime[SurfaceTexture::NUM_BUFFER_SLOTS];
+    static nsecs_t sLockStartTime[SurfaceTexture::NUM_BUFFER_SLOTS];
+    static nsecs_t sQueueStartTime[SurfaceTexture::NUM_BUFFER_SLOTS];
+    static nsecs_t sQueueEndTime[SurfaceTexture::NUM_BUFFER_SLOTS];
+#endif
 
 SurfaceTextureClient::SurfaceTextureClient(
         const sp<ISurfaceTexture>& surfaceTexture)
@@ -138,6 +149,10 @@ int SurfaceTextureClient::setSwapInterval(int interval) {
 
 int SurfaceTextureClient::dequeueBuffer(android_native_buffer_t** buffer) {
     LOGV("SurfaceTextureClient::dequeueBuffer");
+#ifdef GFX_TESTFRAMEWORK
+    nsecs_t startTime = systemTime();
+    TF_PRINT(TF_EVENT_START, "STClient", "DQ", "BUFFER:STC dequeue start");
+#endif
     Mutex::Autolock lock(mMutex);
     int buf = -1;
     status_t result = mSurfaceTexture->dequeueBuffer(&buf, mReqWidth, mReqHeight,
@@ -162,6 +177,14 @@ int SurfaceTextureClient::dequeueBuffer(android_native_buffer_t** buffer) {
         }
     }
     *buffer = gbuf.get();
+#ifdef GFX_TESTFRAMEWORK
+    sDequeueEndTime[buf] = systemTime();
+    sDequeueStartTime[buf] = startTime;
+    TF_PRINT(TF_EVENT_STOP, "STClient", "DQ",
+             "BUFFER:STC dequeue end bufSlot=%d buffer=%p",
+             buf, mSlots[buf]->handle);
+#endif
+
     return OK;
 }
 
@@ -213,12 +236,27 @@ int SurfaceTextureClient::getSlotFromBufferLocked(
 
 int SurfaceTextureClient::lockBuffer(android_native_buffer_t* buffer) {
     LOGV("SurfaceTextureClient::lockBuffer");
+#ifdef GFX_TESTFRAMEWORK
+    int i = getSlotFromBufferLocked(buffer);
+    char eventID[TF_EVENT_ID_SIZE_MAX];
+    snprintf(eventID, TF_EVENT_ID_SIZE_MAX, "Lock-%d", i);
+    TF_PRINT(TF_EVENT, "STClient", eventID, "BUFFER:STC lock, buffer=%p",
+             mSlots[i]->handle);
+    sLockStartTime[i] = systemTime();
+#endif
     Mutex::Autolock lock(mMutex);
     return OK;
 }
 
 int SurfaceTextureClient::queueBuffer(android_native_buffer_t* buffer) {
     LOGV("SurfaceTextureClient::queueBuffer");
+#ifdef GFX_TESTFRAMEWORK
+    char eventID[TF_EVENT_ID_SIZE_MAX];
+    int idx = getSlotFromBufferLocked(buffer);
+    snprintf(eventID, TF_EVENT_ID_SIZE_MAX, "Q-%d", idx);
+    TF_PRINT(TF_EVENT_START, "STClient", eventID, "BUFFER:STC queue start");
+    sQueueStartTime[idx] = systemTime();
+#endif
     Mutex::Autolock lock(mMutex);
     int64_t timestamp;
     if (mTimestamp == NATIVE_WINDOW_TIMESTAMP_AUTO) {
@@ -237,6 +275,22 @@ int SurfaceTextureClient::queueBuffer(android_native_buffer_t* buffer) {
     if (err != OK)  {
         LOGE("queueBuffer: error queuing buffer to SurfaceTexture, %d", err);
     }
+#ifdef GFX_TESTFRAMEWORK
+    sQueueEndTime[i] = systemTime();
+    TF_PRINT(TF_EVENT_STOP, "STClient", eventID, "BUFFER:STC queue end, buffer=%p",
+             mSlots[i]->handle);
+    {
+        int dqTime = ns2ms(sDequeueEndTime[i] - sDequeueStartTime[i]);
+        int dqToLock = ns2ms(sLockStartTime[i] - sDequeueEndTime[i]);
+        int qTime = ns2ms(sQueueEndTime[i] - sQueueStartTime[i]);
+        int renderingTime = ns2ms(sQueueStartTime[i] - sLockStartTime[i]);
+        int totalTime = ns2ms(sQueueEndTime[i] - sDequeueStartTime[i]);
+        TF_PRINT(TF_EVENT, "STClient", "GFX-Timelines", "DequeueTime %d LockTime Unk QueueTime %d "
+                 "RenderingTime %d DequeueToLockTime %d TotalTime %d bufSlot %d PID %d TID %d",
+                 dqTime, qTime, renderingTime, dqToLock, totalTime,
+                 i, getpid(), gettid());
+    }
+#endif
     return err;
 }
 
