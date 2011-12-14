@@ -207,6 +207,7 @@ const char CameraParameters::PIXEL_FORMAT_JPEG[] = "jpeg";
 const char CameraParameters::PIXEL_FORMAT_BAYER_RGGB[] = "bayer-rggb";
 const char CameraParameters::PIXEL_FORMAT_RAW[] = "raw";
 const char CameraParameters::PIXEL_FORMAT_YV12[] = "yv12";
+const char CameraParameters::PIXEL_FORMAT_NV12[] = "nv12";
 
 // Values for focus mode settings.
 const char CameraParameters::FOCUS_MODE_AUTO[] = "auto";

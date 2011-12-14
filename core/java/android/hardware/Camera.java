@@ -1976,6 +1976,9 @@ public class Camera {
         private static final String PIXEL_FORMAT_RGB565 = "rgb565";
         private static final String PIXEL_FORMAT_JPEG = "jpeg";
         private static final String PIXEL_FORMAT_BAYER_RGGB = "bayer-rggb";
+        private static final String PIXEL_FORMAT_RAW = "raw";
+        private static final String PIXEL_FORMAT_YV12 = "yv12";
+        private static final String PIXEL_FORMAT_NV12 = "nv12";
 
         //Values for Continuous AF
 
@@ -4338,7 +4341,7 @@ public class Camera {
 
             return result;
         }
-			
+
 	// Splits a comma delimited string to an ArrayList of Coordinate.
         // Return null if the passing string is null or the Coordinate is 0.
         private ArrayList<Coordinate> splitCoordinate(String str) {

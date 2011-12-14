@@ -707,7 +707,8 @@ public:
     // stored in 16 bit words. The filter pattern is RGGB.
     static const char PIXEL_FORMAT_BAYER_RGGB[];
    static const char PIXEL_FORMAT_RAW[];
-    static const char PIXEL_FORMAT_YV12[]; // NV21
+    static const char PIXEL_FORMAT_YV12[]; // NV12
+    static const char PIXEL_FORMAT_NV12[]; //NV12
 
     // Values for focus mode settings.
     // Auto-focus mode. Applications should call
