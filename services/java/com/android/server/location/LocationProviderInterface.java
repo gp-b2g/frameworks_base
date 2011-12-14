@@ -64,4 +64,5 @@ public interface LocationProviderInterface {
                boolean singleShot,Criteria criteria);
     boolean updateSettings(boolean gpsSetting,boolean networkProvSetting,
                                   boolean wifiSetting,boolean agpsSetting);
+    boolean updateBatteryStatus(boolean isBatteryCharging);
 }

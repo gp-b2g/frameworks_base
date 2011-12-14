@@ -573,6 +573,12 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         IntentFilter sdFilter = new IntentFilter(Intent.ACTION_EXTERNAL_APPLICATIONS_UNAVAILABLE);
         mContext.registerReceiver(mBroadcastReceiver, sdFilter);
 
+        // Register for Power Connectivity updates
+        IntentFilter batteryFilter = new IntentFilter();
+        batteryFilter.addAction(Intent.ACTION_POWER_CONNECTED);
+        batteryFilter.addAction(Intent.ACTION_POWER_DISCONNECTED);
+        mContext.registerReceiver(mBatteryBroadcastReceiver, batteryFilter);
+
         // listen for settings changes
         ContentResolver resolver = mContext.getContentResolver();
         Cursor settingsCursor = resolver.query(Settings.Secure.CONTENT_URI,
@@ -2029,6 +2035,30 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             }
         }
     }
+
+    private final BroadcastReceiver mBatteryBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+
+            //Settings update only for GPS/ULP Provider
+            LocationProviderInterface p = mProvidersByName.get(LocationManager.GPS_PROVIDER);
+            if(p != null) {
+                if((p.getCapability() & LocationProviderInterface.ULP_CAPABILITY)
+                   == LocationProviderInterface.ULP_CAPABILITY) {
+                    if (LOCAL_LOGV) {
+                      Slog.d(TAG,  "Battery.update invoked and p.getCapability(): " + p.getCapability());
+                    }
+
+                    if(Intent.ACTION_POWER_CONNECTED.equals(action)) {
+                        p.updateBatteryStatus(true);
+                    } else if(Intent.ACTION_POWER_DISCONNECTED.equals(action)) {
+                        p.updateBatteryStatus(false);
+                    }
+                }
+            }
+        }
+    };
 
     private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
