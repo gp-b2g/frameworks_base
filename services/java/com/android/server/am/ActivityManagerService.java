@@ -5406,6 +5406,8 @@ public final class ActivityManagerService extends ActivityManagerNative
             final long origId = Binder.clearCallingIdentity();
             int taskId = getTaskForActivityLocked(token, !nonRoot);
             if (taskId >= 0) {
+                if (mScreenStatusRequest)
+                    checkScreenIdle();
                 return mMainStack.moveTaskToBackLocked(taskId, null);
             }
             Binder.restoreCallingIdentity(origId);
