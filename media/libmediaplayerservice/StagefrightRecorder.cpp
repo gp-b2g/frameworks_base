@@ -1504,6 +1504,57 @@ status_t StagefrightRecorder::setupVideoEncoder(
     if (mVideoTimeScale > 0) {
         enc_meta->setInt32(kKeyTimeScale, mVideoTimeScale);
     }
+
+    /*
+     * can set profile from the app as a parameter.
+     * For the mean time, set from shell
+     */
+
+    char value[PROPERTY_VALUE_MAX];
+    bool customProfile = false;
+
+    if (property_get("encoder.video.profile", value, NULL) > 0) {
+        customProfile = true;
+    }
+
+    if (customProfile) {
+        switch ( mVideoEncoder ) {
+        case VIDEO_ENCODER_H264:
+            if (strncmp("base", value, 4) == 0) {
+                mVideoEncoderProfile = OMX_VIDEO_AVCProfileBaseline;
+                LOGI("H264 Baseline Profile");
+            }
+            else if (strncmp("main", value, 4) == 0) {
+                mVideoEncoderProfile = OMX_VIDEO_AVCProfileMain;
+                LOGI("H264 Main Profile");
+            }
+            else if (strncmp("high", value, 4) == 0) {
+                mVideoEncoderProfile = OMX_VIDEO_AVCProfileHigh;
+                LOGI("H264 High Profile");
+            }
+            else {
+               LOGW("Unsupported H264 Profile");
+            }
+            break;
+        case VIDEO_ENCODER_MPEG_4_SP:
+            if (strncmp("simple", value, 5) == 0 ) {
+                mVideoEncoderProfile = OMX_VIDEO_MPEG4ProfileSimple;
+                LOGI("MPEG4 Simple profile");
+            }
+            else if (strncmp("asp", value, 3) == 0 ) {
+                mVideoEncoderProfile = OMX_VIDEO_MPEG4ProfileAdvancedSimple;
+                LOGI("MPEG4 Advanced Simple Profile");
+            }
+            else {
+                LOGW("Unsupported MPEG4 Profile");
+            }
+            break;
+        default:
+            LOGW("No custom profile support for other codecs");
+            break;
+        }
+    }
+
     if (mVideoEncoderProfile != -1) {
         enc_meta->setInt32(kKeyVideoProfile, mVideoEncoderProfile);
     }
