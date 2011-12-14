@@ -213,4 +213,7 @@ public interface TelephonyProperties
      * Property that can be used to set the IP version for CDMA when roaming
      */
     static final String PROPERTY_CDMA_ROAMING_IPPROTOCOL = "persist.telephony.cdma.rproto";
+
+    /** The delay between sms sending retries */
+    static final String PROPERTY_SMS_RETRY_DELAY = "persist.radio.sms_retry_delay";
 }
