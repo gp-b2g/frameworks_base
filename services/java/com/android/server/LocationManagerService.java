@@ -57,6 +57,7 @@ import android.provider.Settings;
 import android.util.Log;
 import android.util.Slog;
 import android.util.PrintWriterPrinter;
+import android.content.ContentValues;
 
 import com.android.internal.content.PackageMonitor;
 import com.android.internal.location.GpsNetInitiatedHandler;
@@ -430,6 +431,35 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
 
     private final class SettingsObserver implements Observer {
         public void update(Observable o, Object arg) {
+            //Settings update only for GPS/ULP Provider
+            LocationProviderInterface p = mProvidersByName.get(LocationManager.GPS_PROVIDER);
+            if(p != null) {
+                if((p.getCapability() & LocationProviderInterface.ULP_CAPABILITY)
+                   == LocationProviderInterface.ULP_CAPABILITY) {
+                    if (LOCAL_LOGV) {
+                      Slog.d(TAG,  "SettingsObserver.update invoked and p.getCapability(): "+ p.getCapability());
+                    }
+                    //Will read the Settings values & determine if anything changed there
+                    Map<String, ContentValues> kvs = ((ContentQueryMap)o).getRows();
+                    if (null != kvs && !kvs.isEmpty()) {
+                        Log.v(TAG, "in Settings.Secure.LOCATION_PROVIDERS_ALLOWED - "
+                        +kvs.get(Settings.Secure.LOCATION_PROVIDERS_ALLOWED).toString());
+                        String providers = kvs.get(Settings.Secure.LOCATION_PROVIDERS_ALLOWED).toString();
+                        boolean gpsSetting = providers.contains("gps");
+                        boolean networkProvSetting = providers.contains("network");
+                        boolean wifiSetting =  kvs.get(Settings.Secure.WIFI_ON).toString().contains("1");
+                        boolean agpsSetting =  kvs.get(Settings.Secure.ASSISTED_GPS_ENABLED).toString().contains("1");
+
+                        if (LOCAL_LOGV) {
+                          Slog.d(TAG,  "SettingsObserver.update invoked and setting values. Gps:"+
+                                 gpsSetting +" GNP:"+ networkProvSetting+" WiFi:"+ wifiSetting+
+                                 " Agps:"+ agpsSetting);
+                        }
+
+                        p.updateSettings(gpsSetting,networkProvSetting,wifiSetting,agpsSetting);
+                     }
+                }
+            }
             synchronized (mLock) {
                 updateProvidersLocked();
             }
@@ -519,7 +549,7 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
     }
 
     void systemReady() {
-        // we defer starting up the service until the system is ready 
+        // we defer starting up the service until the system is ready
         Thread thread = new Thread(null, this, "LocationManagerService");
         thread.start();
     }
@@ -545,10 +575,14 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
 
         // listen for settings changes
         ContentResolver resolver = mContext.getContentResolver();
-        Cursor settingsCursor = resolver.query(Settings.Secure.CONTENT_URI, null,
-                "(" + Settings.System.NAME + "=?)",
-                new String[]{Settings.Secure.LOCATION_PROVIDERS_ALLOWED},
-                null);
+        Cursor settingsCursor = resolver.query(Settings.Secure.CONTENT_URI,
+                new String[] {Settings.System.NAME,Settings.System.VALUE},
+                "(" + Settings.System.NAME + "=?) or ("
+                    + Settings.System.NAME + "=?) or ("
+                    + Settings.System.NAME + "=?) ",
+                new String[]{Settings.Secure.LOCATION_PROVIDERS_ALLOWED,
+                    Settings.Secure.WIFI_ON, Settings.Secure.ASSISTED_GPS_ENABLED},
+                    null);
         mSettings = new ContentQueryMap(settingsCursor, Settings.System.NAME, true, mLocationHandler);
         SettingsObserver settingsObserver = new SettingsObserver();
         mSettings.addObserver(settingsObserver);
@@ -564,6 +598,7 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
     }
 
     private boolean isAllowedBySettingsLocked(String provider) {
+        boolean providerSetting = false;
         if (mEnabledProviders.contains(provider)) {
             return true;
         }
@@ -572,8 +607,25 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         }
         // Use system settings
         ContentResolver resolver = mContext.getContentResolver();
+        LocationProviderInterface p = mProvidersByName.get(provider);
+        if(p != null) {
+            if ((LocationManager.GPS_PROVIDER.equals(provider)) &&
+                ((p.getCapability() & LocationProviderInterface.ULP_CAPABILITY) ==
+                 LocationProviderInterface.ULP_CAPABILITY)){
 
-        return Settings.Secure.isLocationProviderEnabled(resolver, provider);
+                //Even if GPS is turned off the ULP/Hybrid engine is still active
+                //as long as WiFi service is available
+                try {
+                    providerSetting = ((Settings.Secure.isLocationProviderEnabled(resolver, provider)) ||
+                             (Settings.Secure.getInt(resolver,Settings.Secure.WIFI_ON) == 1));
+                }catch (Exception e) {
+                    Slog.e(TAG, "isAllowedBySettingsLocked got exception:", e);
+                }
+            } else {
+                providerSetting = Settings.Secure.isLocationProviderEnabled(resolver, provider);
+            }
+        }
+        return providerSetting;
     }
 
     private String checkPermissionsSafe(String provider, String lastPermission) {
@@ -827,6 +879,17 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
      * @return name of the provider that best matches the requirements
      */
     public String getBestProvider(Criteria criteria, boolean enabledOnly) {
+        if(criteria != null) {
+            LocationProviderInterface p = mProvidersByName.get(LocationManager.GPS_PROVIDER);
+            if(p != null) {
+                if( ((p.getCapability() & LocationProviderInterface.ULP_CAPABILITY)
+                                          == LocationProviderInterface.ULP_CAPABILITY)){
+                    //ULP present so pass the client directly to GPS Provider
+                    return LocationManager.GPS_PROVIDER;
+                }
+            }
+        }
+
         List<String> goodProviders = getProviders(criteria, enabledOnly);
         if (!goodProviders.isEmpty()) {
             return best(goodProviders).getName();
@@ -946,10 +1009,16 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             if (listeners > 0) {
                 p.setMinTime(getMinTimeLocked(provider), mTmpWorkSource);
                 p.enableLocationTracking(true);
+                if (LOCAL_LOGV){
+                 Slog.v(TAG, "In updateProviderListenersLocked:after setMinTime & gps_start");
+                }
             }
         } else {
             p.enableLocationTracking(false);
             p.disable();
+            if (LOCAL_LOGV){
+                Slog.v(TAG, "In updateProviderListenersLocked:After gps stop");
+            }
         }
     }
 
@@ -985,18 +1054,20 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         final int mUid;
         Location mLastFixBroadcast;
         long mLastStatusBroadcast;
+        Criteria mCriteria;
 
         /**
          * Note: must be constructed with lock held.
          */
         UpdateRecord(String provider, long minTime, float minDistance, boolean singleShot,
-            Receiver receiver, int uid) {
+            Receiver receiver, int uid, Criteria criteria) {
             mProvider = provider;
             mReceiver = receiver;
             mMinTime = minTime;
             mMinDistance = minDistance;
             mSingleShot = singleShot;
             mUid = uid;
+            mCriteria = criteria;
 
             ArrayList<UpdateRecord> records = mRecordsByProvider.get(provider);
             if (records == null) {
@@ -1033,6 +1104,8 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             pw.println(prefix + "mSingleShot=" + mSingleShot);
             pw.println(prefix + "mUid=" + mUid);
             pw.println(prefix + "mLastFixBroadcast:");
+            pw.println(prefix + "mCriteria.getPowerRequirement: " + mCriteria.getPowerRequirement()
+                        + " mCriteria.getAccuracy: " + mCriteria.getAccuracy());
             if (mLastFixBroadcast != null) {
                 mLastFixBroadcast.dump(new PrintWriterPrinter(pw), prefix + "  ");
             }
@@ -1088,7 +1161,15 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
 
     public void requestLocationUpdates(String provider, Criteria criteria,
         long minTime, float minDistance, boolean singleShot, ILocationListener listener) {
+        if (LOCAL_LOGV){
+            Slog.v(TAG, "In requestLocationUpdates. provider "+provider+ "minTime: " + minTime + "single shot: " + singleShot
+                   + " Listener: " + listener);
+        }
         if (criteria != null) {
+            if (LOCAL_LOGV){
+                Slog.v(TAG, "In requestLocationUpdates. Criteria not null. Cirteria.HorizAccuracy: " + criteria.getHorizontalAccuracy()
+                       + " Criteria.power "+ criteria.getPowerRequirement());
+                }
             // FIXME - should we consider using multiple providers simultaneously
             // rather than only the best one?
             // Should we do anything different for single shot fixes?
@@ -1100,7 +1181,7 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         try {
             synchronized (mLock) {
                 requestLocationUpdatesLocked(provider, minTime, minDistance, singleShot,
-                        getReceiver(listener));
+                        getReceiver(listener),criteria);
             }
         } catch (SecurityException se) {
             throw se;
@@ -1127,6 +1208,9 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             long minTime, float minDistance, boolean singleShot, PendingIntent intent) {
         validatePendingIntent(intent);
         if (criteria != null) {
+            if (LOCAL_LOGV)
+                Slog.v(TAG, "In requestLocationUpdates. Criteria not null. Cirteria.accuracy: " + criteria.getAccuracy()
+                       + " Criteria.power "+ criteria.getPowerRequirement());
             // FIXME - should we consider using multiple providers simultaneously
             // rather than only the best one?
             // Should we do anything different for single shot fixes?
@@ -1138,7 +1222,7 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         try {
             synchronized (mLock) {
                 requestLocationUpdatesLocked(provider, minTime, minDistance, singleShot,
-                        getReceiver(intent));
+                        getReceiver(intent),criteria);
             }
         } catch (SecurityException se) {
             throw se;
@@ -1150,7 +1234,7 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
     }
 
     private void requestLocationUpdatesLocked(String provider, long minTime, float minDistance,
-            boolean singleShot, Receiver receiver) {
+            boolean singleShot, Receiver receiver, Criteria criteria) {
 
         LocationProviderInterface p = mProvidersByName.get(provider);
         if (p == null) {
@@ -1166,7 +1250,7 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         long identity = Binder.clearCallingIdentity();
         try {
             UpdateRecord r = new UpdateRecord(provider, minTime, minDistance, singleShot,
-                    receiver, callingUid);
+                    receiver, callingUid, criteria);
             UpdateRecord oldRecord = receiver.mUpdateRecords.put(provider, r);
             if (oldRecord != null) {
                 oldRecord.disposeLocked();
@@ -1180,6 +1264,8 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             if (isProviderEnabled) {
                 long minTimeForProvider = getMinTimeLocked(provider);
                 p.setMinTime(minTimeForProvider, mTmpWorkSource);
+                p.updateCriteria(LocationProviderInterface.ULP_ADD_CRITERIA, minTime, minDistance,singleShot,criteria);
+
                 // try requesting single shot if singleShot is true, and fall back to
                 // regular location tracking if requestSingleShotFix() is not supported
                 if (!singleShot || !p.requestSingleShotFix()) {
@@ -1253,6 +1339,13 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
                     if (!providerHasListener(record.mProvider, callingUid, receiver)) {
                         LocationProviderInterface p = mProvidersByName.get(record.mProvider);
                         if (p != null) {
+                            if (((p.getCapability() & LocationProviderInterface.ULP_CAPABILITY)
+                               == LocationProviderInterface.ULP_CAPABILITY) &&
+                               (LocationManager.GPS_PROVIDER.equals(record.mProvider))) {
+                                p.updateCriteria(LocationProviderInterface.ULP_REMOVE_CRITERIA,
+                                                 record.mMinTime,record.mMinDistance,
+                                                 record.mSingleShot,record.mCriteria);
+                            }
                             p.removeListener(callingUid);
                         }
                     }
@@ -1281,8 +1374,14 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
                 if (p != null) {
                     if (hasOtherListener) {
                         p.setMinTime(getMinTimeLocked(provider), mTmpWorkSource);
+                        if(LOCAL_LOGV) {
+                            Slog.v(TAG, "In removeUpdatesLocked.p.setMinTime:");
+                        }
                     } else {
                         p.enableLocationTracking(false);
+                        if(LOCAL_LOGV){
+                            Slog.v(TAG, "In removeUpdatesLocked. Stop naviagation");
+                        }
                     }
                 }
             }
@@ -1597,7 +1696,7 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             for (int i = mProviders.size() - 1; i >= 0; i--) {
                 LocationProviderInterface provider = mProviders.get(i);
                 requestLocationUpdatesLocked(provider.getName(), 1000L, 1.0f,
-                        false, mProximityReceiver);
+                        false, mProximityReceiver, null);
             }
         }
     }
@@ -1738,8 +1837,15 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
     }
 
     private static boolean shouldBroadcastSafe(Location loc, Location lastLoc, UpdateRecord record) {
-        // Always broadcast the first update
-        if (lastLoc == null) {
+        Bundle locationExtraInfo = loc.getExtras();
+
+        // Always broadcast the first update or hyrbid provider update
+        if ((lastLoc == null) || (record.mProvider.equals(LocationManager.GPS_PROVIDER) &&
+                                  (locationExtraInfo.getBoolean("ProviderSourceIsUlp") == true))){
+            if(LOCAL_LOGV) {
+                Slog.v(TAG, "In shouldBroadcastSafe. We will return true as last loc =null or"+
+                            "Ulp position obtained got Hybrid provider clients");
+            }
             return true;
         }
 
@@ -1763,6 +1869,7 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
     private void handleLocationChangedLocked(Location location, boolean passive) {
         String provider = (passive ? LocationManager.PASSIVE_PROVIDER : location.getProvider());
         ArrayList<UpdateRecord> records = mRecordsByProvider.get(provider);
+        boolean ulpLocationSource = false, gnssLocationSource = false;
         if (records == null || records.size() == 0) {
             return;
         }
@@ -1771,15 +1878,32 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         if (p == null) {
             return;
         }
+        if(LOCAL_LOGV) {
+             Slog.v(TAG,"In handleLocationChangedLocked.For provider: "+ provider);
+         }
 
+        if ((LocationManager.GPS_PROVIDER.equals(provider)) &&
+            ((p.getCapability() & LocationProviderInterface.ULP_CAPABILITY)
+             == LocationProviderInterface.ULP_CAPABILITY)){
+
+            Bundle locationExtraInfo = location.getExtras();
+            ulpLocationSource = locationExtraInfo.getBoolean("ProviderSourceIsUlp");
+            gnssLocationSource = locationExtraInfo.getBoolean("ProviderSourceIsGnss");
+            if(LOCAL_LOGV) {
+                 Slog.v(TAG,"In handleLocationChangedLocked. ulpLocationSource: "+ ulpLocationSource
+                        + " gnssLocationSource: " + gnssLocationSource);
+             }
+           }
+        //Filter ULP reports so that last known location is only populated with GPS reports
+        if( ulpLocationSource != true) {
         // Update last known location for provider
-        Location lastLocation = mLastKnownLocation.get(provider);
-        if (lastLocation == null) {
-            mLastKnownLocation.put(provider, new Location(location));
-        } else {
-            lastLocation.set(location);
+            Location lastLocation = mLastKnownLocation.get(provider);
+            if (lastLocation == null) {
+                mLastKnownLocation.put(provider, new Location(location));
+            } else {
+                lastLocation.set(location);
+            }
         }
-
         // Fetch latest status update time
         long newStatusUpdateTime = p.getStatusUpdateTime();
 
@@ -1795,6 +1919,25 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             UpdateRecord r = records.get(i);
             Receiver receiver = r.mReceiver;
             boolean receiverDead = false;
+
+            if(LOCAL_LOGV) {
+                Slog.v(TAG,"In handleLocationChangedLocked.Iterating through the records. Index" +i
+                       + " listener: " + receiver + " Criteria: " + r.mCriteria);
+            }
+
+
+            if((ulpLocationSource == true) && (r.mCriteria == null)){
+                if(LOCAL_LOGV) {
+                    Slog.v(TAG,"In handleLocationChangedLocked.Hybrid location suppressed for Gps only app ");
+                }
+                continue;
+            }
+            if((gnssLocationSource == true) && (r.mCriteria != null)){
+                if(LOCAL_LOGV) {
+                    Slog.v(TAG,"In handleLocationChangedLocked.Gnss location suppressed for Hybrid engine app ");
+                }
+                continue;
+            }
 
             Location lastLoc = r.mLastFixBroadcast;
             if ((lastLoc == null) || shouldBroadcastSafe(location, lastLoc, r)) {
@@ -2064,7 +2207,7 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         if (mContext.checkCallingPermission(ACCESS_MOCK_LOCATION) !=
             PackageManager.PERMISSION_GRANTED) {
             throw new SecurityException("Requires ACCESS_MOCK_LOCATION permission");
-        }            
+        }
     }
 
     public void addTestProvider(String name, boolean requiresNetwork, boolean requiresSatellite,

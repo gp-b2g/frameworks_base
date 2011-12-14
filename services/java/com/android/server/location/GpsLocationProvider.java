@@ -19,6 +19,7 @@ package com.android.server.location;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -30,6 +31,7 @@ import android.location.ILocationManager;
 import android.location.INetInitiatedListener;
 import android.location.Location;
 import android.location.LocationManager;
+import android.location.LocationListener;
 import android.location.LocationProvider;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -117,6 +119,10 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private static final int LOCATION_HAS_SPEED = 4;
     private static final int LOCATION_HAS_BEARING = 8;
     private static final int LOCATION_HAS_ACCURACY = 16;
+    private static final int LOCATION_HAS_SOURCE_INFO = 0x20;
+    private static final int ULP_LOCATION_IS_FROM_HYBRID = 0x1;
+    private static final int ULP_LOCATION_IS_FROM_GNSS = 0x2;
+
 
 // IMPORTANT - the GPS_DELETE_* symbols here must match constants in gps.h
     private static final int GPS_DELETE_EPHEMERIS = 0x00000001;
@@ -160,7 +166,10 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private static final int ADD_LISTENER = 8;
     private static final int REMOVE_LISTENER = 9;
     private static final int REQUEST_SINGLE_SHOT = 10;
-
+    private static final int REQUEST_PHONE_CONTEXT_SETTINGS = 11;
+    private static final int UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS = 12;
+    private static final int REQUEST_NETWORK_LOCATION = 13;
+    private static final int UPDATE_NETWORK_LOCATION = 14;
     // Request setid
     private static final int AGPS_RIL_REQUEST_SETID_IMSI = 1;
     private static final int AGPS_RIL_REQUEST_SETID_MSISDN = 2;
@@ -182,6 +191,47 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private static final String PROPERTIES_FILE = "/etc/gps.conf";
 
     private int mLocationFlags = LOCATION_INVALID;
+    private volatile boolean mGpsSetting = false;
+    private volatile boolean mAgpsSetting = false;
+    private volatile boolean mNetworkProvSetting = false;
+    private volatile boolean sWifiSetting = false;
+    //ULP Defines
+    private static final int ULP_NETWORK_POS_STATUS_REQUEST = 1;
+    private static final int ULP_NETWORK_POS_START_PERIODIC_REQUEST = 2;
+    private static final int ULP_NETWORK_POS_GET_LAST_KNOWN_LOCATION_REQUEST = 3;
+    private static final int ULP_NETWORK_POS_STOP_REQUEST = 4;
+    private static final int ULP_NETWORK_POSITION_SRC_WIFI = 1;
+    private static final int ULP_NETWORK_POSITION_SRC_CELL = 2;
+    private static final int ULP_NETWORK_POSITION_SRC_UNKNOWN = 255;
+
+    private static final int ULP_PHONE_CONTEXT_GPS_SETTING       = 0x1;
+    private static final int ULP_PHONE_CONTEXT_NETWORK_POSITION_SETTING       = 0x2;
+    private static final int ULP_PHONE_CONTEXT_WIFI_SETTING= 0x4;
+    /** The battery charging state context supports only
+    * ON_CHANGE request type */
+    private static final int ULP_PHONE_CONTEXT_BATTERY_CHARGING_STATE      = 0x8;
+    private static final int ULP_PHONE_CONTEXT_AGPS_SETTING = 0x10;
+
+    /** Required Settings subscription flag*/
+    private static final int ULP_PHONE_CONTEXT_GPS_ON        = 0x1;
+    private static final int ULP_PHONE_CONTEXT_GPS_OFF       = 0x2;
+    private static final int ULP_PHONE_CONTEXT_AGPS_ON        = 0x4;
+    private static final int ULP_PHONE_CONTEXT_AGPS_OFF       = 0x8;
+    private static final int ULP_PHONE_CONTEXT_CELL_BASED_POSITION_ON= 0x10;
+    private static final int ULP_PHONE_CONTEXT_CELL_BASED_POSITION_OFF= 0x20;
+    private static final int ULP_PHONE_CONTEXT_WIFI_ON      = 0x40;
+    private static final int ULP_PHONE_CONTEXT_WIFI_OFF     = 0x80;
+    private static final int ULP_PHONE_CONTEXT_BATTERY_CHARGING_ON= 0x100;
+    private static final int ULP_PHONE_CONTEXT_BATTERY_CHARGING_OFF= 0x200;
+
+    /** return phone context only once */
+    private static final int ULP_PHONE_CONTEXT_REQUEST_TYPE_SINGLE= 0x1;
+    /** return phone context when it changes */
+    private static final int ULP_PHONE_CONTEXT_REQUEST_TYPE_ONCHANGE= 0x2;
+    private static final int ULP_PHONE_CONTEXT_UPDATE_TYPE_SINGLE= 0x1;
+    private static final int ULP_PHONE_CONTEXT_UPDATE_TYPE_ONCHANGE= 0x2;
+    private volatile int mRequestType = 0;
+    private volatile int mRequestContextType = 0;
 
     // current status
     private int mStatus = LocationProvider.TEMPORARILY_UNAVAILABLE;
@@ -780,6 +830,10 @@ public class GpsLocationProvider implements LocationProviderInterface {
         }
         return mStatus;
     }
+    public int getCapability() {
+        Log.d(TAG, "Entered getCapability and returned mEngineCapabilities: " + mEngineCapabilities);
+        return mEngineCapabilities;
+    }
 
     private void updateStatus(int status, int svCount) {
         if (status != mStatus || svCount != mSvCount) {
@@ -802,6 +856,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
     }
 
     private void handleEnableLocationTracking(boolean enable) {
+        Log.d(TAG, "In handleEnableLocationTracking. enable " +enable);
         if (enable) {
             mTTFF = 0;
             mLastFixTime = 0;
@@ -812,6 +867,10 @@ public class GpsLocationProvider implements LocationProviderInterface {
                 mAlarmManager.cancel(mTimeoutIntent);
             }
             stopNavigating();
+            // send an intent to notify that the GPS has been enabled or disabled.
+            Intent intent = new Intent(LocationManager.GPS_ENABLED_CHANGE_ACTION);
+            intent.putExtra(LocationManager.EXTRA_GPS_ENABLED, false);
+            mContext.sendBroadcast(intent);
         }
     }
 
@@ -847,6 +906,182 @@ public class GpsLocationProvider implements LocationProviderInterface {
                 }
             }
         }
+    }
+
+    public boolean updateCriteria(int action, long minTime, float minDistance,
+                                  boolean singleShot,Criteria criteria) {
+        boolean return_value = false;
+        if (DEBUG) Log.d(TAG, "updateCriteria with minTime " + minTime +" minDistance "+
+                               minDistance + " singleShot " + singleShot + " criteria: " + criteria);
+
+        if (criteria != null) {
+            //This is a ULP client app. Transalate criteria and push it down
+            return_value = native_update_criteria(action, minTime, minDistance, singleShot,
+                                                  criteria.getHorizontalAccuracy(),
+                                                  criteria.getPowerRequirement());
+        }
+        else
+        {   //This is a GPS provider app. Send the request down to the HAL
+            return_value = native_update_criteria(action, minTime, minDistance, singleShot, 0, 0);
+        }
+        return return_value;
+    }
+
+    private void handleNativePhoneContextRequest(int contextType, int requestType)
+    {
+        //update the Global request settings and set up a native update cycle
+        mRequestContextType = contextType;
+        mRequestType = requestType;
+        Log.d(TAG, "handleNativePhoneContextRequest invoked from native layer with mRequestContextType: "+
+              mRequestContextType+" mRequestType:"+mRequestType);
+        handleNativePhoneContextUpdate(ULP_PHONE_CONTEXT_UPDATE_TYPE_SINGLE, null);
+    }
+
+    private void handleNativeNetworkLocationRequest(int type, int interval)
+    {
+        LocationManager lm = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
+        switch(type) {
+            case ULP_NETWORK_POS_START_PERIODIC_REQUEST:
+                Log.d(TAG, "handleNativeNetworkLocationRequest NLP start from GP");
+                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER ,interval, 0, mNetworkLocationListener);
+                break;
+            case ULP_NETWORK_POS_GET_LAST_KNOWN_LOCATION_REQUEST:
+                Location location = lm.getLastKnownLocation("LocationManager.NETWORK_PROVIDER");
+                synchronized (mHandler) {
+                mHandler.removeMessages(UPDATE_NETWORK_LOCATION);
+                Message m = Message.obtain(mHandler, UPDATE_NETWORK_LOCATION);
+                m.arg1 = 0;
+                m.obj = location;
+                mHandler.sendMessage(m);
+                }
+                break;
+             case ULP_NETWORK_POS_STOP_REQUEST:
+                 Log.d(TAG, "handleNativeNetworkLocationRequest NLP stop from GP");
+                 lm.removeUpdates(mNetworkLocationListener);
+                 break;
+             default:
+                  Log.e(TAG, "handleNativeNetworkLocationRequest. Inccorect request sent in: "+type);
+
+            }
+    }
+
+    private void handleNativePhoneContextUpdate(int updateType, Bundle settingsValues)
+    {
+      int currentContextType = 0;
+      //Read all the current settings and update mask value
+      boolean currentAgpsSetting = false, currentWifiSetting  = false,
+          currentGpsSetting  = false, currentNetworkProvSetting = false;
+      ContentResolver resolver = mContext.getContentResolver();
+      Log.d(TAG, "handleNativePhoneContextUpdate called. updateType: "+ updateType
+            + " mRequestContextType: " + mRequestContextType + " mRequestType: " +
+            mRequestType);
+      if(mRequestContextType == 0) {
+         Log.d(TAG, "handleNativePhoneContextUpdate. Update obtained before request. Ignoring");
+         return;
+      }
+      try {
+          //Update Gps Setting
+          if( (mRequestContextType & ULP_PHONE_CONTEXT_GPS_SETTING) == ULP_PHONE_CONTEXT_GPS_SETTING )
+          {
+              if(updateType == ULP_PHONE_CONTEXT_UPDATE_TYPE_SINGLE) {
+                  currentGpsSetting =
+                      Settings.Secure.isLocationProviderEnabled(resolver, LocationManager.GPS_PROVIDER);
+              }else
+              {
+                  currentGpsSetting = settingsValues.getBoolean("gpsSetting");
+              }
+          }
+          //Update AGps Setting
+          if( (mRequestContextType & ULP_PHONE_CONTEXT_AGPS_SETTING) == ULP_PHONE_CONTEXT_AGPS_SETTING)
+          {
+              if(updateType == ULP_PHONE_CONTEXT_UPDATE_TYPE_SINGLE) {
+                  currentAgpsSetting =
+                      (Settings.Secure.getInt(resolver,Settings.Secure.ASSISTED_GPS_ENABLED) == 1);
+              }else
+              {
+                  currentAgpsSetting = settingsValues.getBoolean("agpsSetting");
+              }
+         }
+          //Update GNP Setting
+          if((mRequestContextType & ULP_PHONE_CONTEXT_NETWORK_POSITION_SETTING)
+               == ULP_PHONE_CONTEXT_NETWORK_POSITION_SETTING)
+          {
+              if(updateType == ULP_PHONE_CONTEXT_UPDATE_TYPE_SINGLE) {
+                  currentNetworkProvSetting =
+                      Settings.Secure.isLocationProviderEnabled(resolver, LocationManager.NETWORK_PROVIDER );
+              }else
+              {
+                  currentNetworkProvSetting = settingsValues.getBoolean("networkProvSetting");
+              }
+          }
+
+          //Update WiFi Setting
+          if( (mRequestContextType & ULP_PHONE_CONTEXT_WIFI_SETTING)
+               == ULP_PHONE_CONTEXT_WIFI_SETTING )
+          {
+              if(updateType == ULP_PHONE_CONTEXT_UPDATE_TYPE_SINGLE) {
+                  currentWifiSetting =
+                       (Settings.Secure.getInt(resolver,Settings.Secure.WIFI_ON) == 1);
+              }else
+              {
+                  currentWifiSetting = settingsValues.getBoolean("wifiSetting");
+              }
+          }
+      } catch (Exception e) {
+        Log.e(TAG, "Exception in handleNativePhoneContextUpdate:", e);
+      }
+
+      //Filter out settings update based on Single Vs On-change request type using validity mask
+      if(updateType == ULP_PHONE_CONTEXT_UPDATE_TYPE_SINGLE ) {
+          currentContextType = mRequestContextType;
+      }
+      else
+      {//Need to mark only changed values as valid
+          if(currentGpsSetting != mGpsSetting) {
+               currentContextType |= ULP_PHONE_CONTEXT_GPS_SETTING;
+          }
+          if(currentAgpsSetting != mAgpsSetting) {
+               currentContextType |= ULP_PHONE_CONTEXT_AGPS_SETTING;
+          }
+
+          if(currentNetworkProvSetting != mNetworkProvSetting) {
+              currentContextType |= ULP_PHONE_CONTEXT_NETWORK_POSITION_SETTING;
+          }
+          if (currentWifiSetting != sWifiSetting) {
+              currentContextType |= ULP_PHONE_CONTEXT_WIFI_SETTING;
+          }
+
+      }
+      mGpsSetting = currentGpsSetting;
+      mAgpsSetting = currentAgpsSetting;
+      mNetworkProvSetting = currentNetworkProvSetting;
+      sWifiSetting = currentWifiSetting;
+      native_update_settings(currentContextType, currentGpsSetting, currentAgpsSetting,
+                             currentNetworkProvSetting,currentWifiSetting );
+      Log.d(TAG, "After calling native_update_settings. currentContextType: " +
+            currentContextType+" mGpsSetting: "+mGpsSetting + "currentAgpsSetting "+
+            currentAgpsSetting+" currentNetworkProvSetting:" + currentNetworkProvSetting
+            + "currentWifiSetting"+ currentWifiSetting);
+    }
+    public boolean updateSettings(boolean gpsSetting,boolean networkProvSetting,
+                                  boolean wifiSetting,boolean agpsSetting){
+        Log.d(TAG, "updateSettings invoked from LMS and setting values. Gps:"+
+                             gpsSetting +" GNP:"+ networkProvSetting+" WiFi:"+ wifiSetting+
+                             " Agps:"+ agpsSetting);
+        synchronized (mWakeLock) {
+            mWakeLock.acquire();
+            mHandler.removeMessages(UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS);
+            Message m = Message.obtain(mHandler, UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS);
+            Bundle b = new Bundle();
+            b.putBoolean("gpsSetting", gpsSetting);
+            b.putBoolean("networkProvSetting", networkProvSetting);
+            b.putBoolean("wifiSetting", wifiSetting);
+            b.putBoolean("agpsSetting", agpsSetting);
+            m.setData(b);
+            m.arg1 = ULP_PHONE_CONTEXT_UPDATE_TYPE_ONCHANGE;
+            mHandler.sendMessage(m);
+        }
+        return true;
     }
 
     public String getInternalState() {
@@ -1010,11 +1245,14 @@ public class GpsLocationProvider implements LocationProviderInterface {
             }
 
             int interval = (hasCapability(GPS_CAPABILITY_SCHEDULING) ? mFixInterval : 1000);
-            if (!native_set_position_mode(mPositionMode, GPS_POSITION_RECURRENCE_PERIODIC,
-                    interval, 0, 0)) {
-                mStarted = false;
-                Log.e(TAG, "set_position_mode failed in startNavigating()");
-                return;
+            //We want to suppress position mode updates if ULP capability is available
+            if(!hasCapability(LocationProviderInterface.ULP_CAPABILITY)) {
+                if (!native_set_position_mode(mPositionMode, GPS_POSITION_RECURRENCE_PERIODIC,
+                        interval, 0, 0)) {
+                    mStarted = false;
+                    Log.e(TAG, "set_position_mode failed in startNavigating()");
+                    return;
+                }
             }
             if (!native_start()) {
                 mStarted = false;
@@ -1069,7 +1307,8 @@ public class GpsLocationProvider implements LocationProviderInterface {
      * called from native code to update our position.
      */
     private void reportLocation(int flags, double latitude, double longitude, double altitude,
-            float speed, float bearing, float accuracy, long timestamp, byte[] rawData) {
+                                float speed, float bearing, float accuracy, long timestamp,
+                                int positionSource, byte[] rawData) {
         if (VERBOSE) Log.v(TAG, "reportLocation lat: " + latitude + " long: " + longitude +
                 " timestamp: " + timestamp);
 
@@ -1099,6 +1338,25 @@ public class GpsLocationProvider implements LocationProviderInterface {
                 mLocation.setAccuracy(accuracy);
             } else {
                 mLocation.removeAccuracy();
+            }
+            Log.d(TAG, "reportLocation.flag:" +flags);
+            if((flags & LOCATION_HAS_SOURCE_INFO) == LOCATION_HAS_SOURCE_INFO)  {
+
+                if(positionSource == ULP_LOCATION_IS_FROM_HYBRID) {
+                    Log.d(TAG, "reportLocation. Location has source information. src -hybrid");
+                    mLocationExtras.putBoolean("ProviderSourceIsUlp",true);
+                } else {
+                    mLocationExtras.remove("ProviderSourceIsUlp");
+                }
+                if(positionSource == ULP_LOCATION_IS_FROM_GNSS ) {
+                    Log.d(TAG, "reportLocation. Location has source information. src -gnss");
+                    mLocationExtras.putBoolean("ProviderSourceIsGnss",true);
+                } else {
+                    mLocationExtras.remove("ProviderSourceIsGnss");
+                }
+            } else {
+                    mLocationExtras.remove("ProviderSourceIsUlp");
+                    mLocationExtras.remove("ProviderSourceIsGnss");
             }
 
             if (rawData.length > 0) {
@@ -1384,6 +1642,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
      * called from native code to inform us what the GPS engine capabilities are
      */
     private void setEngineCapabilities(int capabilities) {
+        if (DEBUG) Log.d(TAG, "setEngineCapabilities " + capabilities );
         mEngineCapabilities = capabilities;
 
         if (!hasCapability(GPS_CAPABILITY_ON_DEMAND_TIME) && !mPeriodicTimeInjection) {
@@ -1523,6 +1782,41 @@ public class GpsLocationProvider implements LocationProviderInterface {
         native_agps_set_id(type, data);
     }
 
+    private void handleNetworkLocationUpdate(Location location) {
+         Log.d(TAG, "handleNetworkLocationUpdate. lat" + location.getLatitude()+ "lon" +
+            location.getLongitude() + "accurancy " + location.getAccuracy());
+            if (location.hasAccuracy()) {
+            native_send_network_location(location.getLatitude(), location.getLongitude(),
+                    location.getAccuracy());
+            }
+    }
+
+    /*
+     * ULP request for network location info
+     *
+     */
+    private LocationListener mNetworkLocationListener = new LocationListener() {
+        public void onLocationChanged(Location location) {
+              Log.d(TAG, "onLocationChanged for NLP lat" + location.getLatitude()+ "lon" +
+              location.getLongitude() + "accurancy " + location.getAccuracy());
+              synchronized (mHandler) {
+              mHandler.removeMessages(UPDATE_NETWORK_LOCATION);
+              Message m = Message.obtain(mHandler, UPDATE_NETWORK_LOCATION);
+              m.arg1 = 0;
+              m.obj = location;
+              mHandler.sendMessage(m);
+            }
+        }
+        public void onStatusChanged(String arg0, int arg1, Bundle arg2) {
+              Log.d(TAG, "Status update for NLP" + arg0);
+            }
+        public void onProviderEnabled(String arg0) {
+            Log.d(TAG, "onProviderEnabled for NLP.state " + arg0);
+            }
+        public void onProviderDisabled(String arg0) {
+            Log.d(TAG, "onProviderEnabled for NLP.state " + arg0);
+            }
+    };
     /**
      * Called from native code to request utc time info
      */
@@ -1531,6 +1825,38 @@ public class GpsLocationProvider implements LocationProviderInterface {
         sendMessage(INJECT_NTP_TIME, 0, null);
     }
 
+    /*
+     * Called from native code to request phone context info
+     */
+    private void requestPhoneContext (int context_type, int request_type)
+    {
+        if (DEBUG)
+            Log.d(TAG, "requestPhoneContext from native layer.context_type: "+
+                  context_type+ " request_type:"+ request_type);
+        synchronized (mWakeLock) {
+            mWakeLock.acquire();
+            mHandler.removeMessages(REQUEST_PHONE_CONTEXT_SETTINGS);
+            Message m = Message.obtain(mHandler, REQUEST_PHONE_CONTEXT_SETTINGS);
+            m.arg1 = context_type;
+            m.arg2 = request_type;
+            mHandler.sendMessage(m);
+        }
+    }
+    /**
+     * Called from native code to request network location info
+     */
+    private void requestNetworkLocation(int type, int interval, int source)
+    {
+         if (DEBUG) Log.d(TAG, "requestNetworkLocation. type: "+ type+ "interval: "+ interval+"source "+source);
+         synchronized (mWakeLock) {
+            mWakeLock.acquire();
+            mHandler.removeMessages(REQUEST_NETWORK_LOCATION);
+            Message m = Message.obtain(mHandler, REQUEST_NETWORK_LOCATION);
+            m.arg1 = type;
+            m.arg2 = interval;
+            mHandler.sendMessage(m);
+        }
+    }
     /**
      * Called from native code to request reference location info
      */
@@ -1583,6 +1909,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
         @Override
         public void handleMessage(Message msg) {
             int message = msg.what;
+            Log.d(TAG, "Gps MessageHandler. msg.what " + message);
             switch (message) {
                 case ENABLE:
                     if (msg.arg1 == 1) {
@@ -1617,6 +1944,19 @@ public class GpsLocationProvider implements LocationProviderInterface {
                 case REMOVE_LISTENER:
                     handleRemoveListener(msg.arg1);
                     break;
+                case REQUEST_PHONE_CONTEXT_SETTINGS:
+                    handleNativePhoneContextRequest(msg.arg1, msg.arg2);
+                    break;
+                case UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS:
+                    handleNativePhoneContextUpdate(msg.arg1, msg.getData());
+                    break;
+                case REQUEST_NETWORK_LOCATION:
+                    handleNativeNetworkLocationRequest(msg.arg1, msg.arg2);
+                    break;
+                case UPDATE_NETWORK_LOCATION:
+                    handleNetworkLocationUpdate((Location)msg.obj);
+                    break;
+
             }
             // release wake lock if no messages are pending
             synchronized (mWakeLock) {
@@ -1691,6 +2031,12 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private native void native_cleanup();
     private native boolean native_set_position_mode(int mode, int recurrence, int min_interval,
             int preferred_accuracy, int preferred_time);
+    private native boolean native_update_criteria(int action, long minTime, float minDistance,
+                                                  boolean singleShot, int horizontalAccuracy,
+                                                  int powerRequirement);
+    private native boolean native_update_settings(int currentContextType, boolean currentGpsSetting, boolean currentAgpsSetting,
+                           boolean currentNetworkProvSetting,boolean currentWifiSetting );
+
     private native boolean native_start();
     private native boolean native_stop();
     private native void native_delete_aiding_data(int flags);
@@ -1700,6 +2046,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
             float[] elevations, float[] azimuths, int[] masks);
     private native int native_read_nmea(byte[] buffer, int bufferSize);
     private native void native_inject_location(double latitude, double longitude, float accuracy);
+    private native void native_send_network_location(double latitude, double longitude, float accuracy);
 
     // XTRA Support
     private native void native_inject_time(long time, long timeReference, int uncertainty);
