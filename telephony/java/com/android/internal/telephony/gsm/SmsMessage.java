@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.gsm;
 
+import java.text.ParseException;
 import android.os.Parcel;
 import android.telephony.PhoneNumberUtils;
 import android.text.format.Time;
@@ -532,7 +533,12 @@ public class SmsMessage extends SmsMessageBase {
             int addressLength = pdu[cur] & 0xff;
             int lengthBytes = 2 + (addressLength + 1) / 2;
 
-            ret = new GsmSmsAddress(pdu, cur, lengthBytes);
+            try {
+                ret = new GsmSmsAddress(pdu, cur, lengthBytes);
+            } catch (ParseException e) {
+                Log.e(LOG_TAG, e.getMessage());
+                ret = null;
+            }
 
             cur += lengthBytes;
 
