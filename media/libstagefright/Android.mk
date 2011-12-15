@@ -85,6 +85,7 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/frameworks/base/media/libstagefright/rtsp \
         $(TOP)/external/openssl/include \
         $(TOP)/hardware/qcom/display/libgralloc \
+        $(TOP)/hardware/qcom/display/libqcomui \
         $(TOP)/vendor/qcom/opensource/omx/mm-core/omxcore/inc \
         $(TOP)/system/core/include \
         $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr \
