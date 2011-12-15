@@ -190,7 +190,7 @@ public class CatService extends Handler implements AppInterface {
         // Register for SIM ready event.
         mUiccApplication.registerForReady(this, MSG_ID_SIM_READY, null);
 
-        mUiccManager = UiccManager.getInstance(mContext, mCmdIf);
+        mUiccManager = UiccManager.getInstance();
         mUiccManager.registerForIccChanged(this, MSG_ID_ICC_CHANGED, null);
 
         CatLog.d(this, "CatService running");
