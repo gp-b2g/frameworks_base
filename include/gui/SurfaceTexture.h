@@ -265,7 +265,8 @@ private:
               mRequestBufferCalled(false),
               mTransform(0),
               mScalingMode(NATIVE_WINDOW_SCALING_MODE_FREEZE),
-              mTimestamp(0) {
+              mTimestamp(0),
+              mFrameNumber(0) {
             mCrop.makeInvalid();
         }
 
@@ -334,6 +335,10 @@ private:
         // mTimestamp is the current timestamp for this buffer slot. This gets
         // to set by queueBuffer each time this slot is queued.
         int64_t mTimestamp;
+
+        // mFrameNumber is the number of the queued frame for this slot.
+        uint64_t mFrameNumber;
+
     };
 
     // mSlots is the array of buffer slots that must be mirrored on the client
@@ -470,6 +475,10 @@ private:
     // around a GL driver limitation on the number of FBO attachments, which the
     // browser's tile cache exceeds.
     const GLenum mTexTarget;
+
+    // mFrameCounter is the free running counter, incremented for every buffer queued
+    // with the surface Texture.
+    uint64_t mFrameCounter;
 
     // mReqSize is the required buffer size speficied by the client.
     int mReqSize;
