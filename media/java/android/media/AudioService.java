@@ -280,9 +280,6 @@ public class AudioService extends IAudioService.Stub {
     // List of clients having issued a SCO start request
     private ArrayList <ScoClient> mScoClients = new ArrayList <ScoClient>();
 
-    // List of Audio Focus death handlers
-    private ArrayList <AudioFocusDeathHandler> mAudioFocusDeathHandlers = new ArrayList <AudioFocusDeathHandler>();
-
     // BluetoothHeadset API to control SCO connection
     private BluetoothHeadset mBluetoothHeadset;
 
@@ -982,7 +979,7 @@ public class AudioService extends IAudioService.Stub {
         // if exiting call
         else if (newMode == AudioSystem.MODE_NORMAL) {
             // abandon audio focus for communication focus entry
-            abandonAudioFocus(null, IN_VOICE_COMM_FOCUS_ID, null);
+            abandonAudioFocus(null, IN_VOICE_COMM_FOCUS_ID);
         }
     }
 
@@ -2889,7 +2886,7 @@ public class AudioService extends IAudioService.Stub {
      * stack if necessary.
      */
     private class AudioFocusDeathHandler implements IBinder.DeathRecipient {
-        private final IBinder mCb; // To be notified of client's death
+        private IBinder mCb; // To be notified of client's death
 
         AudioFocusDeathHandler(IBinder cb) {
             mCb = cb;
@@ -2899,7 +2896,6 @@ public class AudioService extends IAudioService.Stub {
             synchronized(mAudioFocusLock) {
                 Log.w(TAG, "  AudioFocus   audio focus client died");
                 removeFocusStackEntryForClient(mCb);
-                mAudioFocusDeathHandlers.remove(this);
             }
         }
 
@@ -2930,31 +2926,13 @@ public class AudioService extends IAudioService.Stub {
             // handle the potential premature death of the new holder of the focus
             // (premature death == death before abandoning focus)
             // Register for client death notification
-            int size = 0;
-            int i = 0;
-            synchronized (mAudioFocusLock) {
-              size = mAudioFocusDeathHandlers.size();
-              for (i = 0; i < size; i++) {
-                final AudioFocusDeathHandler afdhandler = mAudioFocusDeathHandlers.get(i);
-                  if (afdhandler.getBinder() == cb) {
-                    break;
-                  }
-                }
-              }
-
-            // Register once per client
             AudioFocusDeathHandler afdh = new AudioFocusDeathHandler(cb);
-            if (i == size) {
-              try {
+            try {
                 cb.linkToDeath(afdh, 0);
-                synchronized (mAudioFocusLock) {
-                  mAudioFocusDeathHandlers.add(afdh);
-                }
-              } catch (RemoteException e) {
+            } catch (RemoteException e) {
                 // client has already died!
                 Log.w(TAG, "AudioFocus  requestAudioFocus() could not link to "+cb+" binder death");
                 return AudioManager.AUDIOFOCUS_REQUEST_FAILED;
-              }
             }
 
             if (!mFocusStack.empty() && mFocusStack.peek().mClientId.equals(clientId)) {
@@ -2997,23 +2975,12 @@ public class AudioService extends IAudioService.Stub {
     }
 
     /** @see AudioManager#abandonAudioFocus(IAudioFocusDispatcher) */
-    public int abandonAudioFocus(IAudioFocusDispatcher fl, String clientId, IBinder cb) {
+    public int abandonAudioFocus(IAudioFocusDispatcher fl, String clientId) {
         Log.i(TAG, " AudioFocus  abandonAudioFocus() from " + clientId);
         try {
             // this will take care of notifying the new focus owner if needed
             synchronized(mAudioFocusLock) {
                 removeFocusStackEntry(clientId, true);
-                if (cb != null) {
-                  int size = mAudioFocusDeathHandlers.size();
-                  for (int i = 0; i < size; i++) {
-                    final AudioFocusDeathHandler afdh = mAudioFocusDeathHandlers.get(i);
-                    if (cb == afdh.getBinder()) {
-                      cb.unlinkToDeath(afdh ,0);
-                      mAudioFocusDeathHandlers.remove(i);
-                      break;
-                    }
-                  }
-                }
             }
         } catch (java.util.ConcurrentModificationException cme) {
             // Catching this exception here is temporary. It is here just to prevent
@@ -3027,20 +2994,9 @@ public class AudioService extends IAudioService.Stub {
     }
 
 
-    public void unregisterAudioFocusClient(String clientId, IBinder cb) {
+    public void unregisterAudioFocusClient(String clientId) {
         synchronized(mAudioFocusLock) {
             removeFocusStackEntry(clientId, false);
-            if (cb != null) {
-              int size = mAudioFocusDeathHandlers.size();
-              for (int i = 0; i < size; i++) {
-              final AudioFocusDeathHandler afdh = mAudioFocusDeathHandlers.get(i);
-              if (cb == afdh.getBinder()) {
-                cb.unlinkToDeath(afdh ,0);
-                mAudioFocusDeathHandlers.remove(i);
-                break;
-              }
-            }
-          }
         }
     }
 

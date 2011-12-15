@@ -82,9 +82,9 @@ interface IAudioService {
     int requestAudioFocus(int mainStreamType, int durationHint, IBinder cb, IAudioFocusDispatcher l,
             String clientId, String callingPackageName);
 
-    int abandonAudioFocus(IAudioFocusDispatcher l, String clientId, IBinder cb);
+    int abandonAudioFocus(IAudioFocusDispatcher l, String clientId);
     
-    void unregisterAudioFocusClient(String clientId, IBinder cb);
+    void unregisterAudioFocusClient(String clientId);
 
     oneway void registerMediaButtonIntent(in PendingIntent pi, in ComponentName c);
     oneway void unregisterMediaButtonIntent(in PendingIntent pi,  in ComponentName c);

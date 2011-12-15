@@ -1684,7 +1684,7 @@ public class AudioManager {
         IAudioService service = getService();
         try {
             status = service.abandonAudioFocus(mAudioFocusDispatcher,
-                    getIdForAudioFocusListener(l), mICallBack);
+                    getIdForAudioFocusListener(l));
         } catch (RemoteException e) {
             Log.e(TAG, "Can't call abandonAudioFocus() from AudioService due to "+e);
         }
