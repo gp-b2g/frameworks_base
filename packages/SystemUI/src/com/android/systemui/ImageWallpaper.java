@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.Region.Op;
 import android.opengl.GLUtils;
@@ -162,7 +163,14 @@ public class ImageWallpaper extends WallpaperService {
             }
 
             super.onCreate(surfaceHolder);
-            
+           // By defalut WallpaperService.java setting the Pixelformat type
+           // to RGBX_8888, overridding that Pixel format to RGB_565 for
+           // static wallpapers on 7x27a devices.
+           String sl = SystemProperties.get("ro.staticwallpaper.pixelformat");
+           if (sl != null && sl.equals("RGB_565")){
+               surfaceHolder.setFormat(PixelFormat.RGB_565);
+           }
+
             // TODO: Don't need this currently because the wallpaper service
             // will restart the image wallpaper whenever the image changes.
             //IntentFilter filter = new IntentFilter(Intent.ACTION_WALLPAPER_CHANGED);
