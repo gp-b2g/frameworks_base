@@ -21,9 +21,9 @@ package com.android.internal.telephony;
  */
 public interface MmiCode
 {
-	/**
-	 * {@hide}
-	 */
+    /**
+     * {@hide}
+     */
     public enum State {
         PENDING,
         CANCELLED,
@@ -43,6 +43,11 @@ public interface MmiCode
      */
 
     public CharSequence getMessage();
+
+    /**
+     * @return Phone associated with the MMI/USSD message
+     */
+    public Phone getPhone();
 
     /**
      * Cancels pending MMI request.

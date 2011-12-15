@@ -78,6 +78,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mCdmaFwdContDtmfStartRegistrants = new RegistrantList();
     protected RegistrantList mCdmaFwdContDtmfStopRegistrants = new RegistrantList();
     protected RegistrantList mTetheredModeStateRegistrants = new RegistrantList();
+    protected RegistrantList mSubscriptionStatusRegistrants = new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -654,6 +655,15 @@ public abstract class BaseCommands implements CommandsInterface {
 
     public void unregisterForCdmaFwdContDtmfStop(Handler h) {
         mCdmaFwdContDtmfStopRegistrants.remove(h);
+    }
+
+    public void registerForSubscriptionStatusChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mSubscriptionStatusRegistrants.add(r);
+    }
+
+    public void unregisterForSubscriptionStatusChanged(Handler h) {
+        mSubscriptionStatusRegistrants.remove(h);
     }
 
     //***** Protected Methods

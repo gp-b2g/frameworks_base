@@ -44,12 +44,12 @@ import java.util.List;
 public class PhoneProxy extends Handler implements Phone {
     public final static Object lockForRadioTechnologyChange = new Object();
 
-    private Phone mActivePhone;
-    private CommandsInterface mCommandsInterface;
-    private IccSmsInterfaceManager mIccSmsInterfaceManager;
-    private IccPhoneBookInterfaceManagerProxy mIccPhoneBookInterfaceManagerProxy;
-    private PhoneSubInfoProxy mPhoneSubInfoProxy;
-    private IccCardProxy mIccCardProxy;
+    protected Phone mActivePhone;
+    protected CommandsInterface mCommandsInterface;
+    protected IccSmsInterfaceManager mIccSmsInterfaceManager;
+    protected IccPhoneBookInterfaceManagerProxy mIccPhoneBookInterfaceManagerProxy;
+    protected PhoneSubInfoProxy mPhoneSubInfoProxy;
+    protected IccCardProxy mIccCardProxy;
 
     private boolean mResetModemOnRadioTechnologyChange = false;
 
@@ -57,7 +57,7 @@ public class PhoneProxy extends Handler implements Phone {
     private static final int EVENT_RADIO_ON = 2;
     private static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE = 3;
 
-    private static final String LOG_TAG = "PHONE";
+    protected static final String LOG_TAG = "PHONE";
 
     //***** Class Methods
     public PhoneProxy(Phone phone) {
@@ -74,13 +74,18 @@ public class PhoneProxy extends Handler implements Phone {
         mCommandsInterface.registerForOn(this, EVENT_RADIO_ON, null);
         mCommandsInterface.registerForVoiceRadioTechChanged(
                 this, EVENT_VOICE_RADIO_TECHNOLOGY_CHANGED, null);
-        mIccCardProxy = new IccCardProxy(phone.getContext(), mCommandsInterface);
+        init();
+
         if (phone.getPhoneType() == Phone.PHONE_TYPE_GSM) {
             // For the purpose of IccCardProxy we only care about the technology family
             mIccCardProxy.setVoiceRadioTech(RadioTechnology.RADIO_TECH_GSM);
         } else if (phone.getPhoneType() == Phone.PHONE_TYPE_CDMA) {
             mIccCardProxy.setVoiceRadioTech(RadioTechnology.RADIO_TECH_1xRTT);
         }
+    }
+
+    protected void init() {
+        mIccCardProxy = new IccCardProxy(mActivePhone.getContext(), mCommandsInterface);
     }
 
     @Override
@@ -129,7 +134,7 @@ public class PhoneProxy extends Handler implements Phone {
         Log.e(LOG_TAG, "[PhoneProxy] " + msg);
     }
 
-    private void updatePhoneObject(RadioTechnology newVoiceRadioTech) {
+    public void updatePhoneObject(RadioTechnology newVoiceRadioTech) {
 
         if (mActivePhone != null) {
             if ((newVoiceRadioTech.isCdma() &&
@@ -212,11 +217,7 @@ public class PhoneProxy extends Handler implements Phone {
         // system is busy.
         // System.gc();
 
-        if (newVoiceRadioTech.isCdma()) {
-            mActivePhone = PhoneFactory.getCdmaPhone();
-        } else if (newVoiceRadioTech.isGsm()) {
-            mActivePhone = PhoneFactory.getGsmPhone();
-        }
+        createNewPhone(newVoiceRadioTech);
 
         if (null != oldPhone) {
             oldPhone.removeReferences();
@@ -227,6 +228,14 @@ public class PhoneProxy extends Handler implements Phone {
         }
 
         oldPhone = null;
+    }
+
+    protected void createNewPhone(RadioTechnology newVoiceRadioTech) {
+        if (newVoiceRadioTech.isCdma()) {
+            mActivePhone = PhoneFactory.getCdmaPhone();
+        } else if (newVoiceRadioTech.isGsm()) {
+            mActivePhone = PhoneFactory.getGsmPhone();
+        }
     }
 
     public ServiceState getServiceState() {
@@ -956,5 +965,9 @@ public class PhoneProxy extends Handler implements Phone {
             boolean checkConnectivity, boolean checkSubscription, boolean tryDataCalls) {
         mActivePhone.setDataReadinessChecks(
                       checkConnectivity, checkSubscription, tryDataCalls);
+    }
+
+    public int getSubscription() {
+        return mActivePhone.getSubscription();
     }
 }

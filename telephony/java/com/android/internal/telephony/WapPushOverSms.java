@@ -230,6 +230,8 @@ public class WapPushOverSms {
                     intent.putExtra("data", intentData);
                     intent.putExtra("contentTypeParameters",
                             pduDecoder.getContentParameters());
+                    intent.putExtra(MSimConstants.SUBSCRIPTION_KEY,
+                            mSmsDispatcher.mPhone.getSubscription());
 
                     int procRet = wapPushMan.processMessage(wapAppId, contentType, intent);
                     if (false) Log.v(LOG_TAG, "procRet:" + procRet);
@@ -267,6 +269,7 @@ public class WapPushOverSms {
         intent.putExtra("header", header);
         intent.putExtra("data", intentData);
         intent.putExtra("contentTypeParameters", pduDecoder.getContentParameters());
+        intent.putExtra(MSimConstants.SUBSCRIPTION_KEY, mSmsDispatcher.mPhone.getSubscription());
 
         mSmsDispatcher.dispatch(intent, permission);
 

@@ -216,4 +216,10 @@ public interface TelephonyProperties
 
     /** The delay between sms sending retries */
     static final String PROPERTY_SMS_RETRY_DELAY = "persist.radio.sms_retry_delay";
+
+    /**
+     * Property to set multi sim feature.
+     * Type: boolean ( true = multi sim feature enabled, false = multi sim disabled)
+     */
+    static final String PROPERTY_MULTI_SIM_ENABLED = "persist.dsds.enabled";
 }

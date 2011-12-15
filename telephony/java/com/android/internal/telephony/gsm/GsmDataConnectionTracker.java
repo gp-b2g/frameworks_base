@@ -80,7 +80,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * {@hide}
  */
-public final class GsmDataConnectionTracker extends DataConnectionTracker {
+public class GsmDataConnectionTracker extends DataConnectionTracker {
     protected final String LOG_TAG = "GSM";
 
     /**
@@ -811,7 +811,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         cleanUpAllConnections(true, cause);
     }
 
-    private void cleanUpConnection(boolean tearDown, ApnContext apnContext) {
+    protected void cleanUpConnection(boolean tearDown, ApnContext apnContext) {
 
         if (apnContext == null) {
             if (DBG) log("cleanUpConnection: apn context is null");
@@ -872,7 +872,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
      *
      * @param DataConnectionAc on which the alarm should be stopped.
      */
-    private void cancelReconnectAlarm(DataConnectionAc dcac) {
+    protected void cancelReconnectAlarm(DataConnectionAc dcac) {
         if (dcac == null) return;
 
         PendingIntent intent = dcac.getReconnectIntentSync();
@@ -2438,12 +2438,19 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         return cid;
     }
 
+    protected IccRecords getUiccCardApplication() {
+        return  mUiccManager.getIccRecords(AppFamily.APP_FAM_3GPP);
+    }
+
     protected void updateIccAvailability() {
         if (mUiccManager == null ) {
             return;
         }
 
-        IccRecords newIccRecords = mUiccManager.getIccRecords(AppFamily.APP_FAM_3GPP);
+        IccRecords newIccRecords = getUiccCardApplication();
+        if (newIccRecords == null) {
+            return;
+        }
 
         if (mIccRecords != newIccRecords) {
             if (mIccRecords != null) {

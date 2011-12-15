@@ -195,10 +195,15 @@ LOCAL_SRC_FILES += \
 	media/java/android/media/IRemoteControlDisplay.aidl \
 	telephony/java/com/android/internal/telephony/IPhoneStateListener.aidl \
 	telephony/java/com/android/internal/telephony/IPhoneSubInfo.aidl \
+	telephony/java/com/android/internal/telephony/IPhoneSubInfoMSim.aidl \
 	telephony/java/com/android/internal/telephony/ITelephony.aidl \
+	telephony/java/com/android/internal/telephony/ITelephonyMSim.aidl \
 	telephony/java/com/android/internal/telephony/ITelephonyRegistry.aidl \
+	telephony/java/com/android/internal/telephony/ITelephonyRegistryMSim.aidl \
 	telephony/java/com/android/internal/telephony/IIccPhoneBook.aidl \
+	telephony/java/com/android/internal/telephony/IIccPhoneBookMSim.aidl \
 	telephony/java/com/android/internal/telephony/ISms.aidl \
+	telephony/java/com/android/internal/telephony/ISmsMSim.aidl \
 	telephony/java/com/android/internal/telephony/IWapPushManager.aidl \
 	wifi/java/android/net/wifi/IWifiManager.aidl \
 	wifi/java/android/net/wifi/p2p/IWifiP2pManager.aidl \

@@ -434,4 +434,14 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
 
     public void getDataCallProfile(int appType, Message result) {
     }
+
+    public void setSubscriptionMode(int subscriptionMode, Message response) {
+    }
+
+    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
+            Message response) {
+    }
+
+    public void setDataSubscription(Message response) {
+    }
 }

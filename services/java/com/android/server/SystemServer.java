@@ -146,8 +146,14 @@ class ServerThread extends Thread {
             Slog.i(TAG, "Activity Manager");
             context = ActivityManagerService.main(factoryTest);
 
-            Slog.i(TAG, "Telephony Registry");
-            ServiceManager.addService("telephony.registry", new TelephonyRegistry(context));
+            if (android.telephony.TelephonyManager.getDefault().isMultiSimEnabled()) {
+                Slog.i(TAG, "MSimTelephony Registry");
+                ServiceManager.addService("telephony.msim.registry",
+                        new MSimTelephonyRegistry(context));
+            } else {
+                Slog.i(TAG, "Telephony Registry");
+                ServiceManager.addService("telephony.registry", new TelephonyRegistry(context));
+            }
 
             AttributeCache.init(context);
 

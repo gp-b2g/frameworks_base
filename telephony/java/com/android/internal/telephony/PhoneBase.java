@@ -1190,4 +1190,12 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void setTransmitPower(int powerLevel, Message onCompleted) {
         return;
     }
+
+    /**
+     * Returns the subscription id.
+     * Always returns default subscription(ie., 0).
+     */
+    public int getSubscription() {
+        return MSimConstants.DEFAULT_SUBSCRIPTION;
+    }
 }

@@ -5142,6 +5142,7 @@ package android.content {
     field public static final int MODE_PRIVATE = 0; // 0x0
     field public static final int MODE_WORLD_READABLE = 1; // 0x1
     field public static final int MODE_WORLD_WRITEABLE = 2; // 0x2
+    field public static final java.lang.String MSIM_TELEPHONY_SERVICE = "phone_msim";
     field public static final java.lang.String NFC_SERVICE = "nfc";
     field public static final java.lang.String NOTIFICATION_SERVICE = "notification";
     field public static final java.lang.String POWER_SERVICE = "power";
@@ -17463,6 +17464,7 @@ package android.provider {
     method public static float getFloat(android.content.ContentResolver, java.lang.String) throws android.provider.Settings.SettingNotFoundException;
     method public static int getInt(android.content.ContentResolver, java.lang.String, int);
     method public static int getInt(android.content.ContentResolver, java.lang.String) throws android.provider.Settings.SettingNotFoundException;
+    method public static int getIntAtIndex(android.content.ContentResolver, java.lang.String, int) throws android.provider.Settings.SettingNotFoundException;
     method public static long getLong(android.content.ContentResolver, java.lang.String, long);
     method public static long getLong(android.content.ContentResolver, java.lang.String) throws android.provider.Settings.SettingNotFoundException;
     method public static synchronized java.lang.String getString(android.content.ContentResolver, java.lang.String);
@@ -17470,6 +17472,7 @@ package android.provider {
     method public static final boolean isLocationProviderEnabled(android.content.ContentResolver, java.lang.String);
     method public static boolean putFloat(android.content.ContentResolver, java.lang.String, float);
     method public static boolean putInt(android.content.ContentResolver, java.lang.String, int);
+    method public static boolean putIntAtIndex(android.content.ContentResolver, java.lang.String, int, int);
     method public static boolean putLong(android.content.ContentResolver, java.lang.String, long);
     method public static boolean putString(android.content.ContentResolver, java.lang.String, java.lang.String);
     method public static final void setLocationProviderEnabled(android.content.ContentResolver, java.lang.String, boolean);
@@ -17590,6 +17593,10 @@ package android.provider {
     field public static final deprecated java.lang.String LOGGING_ID = "logging_id";
     field public static final java.lang.String MODE_RINGER = "mode_ringer";
     field public static final java.lang.String MODE_RINGER_STREAMS_AFFECTED = "mode_ringer_streams_affected";
+    field public static final java.lang.String MULTI_SIM_DATA_CALL_SUBSCRIPTION = "multi_sim_data_call";
+    field public static final java.lang.String MULTI_SIM_SMS_SUBSCRIPTION = "multi_sim_sms";
+    field public static final java.lang.String MULTI_SIM_VOICE_CALL_SUBSCRIPTION = "multi_sim_voice_call";
+    field public static final java.lang.String MULTI_SIM_VOICE_PROMPT = "multi_sim_voice_prompt";
     field public static final java.lang.String MUTE_STREAMS_AFFECTED = "mute_streams_affected";
     field public static final deprecated java.lang.String NETWORK_PREFERENCE = "network_preference";
     field public static final java.lang.String NEXT_ALARM_FORMATTED = "next_alarm_formatted";
@@ -19031,6 +19038,42 @@ package android.telephony {
     method public static void requestLocationUpdate();
   }
 
+  public class MSimSmsManager {
+    ctor public MSimSmsManager();
+    method public java.util.ArrayList<java.lang.String> divideMessage(java.lang.String);
+    method public static android.telephony.MSimSmsManager getDefault();
+    method public void sendMultipartTextMessage(java.lang.String, java.lang.String, java.util.ArrayList<java.lang.String>, java.util.ArrayList<android.app.PendingIntent>, java.util.ArrayList<android.app.PendingIntent>, int);
+    field public static final int RESULT_ERROR_GENERIC_FAILURE = 1; // 0x1
+    field public static final int RESULT_ERROR_NO_SERVICE = 4; // 0x4
+    field public static final int RESULT_ERROR_NULL_PDU = 3; // 0x3
+    field public static final int RESULT_ERROR_RADIO_OFF = 2; // 0x2
+    field public static final int STATUS_ON_ICC_FREE = 0; // 0x0
+    field public static final int STATUS_ON_ICC_READ = 1; // 0x1
+    field public static final int STATUS_ON_ICC_SENT = 5; // 0x5
+    field public static final int STATUS_ON_ICC_UNREAD = 3; // 0x3
+    field public static final int STATUS_ON_ICC_UNSENT = 7; // 0x7
+    field protected static boolean isMultiSimEnabled;
+  }
+
+  public class MSimTelephonyManager extends android.telephony.TelephonyManager {
+    method public int getCallState(int);
+    method public int getDefaultSubscription();
+    method public java.lang.String getDeviceId(int);
+    method public java.lang.String getLine1Number(int);
+    method public java.lang.String getNetworkOperator(int);
+    method public java.lang.String getNetworkOperatorName(int);
+    method public static int getNetworkType(int);
+    method public int getPreferredDataSubscription();
+    method public int getPreferredVoiceSubscription();
+    method public int getSimState(int);
+    method public java.lang.String getSubscriberId(int);
+    method public java.lang.String getVoiceMailAlphaTag(int);
+    method public java.lang.String getVoiceMailNumber(int);
+    method public boolean hasIccCard(int);
+    method public boolean isNetworkRoaming(int);
+    method public boolean setPreferredDataSubscription(int);
+  }
+
   public class NeighboringCellInfo implements android.os.Parcelable {
     ctor public deprecated NeighboringCellInfo();
     ctor public deprecated NeighboringCellInfo(int, int);
@@ -19250,6 +19293,7 @@ package android.telephony {
     method public java.lang.String getNetworkOperator();
     method public java.lang.String getNetworkOperatorName();
     method public int getNetworkType();
+    method public int getPhoneCount();
     method public int getPhoneType();
     method public java.lang.String getSimCountryIso();
     method public java.lang.String getSimOperator();
@@ -19260,6 +19304,7 @@ package android.telephony {
     method public java.lang.String getVoiceMailAlphaTag();
     method public java.lang.String getVoiceMailNumber();
     method public boolean hasIccCard();
+    method public boolean isMultiSimEnabled();
     method public boolean isNetworkRoaming();
     method public void listen(android.telephony.PhoneStateListener, int);
     field public static final java.lang.String ACTION_PHONE_STATE_CHANGED = "android.intent.action.PHONE_STATE";

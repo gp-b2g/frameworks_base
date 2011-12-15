@@ -246,4 +246,17 @@ public class TelephonyIntents {
      */
     public static final String ACTION_UNSOL_RESPONSE_OEM_HOOK_RAW
             = "android.intent.action.ACTION_UNSOL_RESPONSE_OEM_HOOK_RAW";
+
+    /**
+     * Broadcast Action: The default subscription has changed.  This has the following
+     * extra values:</p>
+     * <ul>
+     *   <li><em>phone_subscription</em> - A int, the current default subscription.</li>
+     * </ul>
+     *
+     * <p class="note">This is a protected intent that can only be sent
+     * by the system.
+     */
+    public static final String ACTION_DEFAULT_SUBSCRIPTION_CHANGED
+            = "android.intent.action.ACTION_DEFAULT_SUBSCRIPTION_CHANGED";
 }

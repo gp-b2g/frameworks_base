@@ -371,6 +371,22 @@ public final class CallManager {
         return getFirstActiveRingingCall().getPhone();
     }
 
+    /**
+     * @return the phone associated with any call
+     */
+    public Phone getPhoneInCall() {
+        Phone phone = null;
+        if (!getFirstActiveRingingCall().isIdle()) {
+            phone = getFirstActiveRingingCall().getPhone();
+        } else if (!getActiveFgCall().isIdle()) {
+            phone = getActiveFgCall().getPhone();
+        } else {
+            // If BG call is idle, we return default phone
+            phone = getFirstActiveBgCall().getPhone();
+        }
+        return phone;
+    }
+
     public void setAudioMode() {
         Context context = getContext();
         if (context == null) return;
@@ -429,8 +445,8 @@ public final class CallManager {
         phone.registerForDisplayInfo(mHandler, EVENT_DISPLAY_INFO, null);
         phone.registerForSignalInfo(mHandler, EVENT_SIGNAL_INFO, null);
         phone.registerForResendIncallMute(mHandler, EVENT_RESEND_INCALL_MUTE, null);
-        phone.registerForMmiInitiate(mHandler, EVENT_MMI_INITIATE, null);
-        phone.registerForMmiComplete(mHandler, EVENT_MMI_COMPLETE, null);
+        phone.registerForMmiInitiate(mHandler, EVENT_MMI_INITIATE, phone);
+        phone.registerForMmiComplete(mHandler, EVENT_MMI_COMPLETE, phone);
         phone.registerForSuppServiceFailed(mHandler, EVENT_SUPP_SERVICE_FAILED, null);
         phone.registerForServiceStateChanged(mHandler, EVENT_SERVICE_STATE_CHANGED, null);
         if (phone.getPhoneType() == Phone.PHONE_TYPE_GSM) {

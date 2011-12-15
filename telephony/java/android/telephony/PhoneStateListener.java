@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@ import android.os.Message;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.CellLocation;
+import android.telephony.MSimTelephonyManager;
 import android.util.Log;
 
 import com.android.internal.telephony.IPhoneStateListener;
@@ -156,7 +158,22 @@ public class PhoneStateListener {
      */
     public static final int LISTEN_OTASP_CHANGED                            = 0x00000200;
 
+    /**
+     * Subscription used to listen to the phone state changes
+     * @hide
+     */
+    protected int mSubscription = 0;
+
     public PhoneStateListener() {
+        // If subscription is not passed set the default subscription.
+        mSubscription = MSimTelephonyManager.getDefault().getDefaultSubscription();
+    }
+
+    /**
+     * @hide
+     */
+    public PhoneStateListener(int subscription) {
+        mSubscription = subscription;
     }
 
     /**
