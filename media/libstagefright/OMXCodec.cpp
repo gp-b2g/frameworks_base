@@ -763,6 +763,7 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta) {
             }
             if(!strcmp(mComponentName, "OMX.google.h264.decoder")
                 && (profile != kAVCProfileBaseline)) {
+                LOGE("%s does not support profiles > kAVCProfileBaseline", mComponentName);
                 // The profile is unsupported by the decoder
                 return ERROR_UNSUPPORTED;
             }
@@ -2145,7 +2146,7 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
         }
 
         if (err != OK) {
-            LOGE("allocate_buffer_with_backup failed");
+            CODEC_LOGE("allocate_buffer_with_backup failed");
             return err;
         }
 
@@ -2375,7 +2376,7 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
             break;
         }
 
-	private_handle_t *handle = (private_handle_t *)buf->handle;
+        private_handle_t *handle = (private_handle_t *)buf->handle;
         if(!handle) {
                 LOGE("Native Buffer handle is NULL");
                 break;
@@ -2828,6 +2829,9 @@ void OMXCodec::on_message(const omx_message &msg) {
 
                 if (mIsEncoder) {
                     int64_t decodingTimeUs = retrieveDecodingTimeUs(isCodecSpecific);
+                    CODEC_LOGV("kkeyTime = %lld, kKeyDecodingTime = %lld, ctts = %lld",
+                               msg.u.extended_buffer_data.timestamp, decodingTimeUs,
+                               msg.u.extended_buffer_data.timestamp - decodingTimeUs);
                     buffer->meta_data()->setInt64(kKeyDecodingTime, decodingTimeUs);
                 }
 
@@ -3749,6 +3753,7 @@ bool OMXCodec::drainInputBuffer(BufferInfo *info) {
         CHECK(srcBuffer->meta_data()->findInt64(kKeyTime, &lastBufferTimeUs));
         CHECK(lastBufferTimeUs >= 0);
         if (mIsEncoder) {
+            CODEC_LOGV("pushing %lld to mDecodingTimeList", lastBufferTimeUs);
             mDecodingTimeList.push_back(lastBufferTimeUs);
         }
 
