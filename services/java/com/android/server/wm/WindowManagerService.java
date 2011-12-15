@@ -5955,6 +5955,21 @@ public class WindowManagerService extends IWindowManager.Stub
                 screenLayout = Configuration.SCREENLAYOUT_SIZE_NORMAL;
             }
 
+            // Override system set screenLayout value with user defined.
+            // Ensure that screen size should not be over qualyfied.
+            String sl = SystemProperties.get("ro.screen.layout");
+            if (sl != null) {
+                if (sl.equals("small")) {
+                    screenLayout = Configuration.SCREENLAYOUT_SIZE_SMALL;
+                } else if (sl.equals("normal")
+                        && (screenLayout > Configuration.SCREENLAYOUT_SIZE_NORMAL)) {
+                    screenLayout = Configuration.SCREENLAYOUT_SIZE_NORMAL;
+                } else if (sl.equals("large")
+                        && (screenLayout > Configuration.SCREENLAYOUT_SIZE_LARGE)) {
+                    screenLayout = Configuration.SCREENLAYOUT_SIZE_LARGE;
+                }
+            }
+
             // If this screen is wider than normal HVGA, or taller
             // than FWVGA, then for old apps we want to run in size
             // compatibility mode.
@@ -5971,6 +5986,7 @@ public class WindowManagerService extends IWindowManager.Stub
             }
         }
         config.screenLayout = screenLayout;
+        Log.i(TAG, "SCREENLAYOUT_SIZE (1:small, 2:normal, 3:large, 4:xlarge) " + (screenLayout & (Configuration.SCREENLAYOUT_SIZE_MASK)));
 
         // Determine whether a hard keyboard is available and enabled.
         boolean hardKeyboardAvailable = config.keyboard == Configuration.KEYBOARD_NOKEYS;
