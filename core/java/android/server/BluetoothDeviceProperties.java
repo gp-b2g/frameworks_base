@@ -62,7 +62,7 @@ class BluetoothDeviceProperties {
                         + i + " is null");
                     continue;
                 }
-                if (name.equals("UUIDs") || name.equals("Nodes")) {
+                if (name.equals("UUIDs") || name.equals("Nodes") || name.equals("Services")) {
                     StringBuilder str = new StringBuilder();
                     len = Integer.valueOf(properties[++i]);
                     for (int j = 0; j < len; j++) {
