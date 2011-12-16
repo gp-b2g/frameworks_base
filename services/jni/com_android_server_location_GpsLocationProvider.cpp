@@ -73,6 +73,35 @@ static void checkAndClearExceptionFromCallback(JNIEnv* env, const char* methodNa
     }
 }
 
+/*=============================================================================================
+ * Function description:
+ *  Helper function to convert a 16 byte array to a 16 byte number in the form of two
+ *  longs (most significant 8 bytes, and least significant 8 bytes)
+ *
+ * Parameters:
+ *    bytes, the 16 byte array
+ *    most, pointer to the most siginificant 8 bytes
+ *    least, pointer to the least siginificant 8 bytes
+ *
+ * Return value:
+ *    error code: 0: success
+ =============================================================================================*/
+static int byte_array_to_longs(unsigned char bytes[16], uint64_t *most, uint64_t *least)
+{
+  int i;
+  *least = 0;
+  *most = 0;
+
+  for (i = 0; i < 8; i++) {
+    *least += ((uint64_t)(((uint64_t)bytes[15 - i]) << (8*i)));
+  }
+
+  for (i = 0; i < 8; i++) {
+    *most += ((uint64_t)(((uint64_t)bytes[7 - i]) << (8*i)));
+  }
+  return 0;
+}
+
 static void location_callback(GpsLocation* location)
 {
     JNIEnv* env = AndroidRuntime::getJNIEnv();
@@ -80,13 +109,36 @@ static void location_callback(GpsLocation* location)
     jbyteArray byteArray = env->NewByteArray(location->rawDataSize);
     LOG_ASSERT(byteArray, "Native could not create new byte[]");
     env->SetByteArrayRegion(byteArray, 0, location->rawDataSize, (const jbyte *) location->rawData );
+
+    jstring java_string_map_url = NULL;
+    if ((location->flags & GPS_LOCATION_HAS_MAP_URL) == GPS_LOCATION_HAS_MAP_URL) {
+      java_string_map_url = env->NewStringUTF(location->map_url);
+    }
+
+    jobject java_uuid_map_index = NULL;
+    if ((location->flags & GPS_LOCATION_HAS_MAP_INDEX) == GPS_LOCATION_HAS_MAP_INDEX) {
+      uint64_t most, least;
+      byte_array_to_longs(location->map_index, &most, &least);
+
+      //UUID mapIndex = new UUID((jlong)most, (jlong)least);
+      jclass uuid_class = env->FindClass("java/util/UUID");
+      jmethodID create_uuid_mid = env->GetMethodID(uuid_class, "<init>", "(JJ)V");
+      java_uuid_map_index = env->NewObject(uuid_class, create_uuid_mid, (jlong)most, (jlong)least);
+    }
+
     env->CallVoidMethod(mCallbacksObj, method_reportLocation, location->flags,
             (jdouble)location->latitude, (jdouble)location->longitude,
             (jdouble)location->altitude,
             (jfloat)location->speed, (jfloat)location->bearing,
-            (jfloat)location->accuracy, (jlong)location->timestamp,
-            location->position_source, byteArray);
+            (jfloat)location->accuracy, (jlong)location->timestamp,location->position_source,
+             byteArray, (jboolean)location->is_indoor, (jfloat)location->floor_number,
+             java_string_map_url, java_uuid_map_index);
+
     env->DeleteLocalRef(byteArray);
+    if (java_uuid_map_index != NULL) {
+      env->DeleteLocalRef(java_uuid_map_index);
+    }
+
     checkAndClearExceptionFromCallback(env, __FUNCTION__);
 }
 
@@ -282,7 +334,7 @@ static void android_location_GpsLocationProvider_class_init_native(JNIEnv* env, 
     int err;
     hw_module_t* module;
 
-    method_reportLocation = env->GetMethodID(clazz, "reportLocation", "(IDDDFFFJI[B)V");
+    method_reportLocation = env->GetMethodID(clazz, "reportLocation", "(IDDDFFFJI[BZFLjava/lang/String;Ljava/util/UUID;)V");
     method_reportStatus = env->GetMethodID(clazz, "reportStatus", "(I)V");
     method_reportSvStatus = env->GetMethodID(clazz, "reportSvStatus", "()V");
     method_reportAGpsStatus = env->GetMethodID(clazz, "reportAGpsStatus", "(III[B)V");
@@ -407,8 +459,8 @@ static jboolean android_location_GpsLocationProvider_update_criteria(JNIEnv* env
 }
 
 static jboolean android_location_GpsLocationProvider_update_settings(JNIEnv* env, jobject obj,
-        jint currentContextType,jboolean currentGpsSetting, jboolean currentAgpsSetting,
-        jboolean currentNetworkProvSetting,jboolean currentWifiSetting)
+        jint currentContextType, jboolean currentGpsSetting, jboolean currentAgpsSetting,
+        jboolean currentNetworkProvSetting, jboolean currentWifiSetting, jboolean currentBatteryCharging)
 {
     if (sUlpPhoneContextInterface->ulp_phone_context_settings_update ) {
         UlpPhoneContextSettings settings;
@@ -417,6 +469,7 @@ static jboolean android_location_GpsLocationProvider_update_settings(JNIEnv* env
         settings.is_agps_enabled = currentAgpsSetting;
         settings.is_network_position_available = currentNetworkProvSetting;
         settings.is_wifi_setting_enabled = currentWifiSetting;
+        settings.is_battery_charging = currentBatteryCharging;
         return sUlpPhoneContextInterface->ulp_phone_context_settings_update(&settings);
     }
     else
@@ -711,7 +764,7 @@ static JNINativeMethod sMethods[] = {
     {"native_cleanup", "()V", (void*)android_location_GpsLocationProvider_cleanup},
     {"native_set_position_mode", "(IIIII)Z", (void*)android_location_GpsLocationProvider_set_position_mode},
     {"native_update_criteria", "(IJFZII)Z", (void*)android_location_GpsLocationProvider_update_criteria},
-    {"native_update_settings", "(IZZZZ)Z", (void*)android_location_GpsLocationProvider_update_settings},
+    {"native_update_settings", "(IZZZZZ)Z", (void*)android_location_GpsLocationProvider_update_settings},
     {"native_start", "()Z", (void*)android_location_GpsLocationProvider_start},
     {"native_stop", "()Z", (void*)android_location_GpsLocationProvider_stop},
     {"native_delete_aiding_data", "(I)V", (void*)android_location_GpsLocationProvider_delete_aiding_data},

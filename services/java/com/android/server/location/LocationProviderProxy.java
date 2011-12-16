@@ -477,6 +477,9 @@ public class LocationProviderProxy implements LocationProviderInterface {
                                   boolean wifiSetting,boolean agpsSetting){
        return true;
     }
+    public boolean updateBatteryStatus(boolean isBatteryCharging){
+        return true;
+    }
     public int getCapability(){
         return 0;
     }
