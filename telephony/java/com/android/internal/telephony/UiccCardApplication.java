@@ -608,8 +608,8 @@ public class UiccCardApplication {
                  CommandsInterface.SERVICE_CLASS_DATA +
                  CommandsInterface.SERVICE_CLASS_FAX;
 
-         mCi.setFacilityLock(CommandsInterface.CB_FACILITY_BA_SIM,
-                 enabled, password, serviceClassX,
+         mCi.setFacilityLockForApp(CommandsInterface.CB_FACILITY_BA_SIM,
+                 enabled, password, serviceClassX, mAid,
                  mHandler.obtainMessage(EVENT_CHANGE_FACILITY_LOCK_DONE, onComplete));
      }
 
@@ -635,8 +635,8 @@ public class UiccCardApplication {
 
          mDesiredFdnEnabled = enabled;
 
-         mCi.setFacilityLock(CommandsInterface.CB_FACILITY_BA_FD,
-                 enabled, password, serviceClassX,
+         mCi.setFacilityLockForApp(CommandsInterface.CB_FACILITY_BA_FD,
+                 enabled, password, serviceClassX, mAid,
                  mHandler.obtainMessage(EVENT_CHANGE_FACILITY_FDN_DONE, onComplete));
      }
 
@@ -654,7 +654,7 @@ public class UiccCardApplication {
      public void changeIccLockPassword(String oldPassword, String newPassword,
              Message onComplete) {
          log("Change Pin1 old: " + oldPassword + " new: " + newPassword);
-         mCi.changeIccPin(oldPassword, newPassword,
+         mCi.changeIccPinForApp(oldPassword, newPassword, mAid,
                  onComplete);
 
      }
@@ -673,7 +673,7 @@ public class UiccCardApplication {
     public void changeIccFdnPassword(String oldPassword, String newPassword,
             Message onComplete) {
         log("Change Pin2 old: " + oldPassword + " new: " + newPassword);
-        mCi.changeIccPin2(oldPassword, newPassword,
+        mCi.changeIccPin2ForApp(oldPassword, newPassword, mAid,
                 onComplete);
     }
 
