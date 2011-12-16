@@ -67,13 +67,21 @@ public final class CdmaDataProfileTracker extends Handler {
     private static final String[] mSupportedApnTypes = {
             Phone.APN_TYPE_DEFAULT,
             Phone.APN_TYPE_MMS,
+            Phone.APN_TYPE_SUPL,
             Phone.APN_TYPE_DUN,
-            Phone.APN_TYPE_HIPRI };
+            Phone.APN_TYPE_HIPRI,
+            Phone.APN_TYPE_FOTA,
+            Phone.APN_TYPE_IMS,
+            Phone.APN_TYPE_CBS };
 
     private static final String[] mDefaultApnTypes = {
             Phone.APN_TYPE_DEFAULT,
             Phone.APN_TYPE_MMS,
-            Phone.APN_TYPE_HIPRI };
+            Phone.APN_TYPE_SUPL,
+            Phone.APN_TYPE_HIPRI,
+            Phone.APN_TYPE_FOTA,
+            Phone.APN_TYPE_IMS,
+            Phone.APN_TYPE_CBS };
 
     // if we have no active DataProfile this is null
     protected DataProfile mActiveDp;
