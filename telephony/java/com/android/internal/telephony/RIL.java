@@ -1343,10 +1343,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     public void
-    sendImsGsmSms (String smscPDU, String pdu, Message result) {
+    sendImsGsmSms (String smscPDU, String pdu, int retry, int messageRef,
+            Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_IMS_SEND_SMS, result);
 
         rr.mp.writeInt(1); //RadioTechnologyFamily.RADIO_TECH_3GPP;
+        rr.mp.writeByte((byte)retry);
+        rr.mp.writeInt(messageRef);
+
         constructGsmSendSmsRilRequest(rr, smscPDU, pdu);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
@@ -1355,10 +1359,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     public void
-    sendImsCdmaSms(byte[] pdu, Message result) {
+    sendImsCdmaSms(byte[] pdu, int retry, int messageRef, Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_IMS_SEND_SMS, result);
 
         rr.mp.writeInt(2); //RadioTechnologyFamily.RADIO_TECH_3GPP2;
+        rr.mp.writeByte((byte)retry);
+        rr.mp.writeInt(messageRef);
+
         constructCdmaSendSmsRilRequest(rr, pdu);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
