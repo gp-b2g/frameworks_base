@@ -29,6 +29,7 @@
 #include <cutils/log.h>
 
 #include <EGL/egl.h>
+#include <qcom_ui.h>
 
 #include "LayerBase.h"
 #include "HWComposer.h"
@@ -116,6 +117,10 @@ status_t HWComposer::prepare() const {
                     break;
                 case HWC_FRAMEBUFFER:
                     numFBLayers++;
+                    break;
+                default:
+                    if(isUpdatingFB((HWCCompositionType)l.compositionType))
+                        numFBLayers++;
                     break;
             }
         }
