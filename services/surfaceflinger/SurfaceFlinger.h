@@ -179,7 +179,7 @@ public:
     virtual bool                        authenticateSurfaceTexture(const sp<ISurfaceTexture>& surface) const;
 
     //HDMI Specific
-    virtual void                        enableHDMIOutput(int enable);
+    virtual void                        enableHDMIOutput(int externaltype);
     virtual void                        setActionSafeWidthRatio(float asWidthRatio);
     virtual void                        setActionSafeHeightRatio(float asHeightRatio);
 
@@ -347,7 +347,7 @@ private:
             void        drawWormhole() const;
 
             //HDMI Specific
-            void updateHwcHDMI(bool enable);
+            void updateHwcHDMI(int externaltype);
             bool isGPULayerPresent();
 
     mutable     MessageQueue    mEventQueue;
@@ -403,7 +403,7 @@ private:
                 bool                        mBootFinished;
 
                 //HDMI specific
-                bool                        mHDMIOutput;
+                int                         mHDMIOutput;
                 Mutex                       mHDMILock;
                 bool                        mOrientationChanged;
                 bool                        mCanSkipComposition;
