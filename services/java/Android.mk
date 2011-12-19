@@ -19,3 +19,11 @@ LOCAL_NO_EMMA_COMPILE := true
 include $(BUILD_JAVA_LIBRARY)
 
 include $(BUILD_DROIDDOC)
+
+# Copy the default QoS policy files to system/etc
+include $(CLEAR_VARS)
+LOCAL_MODULE       := QoSPolicy.xml
+LOCAL_MODULE_TAGS  := optional eng
+LOCAL_MODULE_CLASS := ETC
+LOCAL_SRC_FILES    := $(LOCAL_MODULE)
+include $(BUILD_PREBUILT)

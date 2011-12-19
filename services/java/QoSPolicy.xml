@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (C) 2011-2012 QUALCOMM Incorporated.-
+ All Rights Reserved. QUALCOMM Proprietary and Confidential.
+
+
+List of all parameters available and sample values
+NOTE: 0 - TX, 1 - RX
+
+ SPEC_INDEX="0"
+ FLOW_DIRECTION="0"
+ FLOW_TRAFFIC_CLASS="0"
+ FLOW_DATA_RATE_MIN="256"
+ FLOW_DATA_RATE_MAX="512"
+ FLOW_LATENCY="50"
+ FLOW_3GPP2_PROFILE_ID="11"
+ FLOW_3GPP2_PRIORITY="20"
+-->
+<qosPolicy version="1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:noNamespaceSchemaLocation="QoSPolicy.xsd">
+   <rolesList>
+      <role id="qos_video_telephony">
+         <RAT id="3">
+           <!--
+               RAT 3 is for NETWORK_TYPE_UMTS as returned by
+               TelephonyManager. Each RAT specific QoS params are self
+               contained.
+            -->
+            <QosSpec>
+               <QosFlowFilter>
+                  <SPEC_INDEX>0</SPEC_INDEX>
+                  <FLOW_DIRECTION>0</FLOW_DIRECTION>
+                  <FLOW_TRAFFIC_CLASS>1</FLOW_TRAFFIC_CLASS>
+                  <FLOW_DATA_RATE_MIN>64000</FLOW_DATA_RATE_MIN>
+                  <FLOW_DATA_RATE_MAX>128000</FLOW_DATA_RATE_MAX>
+                  <FLOW_LATENCY>50</FLOW_LATENCY>
+               </QosFlowFilter>
+               <QosFlowFilter>
+                  <SPEC_INDEX>0</SPEC_INDEX>
+                  <FLOW_DIRECTION>1</FLOW_DIRECTION>
+                  <FLOW_TRAFFIC_CLASS>1</FLOW_TRAFFIC_CLASS>
+                  <FLOW_DATA_RATE_MIN>256000</FLOW_DATA_RATE_MIN>
+                  <FLOW_DATA_RATE_MAX>256000</FLOW_DATA_RATE_MAX>
+                  <FLOW_LATENCY>50</FLOW_LATENCY>
+               </QosFlowFilter>
+            </QosSpec>
+         </RAT>
+         <RAT id="14">
+            <!--
+               RAT 14 is for NETWORK_TYPE_EHRPD as returned by
+               TelephonyManager. Each RAT specific QoS params are self
+               contained.
+            -->
+            <QosSpec>
+               <QosFlowFilter>
+                  <SPEC_INDEX>0</SPEC_INDEX>
+                  <FLOW_DIRECTION>0</FLOW_DIRECTION>
+                  <FLOW_3GPP2_PROFILE_ID>11</FLOW_3GPP2_PROFILE_ID>
+                  <FLOW_3GPP2_PRIORITY>20</FLOW_3GPP2_PRIORITY>
+               </QosFlowFilter>
+               <QosFlowFilter>
+                  <SPEC_INDEX>0</SPEC_INDEX>
+                  <FLOW_DIRECTION>1</FLOW_DIRECTION>
+                  <FLOW_3GPP2_PROFILE_ID>11</FLOW_3GPP2_PROFILE_ID>
+                  <FLOW_3GPP2_PRIORITY>20</FLOW_3GPP2_PRIORITY>
+               </QosFlowFilter>
+            </QosSpec>
+         </RAT>
+      </role>
+   </rolesList>
+</qosPolicy>

@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2008, The Android Open Source Project
+ * Copyright (C) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +18,7 @@
 package android.net;
 
 import android.net.LinkProperties;
+import android.net.LinkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkQuotaInfo;
 import android.net.NetworkState;
@@ -120,4 +122,22 @@ interface IConnectivityManager
     void startLegacyVpn(in VpnConfig config, in String[] racoon, in String[] mtpd);
 
     LegacyVpnInfo getLegacyVpnInfo();
+
+    /* LinkSocket */
+
+    int requestLink(in LinkCapabilities capabilities, String remoteIPAddress, IBinder callback);
+
+    void releaseLink(int id);
+
+    LinkCapabilities requestCapabilities(int id, in int[] capability_keys);
+
+    boolean requestQoS(int id, int localPort, String localAddress);
+
+    boolean suspendQoS(int id);
+
+    boolean resumeQoS(int id);
+
+    boolean removeQosRegistration(int id);
+
+    void setTrackedCapabilities(int id, in int[] capabilities);
 }

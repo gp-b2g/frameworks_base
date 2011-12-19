@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (C) 2011-2012 QUALCOMM Incorporated.-
+ All Rights Reserved. QUALCOMM Proprietary and Confidential.-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+   elementFormDefault="qualified">
+   <xs:element name="qosPolicy">
+      <xs:complexType>
+         <xs:sequence>
+            <xs:element ref="rolesList" />
+         </xs:sequence>
+         <xs:attribute name="version" type="xs:string" />
+      </xs:complexType>
+   </xs:element>
+   <xs:element name="rolesList">
+      <xs:complexType>
+         <xs:sequence>
+            <xs:element ref="role" minOccurs="1" maxOccurs="unbounded" />
+         </xs:sequence>
+      </xs:complexType>
+   </xs:element>
+   <xs:element name="role">
+      <xs:complexType>
+         <xs:sequence>
+            <xs:element ref="RAT" minOccurs="1" maxOccurs="unbounded" />
+         </xs:sequence>
+         <xs:attribute name="id" use="required">
+            <xs:simpleType>
+               <xs:restriction base="xs:string">
+                  <xs:enumeration value="qos_video_telephony"></xs:enumeration>
+               </xs:restriction>
+            </xs:simpleType>
+         </xs:attribute>
+      </xs:complexType>
+   </xs:element>
+   <xs:element name="RAT">
+      <xs:complexType>
+         <xs:sequence>
+            <xs:element ref="QosSpec" minOccurs="1" maxOccurs="1" />
+         </xs:sequence>
+         <xs:attribute name="id" use="required">
+            <xs:simpleType>
+               <xs:restriction base="xs:integer">
+                  <xs:enumeration value="-1"></xs:enumeration> <!-- Default network -->
+                  <xs:enumeration value="0"></xs:enumeration>  <!-- NETWORK_TYPE_UNKNOWN -->
+                  <xs:enumeration value="1"></xs:enumeration>  <!-- NETWORK_TYPE_GPRS -->
+                  <xs:enumeration value="2"></xs:enumeration>  <!-- NETWORK_TYPE_EDGE -->
+                  <xs:enumeration value="3"></xs:enumeration>  <!-- NETWORK_TYPE_UMTS -->
+                  <xs:enumeration value="4"></xs:enumeration>  <!-- NETWORK_TYPE_CDMA -->
+                  <xs:enumeration value="5"></xs:enumeration>  <!-- NETWORK_TYPE_EVDO_0 -->
+                  <xs:enumeration value="6"></xs:enumeration>  <!-- NETWORK_TYPE_EVDO_A -->
+                  <xs:enumeration value="7"></xs:enumeration>  <!-- NETWORK_TYPE_1xRTT -->
+                  <xs:enumeration value="8"></xs:enumeration>  <!-- NETWORK_TYPE_HSDPA -->
+                  <xs:enumeration value="9"></xs:enumeration>  <!-- NETWORK_TYPE_HSUPA -->
+                  <xs:enumeration value="10"></xs:enumeration> <!-- NETWORK_TYPE_HSPA -->
+                  <xs:enumeration value="11"></xs:enumeration> <!-- NETWORK_TYPE_IDEN -->
+                  <xs:enumeration value="12"></xs:enumeration> <!-- NETWORK_TYPE_EVDO_B -->
+                  <xs:enumeration value="13"></xs:enumeration> <!-- NETWORK_TYPE_LTE -->
+                  <xs:enumeration value="14"></xs:enumeration> <!-- NETWORK_TYPE_EHRPD -->
+               </xs:restriction>
+            </xs:simpleType>
+         </xs:attribute>
+      </xs:complexType>
+   </xs:element>
+   <xs:element name="QosSpec">
+      <xs:complexType>
+         <xs:sequence>
+            <xs:element ref="QosFlowFilter" minOccurs="1"
+               maxOccurs="unbounded" />
+         </xs:sequence>
+      </xs:complexType>
+   </xs:element>
+   <xs:element name="QosFlowFilter">
+      <xs:complexType>
+         <xs:sequence>
+            <xs:element name="SPEC_INDEX" type="xs:int" minOccurs="1" />
+            <xs:element name="FLOW_DIRECTION" minOccurs="1"
+               maxOccurs="unbounded">
+               <xs:simpleType>
+                  <xs:restriction base="xs:int">
+                     <xs:enumeration value="0"></xs:enumeration>
+                     <xs:enumeration value="1"></xs:enumeration>
+                  </xs:restriction>
+               </xs:simpleType>
+            </xs:element>
+            <xs:element name="FLOW_TRAFFIC_CLASS" type="xs:int"
+               minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FLOW_DATA_RATE_MIN" type="xs:int"
+               minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FLOW_DATA_RATE_MAX" type="xs:int"
+               minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FLOW_LATENCY" type="xs:int" minOccurs="0"
+               maxOccurs="unbounded" />
+            <xs:element name="FLOW_3GPP2_PROFILE_ID" type="xs:int"
+               minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FLOW_3GPP2_PRIORITY" type="xs:int"
+               minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_DIRECTION" minOccurs="0"
+               maxOccurs="unbounded">
+               <xs:simpleType>
+                  <xs:restriction base="xs:int">
+                     <xs:enumeration value="0"></xs:enumeration>
+                     <xs:enumeration value="1"></xs:enumeration>
+                  </xs:restriction>
+               </xs:simpleType>
+            </xs:element>
+            <xs:element name="FILTER_IPV4_SOURCE_ADDR" type="xs:string"
+               minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_IPV4_DESTINATION_ADDR"
+               type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_IPV4_TOS" type="xs:int"
+               minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_IPV4_TOS_MASK" type="xs:int"
+               minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_TCP_SOURCE_PORT_START"
+               type="xs:int" minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_TCP_SOURCE_PORT_RANGE"
+               type="xs:int" minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_TCP_DESTINATION_PORT_START"
+               type="xs:int" minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_TCP_DESTINATION_PORT_RANGE"
+               type="xs:int" minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_UDP_SOURCE_PORT_START"
+               type="xs:int" minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_UDP_SOURCE_PORT_RANGE"
+               type="xs:int" minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_UDP_DESTINATION_PORT_START"
+               type="xs:int" minOccurs="0" maxOccurs="unbounded" />
+            <xs:element name="FILTER_UDP_DESTINATION_PORT_RANGE"
+               type="xs:int" minOccurs="0" maxOccurs="unbounded" />
+         </xs:sequence>
+      </xs:complexType>
+   </xs:element>
+</xs:schema>
