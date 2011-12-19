@@ -361,7 +361,7 @@ private:
 
             //HDMI Specific
             void updateHwcHDMI(bool enable);
-
+            bool isGPULayerPresent();
 
     mutable     MessageQueue    mEventQueue;
 
