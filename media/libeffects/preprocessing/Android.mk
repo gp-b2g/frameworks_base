@@ -1,3 +1,5 @@
+ifneq ($(TARGET_ARCH_VARIANT),armv6k-vfp)
+
 LOCAL_PATH:= $(call my-dir)
 
 # audio preprocessing wrapper
@@ -30,3 +32,4 @@ LOCAL_SHARED_LIBRARIES += libdl
 endif
 
 include $(BUILD_SHARED_LIBRARY)
+endif
