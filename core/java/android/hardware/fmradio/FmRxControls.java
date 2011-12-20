@@ -97,8 +97,12 @@ class FmRxControls
     * Rx = 1 and Tx = 2
     */
    public void fmOn(int fd, int device) {
+      int re;
       FmReceiverJNI.setControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_STATE, device );
       setAudioPath(fd, false);
+      re = FmReceiverJNI.SetCalibrationNative(fd);
+      if (re != 0)
+         Log.d(TAG,"Calibration failed");
    }
 
    /*
