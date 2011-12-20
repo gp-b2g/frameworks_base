@@ -2002,6 +2002,9 @@ public class Intent implements Parcelable, Cloneable {
     public static final String ACTION_FM_TX =
             "android.intent.action.FMTX";
 
+    public static final String ACTION_WIFI_DISPLAY =
+            "android.intent.action.WIFI_DISPLAY";
+
     /**
      * Broadcast Action: An analog audio speaker/headset plugged in or unplugged.
      *

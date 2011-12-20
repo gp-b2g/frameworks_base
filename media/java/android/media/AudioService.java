@@ -382,6 +382,7 @@ public class AudioService extends IAudioService.Stub {
         intentFilter.addAction(Intent.ACTION_BOOT_COMPLETED);
         intentFilter.addAction(Intent.ACTION_SCREEN_ON);
         intentFilter.addAction(Intent.ACTION_SCREEN_OFF);
+        intentFilter.addAction(Intent.ACTION_WIFI_DISPLAY);
         context.registerReceiver(mReceiver, intentFilter);
 
         // Register for package removal intent broadcasts for media button receiver persistence
@@ -2794,6 +2795,21 @@ public class AudioService extends IAudioService.Stub {
                 AudioSystem.setParameters("screen_state=on");
             } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
                 AudioSystem.setParameters("screen_state=off");
+            }else if (action.equals(Intent.ACTION_WIFI_DISPLAY)){
+               int state = intent.getIntExtra("state", 0);
+               Log.v(TAG, "WiFi Display device state "+state);
+               boolean isConnected = mConnectedDevices.containsKey(AudioSystem.DEVICE_OUT_PROXY);
+               if(state == 1 && !isConnected){
+                    AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_PROXY,
+                            AudioSystem.DEVICE_STATE_AVAILABLE,
+                            "");
+                    mConnectedDevices.put( new Integer(AudioSystem.DEVICE_OUT_PROXY), "");
+                }else if(state == 0 && isConnected){
+                    AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_PROXY,
+                            AudioSystem.DEVICE_STATE_UNAVAILABLE,
+                            "");
+                    mConnectedDevices.remove(AudioSystem.DEVICE_OUT_PROXY);
+                }
             }
         }
     }
