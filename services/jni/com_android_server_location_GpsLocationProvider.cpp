@@ -86,20 +86,29 @@ static void checkAndClearExceptionFromCallback(JNIEnv* env, const char* methodNa
  * Return value:
  *    error code: 0: success
  =============================================================================================*/
-static int byte_array_to_longs(unsigned char bytes[16], uint64_t *most, uint64_t *least)
+#define UUID_STRING_LENGTH (32+4+1) // 16 * 2 + 4 (-) + 1 null ending
+static void convert_uuid_from_byte_array_to_string (unsigned char* uuid_byte_array, char *uuid_string_buf)
 {
-  int i;
-  *least = 0;
-  *most = 0;
-
-  for (i = 0; i < 8; i++) {
-    *least += ((uint64_t)(((uint64_t)bytes[15 - i]) << (8*i)));
-  }
-
-  for (i = 0; i < 8; i++) {
-    *most += ((uint64_t)(((uint64_t)bytes[7 - i]) << (8*i)));
-  }
-  return 0;
+    memset (uuid_string_buf, 0, UUID_STRING_LENGTH);
+    snprintf (uuid_string_buf, UUID_STRING_LENGTH,
+              "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+              (*(uuid_byte_array+0) & 0xff),
+              (*(uuid_byte_array+1) & 0xff),
+              (*(uuid_byte_array+2) & 0xff),
+              (*(uuid_byte_array+3) & 0xff),
+              (*(uuid_byte_array+4) & 0xff),
+              (*(uuid_byte_array+5) & 0xff),
+              (*(uuid_byte_array+6) & 0xff),
+              (*(uuid_byte_array+7) & 0xff),
+              (*(uuid_byte_array+8) & 0xff),
+              (*(uuid_byte_array+9) & 0xff),
+              (*(uuid_byte_array+10) & 0xff),
+              (*(uuid_byte_array+11) & 0xff),
+              (*(uuid_byte_array+12) & 0xff),
+              (*(uuid_byte_array+13) & 0xff),
+              (*(uuid_byte_array+14) & 0xff),
+              (*(uuid_byte_array+15) & 0xff));
+    LOGD ("UUID string = %s\n", uuid_string_buf);
 }
 
 static void location_callback(GpsLocation* location)
@@ -115,15 +124,12 @@ static void location_callback(GpsLocation* location)
       java_string_map_url = env->NewStringUTF(location->map_url);
     }
 
-    jobject java_uuid_map_index = NULL;
+    jstring java_string_map_index = NULL;
     if ((location->flags & GPS_LOCATION_HAS_MAP_INDEX) == GPS_LOCATION_HAS_MAP_INDEX) {
-      uint64_t most, least;
-      byte_array_to_longs(location->map_index, &most, &least);
 
-      //UUID mapIndex = new UUID((jlong)most, (jlong)least);
-      jclass uuid_class = env->FindClass("java/util/UUID");
-      jmethodID create_uuid_mid = env->GetMethodID(uuid_class, "<init>", "(JJ)V");
-      java_uuid_map_index = env->NewObject(uuid_class, create_uuid_mid, (jlong)most, (jlong)least);
+      char uuid_string_buf  [UUID_STRING_LENGTH];
+      convert_uuid_from_byte_array_to_string (location->map_index, uuid_string_buf);
+      java_string_map_index = env->NewStringUTF(uuid_string_buf);
     }
 
     env->CallVoidMethod(mCallbacksObj, method_reportLocation, location->flags,
@@ -132,11 +138,15 @@ static void location_callback(GpsLocation* location)
             (jfloat)location->speed, (jfloat)location->bearing,
             (jfloat)location->accuracy, (jlong)location->timestamp,location->position_source,
              byteArray, (jboolean)location->is_indoor, (jfloat)location->floor_number,
-             java_string_map_url, java_uuid_map_index);
+             java_string_map_url, java_string_map_index);
 
     env->DeleteLocalRef(byteArray);
-    if (java_uuid_map_index != NULL) {
-      env->DeleteLocalRef(java_uuid_map_index);
+    if (java_string_map_url != NULL) {
+        env->DeleteLocalRef(java_string_map_url);
+    }
+
+    if (java_string_map_index != NULL) {
+      env->DeleteLocalRef(java_string_map_index);
     }
 
     checkAndClearExceptionFromCallback(env, __FUNCTION__);
@@ -334,7 +344,7 @@ static void android_location_GpsLocationProvider_class_init_native(JNIEnv* env, 
     int err;
     hw_module_t* module;
 
-    method_reportLocation = env->GetMethodID(clazz, "reportLocation", "(IDDDFFFJI[BZFLjava/lang/String;Ljava/util/UUID;)V");
+    method_reportLocation = env->GetMethodID(clazz, "reportLocation", "(IDDDFFFJI[BZFLjava/lang/String;Ljava/lang/String;)V");
     method_reportStatus = env->GetMethodID(clazz, "reportStatus", "(I)V");
     method_reportSvStatus = env->GetMethodID(clazz, "reportSvStatus", "()V");
     method_reportAGpsStatus = env->GetMethodID(clazz, "reportAGpsStatus", "(III[B)V");

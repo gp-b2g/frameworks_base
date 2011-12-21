@@ -76,7 +76,6 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.net.InetAddress;
-import java.util.UUID;
 
 /**
  * A GPS implementation of LocationProvider used by LocationManager.
@@ -837,7 +836,6 @@ public class GpsLocationProvider implements LocationProviderInterface {
         return mStatus;
     }
     public int getCapability() {
-        Log.d(TAG, "Entered getCapability and returned mEngineCapabilities: " + mEngineCapabilities);
         return mEngineCapabilities;
     }
 
@@ -1413,7 +1411,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
      */
     private void reportLocation(int flags, double latitude, double longitude, double altitude,
             float speed, float bearing, float accuracy, long timestamp, int positionSource, byte[] rawData,
-            boolean isIndoor, float floorNumber, String mapUrl, UUID mapIndex) {
+            boolean isIndoor, float floorNumber, String mapUrl, String mapIndex) {
         if (VERBOSE) Log.v(TAG, "reportLocation lat: " + latitude + " long: " + longitude +
                 " timestamp: " + timestamp);
 
@@ -1472,24 +1470,34 @@ public class GpsLocationProvider implements LocationProviderInterface {
 
             if ((flags & LOCATION_HAS_IS_INDOOR) == LOCATION_HAS_IS_INDOOR) {
                 mLocationExtras.putBoolean("isIndoor", isIndoor);
+            } else {
+                mLocationExtras.remove("isIndoor");
             }
 
             if ((flags & LOCATION_HAS_FLOOR_NUMBER) == LOCATION_HAS_FLOOR_NUMBER) {
                 mLocationExtras.putFloat("floorNumber", floorNumber);
+            } else {
+                mLocationExtras.remove("floorNumber");
             }
 
             if ((flags & LOCATION_HAS_MAP_URL) == LOCATION_HAS_MAP_URL) {
                 mLocationExtras.putCharSequence("mapUrl", mapUrl);
+            } else {
+                mLocationExtras.remove("mapUrl");
             }
 
             if ((flags & LOCATION_HAS_MAP_INDEX) == LOCATION_HAS_MAP_INDEX) {
-                mLocationExtras.putCharSequence("mapIndex", mapIndex.toString());
+                mLocationExtras.putCharSequence("mapIndex", mapIndex);
+            } else {
+                mLocationExtras.remove("mapIndex");
             }
 
             mLocation.setExtras(mLocationExtras);
-
+            //Create a copy of Location object to be passed to LMS to avoid
+            //overwriting the value of mLocation
+            Location locationCopy = new Location(mLocation);
             try {
-                mLocationManager.reportLocation(mLocation, false);
+                mLocationManager.reportLocation(locationCopy, false);
             } catch (RemoteException e) {
                 Log.e(TAG, "RemoteException calling reportLocation");
             }
