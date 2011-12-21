@@ -57,6 +57,7 @@
 #include "DisplayHardware/HWComposer.h"
 
 #include <private/surfaceflinger/SharedBufferStack.h>
+#include <qcom_ui.h>
 
 /* ideally AID_GRAPHICS would be in a semi-public header
  * or there would be a way to map a user/group name to its id
@@ -918,6 +919,27 @@ void SurfaceFlinger::handleRepaint()
     mDirtyRegion.clear();
 }
 
+bool SurfaceFlinger::isGPULayerPresent()
+{
+    bool isGPULayerPresent = false;
+    const DisplayHardware& hw(graphicPlane(0).displayHardware());
+    HWComposer& hwc(hw.getHwComposer());
+    hwc_layer_t* const cur(hwc.getLayers());
+    if (!cur) {
+        isGPULayerPresent = true;
+    }
+
+    const Vector< sp<LayerBase> >& layers(mVisibleLayersSortedByZ);
+    size_t count = layers.size();
+    for (size_t i = 0; i<count; i++) {
+        if (HWC_FRAMEBUFFER == cur[i].compositionType) {
+            isGPULayerPresent = true;
+            break;
+        }
+    }
+    return isGPULayerPresent;
+}
+
 void SurfaceFlinger::setupHardwareComposer(Region& dirtyInOut)
 {
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
@@ -1005,6 +1027,15 @@ void SurfaceFlinger::setupHardwareComposer(Region& dirtyInOut)
          *  clear the area of the FB that need to be transparent
          */
         if (!transparent.isEmpty() && !mCanSkipComposition) {
+            // If we have any GPU layers present, don't use libQcomUI's
+            // clearRegion
+            if (false == isGPULayerPresent()) {
+                if (0 == qcomuiClearRegion(transparent, hw.getEGLDisplay(),
+                                        hw.getEGLSurface())) {
+                    return;
+                }
+            }
+
             glClearColor(0,0,0,0);
             Region::const_iterator it = transparent.begin();
             Region::const_iterator const end = transparent.end();
@@ -1028,7 +1059,18 @@ void SurfaceFlinger::composeSurfaces(const Region& dirty)
     if (UNLIKELY(fbLayerCount && !mWormholeRegion.isEmpty())) {
         // should never happen unless the window manager has a bug
         // draw something...
-        drawWormhole();
+        if (false == isGPULayerPresent()) {
+            // Use libQcomUI to draw the wormhole since there are no GPU layers
+            const Region region(mWormholeRegion.intersect(mDirtyRegion));
+            if (!region.isEmpty()) {
+                if (0 != qcomuiClearRegion(region, hw.getEGLDisplay(),
+                                             hw.getEGLSurface())) {
+                    drawWormhole();
+                }
+            }
+        } else {
+            drawWormhole();
+        }
     }
 
     /*

@@ -80,6 +80,7 @@ public:
 
     uint32_t getPageFlipCount() const;
     EGLDisplay getEGLDisplay() const { return mDisplay; }
+    EGLDisplay getEGLSurface() const { return mSurface; }
 
     void dump(String8& res) const;
 
