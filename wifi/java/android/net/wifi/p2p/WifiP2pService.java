@@ -857,7 +857,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                 case WifiMonitor.AP_STA_CONNECTED_EVENT:
                     //After a GO setup, STA connected event comes with interface address
                     String interfaceAddress = (String) message.obj;
-                    String deviceAddress = getDeviceAddress(interfaceAddress);
+                    String deviceAddress = interfaceAddress;
                     if (deviceAddress != null) {
                         mGroup.addClient(deviceAddress);
                         updateDeviceStatus(deviceAddress, WifiP2pDevice.CONNECTED);
@@ -869,7 +869,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                     break;
                 case WifiMonitor.AP_STA_DISCONNECTED_EVENT:
                     interfaceAddress = (String) message.obj;
-                    deviceAddress = getDeviceAddress(interfaceAddress);
+                    deviceAddress = interfaceAddress;
                     if (deviceAddress != null) {
                         updateDeviceStatus(deviceAddress, WifiP2pDevice.AVAILABLE);
                         if (mGroup.removeClient(deviceAddress)) {
