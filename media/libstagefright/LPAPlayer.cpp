@@ -390,6 +390,10 @@ status_t LPAPlayer::start(bool sourceAlreadyStarted) {
 
     mStarted = true;
 
+    if (timeStarted == 0) {
+        timeStarted = nanoseconds_to_microseconds(systemTime(SYSTEM_TIME_MONOTONIC));
+    }
+
     LOGV("Waking up decoder thread");
     pthread_cond_signal(&decoder_cv);
     return OK;
