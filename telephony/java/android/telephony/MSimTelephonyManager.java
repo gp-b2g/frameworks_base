@@ -687,6 +687,8 @@ public class MSimTelephonyManager extends TelephonyManager {
             p = prop.split(",");
         }
 
+        if (index < 0) return;
+
         for (int i = 0; i < index; i++) {
             String str = "";
             if ((p != null) && (i < p.length)) {
