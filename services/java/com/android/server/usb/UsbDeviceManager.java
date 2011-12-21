@@ -331,10 +331,10 @@ public class UsbDeviceManager {
                 connected = 0;
                 configured = 0;
             } else if ("CONNECTED".equals(state)) {
-                mSoftSwitch = false;
                 connected = 1;
                 configured = 0;
             } else if ("CONFIGURED".equals(state)) {
+                mSoftSwitch = false;
                 connected = 1;
                 configured = 1;
             } else {
