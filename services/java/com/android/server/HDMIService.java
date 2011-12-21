@@ -53,6 +53,7 @@ class HDMIService extends IHDMIService.Stub {
     private HDMIListener mListener;
     private boolean mHDMIUserOption = false;
     private int mHDMIModes[];
+    private int mCurrHDMIMode = -1;
     public final String HDMICableConnectedEvent = "HDMI_CABLE_CONNECTED";
     public final String HDMICableDisconnectedEvent = "HDMI_CABLE_DISCONNECTED";
     public final String HDMIONEvent = "HDMI_CONNECTED";
@@ -193,6 +194,15 @@ class HDMIService extends IHDMIService.Stub {
         return mHDMIUserOption;
     }
 
+    public void setMode(int mode) {
+        mCurrHDMIMode = mode;
+        mListener.changeDisplayMode(mode);
+    }
+
+    public int[] getModes() {
+        return mHDMIModes;
+    }
+
     public void broadcastEvent(String eventName) {
         Intent intent = new Intent(eventName);
         intent.addCategory(Intent.CATEGORY_DEFAULT);
@@ -223,7 +233,10 @@ class HDMIService extends IHDMIService.Stub {
         broadcastEvent(HDMICableConnectedEvent);
         if(getHDMIUserOption()) {
             synchronized(mListener) {
-                mListener.changeDisplayMode(getBestMode());
+                if(mCurrHDMIMode == -1) {
+                    mCurrHDMIMode = getBestMode();
+                }
+                mListener.changeDisplayMode(mCurrHDMIMode);
                 mListener.enableHDMIOutput(true);
             }
             if((mListener.getOnlineBroadcast())) {

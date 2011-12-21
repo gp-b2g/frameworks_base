@@ -29,4 +29,6 @@ interface IHDMIService
     void setHDMIOutput(boolean enableHDMI);
     void setActionsafeWidthRatio(float asWidthRatio);
     void setActionsafeHeightRatio(float asHeightRatio);
+    void setMode(int mode);
+    int[] getModes();
 }
