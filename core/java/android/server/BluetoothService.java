@@ -1798,6 +1798,9 @@ public class BluetoothService extends IBluetooth.Stub {
         Map<ParcelUuid, Integer> value = mDeviceServiceChannelCache.get(address);
         if (value != null && value.containsKey(uuid))
             return value.get(uuid);
+
+        Log.w(TAG, "Server Channel is -1, updating the cache");
+        updateDeviceServiceChannelCache(address);
         return -1;
     }
 
