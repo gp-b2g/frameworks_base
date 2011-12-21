@@ -91,6 +91,11 @@ class HTML5VideoViewProxy extends Handler
     private int mSeekPosition;
     // The video layer ID
     private int mVideoLayerId;
+    // The cached volume before HTML5VideoView is initialized.
+    // This should be set back to -1.0f every time after the
+    // function mHTML5VideoView.setVolume is called.
+    private float mCachedVolume = -1.0f;
+
     // A helper class to control the playback. This executes on the UI thread!
     private final class VideoPlayer {
         private HTML5VideoViewProxy mProxy;
@@ -222,6 +227,10 @@ class HTML5VideoViewProxy extends Handler
         }
 
         public void onPrepared() {
+            if (mCachedVolume >= 0.0f) {
+                mHTML5VideoView.setVolume(mCachedVolume);
+                mCachedVolume = -1.0f;
+            }
             if (!mHTML5VideoView.isFullScreenMode() || mHTML5VideoView.getAutostart()) {
                 mHTML5VideoView.start();
             }
@@ -243,6 +252,9 @@ class HTML5VideoViewProxy extends Handler
         public void setVolume(float volume) {
             if (mHTML5VideoView != null) {
                 mHTML5VideoView.setVolume(volume);
+                mCachedVolume = -1.0f;
+            } else {
+                mCachedVolume = volume;
             }
         }
     }

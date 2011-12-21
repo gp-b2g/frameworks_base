@@ -179,7 +179,7 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
     }
 
     public void setVolume(float volume) {
-        if (mCurrentState == STATE_PREPARED) {
+        if (mCurrentState != STATE_RELEASED) {
             mPlayer.setVolume(volume, volume);
         }
     }
