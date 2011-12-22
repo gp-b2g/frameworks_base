@@ -920,11 +920,12 @@ public class BluetoothService extends IBluetooth.Stub {
 
                 /* Allocate a handle */
                 try {
-                    mHandle = mBtPolicyHandlesAvailable.getFirst();
+                    mHandle = mBtPolicyHandlesAvailable.removeFirst();
+                    Log.i(TAG, "Re-using handle " + Integer.toString(mHandle) + " to track BT policy.");
                 } catch (NoSuchElementException e) {
                     if (mBtPolicyHandle < Integer.MAX_VALUE) {
                         mHandle = ++mBtPolicyHandle;
-                        Log.i(TAG, "Allocating handle " + Integer.toString(mHandle) + " to track BT policy.");
+                        Log.i(TAG, "Allocating new handle " + Integer.toString(mHandle) + " to track BT policy.");
                     } else {
                         Log.e(TAG, "Trouble finding open handle to track BT policy!");
                     }
