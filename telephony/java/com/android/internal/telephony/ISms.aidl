@@ -227,4 +227,32 @@ interface ISms {
      * @see #enableCellBroadcastRange(int, int)
      */
     boolean disableCellBroadcastRange(int startMessageId, int endMessageId);
+
+    /*
+     * Enable reception of cdma broadcast messages with the given
+     * message identifier range. Note that if two different clients enable
+     * a message identifier range, they must both disable it for the device
+     * to stop receiving those messages.
+     *
+     * @param startMessageId first message identifier as specified in C.R1001-G
+     * @param endMessageId last message identifier as specified in C.R1001-G
+     * @return true if successful, false otherwise
+     *
+     * @see #disableCdmaBroadcastRange(int, int)
+     */
+    boolean enableCdmaBroadcastRange(int startMessageId, int endMessageId);
+
+    /**
+     * Disable reception of cdma broadcast messages with the given
+     * message identifier range. Note that if two different clients enable
+     * a message identifier range, they must both disable it for the device
+     * to stop receiving those messages.
+     *
+     * @param startMessageId first message identifier as specified in C.R1001-G
+     * @param endMessageId last message identifier as specified in C.R1001-G
+     * @return true if successful, false otherwise
+     *
+     * @see #enableCdmaBroadcastRange(int, int)
+     */
+    boolean disableCdmaBroadcastRange(int startMessageId, int endMessageId);
 }

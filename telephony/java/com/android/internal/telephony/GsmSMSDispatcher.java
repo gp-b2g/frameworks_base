@@ -435,9 +435,14 @@ final class GsmSMSDispatcher extends SMSDispatcher {
 
             SmsCbHeader header = new SmsCbHeader(receivedPdu);
             String plmn = SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC);
-            GsmCellLocation cellLocation = (GsmCellLocation) mPhone.getCellLocation();
-            int lac = cellLocation.getLac();
-            int cid = cellLocation.getCid();
+            int lac = -1;
+            int cid = -1;
+            CellLocation cl = mPhone.getCellLocation();
+            if (cl instanceof GsmCellLocation) {
+                GsmCellLocation cellLocation = (GsmCellLocation)cl;
+                lac = cellLocation.getLac();
+                cid = cellLocation.getCid();
+            }
 
             byte[][] pdus;
             if (header.nrOfPages > 1) {

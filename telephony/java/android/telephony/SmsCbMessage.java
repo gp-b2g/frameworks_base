@@ -126,7 +126,13 @@ public class SmsCbMessage {
         this.mHeader = other.mHeader;
         this.mBody = other.mBody;
         this.mLanguage = other.mLanguage;
-    }
+        this.mPrimaryNotificationTimestamp = other.mPrimaryNotificationTimestamp;
+        this.mPrimaryNotificationDigitalSignature
+                       = new byte[other.mPrimaryNotificationDigitalSignature.length];
+        System.arraycopy(other.mPrimaryNotificationDigitalSignature, 0,
+                this.mPrimaryNotificationDigitalSignature, 0,
+                other.mPrimaryNotificationDigitalSignature.length);
+  }
 
     /**
      * Return the geographical scope of this message, one of

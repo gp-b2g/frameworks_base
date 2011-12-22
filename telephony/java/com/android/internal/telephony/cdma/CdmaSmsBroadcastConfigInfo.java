@@ -47,24 +47,33 @@ package com.android.internal.telephony.cdma;
  *
  */
 public class CdmaSmsBroadcastConfigInfo {
-    private int mServiceCategory;
+    private int mFromServiceCategory;
+    private int mToServiceCategory;
     private int mLanguage;
     private boolean mSelected;
 
     /**
      * Initialize the object from rssi and cid.
      */
-    public CdmaSmsBroadcastConfigInfo(int serviceCategory, int language, boolean selected) {
-        mServiceCategory = serviceCategory;
+    public CdmaSmsBroadcastConfigInfo(int fromServiceCategory, int toServiceCategory, int language, boolean selected) {
+        mFromServiceCategory = fromServiceCategory;
+        mToServiceCategory = toServiceCategory;
         mLanguage = language;
         mSelected = selected;
     }
 
     /**
-     * @return the mServiceCategory
+     * @return the mFromServiceCategory
      */
-    public int getServiceCategory() {
-        return mServiceCategory;
+    public int getFromServiceCategory() {
+        return mFromServiceCategory;
+    }
+
+    /**
+     * @return the mToServiceCategory
+     */
+    public int getToServiceCategory() {
+        return mToServiceCategory;
     }
 
     /**
@@ -84,7 +93,7 @@ public class CdmaSmsBroadcastConfigInfo {
     @Override
     public String toString() {
         return "CdmaSmsBroadcastConfigInfo: Id [" +
-            mServiceCategory + "] " +
+            mFromServiceCategory + ", " + mToServiceCategory + "] " +
             (isSelected() ? "ENABLED" : "DISABLED");
     }
 }

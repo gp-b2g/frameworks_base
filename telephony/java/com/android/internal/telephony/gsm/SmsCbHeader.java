@@ -98,14 +98,14 @@ public class SmsCbHeader implements Parcelable, SmsCbConstants {
         } else if (pdu.length <= PDU_LENGTH_GSM) {
             // GSM pdus are no more than 88 bytes
             format = FORMAT_GSM;
-            geographicalScope = (pdu[0] & 0xc0) >> 6;
-            messageCode = ((pdu[0] & 0x3f) << 4) | ((pdu[1] & 0xf0) >> 4);
+            geographicalScope = (pdu[0] & 0xc0) >>> 6;
+            messageCode = ((pdu[0] & 0x3f) << 4) | ((pdu[1] & 0xf0) >>> 4);
             updateNumber = pdu[1] & 0x0f;
             messageIdentifier = ((pdu[2] & 0xff) << 8) | (pdu[3] & 0xff);
             dataCodingScheme = pdu[4] & 0xff;
 
             // Check for invalid page parameter
-            int pageIndex = (pdu[5] & 0xf0) >> 4;
+            int pageIndex = (pdu[5] & 0xf0) >>> 4;
             int nrOfPages = pdu[5] & 0x0f;
 
             if (pageIndex == 0 || nrOfPages == 0 || pageIndex > nrOfPages) {
@@ -131,7 +131,7 @@ public class SmsCbHeader implements Parcelable, SmsCbConstants {
 
             messageIdentifier = ((pdu[1] & 0xff) << 8) | pdu[2] & 0xff;
             geographicalScope = (pdu[3] & 0xc0) >> 6;
-            messageCode = ((pdu[3] & 0x3f) << 4) | ((pdu[4] & 0xf0) >> 4);
+            messageCode = ((pdu[3] & 0x3f) << 4) | ((pdu[4] & 0xf0) >>> 4);
             updateNumber = pdu[4] & 0x0f;
             dataCodingScheme = pdu[5] & 0xff;
 
@@ -176,6 +176,7 @@ public class SmsCbHeader implements Parcelable, SmsCbConstants {
         dest.writeInt(format);
         dest.writeInt(etwsEmergencyUserAlert ? 1 : 0);
         dest.writeInt(etwsPopup ? 1 : 0);
+        dest.writeInt(etwsWarningType);
     }
 
     public static final Parcelable.Creator<SmsCbHeader> CREATOR = new Parcelable.Creator<SmsCbHeader>() {
