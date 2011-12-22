@@ -362,7 +362,7 @@ VideoFrame *StagefrightMetadataRetriever::getFrameAtTime(
         }
         else {
             frame = extractVideoFrameWithCodecFlags(
-                &mClient, trackMeta, source, OMXCodec::kPreferSoftwareCodecs,
+                &mClient, trackMeta, source, OMXCodec::kSoftwareCodecsOnly,
                 timeUs, option);
             if (frame == NULL){
                 // remake source to ensure its stopped before we start it
