@@ -244,7 +244,7 @@ status_t FMA2DPWriter::readerthread() {
 
 status_t FMA2DPWriter::writerthread(){
     status_t err = OK;
-    int framecount =(8*mBufferSize)/sizeof(int16_t);
+    int framecount =(16*mBufferSize)/sizeof(int16_t);
     //sizeof(int16_t) is frame size for PCM stream
     int outChannel = (mAudioChannels== 2) ? AUDIO_CHANNEL_OUT_STEREO :
         AUDIO_CHANNEL_OUT_MONO;
