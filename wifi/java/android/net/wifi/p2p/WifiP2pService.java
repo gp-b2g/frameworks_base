@@ -1103,14 +1103,12 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                                 mSavedGoNegotiationConfig.wps.pin = pin.getText().toString();
                             }
                             sendMessage(WifiP2pManager.CONNECT, mSavedGoNegotiationConfig);
-                            mSavedGoNegotiationConfig = null;
                         }
                     })
             .setNegativeButton(r.getString(R.string.cancel), new OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             if (DBG) logd(getName() + " ignore connect");
-                            mSavedGoNegotiationConfig = null;
                         }
                     })
             .create();
