@@ -9401,6 +9401,7 @@ package android.hardware {
   public class Camera.Parameters {
     method public java.lang.String flatten();
     method public java.lang.String get(java.lang.String);
+    method public java.lang.String getAEBracket();
     method public java.lang.String getAntibanding();
     method public java.lang.String getAutoExposure();
     method public boolean getAutoExposureLock();
@@ -9501,6 +9502,7 @@ package android.hardware {
     method public void removeGpsData();
     method public void set(java.lang.String, java.lang.String);
     method public void set(java.lang.String, int);
+    method public void setAEBracket(java.lang.String);
     method public void setAntibanding(java.lang.String);
     method public void setAutoExposure(java.lang.String);
     method public void setAutoExposureLock(boolean);
@@ -9556,6 +9558,9 @@ package android.hardware {
     method public void setZSLMode(java.lang.String);
     method public void setZoom(int);
     method public void unflatten(java.lang.String);
+    field public static final java.lang.String AE_BRACKET = "AE-Bracket";
+    field public static final java.lang.String AE_BRACKET_HDR = "HDR";
+    field public static final java.lang.String AE_BRACKET_HDR_OFF = "Off";
     field public static final java.lang.String ANTIBANDING_50HZ = "50hz";
     field public static final java.lang.String ANTIBANDING_60HZ = "60hz";
     field public static final java.lang.String ANTIBANDING_AUTO = "auto";
@@ -9603,6 +9608,7 @@ package android.hardware {
     field public static final java.lang.String ISO_800 = "ISO800";
     field public static final java.lang.String ISO_AUTO = "auto";
     field public static final java.lang.String ISO_HJR = "ISO_HJR";
+    field public static final java.lang.String KEY_AE_BRACKET_HDR = "ae-bracket-hdr";
     field public static final java.lang.String LENSSHADE_DISABLE = "disable";
     field public static final java.lang.String LENSSHADE_ENABLE = "enable";
     field public static final java.lang.String MCE_DISABLE = "disable";

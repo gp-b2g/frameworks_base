@@ -596,6 +596,8 @@ public:
     // stream and record stabilized videos.
     static const char KEY_VIDEO_STABILIZATION_SUPPORTED[];
 
+    static const char KEY_AE_BRACKET_HDR[];
+
     // Value for KEY_ZOOM_SUPPORTED or KEY_SMOOTH_ZOOM_SUPPORTED.
     static const char TRUE[];
     static const char FALSE[];
@@ -819,6 +821,11 @@ public:
     // Values for ZSL settings.
     static const char ZSL_OFF[];
     static const char ZSL_ON[];
+
+    // Values for HDR Bracketing settings.
+    static const char AE_BRACKET_HDR_OFF[];
+    static const char AE_BRACKET_HDR[];
+    static const char AE_BRACKET[];
 
     // Values for HFR settings.
     static const char VIDEO_HFR_OFF[];
