@@ -2093,4 +2093,22 @@ public class FmReceiver extends FmTransceiver
    {
       return mControl.getOffChannelThreshold(sFd);
    }
+/*===============================================================
+   FUNCTION:  getSINR
+   ==============================================================*/
+   /**
+   *    Gets the SINR value of currently tuned station
+   *
+   *    <p>
+   *    This method gets the SINR value for  currently tuned station.
+   *
+   *    <p>
+   */
+   public int getSINR()
+   {
+      int re =  mControl.getSINR(sFd);
+      Log.d (TAG, "The value of SINR is " + re);
+      return re;
+   }
+
 }
