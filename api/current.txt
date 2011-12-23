@@ -12739,6 +12739,7 @@ package android.net.wifi.p2p {
     method public void requestConnectionInfo(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.ConnectionInfoListener);
     method public void requestGroupInfo(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.GroupInfoListener);
     method public void requestPeers(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.PeerListListener);
+    method public void sendCustomStringCommand(android.net.wifi.p2p.WifiP2pManager.Channel, java.lang.String, android.net.wifi.p2p.WifiP2pManager.StringResponseListener);
     field public static final int BUSY = 2; // 0x2
     field public static final int ERROR = 0; // 0x0
     field public static final java.lang.String EXTRA_NETWORK_INFO = "networkInfo";
@@ -12776,6 +12777,10 @@ package android.net.wifi.p2p {
 
   public static abstract interface WifiP2pManager.PeerListListener {
     method public abstract void onPeersAvailable(android.net.wifi.p2p.WifiP2pDeviceList);
+  }
+
+  public static abstract interface WifiP2pManager.StringResponseListener {
+    method public abstract void onResponseAvailable(java.lang.String);
   }
 
 }
