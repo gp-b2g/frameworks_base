@@ -5434,8 +5434,9 @@ status_t AudioFlinger::closeSession(int output)
     //AudioSystem::stopOutput(output, (AudioSystem::stream_type)mStreamType);
 
     // Delete the Audio session
-    if (mLPAOutput) {
+    if (mLPAOutput && (output == mLPAHandle)) {
         mLPAOutput->stream->common.standby(&mLPAOutput->stream->common);
+        mLPAOutput->hwDev->close_output_stream(mLPAOutput->hwDev, mLPAOutput->stream);
         delete mLPAOutput;
         mLPAOutput = NULL;
         mLPAHandle = -1;

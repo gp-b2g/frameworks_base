@@ -1276,24 +1276,16 @@ void *LPAPlayer::pmemBufferAlloc(int32_t nSize, int32_t *pmem_fd){
 
 void LPAPlayer::pmemBufferDeAlloc()
 {
-    //Remove all the buffers from request queue
-    while (!pmemBuffersRequestQueue.empty())  {
-        List<BuffersAllocated>::iterator it = pmemBuffersRequestQueue.begin();
+    //Remove all the buffers from bufpool 
+    while (!bufPool.empty())  {
+        List<BuffersAllocated>::iterator it = bufPool.begin();
         BuffersAllocated &pmemBuffer = *it;
         // free the local buffer corresponding to pmem buffer
         free(pmemBuffer.localBuf);
-        LOGV("Removing from request Q");
-        pmemBuffersRequestQueue.erase(it);
+        LOGV("Removing from bufpool");
+        bufPool.erase(it);
     }
 
-    //Remove all the buffers from response queue
-    while(!pmemBuffersResponseQueue.empty()){
-        List<BuffersAllocated>::iterator it = pmemBuffersResponseQueue.begin();
-        BuffersAllocated &pmemBuffer = *it;
-        // free the local buffer corresponding to pmem buffer
-        LOGV("Removing from response Q");
-        pmemBuffersResponseQueue.erase(it);
-    }
 }
 
 void LPAPlayer::createThreads() {
