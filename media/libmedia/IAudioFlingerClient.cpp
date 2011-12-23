@@ -45,18 +45,20 @@ public:
         data.writeInterfaceToken(IAudioFlingerClient::getInterfaceDescriptor());
         data.writeInt32(event);
         data.writeInt32(ioHandle);
-        if (event == AudioSystem::STREAM_CONFIG_CHANGED) {
-            uint32_t stream = *(uint32_t *)param2;
-            LOGV("ioConfigChanged stream %d", stream);
-            data.writeInt32(stream);
-        } else if (event != AudioSystem::OUTPUT_CLOSED && event != AudioSystem::INPUT_CLOSED &&
+        if (param2 != NULL ) {
+           if (event == AudioSystem::STREAM_CONFIG_CHANGED) {
+               uint32_t stream = *(uint32_t *)param2;
+               LOGV("ioConfigChanged stream %d", stream);
+               data.writeInt32(stream);
+           } else if (event != AudioSystem::OUTPUT_CLOSED && event != AudioSystem::INPUT_CLOSED &&
                    event != AudioSystem::A2DP_OUTPUT_STATE && event != AudioSystem::EFFECT_CONFIG_CHANGED) {
-            AudioSystem::OutputDescriptor *desc = (AudioSystem::OutputDescriptor *)param2;
-            data.writeInt32(desc->samplingRate);
-            data.writeInt32(desc->format);
-            data.writeInt32(desc->channels);
-            data.writeInt32(desc->frameCount);
-            data.writeInt32(desc->latency);
+               AudioSystem::OutputDescriptor *desc = (AudioSystem::OutputDescriptor *)param2;
+               data.writeInt32(desc->samplingRate);
+               data.writeInt32(desc->format);
+               data.writeInt32(desc->channels);
+               data.writeInt32(desc->frameCount);
+               data.writeInt32(desc->latency);
+           }
         }
         remote()->transact(IO_CONFIG_CHANGED, data, &reply, IBinder::FLAG_ONEWAY);
     }
