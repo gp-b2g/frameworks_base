@@ -320,6 +320,8 @@ public final class InputEventConsistencyVerifier {
             return;
         }
 
+        if (event == null)
+            return;
         final int action = event.getAction();
         final boolean newStream = action == MotionEvent.ACTION_DOWN
                 || action == MotionEvent.ACTION_CANCEL;
@@ -521,6 +523,9 @@ public final class InputEventConsistencyVerifier {
         if (nestingLevel != mLastNestingLevel) {
             return;
         }
+
+         if (event == null)
+            return;
 
         if (mRecentEventsUnhandled != null) {
             mRecentEventsUnhandled[mMostRecentEventIndex] = true;
