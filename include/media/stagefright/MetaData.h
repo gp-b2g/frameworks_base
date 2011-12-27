@@ -132,6 +132,9 @@ enum {
     // An indication that a video buffer has been rendered.
     kKeyRendered          = 'rend',  // bool (int32_t)
 
+    // An indication that a video frame has arrived late
+    kKeyLateness          = 'late',  //int64_t
+
     // The language code for this media
     kKeyMediaLanguage     = 'lang',  // cstring
 

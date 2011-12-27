@@ -192,6 +192,7 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.Nvidia.mp4.decode" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.qcom.7x30.video.decoder.mpeg4" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.qcom.video.decoder.mpeg4" },
+    { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.ittiam.video.decoder.mpeg4" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.TI.Video.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.SEC.MPEG4.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.google.mpeg4.decoder" },
@@ -205,6 +206,7 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.Nvidia.h264.decode" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.qcom.7x30.video.decoder.avc" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.qcom.video.decoder.avc" },
+    { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.ittiam.video.decoder.avc" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.TI.Video.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.SEC.AVC.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.google.h264.decoder" },
@@ -463,6 +465,10 @@ uint32_t OMXCodec::getComponentQuirks(
     }
     if (!strncmp(componentName, "OMX.qcom.video.decoder.", 23)) {
         quirks |= kRequiresAllocateBufferOnInputPorts;
+        quirks |= kRequiresAllocateBufferOnOutputPorts;
+        quirks |= kDefersOutputBufferAllocation;
+    }
+    if (!strncmp(componentName, "OMX.ittiam.video.decoder.", 25)) {
         quirks |= kRequiresAllocateBufferOnOutputPorts;
         quirks |= kDefersOutputBufferAllocation;
     }
@@ -1943,6 +1949,8 @@ OMXCodec::OMXCodec(
       mIsAacFormatAdif(0),
       mInterlaceFormatDetected(false),
       mSPSParsed(false),
+      latenessUs(0),
+      LC_level(0),
       mThumbnailMode(false),
       mNativeWindow(
               (!strncmp(componentName, "OMX.google.", 11)
@@ -4788,6 +4796,47 @@ status_t OMXCodec::read(
         }
     }
 
+    if (!strncmp("OMX.ittiam.video.decoder", mComponentName, 24)) {
+        OMX_INDEXTYPE index;
+        OMX_U32 set_level = 0;
+        #define LC_LEVEL2_HIGH_CUTOFF 125000
+        #define LC_LEVEL2_LOW_CUTOFF 100000
+        #define LC_LEVEL1_HIGH_CUTOFF 75000
+        #define LC_LEVEL1_LOW_CUTOFF 50000
+        CODEC_LOGV("OMXCodec latenessUs = %lld", latenessUs);
+        if((LC_level == 0) && (latenessUs > LC_LEVEL1_HIGH_CUTOFF))
+        {
+          LC_level = 1;
+          set_level = 1;
+        }
+        else if((LC_level == 1) && (latenessUs > LC_LEVEL2_HIGH_CUTOFF))
+        {
+          LC_level = 2;
+          set_level = 1;
+        }
+        else if((LC_level == 1) && (latenessUs < LC_LEVEL1_LOW_CUTOFF))
+        {
+          LC_level = 0;
+          set_level = 1;
+        }
+        else if((LC_level == 2) && (latenessUs < LC_LEVEL2_LOW_CUTOFF))
+        {
+          LC_level = 1;
+          set_level = 1;
+        }
+        if(set_level == 1)
+        {
+          CODEC_LOGV("set_level = 1");
+          status_t err = mOMX->getExtensionIndex(
+            mNode,
+            "OMX.ITTIAM.index.LClevel",
+            &index);
+          if (err != OK) {
+              return err;
+          }
+          mOMX->setConfig(mNode, index, &LC_level, sizeof(LC_level));
+        }
+    }
     while (mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
         if ((err = waitForBufferFilled_l()) != OK) {
             return err;
@@ -4846,6 +4895,8 @@ void OMXCodec::signalBufferReturned(MediaBuffer *buffer) {
                 if (!metaData->findInt32(kKeyRendered, &rendered)) {
                     rendered = 0;
                 }
+                // Set latenessUs here from kKeyLateness
+                metaData->findInt64(kKeyLateness, &latenessUs);
                 if (!rendered) {
                     status_t err = cancelBufferToNativeWindow(info);
                     if (err < 0) {
@@ -5230,7 +5281,6 @@ void OMXCodec::initNativeWindowCrop() {
     crop.top = top;
     crop.right = right + 1;
     crop.bottom = bottom + 1;
-
     // We'll ignore any errors here, if the surface is
     // already invalid, we'll know soon enough.
     native_window_set_crop(mNativeWindow.get(), &crop);

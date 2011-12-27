@@ -369,6 +369,10 @@ private:
     OMXCodec &operator=(const OMXCodec &);
     status_t setWMAFormat(const sp<MetaData> &inputFormat);
     void setAC3Format(int32_t numChannels, int32_t sampleRate);
+
+    int64_t latenessUs;
+    uint32_t LC_level; // LOW_COMPLEXITY level
+
 };
 
 struct CodecCapabilities {
