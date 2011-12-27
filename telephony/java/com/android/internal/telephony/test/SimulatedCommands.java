@@ -814,6 +814,13 @@ public final class SimulatedCommands extends BaseCommands
     /**
      * {@inheritDoc}
      */
+    public void sendEnvelopeWithStatus(String contents, Message response) {
+        resultSuccess(response, null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public void handleCallSetupRequestFromSim(
             boolean accept, Message response) {
         resultSuccess(response, null);
@@ -1037,6 +1044,11 @@ public final class SimulatedCommands extends BaseCommands
     public void iccIO(int command, int fileid, String path, int p1, int p2, int p3, String data,
             String pin2, Message response) {
         iccIOForApp(command, fileid, path, p1, p2, p3, data,pin2, null, response);
+    }
+ 
+    public void acknowledgeIncomingGsmSmsWithPdu(boolean success, String ackPdu,
+            Message result) {
+        unimplemented(result);
     }
 
     /**

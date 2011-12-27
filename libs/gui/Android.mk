@@ -34,6 +34,10 @@ LOCAL_C_INCLUDES := hardware/qcom/display/libqcomui
 
 LOCAL_MODULE:= libgui
 
+ifeq ($(TARGET_BOARD_PLATFORM), tegra)
+	LOCAL_CFLAGS += -DALLOW_DEQUEUE_CURRENT_BUFFER
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 
 ifeq (,$(ONE_SHOT_MAKEFILE))

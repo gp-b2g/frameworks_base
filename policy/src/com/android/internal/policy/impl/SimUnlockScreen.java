@@ -107,7 +107,7 @@ public class SimUnlockScreen extends LinearLayout implements KeyguardScreen, Vie
         mOkButton.setOnClickListener(this);
 
         mKeyguardStatusViewManager = new KeyguardStatusViewManager(this, updateMonitor,
-                lockpatternutils, callback, true);
+                lockpatternutils, callback, false);
 
         setFocusableInTouchMode(true);
     }
@@ -221,52 +221,55 @@ public class SimUnlockScreen extends LinearLayout implements KeyguardScreen, Vie
         getSimUnlockProgressDialog().show();
 
         new CheckSimPin(mPinText.getText().toString()) {
-            void onSimLockChangedResponse(boolean success) {
-                if (mSimUnlockProgressDialog != null) {
-                    mSimUnlockProgressDialog.hide();
-                }
-                if (success) {
-                    //Display message to user that the PIN1 entered is accepted.
-                    LayoutInflater inflater = LayoutInflater.from(mContext);
-                    View layout = inflater.inflate(R.layout.transient_notification,
-                    (ViewGroup) findViewById(R.id.toast_layout_root));
-
-                    TextView text = (TextView) layout.findViewById(R.id.message);
-                    text.setText(R.string.keyguard_pin_accepted);
-
-                    Toast toast = new Toast(mContext);
-                    toast.setDuration(Toast.LENGTH_LONG);
-                    toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
-                    toast.setView(layout);
-                    toast.show();
-
-                    // before closing the keyguard, report back that
-                    // the sim is unlocked so it knows right away
-                    mUpdateMonitor.reportSimUnlocked();
-                    mCallback.goToUnlockScreen();
-                } else {
-                    try {
-                        //Displays No. of attempts remaining to unlock PIN1 in case of wrong entry.
-                        int attemptsRemaining = ITelephony.Stub.asInterface(ServiceManager
-                                .checkService("phone")).getIccPin1RetryCount();
-                        if (attemptsRemaining >= 0) {
-                            String displayMessage = getContext().getString(R.string.keyguard_password_wrong_pin_code)
-                                    + getContext().getString(R.string.pinpuk_attempts) + attemptsRemaining;
-                            mHeaderText.setText(displayMessage);
-                        } else {
-                            mHeaderText.setText(R.string.keyguard_password_wrong_pin_code);
+            void onSimLockChangedResponse(final boolean success) {
+                mPinText.post(new Runnable() {
+                    public void run() {
+                        if (mSimUnlockProgressDialog != null) {
+                            mSimUnlockProgressDialog.hide();
                         }
-                    } catch (RemoteException ex) {
-                        mHeaderText.setText(R.string.keyguard_password_wrong_pin_code);
+                        if (success) {
+                            //Display message to user that the PIN1 entered is accepted.
+                            LayoutInflater inflater = LayoutInflater.from(mContext);
+                            View layout = inflater.inflate(R.layout.transient_notification,
+                            (ViewGroup) findViewById(R.id.toast_layout_root));
+
+                            TextView text = (TextView) layout.findViewById(R.id.message);
+                            text.setText(R.string.keyguard_pin_accepted);
+
+                            Toast toast = new Toast(mContext);
+                            toast.setDuration(Toast.LENGTH_LONG);
+                            toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
+                            toast.setView(layout);
+                            toast.show();
+
+                            // before closing the keyguard, report back that
+                            // the sim is unlocked so it knows right away
+                            mUpdateMonitor.reportSimUnlocked();
+                            mCallback.goToUnlockScreen();
+                        } else {
+                            try {
+                                //Displays No. of attempts remaining to unlock PIN1 in case of wrong entry.
+                                int attemptsRemaining = ITelephony.Stub.asInterface(ServiceManager
+                                        .checkService("phone")).getIccPin1RetryCount();
+                                if (attemptsRemaining >= 0) {
+                                    String displayMessage = getContext().getString(R.string.keyguard_password_wrong_pin_code)
+                                            + getContext().getString(R.string.pinpuk_attempts) + attemptsRemaining;
+                                    mHeaderText.setText(displayMessage);
+                                } else {
+                                    mHeaderText.setText(R.string.keyguard_password_wrong_pin_code);
+                                }
+                            } catch (RemoteException ex) {
+                                mHeaderText.setText(R.string.keyguard_password_wrong_pin_code);
+                            }
+                            mPinText.setText("");
+                            mEnteredDigits = 0;
+                        }
+                        mCallback.pokeWakelock();
                     }
-                    mPinText.setText("");
-                    mEnteredDigits = 0;
-                }
-                mCallback.pokeWakelock();
+                });
             }
         }.start();
     }
-
 
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
@@ -389,6 +392,7 @@ public class SimUnlockScreen extends LinearLayout implements KeyguardScreen, Vie
 
         public void onClick(View v) {
             if (v == mCancelButton) {
+                mPinText.setText(""); // clear the PIN entry field if the user cancels
                 mCallback.goToLockScreen();
                 return;
             }

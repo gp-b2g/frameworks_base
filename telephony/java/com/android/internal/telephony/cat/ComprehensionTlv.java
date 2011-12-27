@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import java.util.List;
  * {@hide}
  */
 class ComprehensionTlv {
+    private static final String LOG_TAG = "ComprehensionTlv";
     private int mTag;
     private boolean mCr;
     private int mLength;
@@ -88,8 +89,14 @@ class ComprehensionTlv {
         int endIndex = data.length;
         while (startIndex < endIndex) {
             ComprehensionTlv ctlv = ComprehensionTlv.decode(data, startIndex);
-            items.add(ctlv);
-            startIndex = ctlv.mValueIndex + ctlv.mLength;
+            if (ctlv != null) {
+                items.add(ctlv);
+                startIndex = ctlv.mValueIndex + ctlv.mLength;
+            } else {
+                CatLog.d(LOG_TAG, "decodeMany: ctlv is null, stop decoding");
+                items.clear();
+                break;
+            }
         }
 
         return items;
@@ -117,7 +124,10 @@ class ComprehensionTlv {
             case 0:
             case 0xff:
             case 0x80:
-                throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
+                // for error handling
+                // these one make exception while decoding the abnormal command.
+                // (in case of Ghana MTN simcard , JDI simcard)
+                return null;
 
             case 0x7f: // tag is in three-byte format
                 tag = ((data[curIndex] & 0xff) << 8)

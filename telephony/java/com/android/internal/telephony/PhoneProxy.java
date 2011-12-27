@@ -35,6 +35,7 @@ import android.util.Log;
 import com.android.internal.telephony.CommandsInterface.RadioTechnology;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.gsm.UsimServiceTable;
 import com.android.internal.telephony.ims.IsimRecords;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.CallManager;
@@ -969,5 +970,10 @@ public class PhoneProxy extends Handler implements Phone {
 
     public int getSubscription() {
         return mActivePhone.getSubscription();
+    }
+
+    @Override
+    public UsimServiceTable getUsimServiceTable() {
+        return mActivePhone.getUsimServiceTable();
     }
 }

@@ -40,11 +40,9 @@ CursorWindow::~CursorWindow() {
     ::close(mAshmemFd);
 }
 
-status_t CursorWindow::create(const String8& name, size_t size, bool localOnly,
-        CursorWindow** outCursorWindow) {
+status_t CursorWindow::create(const String8& name, size_t size, CursorWindow** outCursorWindow) {
     String8 ashmemName("CursorWindow: ");
     ashmemName.append(name);
-    ashmemName.append(localOnly ? " (local)" : " (remote)");
 
     status_t result;
     int ashmemFd = ashmem_create_region(ashmemName.string(), size);
@@ -211,7 +209,7 @@ uint32_t CursorWindow::alloc(size_t size, bool aligned) {
     uint32_t offset = mHeader->freeOffset + padding;
     uint32_t nextFreeOffset = offset + size;
     if (nextFreeOffset > mSize) {
-        LOGE("Window is full: requested allocation %d bytes, "
+        LOGW("Window is full: requested allocation %d bytes, "
                 "free space %d bytes, window size %d bytes",
                 size, freeSpace(), mSize);
         return 0;

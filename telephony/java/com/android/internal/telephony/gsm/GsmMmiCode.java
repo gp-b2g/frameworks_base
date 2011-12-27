@@ -153,7 +153,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     // See TS 22.030 6.5.2 "Structure of the MMI"
 
     static Pattern sPatternSuppService = Pattern.compile(
-        "((\\*|#|\\*#|\\*\\*|##)(\\d{2,3})(\\*([^*#]*)(\\*([^*#]*)(\\*([^*#]*)(\\*([^*#]*))?)?)?)?#)(.*)");
+        "((\\*|#|\\*#|\\*\\*|##)(\\d{2,3})(\\*([^*#]*)(\\*([^*#]*)(\\*([^*#]*)(\\*([^*#]*))?)?)?)?#)([^#]*)");
 /*       1  2                    3          4  5       6   7         8    9     10  11             12
 
          1 = Full string up to and including #
@@ -162,7 +162,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
          5 = SIA
          7 = SIB
          9 = SIC
-         10 = dialing number
+         10 = dialing number which must not include #, e.g. *SCn*SI#DN format
 */
 
     static Pattern sPatternSuppServiceGlobalDev = Pattern.compile("((\\*)(\\d{2,}))");
@@ -1587,4 +1587,20 @@ public final class GsmMmiCode extends Handler implements MmiCode {
      * SpecialCharSequenceMgr class.
      */
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("GsmMmiCode {");
+
+        sb.append("State=" + getState());
+        if (action != null) sb.append(" action=" + action);
+        if (sc != null) sb.append(" sc=" + sc);
+        if (sia != null) sb.append(" sia=" + sia);
+        if (sib != null) sb.append(" sib=" + sib);
+        if (sic != null) sb.append(" sic=" + sic);
+        if (poundString != null) sb.append(" poundString=" + poundString);
+        if (dialingNumber != null) sb.append(" dialingNumber=" + dialingNumber);
+        if (pwd != null) sb.append(" pwd=" + pwd);
+        sb.append("}");
+        return sb.toString();
+    }
 }

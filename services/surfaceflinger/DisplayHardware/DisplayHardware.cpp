@@ -141,6 +141,17 @@ void DisplayHardware::init(uint32_t dpy)
     mDpiY = mNativeWindow->ydpi;
     mRefreshRate = fbDev->fps;
 
+
+/* FIXME: this is a temporary HACK until we are able to report the refresh rate
+ * properly from the HAL. The WindowManagerService now relies on this value.
+ */
+#ifndef REFRESH_RATE
+    mRefreshRate = fbDev->fps;
+#else
+    mRefreshRate = REFRESH_RATE;
+#warning "refresh rate set via makefile to REFRESH_RATE"
+#endif
+
     EGLint w, h, dummy;
     EGLint numConfigs=0;
     EGLSurface surface;
@@ -280,22 +291,6 @@ void DisplayHardware::init(uint32_t dpy)
 
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &mMaxTextureSize);
     glGetIntegerv(GL_MAX_VIEWPORT_DIMS, mMaxViewportDims);
-
-
-#ifdef EGL_ANDROID_swap_rectangle
-    if (extensions.hasExtension("EGL_ANDROID_swap_rectangle")) {
-        if (eglSetSwapRectangleANDROID(display, surface,
-                0, 0, mWidth, mHeight) == EGL_TRUE) {
-            // This could fail if this extension is not supported by this
-            // specific surface (of config)
-            mFlags |= SWAP_RECTANGLE;
-        }
-    }
-    // when we have the choice between PARTIAL_UPDATES and SWAP_RECTANGLE
-    // choose PARTIAL_UPDATES, which should be more efficient
-    if (mFlags & PARTIAL_UPDATES)
-        mFlags &= ~SWAP_RECTANGLE;
-#endif
 
     LOGI("EGL informations:");
     LOGI("# of configs : %d", numConfigs);

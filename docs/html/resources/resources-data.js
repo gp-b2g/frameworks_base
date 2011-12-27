@@ -468,6 +468,16 @@ var ANDROID_RESOURCES = [
     }
   },
   {
+    tags: ['sample', 'communication', 'new'],
+    path: 'samples/BluetoothHDP/index.html',
+    title: {
+      en: 'Bluetooth HDP Demo'
+    },
+    description: {
+      en: 'A sample application that demonstrates how to communicate with a Bluetooth Health Device Profile (HDP) device.'
+    }
+  },
+  {
     tags: ['sample', 'accountsync'],
     path: 'samples/BusinessCard/index.html',
     title: {
@@ -548,6 +558,16 @@ var ANDROID_RESOURCES = [
     }
   },
   {
+    tags: ['sample', 'new', 'bestpractices'],
+    path: 'samples/newsreader/index.html',
+    title: {
+      en: 'News Reader'
+    },
+    description: {
+      en: 'A sample app demonstrating best practices to support multiple screen sizes and densities.'
+    }
+  },
+  {
     tags: ['sample', 'data'],
     path: 'samples/NFCDemo/index.html',
     title: {
@@ -578,7 +598,7 @@ var ANDROID_RESOURCES = [
     }
   },
   {
-    tags: ['sample', 'newfeature', 'performance', 'gamedev', 'gl'],
+    tags: ['sample', 'newfeature', 'performance', 'gamedev', 'gl', 'updated'],
     path: 'samples/RenderScript/index.html',
     title: {
       en: 'RenderScript'
@@ -705,6 +725,16 @@ var ANDROID_RESOURCES = [
     },
     description: {
       en: 'Demonstrates how an application can make use of shared code and resources stored in an Android library project.'
+    }
+  },
+  {
+    tags: ['sample', 'communication', 'new'],
+    path: 'samples/ToyVpn/index.html',
+    title: {
+      en: 'Toy VPN Client'
+    },
+    description: {
+      en: 'A sample application that illustrates the creation of a custom VPN client.'
     }
   },
   {

@@ -26,8 +26,10 @@ import static android.net.NetworkPolicyManager.RULE_REJECT_METERED;
 import android.bluetooth.BluetoothTetheringDataTracker;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.net.ConnectivityManager;
 import android.net.DummyDataStateTracker;
@@ -51,6 +53,7 @@ import android.net.Proxy;
 import android.net.ProxyProperties;
 import android.net.RouteInfo;
 import android.net.wifi.WifiStateTracker;
+import android.net.wimax.WimaxManagerConstants;
 import android.os.Binder;
 import android.os.FileUtils;
 import android.os.Handler;
@@ -78,10 +81,14 @@ import com.android.server.connectivity.Tethering;
 import com.android.server.connectivity.Vpn;
 import com.google.android.collect.Lists;
 import com.google.android.collect.Sets;
-
+import dalvik.system.DexClassLoader;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.InvocationTargetException;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -175,6 +182,12 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
     private static final int ENABLED  = 1;
     private static final int DISABLED = 0;
+
+    private static final boolean ADD = true;
+    private static final boolean REMOVE = false;
+
+    private static final boolean TO_DEFAULT_TABLE = true;
+    private static final boolean TO_SECONDARY_TABLE = false;
 
     // Share the event space with NetworkStateTracker (which can't see this
     // internal class but sends us events).  If you change these, change
@@ -517,6 +530,12 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                 mNetTrackers[netType] = BluetoothTetheringDataTracker.getInstance();
                 mNetTrackers[netType].startMonitoring(context, mHandler);
                 break;
+            case ConnectivityManager.TYPE_WIMAX:
+                mNetTrackers[netType] = makeWimaxStateTracker();
+                if (mNetTrackers[netType]!= null) {
+                    mNetTrackers[netType].startMonitoring(context, mHandler);
+                }
+                break;
             case ConnectivityManager.TYPE_ETHERNET:
                 mNetTrackers[netType] = EthernetDataTracker.getInstance();
                 mNetTrackers[netType].startMonitoring(context, mHandler);
@@ -527,13 +546,15 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                 continue;
             }
             mCurrentLinkProperties[netType] = null;
-            if (mNetConfigs[netType].isDefault()) mNetTrackers[netType].reconnect();
+            if (mNetTrackers[netType] != null && mNetConfigs[netType].isDefault()) {
+                mNetTrackers[netType].reconnect();
+            }
         }
 
         IBinder b = ServiceManager.getService(Context.NETWORKMANAGEMENT_SERVICE);
         INetworkManagementService nmService = INetworkManagementService.Stub.asInterface(b);
 
-        mTethering = new Tethering(mContext, nmService, statsService, mHandler.getLooper());
+        mTethering = new Tethering(mContext, nmService, statsService, this, mHandler.getLooper());
         mTetheringConfigValid = ((mTethering.getTetherableUsbRegexs().length != 0 ||
                                   mTethering.getTetherableWifiRegexs().length != 0 ||
                                   mTethering.getTetherableBluetoothRegexs().length != 0) &&
@@ -557,7 +578,81 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
         loadGlobalProxy();
     }
+private NetworkStateTracker makeWimaxStateTracker() {
+        //Initialize Wimax
+        DexClassLoader wimaxClassLoader;
+        Class wimaxStateTrackerClass = null;
+        Class wimaxServiceClass = null;
+        Class wimaxManagerClass;
+        String wimaxJarLocation;
+        String wimaxLibLocation;
+        String wimaxManagerClassName;
+        String wimaxServiceClassName;
+        String wimaxStateTrackerClassName;
 
+        NetworkStateTracker wimaxStateTracker = null;
+
+        boolean isWimaxEnabled = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_wimaxEnabled);
+
+        if (isWimaxEnabled) {
+            try {
+                wimaxJarLocation = mContext.getResources().getString(
+                        com.android.internal.R.string.config_wimaxServiceJarLocation);
+                wimaxLibLocation = mContext.getResources().getString(
+                        com.android.internal.R.string.config_wimaxNativeLibLocation);
+                wimaxManagerClassName = mContext.getResources().getString(
+                        com.android.internal.R.string.config_wimaxManagerClassname);
+                wimaxServiceClassName = mContext.getResources().getString(
+                        com.android.internal.R.string.config_wimaxServiceClassname);
+                wimaxStateTrackerClassName = mContext.getResources().getString(
+                        com.android.internal.R.string.config_wimaxStateTrackerClassname);
+
+                log("wimaxJarLocation: " + wimaxJarLocation);
+                wimaxClassLoader =  new DexClassLoader(wimaxJarLocation,
+                        new ContextWrapper(mContext).getCacheDir().getAbsolutePath(),
+                        wimaxLibLocation, ClassLoader.getSystemClassLoader());
+
+                try {
+                    wimaxManagerClass = wimaxClassLoader.loadClass(wimaxManagerClassName);
+                    wimaxStateTrackerClass = wimaxClassLoader.loadClass(wimaxStateTrackerClassName);
+                    wimaxServiceClass = wimaxClassLoader.loadClass(wimaxServiceClassName);
+                } catch (ClassNotFoundException ex) {
+                    loge("Exception finding Wimax classes: " + ex.toString());
+                    return null;
+                }
+            } catch(Resources.NotFoundException ex) {
+                loge("Wimax Resources does not exist!!! ");
+                return null;
+            }
+
+            try {
+                log("Starting Wimax Service... ");
+
+                Constructor wmxStTrkrConst = wimaxStateTrackerClass.getConstructor
+                        (new Class[] {Context.class, Handler.class});
+                wimaxStateTracker = (NetworkStateTracker)wmxStTrkrConst.newInstance(mContext,
+                        mHandler);
+
+                Constructor wmxSrvConst = wimaxServiceClass.getDeclaredConstructor
+                        (new Class[] {Context.class, wimaxStateTrackerClass});
+                wmxSrvConst.setAccessible(true);
+                IBinder svcInvoker = (IBinder)wmxSrvConst.newInstance(mContext, wimaxStateTracker);
+                wmxSrvConst.setAccessible(false);
+
+                ServiceManager.addService(WimaxManagerConstants.WIMAX_SERVICE, svcInvoker);
+
+            } catch(Exception ex) {
+                loge("Exception creating Wimax classes: " + ex.toString());
+                return null;
+            }
+        } else {
+            loge("Wimax is not enabled or not added to the network attributes!!! ");
+            return null;
+        }
+
+        return wimaxStateTracker;
+    }
     /**
      * Sets the preferred network.
      * @param preference the new preference
@@ -1178,23 +1273,24 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         return false;
     }
 
-    private boolean addRoute(LinkProperties p, RouteInfo r) {
-        return modifyRoute(p.getInterfaceName(), p, r, 0, true);
+    private boolean addRoute(LinkProperties p, RouteInfo r, boolean toDefaultTable) {
+        return modifyRoute(p.getInterfaceName(), p, r, 0, ADD, toDefaultTable);
     }
 
-    private boolean removeRoute(LinkProperties p, RouteInfo r) {
-        return modifyRoute(p.getInterfaceName(), p, r, 0, false);
+    private boolean removeRoute(LinkProperties p, RouteInfo r, boolean toDefaultTable) {
+        return modifyRoute(p.getInterfaceName(), p, r, 0, REMOVE, toDefaultTable);
     }
 
     private boolean addRouteToAddress(LinkProperties lp, InetAddress addr) {
-        return modifyRouteToAddress(lp, addr, true);
+        return modifyRouteToAddress(lp, addr, ADD, TO_DEFAULT_TABLE);
     }
 
     private boolean removeRouteToAddress(LinkProperties lp, InetAddress addr) {
-        return modifyRouteToAddress(lp, addr, false);
+        return modifyRouteToAddress(lp, addr, REMOVE, TO_DEFAULT_TABLE);
     }
 
-    private boolean modifyRouteToAddress(LinkProperties lp, InetAddress addr, boolean doAdd) {
+    private boolean modifyRouteToAddress(LinkProperties lp, InetAddress addr, boolean doAdd,
+            boolean toDefaultTable) {
         RouteInfo bestRoute = RouteInfo.selectBestRoute(lp.getRoutes(), addr);
         if (bestRoute == null) {
             bestRoute = RouteInfo.makeHostRoute(addr);
@@ -1208,15 +1304,15 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                 bestRoute = RouteInfo.makeHostRoute(addr, bestRoute.getGateway());
             }
         }
-        return modifyRoute(lp.getInterfaceName(), lp, bestRoute, 0, doAdd);
+        return modifyRoute(lp.getInterfaceName(), lp, bestRoute, 0, doAdd, toDefaultTable);
     }
 
     private boolean modifyRoute(String ifaceName, LinkProperties lp, RouteInfo r, int cycleCount,
-            boolean doAdd) {
+            boolean doAdd, boolean toDefaultTable) {
         if ((ifaceName == null) || (lp == null) || (r == null)) return false;
 
         if (cycleCount > MAX_HOSTROUTE_CYCLE_COUNT) {
-            loge("Error adding route - too much recursion");
+            loge("Error modifying route - too much recursion");
             return false;
         }
 
@@ -1231,14 +1327,18 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                     // route to it's gateway
                     bestRoute = RouteInfo.makeHostRoute(r.getGateway(), bestRoute.getGateway());
                 }
-                modifyRoute(ifaceName, lp, bestRoute, cycleCount+1, doAdd);
+                modifyRoute(ifaceName, lp, bestRoute, cycleCount+1, doAdd, toDefaultTable);
             }
         }
         if (doAdd) {
             if (VDBG) log("Adding " + r + " for interface " + ifaceName);
-            mAddedRoutes.add(r);
             try {
-                mNetd.addRoute(ifaceName, r);
+                if (toDefaultTable) {
+                    mAddedRoutes.add(r);  // only track default table - only one apps can effect
+                    mNetd.addRoute(ifaceName, r);
+                } else {
+                    mNetd.addSecondaryRoute(ifaceName, r);
+                }
             } catch (Exception e) {
                 // never crash - catch them all
                 if (VDBG) loge("Exception trying to add a route: " + e);
@@ -1247,18 +1347,29 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         } else {
             // if we remove this one and there are no more like it, then refcount==0 and
             // we can remove it from the table
-            mAddedRoutes.remove(r);
-            if (mAddedRoutes.contains(r) == false) {
+            if (toDefaultTable) {
+                mAddedRoutes.remove(r);
+                if (mAddedRoutes.contains(r) == false) {
+                    if (VDBG) log("Removing " + r + " for interface " + ifaceName);
+                    try {
+                        mNetd.removeRoute(ifaceName, r);
+                    } catch (Exception e) {
+                        // never crash - catch them all
+                        if (VDBG) loge("Exception trying to remove a route: " + e);
+                        return false;
+                    }
+                } else {
+                    if (VDBG) log("not removing " + r + " as it's still in use");
+                }
+            } else {
                 if (VDBG) log("Removing " + r + " for interface " + ifaceName);
                 try {
-                    mNetd.removeRoute(ifaceName, r);
+                    mNetd.removeSecondaryRoute(ifaceName, r);
                 } catch (Exception e) {
                     // never crash - catch them all
                     if (VDBG) loge("Exception trying to remove a route: " + e);
                     return false;
                 }
-            } else {
-                if (VDBG) log("not removing " + r + " as it's still in use");
             }
         }
         return true;
@@ -1518,6 +1629,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                 if (checkType == prevNetType) continue;
                 if (mNetConfigs[checkType] == null) continue;
                 if (!mNetConfigs[checkType].isDefault()) continue;
+                if (mNetTrackers[checkType] == null) continue;
 
 // Enabling the isAvailable() optimization caused mobile to not get
 // selected if it was in the middle of error handling. Specifically
@@ -1900,14 +2012,21 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
         for (RouteInfo r : routeDiff.removed) {
             if (isLinkDefault || ! r.isDefaultRoute()) {
-                removeRoute(curLp, r);
+                removeRoute(curLp, r, TO_DEFAULT_TABLE);
+            }
+            if (isLinkDefault == false) {
+                // remove from a secondary route table
+                removeRoute(curLp, r, TO_SECONDARY_TABLE);
             }
         }
 
         for (RouteInfo r :  routeDiff.added) {
             if (isLinkDefault || ! r.isDefaultRoute()) {
-                addRoute(newLp, r);
+                addRoute(newLp, r, TO_DEFAULT_TABLE);
             } else {
+                // add to a secondary route table
+                addRoute(newLp, r, TO_SECONDARY_TABLE);
+
                 // many radios add a default route even when we don't want one.
                 // remove the default route unless somebody else has asked for it
                 String ifaceName = newLp.getInterfaceName();
@@ -2530,12 +2649,6 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         int defaultVal = (SystemProperties.get("ro.tether.denied").equals("true") ? 0 : 1);
         boolean tetherEnabledInSettings = (Settings.Secure.getInt(mContext.getContentResolver(),
                 Settings.Secure.TETHER_SUPPORTED, defaultVal) != 0);
-        // Short term disabling of Tethering if DUN is required.
-        // TODO - fix multi-connection tethering using policy-base routing
-        int[] upstreamConnTypes = mTethering.getUpstreamIfaceTypes();
-        for (int i : upstreamConnTypes) {
-            if (i == ConnectivityManager.TYPE_MOBILE_DUN) return false;
-        }
         return tetherEnabledInSettings && mTetheringConfigValid;
     }
 

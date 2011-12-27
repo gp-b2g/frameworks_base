@@ -1434,9 +1434,6 @@ public final class Telephony {
 
             Cursor cursor = SqliteWrapper.query(context, context.getContentResolver(),
                     uri, ID_PROJECTION, null, null, null);
-            if (DEBUG) {
-                Log.v(TAG, "getOrCreateThreadId cursor cnt: " + cursor.getCount());
-            }
             if (cursor != null) {
                 try {
                     if (cursor.moveToFirst()) {

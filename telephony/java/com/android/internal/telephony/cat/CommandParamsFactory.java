@@ -449,6 +449,7 @@ class CommandParamsFactory extends Handler {
         input.ucs2 = (cmdDet.commandQualifier & 0x02) != 0;
         input.yesNo = (cmdDet.commandQualifier & 0x04) != 0;
         input.helpAvailable = (cmdDet.commandQualifier & 0x80) != 0;
+        input.echo = true;
 
         mCmdParams = new GetInputParams(cmdDet, input);
 
@@ -687,11 +688,7 @@ class CommandParamsFactory extends Handler {
 
         ComprehensionTlv ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID,
                 ctlvs);
-        if (ctlv != null) {
-            textMsg.text = ValueParser.retrieveAlphaId(ctlv);
-        } else {
-            throw new ResultException(ResultCode.REQUIRED_VALUES_MISSING);
-        }
+        textMsg.text = ValueParser.retrieveAlphaId(ctlv);
 
         ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
         if (ctlv != null) {
@@ -800,9 +797,8 @@ class CommandParamsFactory extends Handler {
 
         // parse alpha identifier.
         ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID, ctlvs);
-        if (ctlv != null) {
-            confirmMsg.text = ValueParser.retrieveAlphaId(ctlv);
-        }
+        confirmMsg.text = ValueParser.retrieveAlphaId(ctlv);
+
         // parse icon identifier
         ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
         if (ctlv != null) {
@@ -927,9 +923,7 @@ class CommandParamsFactory extends Handler {
 
         // get confirmation message string.
         ctlv = searchForNextTag(ComprehensionTlvTag.ALPHA_ID, iter);
-        if (ctlv != null) {
-            confirmMsg.text = ValueParser.retrieveAlphaId(ctlv);
-        }
+        confirmMsg.text = ValueParser.retrieveAlphaId(ctlv);
 
         ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
         if (ctlv != null) {

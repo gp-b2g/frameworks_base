@@ -39,7 +39,6 @@ namespace android {
 
 // ---------------------------------------------------------------------------
 
-class FreezeLock;
 class Client;
 class GLExtensions;
 
@@ -81,7 +80,6 @@ public:
     virtual wp<IBinder> getSurfaceTextureBinder() const;
 
     // only for debugging
-    inline const sp<FreezeLock>&  getFreezeLock() const { return mFreezeLock; }
     inline const sp<GraphicBuffer>& getActiveBuffer() const { return mActiveBuffer; }
 
 protected:
@@ -124,9 +122,6 @@ private:
     bool mSecure;         // no screenshots
     bool mProtectedByApp; // application requires protected path to external sink
     Region mPostedDirtyRegion;
-
-    // page-flip thread and transaction thread (currently main thread)
-    sp<FreezeLock>  mFreezeLock;
 
     // binder thread, transaction thread
     mutable Mutex mLock;

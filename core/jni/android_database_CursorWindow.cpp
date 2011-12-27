@@ -57,8 +57,7 @@ static void throwUnknownTypeException(JNIEnv * env, jint type) {
     jniThrowException(env, "java/lang/IllegalStateException", msg.string());
 }
 
-static jint nativeCreate(JNIEnv* env, jclass clazz,
-        jstring nameObj, jint cursorWindowSize, jboolean localOnly) {
+static jint nativeCreate(JNIEnv* env, jclass clazz, jstring nameObj, jint cursorWindowSize) {
     String8 name;
     if (nameObj) {
         const char* nameStr = env->GetStringUTFChars(nameObj, NULL);
@@ -70,7 +69,7 @@ static jint nativeCreate(JNIEnv* env, jclass clazz,
     }
 
     CursorWindow* window;
-    status_t status = CursorWindow::create(name, cursorWindowSize, localOnly, &window);
+    status_t status = CursorWindow::create(name, cursorWindowSize, &window);
     if (status || !window) {
         LOGE("Could not allocate CursorWindow '%s' of size %d due to error %d.",
                 name.string(), cursorWindowSize, status);
@@ -102,6 +101,11 @@ static void nativeDispose(JNIEnv* env, jclass clazz, jint windowPtr) {
         LOG_WINDOW("Closing window %p", window);
         delete window;
     }
+}
+
+static jstring nativeGetName(JNIEnv* env, jclass clazz, jint windowPtr) {
+    CursorWindow* window = reinterpret_cast<CursorWindow*>(windowPtr);
+    return env->NewStringUTF(window->name().string());
 }
 
 static void nativeWriteToParcel(JNIEnv * env, jclass clazz, jint windowPtr,
@@ -477,7 +481,7 @@ static jboolean nativePutNull(JNIEnv* env, jclass clazz, jint windowPtr,
 static JNINativeMethod sMethods[] =
 {
     /* name, signature, funcPtr */
-    { "nativeCreate", "(Ljava/lang/String;IZ)I",
+    { "nativeCreate", "(Ljava/lang/String;I)I",
             (void*)nativeCreate },
     { "nativeCreateFromParcel", "(Landroid/os/Parcel;)I",
             (void*)nativeCreateFromParcel },
@@ -485,6 +489,8 @@ static JNINativeMethod sMethods[] =
             (void*)nativeDispose },
     { "nativeWriteToParcel", "(ILandroid/os/Parcel;)V",
             (void*)nativeWriteToParcel },
+    { "nativeGetName", "(I)Ljava/lang/String;",
+            (void*)nativeGetName },
     { "nativeClear", "(I)V",
             (void*)nativeClear },
     { "nativeGetNumRows", "(I)I",

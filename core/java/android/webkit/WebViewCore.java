@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,8 +46,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
-import org.json.*;
 
 import junit.framework.Assert;
 
@@ -127,6 +124,7 @@ public final class WebViewCore {
      */
     private int mViewportDensityDpi = -1;
 
+    private boolean mIsRestored = false;
     private float mRestoredScale = 0;
     private float mRestoredTextWrapScale = 0;
     private int mRestoredX = 0;
@@ -441,52 +439,6 @@ public final class WebViewCore {
     }
 
     /**
-     * Shows a prompt to ask the user to set the Navigator permission state
-     * for the given feature for the current website.
-     * @param features device apis for which permissions are requested
-     * @param appid The website for which navigator permissions are
-     *     requested.
-     */
-    protected void navigatorPermissionsShowPrompt(Vector<String> features, String appid) {
-        mCallbackProxy.onNavigatorPermissionsShowPrompt(features,appid,
-                new GeolocationPermissions.Callback() {
-          public void invoke(String appid, boolean allow, boolean remember) {
-            NavigatorPermissionsData data = new NavigatorPermissionsData();
-
-            try {
-                // Get the JSON object from the string and then extract
-                // appid and features
-                JSONObject nJson = new JSONObject(appid);
-                if(nJson.has("appid")) {
-                    data.mAppid = (String)nJson.get("appid");
-                }
-                Vector<String> tmpFeatures = new Vector<String>();
-                JSONArray jArr;
-                if(nJson.has("features")) {
-                    jArr = nJson.getJSONArray("features");
-                    for(int i=0; i<jArr.length(); i++)
-                        tmpFeatures.add((String)jArr.get(i));
-                }
-                data.mFeatures = tmpFeatures;
-            } catch (org.json.JSONException e) {
-                Log.e(LOGTAG, "Caught excepttion" + e);
-            }
-            data.mAllow = allow;
-            data.mRemember = remember;
-            // Marshall to WebCore thread.
-            sendMessage(EventHub.NAVIGATOR_PERMISSIONS_PROVIDE, data);
-          }
-        });
-    }
-
-    /**
-     * Hides the navigator permissions prompt.
-     */
-    protected void navigatorPermissionsHidePrompt() {
-        mCallbackProxy.onNavigatorPermissionsHidePrompt();
-    }
-
-    /**
      * Invoke a javascript confirm dialog.
      * @param message The message displayed in the dialog.
      * @return True if the user confirmed or false if the user cancelled.
@@ -567,7 +519,12 @@ public final class WebViewCore {
     /**
      * Update the layers' content
      */
-    private native boolean nativeUpdateLayers(int baseLayer);
+    private native boolean nativeUpdateLayers(int nativeClass, int baseLayer);
+
+    /**
+     * Notify webkit that animations have begun (on the hardware accelerated content)
+     */
+    private native void nativeNotifyAnimationStarted(int nativeClass);
 
     private native boolean nativeFocusBoundsChanged();
 
@@ -686,7 +643,6 @@ public final class WebViewCore {
      *     life of the current page.
      */
     private native void nativeGeolocationPermissionsProvide(String origin, boolean allow, boolean remember);
-    private native void nativeFeaturePermissionsProvide(Vector<String> features, String appid, boolean allow, boolean remember);
 
     /**
      * Provide WebCore with the previously visted links from the history database
@@ -907,13 +863,6 @@ public final class WebViewCore {
         boolean mRemember;
     }
 
-    static class NavigatorPermissionsData {
-        Vector<String> mFeatures;
-        String mAppid;
-        boolean mAllow;
-        boolean mRemember;
-    }
-
         static final String[] HandlerDebugString = {
             "REVEAL_SELECTION", // 96
             "REQUEST_LABEL", // 97
@@ -1091,8 +1040,7 @@ public final class WebViewCore {
 
         static final int PLUGIN_SURFACE_READY = 195;
 
-        // Feature Permissions
-        static final int NAVIGATOR_PERMISSIONS_PROVIDE = 196;
+        static final int NOTIFY_ANIMATION_STARTED = 196;
 
         // private message ids
         private static final int DESTROY =     200;
@@ -1608,14 +1556,6 @@ public final class WebViewCore {
                                     data.mAllow, data.mRemember);
                             break;
 
-                        case NAVIGATOR_PERMISSIONS_PROVIDE:
-                            NavigatorPermissionsData tData =
-                                    (NavigatorPermissionsData) msg.obj;
-                            Vector<String> t = tData.mFeatures;
-                            nativeFeaturePermissionsProvide(tData.mFeatures,
-                                    tData.mAppid, tData.mAllow, tData.mRemember);
-                            break;
-
                         case SPLIT_PICTURE_SET:
                             nativeSplitContent(msg.arg1);
                             mWebView.mPrivateHandler.obtainMessage(
@@ -1659,6 +1599,10 @@ public final class WebViewCore {
 
                         case PLUGIN_SURFACE_READY:
                             nativePluginSurfaceReady();
+                            break;
+
+                        case NOTIFY_ANIMATION_STARTED:
+                            nativeNotifyAnimationStarted(mNativeClass);
                             break;
 
                         case ADD_PACKAGE_NAMES:
@@ -2049,6 +1993,7 @@ public final class WebViewCore {
         int mScrollY;
         boolean mMobileSite;
         boolean mIsRestored;
+        boolean mShouldStartScrolledRight;
     }
 
     static class DrawData {
@@ -2081,7 +2026,7 @@ public final class WebViewCore {
             return;
         }
         // Directly update the layers we last passed to the UI side
-        if (nativeUpdateLayers(mLastDrawData.mBaseLayer)) {
+        if (nativeUpdateLayers(mNativeClass, mLastDrawData.mBaseLayer)) {
             // If anything more complex than position has been touched, let's do a full draw
             webkitDraw();
         }
@@ -2322,7 +2267,7 @@ public final class WebViewCore {
 
         if (mWebView == null) return;
 
-        boolean updateViewState = standardLoad || mRestoredScale > 0;
+        boolean updateViewState = standardLoad || mIsRestored;
         setupViewport(updateViewState);
         // if updateRestoreState is true, ViewManager.postReadyToDrawAll() will
         // be called after the WebView updates its state. If updateRestoreState
@@ -2339,6 +2284,7 @@ public final class WebViewCore {
 
         // reset the scroll position, the restored offset and scales
         mRestoredX = mRestoredY = 0;
+        mIsRestored = false;
         mRestoredScale = mRestoredTextWrapScale = 0;
     }
 
@@ -2355,6 +2301,18 @@ public final class WebViewCore {
         }
         // set the viewport settings from WebKit
         setViewportSettingsFromNative();
+
+        // clamp initial scale
+        if (mViewportInitialScale > 0) {
+            if (mViewportMinimumScale > 0) {
+                mViewportInitialScale = Math.max(mViewportInitialScale,
+                        mViewportMinimumScale);
+            }
+            if (mViewportMaximumScale > 0) {
+                mViewportInitialScale = Math.min(mViewportInitialScale,
+                        mViewportMaximumScale);
+            }
+        }
 
         if (mSettings.forceUserScalable()) {
             mViewportUserScalable = true;
@@ -2388,6 +2346,10 @@ public final class WebViewCore {
         } else if (mViewportDensityDpi > 0) {
             adjust = (float) mContext.getResources().getDisplayMetrics().densityDpi
                     / mViewportDensityDpi;
+        }
+        if (adjust != mWebView.getDefaultZoomScale()) {
+            Message.obtain(mWebView.mPrivateHandler,
+                    WebView.UPDATE_ZOOM_DENSITY, adjust).sendToTarget();
         }
         int defaultScale = (int) (adjust * 100);
 
@@ -2436,6 +2398,7 @@ public final class WebViewCore {
             viewState.mMobileSite = false;
             // for non-mobile site, we don't need minPrefWidth, set it as 0
             viewState.mScrollX = 0;
+            viewState.mShouldStartScrolledRight = false;
             Message.obtain(mWebView.mPrivateHandler,
                     WebView.UPDATE_ZOOM_RANGE, viewState).sendToTarget();
             return;
@@ -2466,8 +2429,13 @@ public final class WebViewCore {
         mInitialViewState.mDefaultScale = adjust;
         mInitialViewState.mScrollX = mRestoredX;
         mInitialViewState.mScrollY = mRestoredY;
+        mInitialViewState.mShouldStartScrolledRight = (mRestoredX == 0)
+                && (mRestoredY == 0)
+                && (mBrowserFrame != null)
+                && mBrowserFrame.getShouldStartScrolledRight();
+
         mInitialViewState.mMobileSite = (0 == mViewportWidth);
-        if (mRestoredScale > 0) {
+        if (mIsRestored) {
             mInitialViewState.mIsRestored = true;
             mInitialViewState.mViewScale = mRestoredScale;
             if (mRestoredTextWrapScale > 0) {
@@ -2593,13 +2561,10 @@ public final class WebViewCore {
     // called by JNI
     private void restoreScale(float scale, float textWrapScale) {
         if (mBrowserFrame.firstLayoutDone() == false) {
-            // If restored scale and textWrapScale are 0, set them to
-            // overview and reading level scale respectively.
-            mRestoredScale = (scale <= 0.0)
-                ? mWebView.getZoomOverviewScale() : scale;
+            mIsRestored = true;
+            mRestoredScale = scale;
             if (mSettings.getUseWideViewPort()) {
-                mRestoredTextWrapScale = (textWrapScale <= 0.0)
-                    ? mWebView.getReadingLevelScale() : textWrapScale;
+                mRestoredTextWrapScale = textWrapScale;
             }
         }
     }

@@ -31,6 +31,8 @@
 #include <utils/RefBase.h>
 #include <utils/Vector.h>
 
+#include <cutils/compiler.h>
+
 #include "Debug.h"
 #include "Extensions.h"
 #include "Matrix.h"
@@ -57,13 +59,13 @@ class DisplayList;
  */
 class OpenGLRenderer {
 public:
-    OpenGLRenderer();
+    ANDROID_API OpenGLRenderer();
     virtual ~OpenGLRenderer();
 
     virtual void setViewport(int width, int height);
-    void getViewport(int &width, int &height);
+    ANDROID_API void getViewport(int &width, int &height);
 
-    void prepare(bool opaque);
+    ANDROID_API void prepare(bool opaque);
     virtual void prepareDirty(float left, float top, float right, float bottom, bool opaque);
     virtual void finish();
 
@@ -73,7 +75,7 @@ public:
 
     virtual bool callDrawGLFunction(Functor *functor, Rect& dirty);
 
-    int getSaveCount() const;
+    ANDROID_API int getSaveCount() const;
     virtual int save(int flags);
     virtual void restore();
     virtual void restoreToCount(int saveCount);
@@ -88,12 +90,12 @@ public:
     virtual void scale(float sx, float sy);
     virtual void skew(float sx, float sy);
 
-    void getMatrix(SkMatrix* matrix);
+    ANDROID_API void getMatrix(SkMatrix* matrix);
     virtual void setMatrix(SkMatrix* matrix);
     virtual void concatMatrix(SkMatrix* matrix);
 
-    const Rect& getClipBounds();
-    bool quickReject(float left, float top, float right, float bottom);
+    ANDROID_API const Rect& getClipBounds();
+    ANDROID_API bool quickReject(float left, float top, float right, float bottom);
     virtual bool clipRect(float left, float top, float right, float bottom, SkRegion::Op op);
 
     virtual bool drawDisplayList(DisplayList* displayList, uint32_t width, uint32_t height,

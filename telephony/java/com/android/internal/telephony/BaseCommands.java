@@ -665,6 +665,13 @@ public abstract class BaseCommands implements CommandsInterface {
     public void unregisterForSubscriptionStatusChanged(Handler h) {
         mSubscriptionStatusRegistrants.remove(h);
     }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setCurrentPreferredNetworkType() {
+    }
 
     //***** Protected Methods
     /**

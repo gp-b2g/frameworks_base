@@ -277,7 +277,7 @@ public class Build {
         public static final int HONEYCOMB_MR2 = 13;
 
         /**
-         * Android 4.0.
+         * October 2011: Android 4.0.
          *
          * <p>Applications targeting this or a later release will get these
          * new changes in behavior:</p>
@@ -309,6 +309,11 @@ public class Build {
          * </ul>
          */
         public static final int ICE_CREAM_SANDWICH = 14;
+
+        /**
+         * Android 4.0.3.
+         */
+        public static final int ICE_CREAM_SANDWICH_MR1 = 15;
     }
     
     /** The type of build, like "user" or "eng". */
@@ -324,6 +329,13 @@ public class Build {
     public static final long TIME = getLong("ro.build.date.utc") * 1000;
     public static final String USER = getString("ro.build.user");
     public static final String HOST = getString("ro.build.host");
+
+    /**
+     * Returns true if we are running a debug build such as "user-debug" or "eng".
+     * @hide
+     */
+    public static final boolean IS_DEBUGGABLE =
+            SystemProperties.getInt("ro.debuggable", 0) == 1;
 
     /**
      * Returns the version string for the radio firmware.  May return
