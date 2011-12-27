@@ -16,12 +16,10 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.CommandsInterface.RadioTechnology;
-
 import android.content.Context;
 import android.os.Message;
 import android.util.Log;
-
+import android.telephony.ServiceState;
 
 public class MSimProxyManager {
     static final String LOG_TAG = "PROXY";
@@ -105,12 +103,12 @@ public class MSimProxyManager {
                 || userSub.appType.equals("USIM"))
                 && (!mProxyPhones[subId].getPhoneName().equals("GSM"))) {
             logd("gets New GSM phone" );
-            ((PhoneProxy) mProxyPhones[subId]).updatePhoneObject(RadioTechnology.RADIO_TECH_GSM);
+            ((PhoneProxy) mProxyPhones[subId]).updatePhoneObject(ServiceState.RADIO_TECHNOLOGY_GSM);
         } else if ((userSub.appType.equals("RUIM")
                 || userSub.appType.equals("CSIM"))
                 && (!mProxyPhones[subId].getPhoneName().equals("CDMA"))) {
             logd("gets New CDMA phone" );
-            ((PhoneProxy) mProxyPhones[subId]).updatePhoneObject(RadioTechnology.RADIO_TECH_1xRTT);
+            ((PhoneProxy) mProxyPhones[subId]).updatePhoneObject(ServiceState.RADIO_TECHNOLOGY_1xRTT);
         }
     }
 

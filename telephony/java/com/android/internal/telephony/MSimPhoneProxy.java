@@ -21,7 +21,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
-import com.android.internal.telephony.CommandsInterface.RadioTechnology;
+import android.telephony.ServiceState;
 import com.android.internal.telephony.gsm.MSimGSMPhone;
 import com.android.internal.telephony.cdma.MSimCDMAPhone;
 
@@ -43,11 +43,11 @@ public class MSimPhoneProxy extends PhoneProxy {
     }
 
     @Override
-    protected void createNewPhone(RadioTechnology newVoiceRadioTech) {
-        if (newVoiceRadioTech.isCdma()) {
+    protected void createNewPhone(int newVoiceRadioTech) {
+        if (ServiceState.isCdma(newVoiceRadioTech)) {
             Log.d(LOG_TAG, "MSimPhoneProxy: deleteAndCreatePhone: Creating MSimCdmaPhone");
             mActivePhone = MSimPhoneFactory.getMSimCdmaPhone(mSubscription);
-        } else if (newVoiceRadioTech.isGsm()) {
+        } else if (ServiceState.isGsm(newVoiceRadioTech)) {
             Log.d(LOG_TAG, "MSimPhoneProxy: deleteAndCreatePhone: Creating MSimGsmPhone");
             mActivePhone = MSimPhoneFactory.getMSimGsmPhone(mSubscription);
         }

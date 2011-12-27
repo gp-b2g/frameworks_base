@@ -32,7 +32,6 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.util.Log;
 
-import com.android.internal.telephony.CommandsInterface.RadioTechnology;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.gsm.UsimServiceTable;
@@ -77,12 +76,7 @@ public class PhoneProxy extends Handler implements Phone {
                 this, EVENT_VOICE_RADIO_TECHNOLOGY_CHANGED, null);
         init();
 
-        if (phone.getPhoneType() == Phone.PHONE_TYPE_GSM) {
-            // For the purpose of IccCardProxy we only care about the technology family
-            mIccCardProxy.setVoiceRadioTech(RadioTechnology.RADIO_TECH_GSM);
-        } else if (phone.getPhoneType() == Phone.PHONE_TYPE_CDMA) {
-            mIccCardProxy.setVoiceRadioTech(RadioTechnology.RADIO_TECH_1xRTT);
-        }
+        mIccCardProxy.setPhoneType(phone.getPhoneType());
     }
 
     protected void init() {
@@ -104,11 +98,10 @@ public class PhoneProxy extends Handler implements Phone {
 
             if (ar.exception == null) {
                 if ((ar.result != null) && (((int[]) ar.result).length != 0)) {
-                    RadioTechnology newVoiceTech =
-                        RadioTechnology.getRadioTechFromInt(((int[]) ar.result)[0]);
+                    int newVoiceTech = ((int[]) ar.result)[0];
                     updatePhoneObject(newVoiceTech);
                 } else {
-                    loge("Voice Radio Technology event "+ msg.what +"has no tech!");
+                    loge("Voice Radio Technology event " + msg.what + " has no tech!");
                 }
             } else {
                 loge("Voice Radio Technology event " + msg.what + " exception!" + ar.exception);
@@ -116,7 +109,7 @@ public class PhoneProxy extends Handler implements Phone {
             break;
 
         default:
-            Log.e(LOG_TAG,"Error! This handler was not registered for this message type. Message: "
+            loge("Error! This handler was not registered for this message type. Message: "
                     + msg.what);
             break;
         }
@@ -135,27 +128,26 @@ public class PhoneProxy extends Handler implements Phone {
         Log.e(LOG_TAG, "[PhoneProxy] " + msg);
     }
 
-    public void updatePhoneObject(RadioTechnology newVoiceRadioTech) {
+    public void updatePhoneObject(int newVoiceRadioTech) {
 
         if (mActivePhone != null) {
-            if ((newVoiceRadioTech.isCdma() &&
+            if ((ServiceState.isCdma(newVoiceRadioTech) &&
                     mActivePhone.getPhoneType() == PHONE_TYPE_CDMA) ||
-                    (newVoiceRadioTech.isGsm() &&
+                    (ServiceState.isGsm(newVoiceRadioTech) &&
                             mActivePhone.getPhoneType() == PHONE_TYPE_GSM)) {
                 // Nothing changed. Keep phone as it is.
-                Log.v(LOG_TAG, "Ignoring voice radio technology changed message." +
+                logd("Ignoring voice radio technology changed message." +
                         " newVoiceRadioTech = " + newVoiceRadioTech +
                         " Active Phone = " + mActivePhone.getPhoneName());
                 return;
             }
         }
 
-        if (newVoiceRadioTech.isUnknown()) {
+        if (newVoiceRadioTech == ServiceState.RADIO_TECHNOLOGY_UNKNOWN) {
             // We need some voice phone object to be active always, so never
             // delete the phone without anything to replace it with!
-            Log.i(LOG_TAG,
-                    "Ignoring voice radio technology changed message. newVoiceRadioTech = Unknown."
-                            + "Active Phone = " + mActivePhone.getPhoneName());
+            logd("Ignoring voice radio technology changed message. newVoiceRadioTech = Unknown."
+                    + " Active Phone = " + mActivePhone.getPhoneName());
             return;
         }
 
@@ -170,7 +162,7 @@ public class PhoneProxy extends Handler implements Phone {
 
         deleteAndCreatePhone(newVoiceRadioTech);
 
-        if (mResetModemOnRadioTechnologyChange) { // restore power state
+        if (mResetModemOnRadioTechnologyChange && oldPowerState) { // restore power state
             logd("Resetting Radio");
             mCommandsInterface.setRadioPower(oldPowerState, null);
         }
@@ -182,7 +174,7 @@ public class PhoneProxy extends Handler implements Phone {
         mIccSmsInterfaceManager.updatePhoneObject((PhoneBase)mActivePhone);
 
         mCommandsInterface = ((PhoneBase)mActivePhone).mCM;
-        mIccCardProxy.setVoiceRadioTech(newVoiceRadioTech);
+        mIccCardProxy.setPhoneType(mActivePhone.getPhoneType());
 
         // Send an Intent to the PhoneApp that we had a radio technology change
         Intent intent = new Intent(TelephonyIntents.ACTION_RADIO_TECHNOLOGY_CHANGED);
@@ -192,24 +184,23 @@ public class PhoneProxy extends Handler implements Phone {
 
     }
 
-    private void deleteAndCreatePhone(RadioTechnology newVoiceRadioTech) {
+    private void deleteAndCreatePhone(int newVoiceRadioTech) {
 
-        String mOutgoingPhoneName = "Unknown";
-
-        if (mActivePhone != null) {
-            mOutgoingPhoneName = ((PhoneBase) mActivePhone).getPhoneName();
-        }
-
-        Log.i(LOG_TAG, "Switching Voice Phone : " + mOutgoingPhoneName + " >>> "
-                + (newVoiceRadioTech.isGsm() ? "GSM" : "CDMA"));
-
-        if (mActivePhone != null) {
-            CallManager.getInstance().unregisterPhone(mActivePhone);
-            Log.v(LOG_TAG, "Disposing old phone..");
-            mActivePhone.dispose();
-        }
-
+        String outgoingPhoneName = "Unknown";
         Phone oldPhone = mActivePhone;
+
+        if (oldPhone != null) {
+            outgoingPhoneName = ((PhoneBase) oldPhone).getPhoneName();
+        }
+
+        logd("Switching Voice Phone : " + outgoingPhoneName + " >>> "
+                + (ServiceState.isGsm(newVoiceRadioTech) ? "GSM" : "CDMA"));
+
+        if (oldPhone != null) {
+            CallManager.getInstance().unregisterPhone(oldPhone);
+            logd("Disposing old phone..");
+            oldPhone.dispose();
+        }
 
         // Give the garbage collector a hint to start the garbage collection
         // asap NOTE this has been disabled since radio technology change could
@@ -231,10 +222,10 @@ public class PhoneProxy extends Handler implements Phone {
         oldPhone = null;
     }
 
-    protected void createNewPhone(RadioTechnology newVoiceRadioTech) {
-        if (newVoiceRadioTech.isCdma()) {
+    protected void createNewPhone(int newVoiceRadioTech) {
+        if (ServiceState.isCdma(newVoiceRadioTech)) {
             mActivePhone = PhoneFactory.getCdmaPhone();
-        } else if (newVoiceRadioTech.isGsm()) {
+        } else if (ServiceState.isGsm(newVoiceRadioTech)) {
             mActivePhone = PhoneFactory.getGsmPhone();
         }
     }

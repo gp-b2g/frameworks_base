@@ -178,7 +178,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(phone.getContext(), cm, this,
                 EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         isSubscriptionFromRuim = (mCdmaSSM.getCdmaSubscriptionSource() ==
-            RILConstants.SUBSCRIPTION_FROM_RUIM);
+                          CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM);
 
         PowerManager powerManager =
                 (PowerManager)phone.getContext().getSystemService(Context.POWER_SERVICE);
@@ -255,7 +255,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      * @param source - 1 for NV, 0 for RUIM
      */
     private void saveCdmaSubscriptionSource(int source) {
-        Log.d(LOG_TAG, "Storing cdma subscription source: " + source);
+        log("Storing cdma subscription source: " + source);
         Secure.putInt(phone.getContext().getContentResolver(),
                 Secure.CDMA_SUBSCRIPTION_MODE,
                 source );
@@ -275,8 +275,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         String[] strings;
 
         if (!phone.mIsTheCurrentActivePhone) {
-            Log.e(LOG_TAG, "Received message " + msg +
-                    "[" + msg.what + "] while being destroyed. Ignoring.");
+            loge("Received message " + msg + "[" + msg.what + "]" +
+                    " while being destroyed. Ignoring.");
             return;
         }
 
@@ -485,8 +485,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     //***** Private Instance Methods
 
     private void handleCdmaSubscriptionSource(int newSubscriptionSource) {
-        Log.v(LOG_TAG, "Subscription Source : " + newSubscriptionSource);
-        isSubscriptionFromRuim = (newSubscriptionSource == RILConstants.SUBSCRIPTION_FROM_RUIM);
+        log("Subscription Source : " + newSubscriptionSource);
+        isSubscriptionFromRuim =
+            (newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM);
         saveCdmaSubscriptionSource(newSubscriptionSource);
         if (!isSubscriptionFromRuim) {
             // NV is ready when subscription source is NV
@@ -963,7 +964,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
 
         if (hasChanged) {
-            if ((!cm.getRadioState().isOn()) && (!isSubscriptionFromRuim)) {
+            if ((cm.getRadioState().isOn()) && (!isSubscriptionFromRuim)) {
                 String eriText;
                 // Now the CDMAPhone sees the new ServiceState so it can get the new ERI text
                 if (ss.getState() == ServiceState.STATE_IN_SERVICE) {

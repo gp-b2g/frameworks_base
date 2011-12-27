@@ -70,58 +70,6 @@ public interface CommandsInterface {
         }
     }
 
-    public enum RadioTechnology {
-        RADIO_TECH_UNKNOWN,
-        RADIO_TECH_GPRS,
-        RADIO_TECH_EDGE,
-        RADIO_TECH_UMTS,
-        RADIO_TECH_IS95A,
-        RADIO_TECH_IS95B,
-        RADIO_TECH_1xRTT,
-        RADIO_TECH_EVDO_0,
-        RADIO_TECH_EVDO_A,
-        RADIO_TECH_HSDPA,
-        RADIO_TECH_HSUPA,
-        RADIO_TECH_HSPA,
-        RADIO_TECH_EVDO_B,
-        RADIO_TECH_EHRPD,
-        RADIO_TECH_LTE,
-        RADIO_TECH_HSPAP,
-        RADIO_TECH_GSM;
-
-        public boolean isUnknown() {
-            return this == RADIO_TECH_UNKNOWN;
-        }
-
-        public boolean isGsm() {
-            return this == RADIO_TECH_GPRS || this == RADIO_TECH_EDGE || this == RADIO_TECH_UMTS
-                    || this == RADIO_TECH_HSDPA || this == RADIO_TECH_HSUPA
-                    || this == RADIO_TECH_HSPA || this == RADIO_TECH_LTE
-                    || this == RADIO_TECH_HSPAP || this == RADIO_TECH_GSM;
-        }
-
-        public boolean isCdma() {
-            return this == RADIO_TECH_IS95A || this == RADIO_TECH_IS95B || this == RADIO_TECH_1xRTT
-                    || this == RADIO_TECH_EVDO_0 || this == RADIO_TECH_EVDO_A
-                    || this == RADIO_TECH_EVDO_B || this == RADIO_TECH_EHRPD;
-        }
-
-        public boolean isEvdo() {
-            return this == RADIO_TECH_EVDO_0 || this == RADIO_TECH_EVDO_A
-                    || this == RADIO_TECH_EVDO_B;
-        }
-
-        public static RadioTechnology getRadioTechFromInt(int techInt) {
-            RadioTechnology rt = RADIO_TECH_UNKNOWN;
-            try {
-                rt = values()[techInt];
-            } catch (IndexOutOfBoundsException e) {
-                Log.e("RIL", "Invalid radio technology : " + techInt);
-            }
-            return rt;
-        }
-    }
-
     //***** Constants
 
     // Used as parameter to dial() and setCLIR() below

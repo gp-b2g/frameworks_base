@@ -436,10 +436,11 @@ public class CdmaConnection extends Connection {
                 } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
                         || serviceState == ServiceState.STATE_EMERGENCY_ONLY) {
                     return DisconnectCause.OUT_OF_SERVICE;
-                } else if (phone.mCdmaSubscriptionSource == RILConstants.SUBSCRIPTION_FROM_RUIM &&
-                        (phone.getUiccApplication() == null ||
-                        phone.getUiccApplication().getState() !=
-                            IccCardApplicationStatus.AppState.APPSTATE_READY)) {
+                } else if (phone.mCdmaSubscriptionSource ==
+                               CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM
+                           && (phone.getUiccApplication() == null ||
+                               phone.getUiccApplication().getState() !=
+                                    IccCardApplicationStatus.AppState.APPSTATE_READY)) {
                     return DisconnectCause.ICC_ERROR;
                 } else if (causeCode==CallFailCause.NORMAL_CLEARING) {
                     return DisconnectCause.NORMAL;

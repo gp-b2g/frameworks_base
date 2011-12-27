@@ -192,7 +192,8 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
         int psState = mCdmaPhone.mSST.getCurrentDataConnectionState();
         boolean roaming = (mPhone.getServiceState().getRoaming() && !getDataOnRoamingEnabled());
         boolean desiredPowerState = mCdmaPhone.mSST.getDesiredPowerState();
-        boolean subscriptionFromNv = (mCdmaSSM.getCdmaSubscriptionSource() == RILConstants.SUBSCRIPTION_FROM_NV);
+        boolean subscriptionFromNv = (mCdmaSSM.getCdmaSubscriptionSource()
+                                       == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV);
 
         boolean allowed = true;
 
@@ -952,7 +953,8 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
                 break;
 
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
-                if(mCdmaSSM.getCdmaSubscriptionSource() == RILConstants.SUBSCRIPTION_FROM_NV) {
+                if(mCdmaSSM.getCdmaSubscriptionSource() ==
+                       CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV) {
                     onNVReady();
                 }
                 break;

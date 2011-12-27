@@ -31,7 +31,6 @@ import android.util.Log;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.gsm.SIMRecords;
-import com.android.internal.telephony.CommandsInterface.RadioTechnology;
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.IccCardStatus.CardState;

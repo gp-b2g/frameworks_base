@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.cdma;
 
-import com.android.internal.telephony.CommandsInterface.RadioTechnology;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
@@ -44,7 +43,6 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     CDMALTEPhone mCdmaLtePhone;
 
     private ServiceState  mLteSS;  // The last LTE state from Voice Registration
-    private boolean mNeedToRegForSimLoaded = true;
 
     public CdmaLteServiceStateTracker(CDMALTEPhone phone) {
         super(phone);
@@ -428,8 +426,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
     @Override
     public boolean isConcurrentVoiceAndDataAllowed() {
-        if (RadioTechnology.getRadioTechFromInt(mLteSS.getRadioTechnology()) !=
-                    RadioTechnology.RADIO_TECH_1xRTT)
+        if (mLteSS.getRadioTechnology() != ServiceState.RADIO_TECHNOLOGY_1xRTT)
             return SystemProperties.getBoolean(TelephonyProperties.PROPERTY_SVDATA, false);
         else
             return (mLteSS.getCssIndicator() == 1);

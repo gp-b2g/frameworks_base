@@ -34,7 +34,6 @@ import com.android.internal.telephony.UiccCard;
 import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.UiccManager.AppFamily;
-import com.android.internal.telephony.CommandsInterface.RadioTechnology;
 
 import android.app.AlarmManager;
 import android.app.AlertDialog;
@@ -584,8 +583,7 @@ class GsmServiceStateTracker extends ServiceStateTracker {
 
     private int getLacOrTac() {
         int lactac = -1;
-        if ((RadioTechnology.getRadioTechFromInt
-                (mDataRadioTechnology) == RadioTechnology.RADIO_TECH_LTE) &&
+        if ((mDataRadioTechnology == ServiceState.RADIO_TECHNOLOGY_LTE) &&
                 (gprsState == ServiceState.STATE_IN_SERVICE) &&
                 (mTAC >= 0)) {
             lactac = mTAC;

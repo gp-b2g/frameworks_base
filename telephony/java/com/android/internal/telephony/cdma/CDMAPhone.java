@@ -99,14 +99,11 @@ public class CDMAPhone extends PhoneBase {
     CdmaSubscriptionSourceManager mCdmaSSM;
     ArrayList <CdmaMmiCode> mPendingMmis = new ArrayList<CdmaMmiCode>();
     RuimPhoneBookInterfaceManager mRuimPhoneBookInterfaceManager;
-    int mCdmaSubscriptionSource = CDMA_SUBSCRIPTION_NV;
+    int mCdmaSubscriptionSource = CdmaSubscriptionSourceManager.SUBSCRIPTION_SOURCE_UNKNOWN;
     PhoneSubInfo mSubInfo;
     EriManager mEriManager;
     WakeLock mWakeLock;
     UiccCard mRuimCard = null;
-
-    // mNvLoadedRegistrants are informed after the EVENT_NV_READY
-    private final RegistrantList mNvLoadedRegistrants = new RegistrantList();
 
     // mEriFileLoadedRegistrants are informed after the ERI text has been loaded
     private final RegistrantList mEriFileLoadedRegistrants = new RegistrantList();
@@ -1038,8 +1035,6 @@ public class CDMAPhone extends PhoneBase {
 
             case EVENT_NV_READY:{
                 Log.d(LOG_TAG, "Event EVENT_NV_READY Received");
-                //Inform the Service State Tracker
-                mNvLoadedRegistrants.notifyRegistrants();
                 prepareEri();
             }
             break;
@@ -1127,15 +1122,6 @@ public class CDMAPhone extends PhoneBase {
      */
     public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager() {
         return mRuimPhoneBookInterfaceManager;
-    }
-
-    public void registerForNvLoaded(Handler h, int what, Object obj) {
-        Registrant r = new Registrant (h, what, obj);
-        mNvLoadedRegistrants.add(r);
-    }
-
-    public void unregisterForNvLoaded(Handler h) {
-        mNvLoadedRegistrants.remove(h);
     }
 
     public void registerForEriFileLoaded(Handler h, int what, Object obj) {

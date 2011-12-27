@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.cdma;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.RILConstants;
 
@@ -39,15 +41,21 @@ public class CdmaSubscriptionSourceManager extends Handler {
     private static final int EVENT_SUBSCRIPTION_STATUS_CHANGED      = 4;
     private static final int SUBSCRIPTION_ACTIVATED                 = 1;
 
+    public static final int SUBSCRIPTION_SOURCE_UNKNOWN = -1;
+    public static final int SUBSCRIPTION_FROM_RUIM      = 0; /* CDMA subscription from RUIM */
+    public static final int SUBSCRIPTION_FROM_NV        = 1; /* CDMA subscription from NV */
+    public static final int PREFERRED_CDMA_SUBSCRIPTION = SUBSCRIPTION_FROM_NV;
+
     // ***** Instance Variables
     private static CdmaSubscriptionSourceManager sInstance;
     private CommandsInterface mCM;
     private Context mContext;
     private RegistrantList mCdmaSubscriptionSourceChangedRegistrants = new RegistrantList();
-    private int mRef = 0;
+    private static final Object sReferenceCountMonitor = new Object();
+    private static int sReferenceCount = 0;
 
     // Type of CDMA subscription source
-    private int mCdmaSubscriptionSource = RILConstants.SUBSCRIPTION_FROM_NV;
+    private AtomicInteger mCdmaSubscriptionSource = new AtomicInteger(SUBSCRIPTION_FROM_NV);
 
     // Constructor
     private CdmaSubscriptionSourceManager(Context context, CommandsInterface ci) {
@@ -64,12 +72,14 @@ public class CdmaSubscriptionSourceManager extends Handler {
      *
      * @return object of type CdmaSubscriptionSourceManager
      */
-    public synchronized static CdmaSubscriptionSourceManager getInstance(Context context,
-           CommandsInterface ci, Handler h, int what, Object obj) {
-        if (null == sInstance) {
-            sInstance = new CdmaSubscriptionSourceManager(context, ci);
+    public static CdmaSubscriptionSourceManager getInstance(Context context,
+            CommandsInterface ci, Handler h, int what, Object obj) {
+        synchronized (sReferenceCountMonitor) {
+            if (null == sInstance) {
+                sInstance = new CdmaSubscriptionSourceManager(context, ci);
+            }
+            sInstance.sReferenceCount++;
         }
-        sInstance.mRef++;
         sInstance.registerForCdmaSubscriptionSourceChanged(h, what, obj);
         return sInstance;
     }
@@ -77,14 +87,16 @@ public class CdmaSubscriptionSourceManager extends Handler {
     /**
      * Unregisters for the registered event with RIL
      */
-    public synchronized void dispose(Handler h) {
+    public void dispose(Handler h) {
         mCdmaSubscriptionSourceChangedRegistrants.remove(h);
-        mRef--;
-        if (mRef <= 0) {
-            mCM.unregisterForCdmaSubscriptionChanged(this);
-            mCM.unregisterForOn(this);
-            mCM.unregisterForSubscriptionStatusChanged(this);
-            sInstance = null;
+        synchronized (sReferenceCountMonitor) {
+            sReferenceCount--;
+            if (sReferenceCount <= 0) {
+                mCM.unregisterForCdmaSubscriptionChanged(this);
+                mCM.unregisterForOn(this);
+                mCM.unregisterForSubscriptionStatusChanged(this);
+                sInstance = null;
+            }
         }
     }
 
@@ -99,7 +111,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
             case EVENT_GET_CDMA_SUBSCRIPTION_SOURCE:
             {
-                Log.d(LOG_TAG, "CDMA_SUBSCRIPTION_SOURCE event = " + msg.what);
+                log("CDMA_SUBSCRIPTION_SOURCE event = " + msg.what);
                 ar = (AsyncResult) msg.obj;
                 handleGetCdmaSubscriptionSource(ar);
             }
@@ -134,7 +146,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
      * @return CDMA subscription source value
      */
     public int getCdmaSubscriptionSource() {
-        return mCdmaSubscriptionSource;
+        return mCdmaSubscriptionSource.get();
     }
 
     /**
@@ -145,13 +157,15 @@ public class CdmaSubscriptionSourceManager extends Handler {
      */
     private int getDefaultCdmaSubscriptionSource() {
         // Get the default value from the Settings
-        mCdmaSubscriptionSource = Settings.Secure.getInt(mContext.getContentResolver(),
-                Settings.Secure.CDMA_SUBSCRIPTION_MODE, RILConstants.PREFERRED_CDMA_SUBSCRIPTION);
-        return mCdmaSubscriptionSource;
+        int subscriptionSource = Settings.Secure.getInt(mContext.getContentResolver(),
+                Settings.Secure.CDMA_SUBSCRIPTION_MODE, PREFERRED_CDMA_SUBSCRIPTION);
+        mCdmaSubscriptionSource.set(subscriptionSource);
+        return subscriptionSource;
     }
 
     /**
-     * Allows clients to register for CDMA subscription source changed event
+     * Clients automatically register for CDMA subscription source changed event
+     * when they get an instance of this object.
      */
     private void registerForCdmaSubscriptionSourceChanged(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
@@ -168,10 +182,10 @@ public class CdmaSubscriptionSourceManager extends Handler {
         if ((ar.exception == null) && (ar.result != null)) {
             int newSubscriptionSource = ((int[]) ar.result)[0];
 
-            if (newSubscriptionSource != mCdmaSubscriptionSource) {
-                Log.v(LOG_TAG, "Subscription Source Changed : " + mCdmaSubscriptionSource + " >> "
+            if (newSubscriptionSource != mCdmaSubscriptionSource.get()) {
+                log("Subscription Source Changed : " + mCdmaSubscriptionSource + " >> "
                         + newSubscriptionSource);
-                mCdmaSubscriptionSource = newSubscriptionSource;
+                mCdmaSubscriptionSource.set(newSubscriptionSource);
 
                 // Notify registrants of the new CDMA subscription source
                 mCdmaSubscriptionSourceChangedRegistrants.notifyRegistrants(new AsyncResult(null,
@@ -182,8 +196,21 @@ public class CdmaSubscriptionSourceManager extends Handler {
             // because modem created GSM Phone. If modem created
             // GSMPhone, then PhoneProxy will trigger a change in
             // Phone objects and this object will be destroyed.
-            Log.w(LOG_TAG, "Unable to get CDMA Subscription Source, Exception: " + ar.exception
+            logw("Unable to get CDMA Subscription Source, Exception: " + ar.exception
                     + ", result: " + ar.result);
         }
     }
+
+    private void log(String s) {
+        Log.d(LOG_TAG, "[CdmaSSM] " + s);
+    }
+
+    private void loge(String s) {
+        Log.e(LOG_TAG, "[CdmaSSM] " + s);
+    }
+
+    private void logw(String s) {
+        Log.w(LOG_TAG, "[CdmaSSM] " + s);
+    }
+
 }

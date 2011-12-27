@@ -29,14 +29,13 @@ import android.os.SystemProperties;
 import android.util.Log;
 import android.telephony.TelephonyManager;
 
-import com.android.internal.telephony.CommandsInterface.RadioTechnology;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.IccCardStatus.CardState;
 import com.android.internal.telephony.IccCardStatus.PinState;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.UiccManager.AppFamily;
-import static com.android.internal.telephony.Phone.CDMA_SUBSCRIPTION_NV;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_SIM_STATE;
 
 /*
@@ -111,13 +110,13 @@ public class IccCardProxy extends Handler implements IccCard {
 
     /*
      * The card application that the external world sees will be based on the
-     * voice radio technology only!
+     * phone type only!
      */
-    public void setVoiceRadioTech(RadioTechnology radioTech) {
-        log("Setting radio tech " + radioTech);
-        if (radioTech.isGsm()) {
+    public void setPhoneType(int phoneType) {
+        log("Setting Phone Type " + phoneType);
+        if (phoneType == Phone.PHONE_TYPE_GSM) {
             mCurrentAppType = AppFamily.APP_FAM_3GPP;
-        } else {
+        } else if (phoneType == Phone.PHONE_TYPE_CDMA) {
             mCurrentAppType = AppFamily.APP_FAM_3GPP2;
         }
         updateQuietMode();
@@ -140,7 +139,8 @@ public class IccCardProxy extends Handler implements IccCard {
             //mInitialized = false;
             //handleCdmaSubscriptionSource();
             int newSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
-            mCdmaSubscriptionFromNv = newSubscriptionSource == CDMA_SUBSCRIPTION_NV;
+            mCdmaSubscriptionFromNv =
+                newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV;
             if (mCdmaSubscriptionFromNv && mIsMultimodeCdmaPhone) {
                 log("Cdma multimode phone detected. Forcing IccCardProxy into 3gpp mode");
                 mCurrentAppType = AppFamily.APP_FAM_3GPP;
