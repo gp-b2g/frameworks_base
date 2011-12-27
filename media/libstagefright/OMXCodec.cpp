@@ -2721,6 +2721,11 @@ void OMXCodec::on_message(const omx_message &msg) {
             }
 
             info->mStatus = OWNED_BY_US;
+            if (mState == ERROR) {
+              CODEC_LOGV("mState ERROR, freeing o/p buffer %p", buffer);
+              status_t err = freeBuffer(kPortIndexOutput, i);
+              CHECK_EQ(err, (status_t)OK);
+            }
 
             if (mPortStatus[kPortIndexOutput] == DISABLING) {
                 CODEC_LOGV("Port is disabled, freeing buffer %p", buffer);
@@ -4523,7 +4528,8 @@ status_t OMXCodec::stop() {
             OMX_STATETYPE state = OMX_StateInvalid;
             status_t err = mOMX->getState(mNode, &state);
             CHECK_EQ(err, (status_t)OK);
-
+            err = freeBuffersOnPort(kPortIndexOutput, true);
+            CHECK_EQ(err, (status_t)OK);
             if (state != OMX_StateExecuting) {
                 break;
             }
