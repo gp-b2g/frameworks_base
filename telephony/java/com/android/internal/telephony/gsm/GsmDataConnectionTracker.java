@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,6 +70,7 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.UiccCard;
 import com.android.internal.telephony.UiccManager.AppFamily;
+import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.util.AsyncChannel;
 
 import java.util.ArrayList;
@@ -149,6 +150,11 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
     private static final boolean SUPPORT_MPDN = SystemProperties.getBoolean(
             "persist.telephony.mpdn", true);
 
+    // Holds the cdma operator numeric.  Used only in case of CDMA NV eHRPD case.
+    // The value is from the property ro.cdma.home.operator.numeric
+    private String mCdmaHomeOperatorNumeric = SystemProperties.get(
+            "ro.cdma.home.operator.numeric", null);
+
     @Override
     protected void onActionIntentReconnectAlarm(Intent intent) {
         if (DBG) log("GPRS reconnect alarm. Previous state was " + mState);
@@ -173,6 +179,8 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
 
     /** Watches for changes to the APN db. */
     private ApnChangeObserver mApnObserver;
+
+    private CdmaSubscriptionSourceManager mCdmaSSM;
 
     //***** Constructor
 
@@ -200,6 +208,9 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         filter.addAction(INTENT_DATA_STALL_ALARM);
         p.getContext().registerReceiver(mIntentReceiver, filter, null, p);
 
+        mCdmaSSM = CdmaSubscriptionSourceManager.getInstance (p.getContext(), p.mCM, this,
+                EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
+
         mDataConnectionTracker = this;
         mResolver = mPhone.getContext().getContentResolver();
 
@@ -212,6 +223,16 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         broadcastMessenger();
 
         log("SUPPORT_MPDN = " + SUPPORT_MPDN);
+        log("mCdmaHomeOperatorNumeric = " + mCdmaHomeOperatorNumeric);
+
+        boolean subscriptionFromNv = (mCdmaSSM.getCdmaSubscriptionSource()
+                == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV);
+        int radioTech  = mPhone.getServiceState().getRadioTechnology();
+        if (subscriptionFromNv && radioTech == ServiceState.RADIO_TECHNOLOGY_EHRPD &&
+                mCdmaHomeOperatorNumeric != null) {
+            if (DBG) log("Subscription from NV and EHRPD: createAllApnList");
+            createAllApnList();
+        }
     }
 
     @Override
@@ -625,10 +646,16 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         int gprsState = mPhone.getServiceStateTracker().getCurrentDataConnectionState();
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
         boolean recordsLoaded = (mIccRecords != null) ? mIccRecords.getRecordsLoaded() : false;
+        boolean subscriptionFromNv = (mCdmaSSM.getCdmaSubscriptionSource()
+                == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV);
+        int radioTech  = mPhone.getServiceState().getRadioTechnology();
 
         boolean allowed =
                     (gprsState == ServiceState.STATE_IN_SERVICE || mAutoAttachOnCreation) &&
-                    recordsLoaded &&
+                    ((subscriptionFromNv &&
+                      radioTech == ServiceState.RADIO_TECHNOLOGY_EHRPD &&
+                      mCdmaHomeOperatorNumeric != null) ||
+                     recordsLoaded) &&
                     (mPhone.getState() == Phone.State.IDLE ||
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
                     internalDataEnabled &&
@@ -640,7 +667,10 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
             if (!((gprsState == ServiceState.STATE_IN_SERVICE) || mAutoAttachOnCreation)) {
                 reason += " - gprs= " + gprsState;
             }
-            if (!recordsLoaded) reason += " - SIM not loaded";
+            if (subscriptionFromNv && radioTech == ServiceState.RADIO_TECHNOLOGY_EHRPD &&
+                    mCdmaHomeOperatorNumeric == null)
+                reason += " - Cdma Home Operator Numeric not available";
+            if (!subscriptionFromNv && !recordsLoaded) reason += " - SIM not loaded";
             if (mPhone.getState() != Phone.State.IDLE &&
                     !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
                 reason += " - PhoneState= " + mPhone.getState();
@@ -2186,8 +2216,8 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
      */
     private void createAllApnList() {
         mAllApns = new ArrayList<DataProfile>();
-        String operator = mIccRecords == null ?
-                        null : mIccRecords.getOperatorNumeric();
+        String operator = getOperatorNumeric();
+
         if (operator != null) {
             String selection = "numeric = '" + operator + "'";
             // query only enabled apn.
@@ -2298,7 +2328,7 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
             }
         }
 
-        String operator = (mIccRecords != null) ? mIccRecords.getOperatorNumeric() : "";
+        String operator = getOperatorNumeric();
         int radioTech = mPhone.getServiceState().getRadioTechnology();
 
         if (requestedApnType.equals(Phone.APN_TYPE_DEFAULT)) {
@@ -2417,6 +2447,16 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         switch (msg.what) {
             case EVENT_RECORDS_LOADED:
                 onRecordsLoaded();
+                break;
+
+            case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
+                int radioTech  = mPhone.getServiceState().getRadioTechnology();
+                if (radioTech == ServiceState.RADIO_TECHNOLOGY_EHRPD) {
+                    // Update the APN list based on the operator numeric from
+                    // ro.cdma.home.operator.numeric(in case of NV), or from the
+                    // icc record(in case of RUIM) and try setup data on the new APNs.
+                    onRecordsLoaded();
+                }
                 break;
 
             case EVENT_DATA_CONNECTION_DETACHED:
@@ -2559,6 +2599,16 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
     protected void setDataReadinessChecks(
             boolean checkConnectivity, boolean checkSubscription, boolean tryDataCalls) {
         // Not used for GSM
+    }
+
+    private String getOperatorNumeric() {
+        int radioTech = mPhone.getServiceState().getRadioTechnology();
+        boolean subscriptionFromNv = (mCdmaSSM.getCdmaSubscriptionSource()
+                == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV);
+        if (subscriptionFromNv && radioTech == ServiceState.RADIO_TECHNOLOGY_EHRPD) {
+            return mCdmaHomeOperatorNumeric;
+        }
+        return (mIccRecords == null ? null : mIccRecords.getOperatorNumeric());
     }
 
     @Override
