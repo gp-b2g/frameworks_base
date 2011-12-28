@@ -1215,7 +1215,7 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
             DataConnectionAc dcac = dataCallStateToDcac.get(newState);
 
             if (dcac == null) {
-                loge("onDataStateChanged(ar): No associated DataConnection ignore");
+                if (VDBG) loge("onDataStateChanged(ar): No associated DataConnection ignore");
                 continue;
             }
 
