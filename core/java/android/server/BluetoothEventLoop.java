@@ -760,7 +760,8 @@ class BluetoothEventLoop {
 
         int sapState;
         if(state.equals("Connected")) {
-                sapState = 1;
+                /*2 corresponds to CONNECTED*/
+                sapState = 2;
         } else  {
                 sapState = 0;
         }
