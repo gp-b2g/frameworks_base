@@ -390,8 +390,11 @@ uint32_t OMXCodec::getComponentQuirks(
     if (!strcmp(componentName, "OMX.qcom.audio.decoder.aac")) {
         quirks |= kRequiresAllocateBufferOnInputPorts;
         quirks |= kRequiresAllocateBufferOnOutputPorts;
+        LOGV("setting kRequiresGlobalFlush for AAC");
+        quirks |= kRequiresGlobalFlush;
     }
 #endif
+
     if (!strcmp(componentName, "OMX.qcom.audio.encoder.evrc")) {
         quirks |= kRequiresAllocateBufferOnInputPorts;
         quirks |= kRequiresAllocateBufferOnOutputPorts;
@@ -407,10 +410,41 @@ uint32_t OMXCodec::getComponentQuirks(
        quirks |= kRequiresGlobalFlush;
     }
 
+    if(!strcmp(componentName, "OMX.qcom.audio.decoder.Qcelp13Hw"))  {
+       LOGV("setting kRequiresGlobalFlush for QCELPHw");
+       quirks |= kRequiresGlobalFlush;
+    }
+
     if(!strcmp(componentName, "OMX.qcom.audio.decoder.evrc"))  {
        LOGV("setting kRequiresGlobalFlush for EVRC");
        quirks |= kRequiresGlobalFlush;
     }
+
+    if(!strcmp(componentName, "OMX.qcom.audio.decoder.evrchw"))  {
+       LOGV("setting kRequiresGlobalFlush for EVRCHw");
+       quirks |= kRequiresGlobalFlush;
+    }
+
+    if(!strcmp(componentName, "OMX.qcom.audio.decoder.mp3"))  {
+       LOGV("setting kRequiresGlobalFlush for MP3");
+       quirks |= kRequiresGlobalFlush;
+    }
+
+    if(!strcmp(componentName, "OMX.qcom.audio.decoder.wma"))  {
+       LOGV("setting kRequiresGlobalFlush for WMA");
+       quirks |= kRequiresGlobalFlush;
+    }
+
+    if(!strcmp(componentName, "OMX.qcom.audio.decoder.wma10Pro"))  {
+       LOGV("setting kRequiresGlobalFlush for WMA10Pro");
+       quirks |= kRequiresGlobalFlush;
+    }
+
+    if(!strcmp(componentName, "OMX.qcom.audio.decoder.wmaLossLess"))  {
+       LOGV("setting kRequiresGlobalFlush for WMALossLess");
+       quirks |= kRequiresGlobalFlush;
+    }
+
     if (!strncmp(componentName, "OMX.qcom.video.encoder.", 23)) {
         quirks |= kRequiresLoadedToIdleAfterAllocation;
         quirks |= kRequiresAllocateBufferOnInputPorts;
