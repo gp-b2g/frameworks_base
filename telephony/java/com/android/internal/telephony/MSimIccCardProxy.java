@@ -225,10 +225,6 @@ public class MSimIccCardProxy extends IccCardProxy {
         intent.putExtra(INTENT_KEY_ICC_STATE, value);
         intent.putExtra(INTENT_KEY_LOCKED_REASON, reason);
 
-        if (mSubscriptionData != null) {
-            subId = mSubscriptionData.subId;
-        }
-
         intent.putExtra(MSimConstants.SUBSCRIPTION_KEY, subId);
         log("Broadcasting intent ACTION_SIM_STATE_CHANGED " +  value
             + " reason " + reason + " for subscription : " + subId);
@@ -241,10 +237,8 @@ public class MSimIccCardProxy extends IccCardProxy {
             return;
         }
         mExternalState = newState;
-        if (mSubscriptionData != null) {
-            MSimTelephonyManager.setTelephonyProperty
-                (PROPERTY_SIM_STATE, mSubscriptionData.subId, getState().toString());
-        }
+        MSimTelephonyManager.setTelephonyProperty(PROPERTY_SIM_STATE,
+                mCardIndex, getState().toString());
         broadcastIccStateChangedIntent(mExternalState.getIntentString(), null);
     }
 

@@ -49,7 +49,7 @@ public final class Subscription {
             SUB_INVALID
     }
 
-    public static final int SUBSCRIPTION_INDEX_INVALID = 9999;
+    public static final int SUBSCRIPTION_INDEX_INVALID = -1;
 
     public Subscription() {
         clear();
