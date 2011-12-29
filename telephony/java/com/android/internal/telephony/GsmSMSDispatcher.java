@@ -562,11 +562,15 @@ final class GsmSMSDispatcher extends SMSDispatcher {
         if (isEmergencyMessage) {
             Intent broadcastIntent = new Intent(Intents.SMS_EMERGENCY_CB_RECEIVED_ACTION);
             broadcastIntent.putExtra("pdus", pdus);
+            broadcastIntent.putExtra(MSimConstants.SUBSCRIPTION_KEY,
+                  mPhone.getSubscription());
             Log.d(TAG, "Dispatching " + pdus.length + " emergency SMS CB pdus");
             dispatch(broadcastIntent, RECEIVE_EMERGENCY_BROADCAST_PERMISSION);
         } else {
             Intent broadcastIntent = new Intent(Intents.SMS_CB_RECEIVED_ACTION);
             broadcastIntent.putExtra("pdus", pdus);
+            broadcastIntent.putExtra(MSimConstants.SUBSCRIPTION_KEY,
+                  mPhone.getSubscription());
             Log.d(TAG, "Dispatching " + pdus.length + " SMS CB pdus");
             dispatch(broadcastIntent, RECEIVE_SMS_PERMISSION);
         }
