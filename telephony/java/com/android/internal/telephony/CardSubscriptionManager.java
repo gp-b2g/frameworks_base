@@ -198,7 +198,7 @@ public class CardSubscriptionManager extends Handler {
 
             case EVENT_ICC_CHANGED:
                 logd("EVENT_ICC_CHANGED");
-                handleIccChanged((AsyncResult) msg.obj, false);
+                handleIccChanged((AsyncResult) msg.obj);
                 break;
 
             case EVENT_GET_ICCID_DONE:
@@ -269,11 +269,11 @@ public class CardSubscriptionManager extends Handler {
     /**
      * Process the ICC_CHANGED notification.
      */
-    private void handleIccChanged(AsyncResult ar, boolean triggerUpdate) {
+    private void handleIccChanged(AsyncResult ar) {
         boolean iccIdsAvailable = false;
         boolean cardStateChanged = false;
 
-        logd("handleIccChanged(" + triggerUpdate + "): MultiSIM Enabled");
+        logd("handleIccChanged: ENTER");
 
         if ((ar.exception == null) && (ar.result != null)) {
             Integer cardIndex = (Integer) ar.result;
@@ -313,20 +313,18 @@ public class CardSubscriptionManager extends Handler {
                 mUiccCardList.set(cardIndex, new CardInfo(uiccCard));
             }
 
-            iccIdsAvailable = isIccIdAvailable(cardIndex);
-            if (!iccIdsAvailable) {
+            CardInfo cardInfo = mUiccCardList.get(cardIndex);
+            logd("handleIccChanged: cardStateChanged = " + cardStateChanged
+                    + " card info = " + cardInfo);
+            // Read ICCID if it is not present otherwise update the card info
+            if (cardInfo.getCardState() == CardState.CARDSTATE_PRESENT
+                    && cardInfo.getIccId() == null) {
                 updateIccIds(cardIndex);
-            }
-
-            logd("handleIccChanged: MultiSIM Enabled : "
-                    + " triggerUpdate = " + triggerUpdate
-                    + " cardStateChanged = " + cardStateChanged
-                    + " iccIdsAvailable = " + iccIdsAvailable);
-
-            if ((triggerUpdate || cardStateChanged) && iccIdsAvailable) {
+            } else if (cardStateChanged) {
                 updateUiccStatus(cardIndex, "ICC STATUS CHANGED");
             }
         }
+        logd("handleIccChanged: EXIT");
     }
 
     /**
@@ -637,6 +635,11 @@ public class CardSubscriptionManager extends Handler {
             }
         }
         return true;
+    }
+
+    public boolean isAbsent(int cardIndex) {
+        CardInfo cardInfo = mUiccCardList.get(cardIndex);
+        return (cardInfo.getCardState() == CardState.CARDSTATE_ABSENT);
     }
 
     public boolean isAllCardsUpdated() {

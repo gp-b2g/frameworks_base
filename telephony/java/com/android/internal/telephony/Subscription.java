@@ -70,17 +70,17 @@ public final class Subscription {
 
     public boolean equals(Subscription sub) {
         if (sub != null) {
-            if ((slotId == sub.slotId) && (m3gppIndex == sub.m3gppIndex) &&
-                    (m3gpp2Index == sub.m3gpp2Index) && (subId == sub.subId) &&
-                    (subStatus == sub.subStatus) &&
-                    ((appId == null && sub.appId == null) ||
-                     (appId != null && appId.equals(sub.appId))) &&
-                    ((appLabel == null && sub.appLabel == null) ||
-                     (appLabel != null && appLabel.equals(sub.appLabel))) &&
-                    ((appType == null && sub.appType == null) ||
-                     (appType != null && appType.equals(sub.appType))) &&
-                    ((iccId == null && sub.iccId == null) ||
-                     (iccId != null && iccId.equals(sub.iccId)))){
+            if ((slotId == sub.slotId) && (m3gppIndex == sub.m3gppIndex)
+                    && (m3gpp2Index == sub.m3gpp2Index) && (subId == sub.subId)
+                    && (subStatus == sub.subStatus)
+                    && ((TextUtils.isEmpty(appId) && TextUtils.isEmpty(sub.appId))
+                            || TextUtils.equals(appId, sub.appId))
+                    && ((TextUtils.isEmpty(appLabel) && TextUtils.isEmpty(sub.appLabel))
+                            || TextUtils.equals(appLabel, sub.appLabel))
+                    && ((TextUtils.isEmpty(appType) && TextUtils.isEmpty(sub.appType))
+                            || TextUtils.equals(appType, sub.appType))
+                    && ((TextUtils.isEmpty(iccId) && TextUtils.isEmpty(sub.iccId))
+                            || TextUtils.equals(iccId, sub.iccId))) {
                 return true;
             }
         } else {
