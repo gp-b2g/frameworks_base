@@ -53,7 +53,7 @@
 namespace android {
 
 enum uevent_action { action_add, action_remove, action_change,
-                                  action_online, action_offline, action_audio_on, action_audio_off, action_no_broadcast_online };
+                                  action_online, action_offline, action_audio_on, action_audio_off };
 const int ueventParamMax = 32;
 struct uevent {
     char *path;
@@ -100,7 +100,8 @@ class HDMIDaemon : public Thread, public IBinder::DeathRecipient
     bool writeHPDOption(int userOption) const;
     inline bool isValidMode(int ID);
     bool checkHDCPPresent();
-
+    bool handleAudioOn();
+    bool isHDMIMode();
     int mFrameworkSock;
     int mAcceptedConnection;
     int mUeventSock;

@@ -239,10 +239,6 @@ class HDMIService extends IHDMIService.Stub {
                 mListener.changeDisplayMode(mCurrHDMIMode);
                 mListener.enableHDMIOutput(true);
             }
-            if((mListener.getOnlineBroadcast())) {
-                Log.d(TAG, "Broadcast HDMI connected");
-                broadcastHDMIPluggedEvent(connected);
-            }
         }
     }
 
