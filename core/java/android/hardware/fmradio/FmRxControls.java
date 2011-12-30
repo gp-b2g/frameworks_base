@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -38,6 +38,7 @@ class FmRxControls
    private boolean mStateMute;
    private int mFreq;
 
+   static final int FREQ_MUL = 1000;
    static final int SEEK_FORWARD = 0;
    static final int SEEK_BACKWARD = 1;
    static final int SCAN_FORWARD = 2;
@@ -342,9 +343,9 @@ class FmRxControls
             freq = (tmpFreqByte1 & 0x03) << 8;
             freq |= tmpFreqByte2;
             Log.d(TAG, " freq: " + freq);
-            real_freq  = (float)(freq * 0.05) + lowBand;//tuner.rangelow / FREQ_MUL;
+            real_freq  = (float)(freq * 50) + (lowBand * FREQ_MUL);//tuner.rangelow * FREQ_MUL;
             Log.d(TAG, " real_freq: " + real_freq);
-            stationList[i] = (int)(real_freq*1000);
+            stationList[i] = (int)(real_freq);
             Log.d(TAG, " stationList: " + stationList[i]);
         }
 
