@@ -753,8 +753,13 @@ public final class Telephony {
              *   that make up the message.</li>
              * </ul>
              *
+             *  <ul>
+             *    <li><em>sub_id</em> - The subscription on which this CB SMS is received.</li>
+             *  </ul>
+             *
              * <p>The extra values can be extracted using
              * {@link #getMessagesFromIntent(Intent)}.</p>
+             * {@link #getIntExtra("sub_id")}.</p>
              *
              * <p>If a BroadcastReceiver encounters an error while processing
              * this intent it should set the result code appropriately.</p>
