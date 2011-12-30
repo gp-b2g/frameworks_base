@@ -1946,11 +1946,11 @@ void AwesomePlayer::onVideoEvent() {
             if (diff > 250000) {
                 float fps =((mStats.mTotalFrames - mStats.mLastFrame) * 1E6)/diff;
                 LOGW("Frames per second: %.4f", fps);
-
+                if(mStats.mLastFrameUs != 0)
+                    ++mStats.mStatisticsFrames;
                 mStats.mFPSSumUs += fps;
                 mStats.mLastFrameUs = now;
                 mStats.mLastFrame = mStats.mTotalFrames;
-                ++mStats.mStatisticsFrames;
             }
         }
     }
