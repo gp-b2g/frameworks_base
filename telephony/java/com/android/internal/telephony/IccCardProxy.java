@@ -84,6 +84,7 @@ public class IccCardProxy extends Handler implements IccCard {
                                         // ACTION_SIM_STATE_CHANGED intents
     private boolean mInitialized = false;
     protected IccCard.State mExternalState = State.UNKNOWN;
+    private PersoSubState mPersoSubState = PersoSubState.PERSOSUBSTATE_UNKNOWN;
 
     public IccCardProxy(Context context, CommandsInterface ci) {
         log("Creating");
@@ -197,6 +198,7 @@ public class IccCardProxy extends Handler implements IccCard {
                 broadcastIccStateChangedIntent(INTENT_VALUE_ICC_IMSI, null);
                 break;
             case EVENT_PERSO_LOCKED:
+                mPersoSubState = mUiccApplication.getPersoSubState();
                 mPersoLockedRegistrants.notifyRegistrants((AsyncResult)msg.obj);
                 setExternalState(State.PERSO_LOCKED);
                 break;
@@ -284,6 +286,7 @@ public class IccCardProxy extends Handler implements IccCard {
                 break;
             case APPSTATE_SUBSCRIPTION_PERSO:
                 if (mUiccApplication.isPersoLocked()) {
+                    mPersoSubState = mUiccApplication.getPersoSubState();
                     setExternalState(State.PERSO_LOCKED);
                 } else {
                     setExternalState(State.UNKNOWN);
@@ -474,11 +477,10 @@ public class IccCardProxy extends Handler implements IccCard {
      */
     public void registerForPersoLocked(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
-
         mPersoLockedRegistrants.add(r);
 
         if (getState() == State.PERSO_LOCKED) {
-            r.notifyRegistrant();
+            r.notifyRegistrant(new AsyncResult(null, mPersoSubState.ordinal(), null));
         }
     }
 
