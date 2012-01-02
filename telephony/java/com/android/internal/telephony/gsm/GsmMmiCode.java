@@ -732,6 +732,11 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     return true;
                 }
             }
+
+            if ((dialString.length() <= MAX_LENGTH_SHORT_CODE) &&
+                    (dialString.charAt(0) != '1')) {
+                return true;
+            }
         }
         return false;
     }
