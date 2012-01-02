@@ -605,7 +605,7 @@ public class MSimTelephonyManager extends TelephonyManager {
     @Override
     public void listen(PhoneStateListener listener, int events) {
         if (!isMultiSimEnabled) {
-            listen(listener, events);
+            super.listen(listener, events);
             return;
         }
         String pkgForDebug = sContext != null ? sContext.getPackageName() : "<unknown>";
