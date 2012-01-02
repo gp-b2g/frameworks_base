@@ -79,9 +79,9 @@ public class UiccCard {
     private static final int EVENT_CARD_REMOVED = 13;
     private static final int EVENT_CARD_ADDED = 14;
 
-    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics) {
+    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int slotId) {
         log("Creating");
-        update(c, ci, ics);
+        update(c, ci, ics, slotId);
     }
 
     public void dispose() {
@@ -91,11 +91,14 @@ public class UiccCard {
                 app.dispose();
             }
         }
+        if (mCatService != null) {
+            mCatService.dispose();
+        }
         mCatService = null;
         mUiccApplications = null;
     }
 
-    public void update(Context c, CommandsInterface ci, IccCardStatus ics) {
+    public void update(Context c, CommandsInterface ci, IccCardStatus ics, int slotId) {
         if (mDestroyed) {
             loge("Updated after destroyed! Fix me!");
             return;
@@ -128,11 +131,13 @@ public class UiccCard {
         }
 
         if (mUiccApplications.length > 0 && mUiccApplications[0] != null) {
-            if (mCatService == null)
+            if (mCatService == null) {
                 // Initialize or Reinitialize CatService
-                mCatService = CatService.getInstance(mCi,
-                                                     mContext,
-                                                     this);
+                mCatService = new CatService( mCi, mUiccApplications[0],
+                        mContext, slotId);
+            } else {
+                mCatService.update( mCi, mUiccApplications[0], mContext, slotId);
+            }
         }
         // The following logic does not account for Sim being powered down
         // when we go into air plane mode. Commenting it out till we fix it.
@@ -244,6 +249,10 @@ public class UiccCard {
 
     public CardState getCardState() {
         return mCardState;
+    }
+
+    public CatService getCatService() {
+        return mCatService;
     }
  
     public PinState getUniversalPinState() {

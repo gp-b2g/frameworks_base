@@ -150,10 +150,10 @@ public class UiccManager extends Handler {
 
         if (mUiccCards[index] == null) {
             Log.d(LOG_TAG, "Creating a new card");
-            mUiccCards[index] = new UiccCard(mContext, mCi[index], status);
+            mUiccCards[index] = new UiccCard(mContext, mCi[index], status, index);
         } else {
             Log.d(LOG_TAG, "Update already existing card");
-            mUiccCards[index].update(mContext, mCi[index], status);
+            mUiccCards[index].update(mContext, mCi[index], status, index);
         }
 
         Log.d(LOG_TAG, "Notifying IccChangedRegistrants");

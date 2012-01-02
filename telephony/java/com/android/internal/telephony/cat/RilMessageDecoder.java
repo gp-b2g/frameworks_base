@@ -39,6 +39,7 @@ class RilMessageDecoder extends StateMachine {
     private CommandParamsFactory mCmdParamsFactory = null;
     private RilMessage mCurrentRilMessage = null;
     private Handler mCaller = null;
+    private IconLoader mIconLoader = null;
 
     // States
     private StateStart mStateStart = new StateStart();
@@ -47,13 +48,12 @@ class RilMessageDecoder extends StateMachine {
     /**
      * Get the singleton instance, constructing if necessary.
      *
-     * @param caller
-     * @param fh
+     * @param null
      * @return RilMesssageDecoder
      */
-    public static synchronized RilMessageDecoder getInstance(Handler caller, IccFileHandler fh) {
+    public static synchronized RilMessageDecoder getInstance() {
         if (sInstance == null) {
-            sInstance = new RilMessageDecoder(caller, fh);
+            sInstance = new RilMessageDecoder();
             sInstance.start();
         }
         return sInstance;
@@ -65,7 +65,9 @@ class RilMessageDecoder extends StateMachine {
      *
      * @param rilMsg
      */
-    public void sendStartDecodingMessageParams(RilMessage rilMsg) {
+    public void sendStartDecodingMessageParams(Handler caller, IconLoader iconLoader, RilMessage rilMsg) {
+        mCaller = caller;
+        mIconLoader = iconLoader;
         Message msg = obtainMessage(CMD_START);
         msg.obj = rilMsg;
         sendMessage(msg);
@@ -90,15 +92,14 @@ class RilMessageDecoder extends StateMachine {
         msg.sendToTarget();
     }
 
-    private RilMessageDecoder(Handler caller, IccFileHandler fh) {
+    private RilMessageDecoder() {
         super("RilMessageDecoder");
 
         addState(mStateStart);
         addState(mStateCmdParamsReady);
         setInitialState(mStateStart);
 
-        mCaller = caller;
-        mCmdParamsFactory = CommandParamsFactory.getInstance(this, fh);
+        mCmdParamsFactory = CommandParamsFactory.getInstance(this);
     }
 
     private class StateStart extends State {
@@ -158,7 +159,7 @@ class RilMessageDecoder extends StateMachine {
             }
             try {
                 // Start asynch parsing of the command parameters.
-                mCmdParamsFactory.make(BerTlv.decode(rawData));
+                mCmdParamsFactory.make(BerTlv.decode(rawData), mIconLoader);
                 decodingStarted = true;
             } catch (ResultException e) {
                 // send to Service for proper RIL communication.

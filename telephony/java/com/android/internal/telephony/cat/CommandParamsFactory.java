@@ -74,19 +74,17 @@ class CommandParamsFactory extends Handler {
     private static final int MAX_GSM7_DEFAULT_CHARS = 239;
     private static final int MAX_UCS2_CHARS = 118;
 
-    static synchronized CommandParamsFactory getInstance(RilMessageDecoder caller,
-            IccFileHandler fh) {
+    static synchronized CommandParamsFactory getInstance(RilMessageDecoder caller) {
         if (sInstance != null) {
             return sInstance;
         }
 
-        sInstance = new CommandParamsFactory(caller, fh);
+        sInstance = new CommandParamsFactory(caller);
         return sInstance;
     }
 
-    private CommandParamsFactory(RilMessageDecoder caller, IccFileHandler fh) {
+    private CommandParamsFactory(RilMessageDecoder caller) {
         mCaller = caller;
-        mIconLoader = IconLoader.getInstance(this, fh);
     }
 
     private CommandDetails processCommandDetails(List<ComprehensionTlv> ctlvs) {
@@ -107,11 +105,13 @@ class CommandParamsFactory extends Handler {
         return cmdDet;
     }
 
-    void make(BerTlv berTlv) {
+    void make(BerTlv berTlv, IconLoader iconLoader) {
         if (berTlv == null) {
             return;
         }
+        CatLog.d(this, "IconLoader received: "+ iconLoader);
         // reset global state parameters.
+        mIconLoader = iconLoader;
         mCmdParams = null;
         mIconLoadState = LOAD_NO_ICON;
         // only proactive command messages are processed.

@@ -36,6 +36,7 @@ import java.util.HashMap;
  */
 class IconLoader extends Handler {
     // members
+    private int mSlotId;
     private int mState = STATE_SINGLE_ICON;
     private ImageDescriptor mId = null;
     private Bitmap mCurrentIcon = null;
@@ -49,7 +50,6 @@ class IconLoader extends Handler {
     private Bitmap[] mIcons = null;
     private HashMap<Integer, Bitmap> mIconsCache = null;
 
-    private static IconLoader sLoader = null;
 
     // Loader state values.
     private static final int STATE_SINGLE_ICON = 1;
@@ -68,22 +68,14 @@ class IconLoader extends Handler {
     private static final int CLUT_ENTRY_SIZE = 3;
 
 
-    private IconLoader(Looper looper , IccFileHandler fh) {
-        super(looper);
+    public IconLoader(IccFileHandler fh, int slotId) {
+        super();
+        mSlotId = slotId;
+        HandlerThread thread = new HandlerThread("Cat Icon Loader");
+        thread.start();
         mSimFH = fh;
 
         mIconsCache = new HashMap<Integer, Bitmap>(50);
-    }
-
-    static IconLoader getInstance(Handler caller, IccFileHandler fh) {
-        if (sLoader != null) {
-            return sLoader;
-        }
-
-        HandlerThread thread = new HandlerThread("Cat Icon Loader");
-        thread.start();
-        sLoader = new IconLoader(thread.getLooper(), fh);
-        return sLoader;
     }
 
     public void updateIccFileHandler(IccFileHandler fh) {
