@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -413,6 +413,10 @@ public class FmReceiver extends FmTransceiver
       int state = getFMState();
       if (state == FMState_Rx_Turned_On || state == FMState_Srch_InProg) {
          Log.d(TAG, "enable: FM already turned On and running");
+         return status;
+      }
+      else if (state == subPwrLevel_FMTurning_Off) {
+         Log.v(TAG, "FM is in the process of turning off.Pls wait for sometime.");
          return status;
       }
       else if (state == subPwrLevel_FMRx_Starting) {
