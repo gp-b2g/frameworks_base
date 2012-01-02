@@ -129,6 +129,9 @@ public class MSimGSMPhone extends GSMPhone {
 
         // read the subscription specifics now
         mCM.getIMEI(obtainMessage(EVENT_GET_IMEI_DONE));
+        mCM.getBasebandVersion(obtainMessage(EVENT_GET_BASEBAND_VERSION_DONE));
+        mCM.getIMEISV(obtainMessage(EVENT_GET_IMEISV_DONE));
+
     }
 
     private void onSubscriptionDeactivated() {
