@@ -76,7 +76,7 @@ AudioSource::AudioSource(
     mRecord = new AudioRecord(
                 inputSource, sampleRate, AUDIO_FORMAT_PCM_16_BIT,
                 channels > 1? AUDIO_CHANNEL_IN_STEREO: AUDIO_CHANNEL_IN_MONO,
-                4 * kMaxBufferSize / sizeof(int16_t), /* Enable ping-pong buffers */
+                4 * mMaxBufferSize / sizeof(int16_t), /* Enable ping-pong buffers */
                 flags,
                 AudioRecordCallbackFunction,
                 this);
