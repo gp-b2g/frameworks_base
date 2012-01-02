@@ -594,22 +594,36 @@ public class SubscriptionManager extends Handler {
      * Handles EVENT_ALL_CARDS_INFO_AVAILABLE.
      */
     private void processAllCardsInfoAvailable() {
-        // All cards are available now
-        //mAllCardsInfoAvailable  = true;
+        int availableCards = 0;
 
+        for (int i = 0; i < MSimConstants.RIL_MAX_CARDS; i++) {
+            if (mCardInfoAvailable[i] || mCardSubMgr.isAbsent(i)) {
+                availableCards++;
+            }
+        }
         // Process any pending activate requests if there is any.
-        //processActivateRequests();
+        if (availableCards == MSimConstants.RIL_MAX_CARDS
+            && !mSetSubscriptionInProgress) {
+            processActivateRequests();
+        }
+
+        if (isNewCardAvailable()) {
+            // NEW CARDs Available!!!
+            // Notify the USER HERE!!!
+            notifyNewCardsAvailable();
+            for (int i = 0; i < mIsNewCard.length; i++) {
+                mIsNewCard[i] = false;
+            }
+        }
     }
 
     /**
-     * Handles EVENT_CARDS_INFO_AVAILABLE..
+     * Handles EVENT_CARDS_INFO_AVAILABLE.
      * New cards available.
      * @param ar
      */
     private void processCardInfoAvailable(AsyncResult ar) {
         Integer cardIndex = (Integer)ar.userObj;
-
-        logd("processCardInfoAvailable on cardIndex = " + cardIndex);
         mCardInfoAvailable[cardIndex] = true;
 
         // Card info on slot cardIndex is available.
@@ -617,15 +631,17 @@ public class SubscriptionManager extends Handler {
         // this card.  If there is any, and which are not yet activated,
         // activate them!
         SubscriptionData cardSubInfo = mCardSubMgr.getCardSubscriptions(cardIndex);
-        logd("processCardInfoAvailable --DEBUG--: card sub info = " + cardSubInfo);
+
+        logd("processCardInfoAvailable: cardIndex = " + cardIndex
+                + "\n Card Sub Info = " + cardSubInfo);
 
         for (Subscription userSub : mUserPrefSubs.subscription) {
             int subId = userSub.subId;
-            logd("processCardInfoAvailable --DEBUG--: subId = " + subId + "\n user pref sub = " + userSub);
-
             Subscription currentSub = getCurrentSubscription(SubscriptionId.values()[subId]);
 
-            logd("processCardInfoAvailable --DEBUG--: subId = " + subId + "\n current sub = " + currentSub);
+            logd("processCardInfoAvailable: subId = " + subId
+                    + "\n user pref sub = " + userSub
+                    + "\n current sub   = " + currentSub);
 
             if ((userSub.subStatus == SubscriptionStatus.SUB_ACTIVATED)
                     && (currentSub.subStatus != SubscriptionStatus.SUB_ACTIVATED)
@@ -638,12 +654,12 @@ public class SubscriptionManager extends Handler {
                 // Need to activate this Subscription!!! - userSub.subId
                 // Push to the queue, so that start the SET_UICC_SUBSCRIPTION
                 // only when the both cards are ready.
-                userSub.slotId = cardIndex;
-                userSub.subStatus = SubscriptionStatus.SUB_ACTIVATE;
-                mActivatePending.put(SubscriptionId.values()[subId], userSub);
-
-                // We need to update the phone object for the new subscription.
-                MSimProxyManager.getInstance().checkAndUpdatePhoneObject(userSub);
+                Subscription sub = new Subscription();
+                sub.copyFrom(cardSubInfo.getSubscription(userSub));
+                sub.slotId = cardIndex;
+                sub.subId = subId;
+                sub.subStatus = SubscriptionStatus.SUB_ACTIVATE;
+                mActivatePending.put(SubscriptionId.values()[subId], sub);
             }
         }
 
@@ -671,6 +687,9 @@ public class SubscriptionManager extends Handler {
             // NEW CARDs Available!!!
             // Notify the USER HERE!!!
             notifyNewCardsAvailable();
+            for (int i = 0; i < mIsNewCard.length; i++) {
+                mIsNewCard[i] = false;
+            }
         }
     }
 

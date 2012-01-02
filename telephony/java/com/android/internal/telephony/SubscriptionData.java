@@ -65,6 +65,15 @@ public class SubscriptionData {
         return false;
     }
 
+    public Subscription getSubscription(Subscription sub){
+        for (int i = 0; i < subscription.length; i++) {
+            if (subscription[i].isSame(sub)) {
+                return subscription[i];
+            }
+        }
+        return null;
+    }
+
     public String toString() {
         return Arrays.toString(subscription);
     }
