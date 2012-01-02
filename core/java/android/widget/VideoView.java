@@ -574,7 +574,9 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     }
 
     public void suspend() {
-        mSeekWhenPrepared = getCurrentPosition( );
+        if(mSeekWhenPrepared == 0) {
+          mSeekWhenPrepared = getCurrentPosition();
+        }
         Log.v(TAG, "suspend( ) - will resume at " + mSeekWhenPrepared);
         release(false);
     }
@@ -599,6 +601,9 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     public int getCurrentPosition() {
         if (isInPlaybackState()) {
             return mMediaPlayer.getCurrentPosition();
+        }
+        else if(mSeekWhenPrepared != 0) {
+          return mSeekWhenPrepared;
         }
         return 0;
     }
