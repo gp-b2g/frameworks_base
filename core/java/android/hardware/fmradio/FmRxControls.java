@@ -81,13 +81,15 @@ class FmRxControls
    private static final int V4L2_CID_PRIVATE_TAVARUA_HLSI = V4L2_CID_PRIVATE_BASE + 29;
    private static final int V4L2_CID_PRIVATE_TAVARUA_SET_AUDIO_PATH = V4L2_CID_PRIVATE_BASE + 41;
    private static final int V4L2_CID_PRIVATE_SINR = V4L2_CID_PRIVATE_BASE + 44;
+   private static int V4L2_CID_PRIVATE_TAVARUA_ON_CHANNEL_THRESHOLD  = V4L2_CID_PRIVATE_BASE + 0x2D;
+   private static int V4L2_CID_PRIVATE_TAVARUA_OFF_CHANNEL_THRESHOLD = V4L2_CID_PRIVATE_BASE + 0x2E;
+   private static int V4L2_CID_PRIVATE_TAVARUA_SINR_THRESHOLD =  V4L2_CID_PRIVATE_BASE + 0x2F;
+   private static int V4L2_CID_PRIVATE_TAVARUA_SINR_SAMPLES =  V4L2_CID_PRIVATE_BASE + 0x30;
 
    private static final int V4L2_CTRL_CLASS_USER = 0x980000;
    private static final int V4L2_CID_BASE = V4L2_CTRL_CLASS_USER | 0x900;
 
    private static final int V4L2_CID_AUDIO_MUTE = V4L2_CID_BASE + 9;
-   private static int V4L2_CID_PRIVATE_TAVARUA_ON_CHANNEL_THRESHOLD  = V4L2_CID_BASE + 0x2B;
-   private static int V4L2_CID_PRIVATE_TAVARUA_OFF_CHANNEL_THRESHOLD = V4L2_CID_BASE + 0x2C;
 
    private int sOnData  ;
    private int sOffData ;
@@ -169,12 +171,9 @@ class FmRxControls
     */
    public int setOnChannelThreshold(int fd, int sBuff)
    {
-      int cnt = 0;
       int re = FmReceiverJNI.setControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_ON_CHANNEL_THRESHOLD, sBuff);
       if ( re < 0)
          Log.e(TAG, "Failed to set On channel threshold data");
-      else
-         sOnData = sBuff;
       return re;
    }
 
@@ -183,12 +182,9 @@ class FmRxControls
     */
    public int setOffChannelThreshold(int fd, int sBuff)
    {
-      int cnt = 0;
       int re = FmReceiverJNI.setControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_OFF_CHANNEL_THRESHOLD, sBuff);
       if ( re < 0)
          Log.e(TAG, "Failed to set Off channel Threshold data");
-      else
-         sOffData = sBuff;
       return re;
    }
 
@@ -197,8 +193,7 @@ class FmRxControls
     */
    public int getOnChannelThreshold(int fd)
    {
-      Log.d(TAG, "On Channel Threshold data is : " + sOnData);
-      return sOnData;
+      return FmReceiverJNI.getControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_ON_CHANNEL_THRESHOLD);
    }
 
    /*
@@ -206,8 +201,45 @@ class FmRxControls
     */
    public int getOffChannelThreshold(int fd)
    {
-      Log.d(TAG, "Off Channel Threshold data is : " + sOffData);
-      return sOffData;
+      return FmReceiverJNI.getControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_OFF_CHANNEL_THRESHOLD);
+   }
+
+   /*
+    * Set sinr threshold
+    */
+   public int setSINRThreshold(int fd, int sBuff)
+   {
+      int re = FmReceiverJNI.setControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_SINR_THRESHOLD, sBuff);
+      if ( re < 0)
+         Log.e(TAG, "Failed to set SINR threshold data");
+      return re;
+   }
+
+   /*
+    * Set number of sinr samples to take in to account for SINR avg calculation
+    */
+   public int setSINRsamples(int fd, int sBuff)
+   {
+      int re = FmReceiverJNI.setControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_SINR_SAMPLES, sBuff);
+      if ( re < 0)
+         Log.e(TAG, "Failed to set SINR samples ");
+      return re;
+   }
+
+   /*
+    * Get SINR threshold
+    */
+   public int getSINRThreshold(int fd)
+   {
+      return  FmReceiverJNI.getControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_SINR_THRESHOLD);
+   }
+
+   /*
+    * Get SINR samples
+    */
+   public int getSINRsamples(int fd)
+   {
+      return  FmReceiverJNI.getControlNative(fd, V4L2_CID_PRIVATE_TAVARUA_SINR_SAMPLES);
    }
 
    /*
