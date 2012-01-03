@@ -165,7 +165,16 @@ public final class GsmMmiCode extends Handler implements MmiCode {
          10 = dialing number which must not include #, e.g. *SCn*SI#DN format
 */
 
-    static Pattern sPatternSuppServiceGlobalDev = Pattern.compile("((\\*)(\\d{2,}))");
+    static Pattern sPatternSuppServiceGlobalDev = Pattern.compile(
+    "((\\*)(\\d{2})(\\+{0,1})(\\d{0,}))");
+/*   1   2      3     4         5
+
+    1 = Full string
+    2 = action
+    3 = service code
+    4 = dialing prefix
+    5 = dialing number
+*/
 
     static final int MATCH_GROUP_POUND_STRING = 1;
 
@@ -179,6 +188,9 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     static final int MATCH_GROUP_PWD_CONFIRM = 11;
     static final int MATCH_GROUP_DIALING_NUMBER = 12;
     static private String[] sTwoDigitNumberPattern;
+    static final int MATCH_GROUP_GLOBALDEV_DIALPREFIX = 4;
+    static final int MATCH_GROUP_GLOBALDEV_DIALNUM = 5;
+
 
     //***** Public Class methods
 
@@ -205,21 +217,27 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             if (m.matches()) {
                 ret = new GsmMmiCode(phone, app);
                 ret.action = makeEmptyNull(m.group(MATCH_GROUP_ACTION));
-                String DialCode =  makeEmptyNull(m.group(MATCH_GROUP_SERVICE_CODE));
+                String DialCode = makeEmptyNull(m.group(MATCH_GROUP_SERVICE_CODE));
+                String DialPrefix = m.group(MATCH_GROUP_GLOBALDEV_DIALPREFIX);
+                String DialNumber = makeEmptyNull(m.group(MATCH_GROUP_GLOBALDEV_DIALNUM));
                 if (DialCode.equals(SC_GLOBALDEV_VM)) {
                     ret.sc = SC_GLOBALDEV_VM;
                     ret.dialingNumber = "+1" + phone.getMdn();
                     return ret;
-                } else if (DialCode.equals(SC_GLOBALDEV_CS)) {
+                } else if (DialCode.equals(SC_GLOBALDEV_CS.substring(0, 2))
+                        && !DialPrefix.equals("+") &&
+                        DialNumber.equals(SC_GLOBALDEV_CS.substring(2))) {
                     ret.sc = SC_GLOBALDEV_CS;
                     ret.dialingNumber = GLOBALDEV_CS;
                     return ret;
-                } else if (DialCode.length() >= 3 && DialCode.startsWith(SC_GLOBALDEV_CLIR_INVK)) {
+                } else if (DialCode.equals(SC_GLOBALDEV_CLIR_INVK) && (DialNumber != null)) {
                     // Dial "#31#PhoneNum" to invoke CLIR temporarily
-                    dialString = ACTION_DEACTIVATE + SC_CLIR + ACTION_DEACTIVATE + DialCode.substring(2);
-                } else if (DialCode.length() >= 3 && DialCode.startsWith(SC_GLOBALDEV_CLIR_SUPP)) {
+                    dialString = ACTION_DEACTIVATE + SC_CLIR + ACTION_DEACTIVATE + DialPrefix
+                            + DialNumber;
+                } else if (DialCode.equals(SC_GLOBALDEV_CLIR_SUPP) && (DialNumber != null)) {
                     // Dial "*31#PhoneNum" to suppress CLIR temporarily
-                    dialString = ACTION_ACTIVATE + SC_CLIR + ACTION_DEACTIVATE + DialCode.substring(2);
+                    dialString = ACTION_ACTIVATE + SC_CLIR + ACTION_DEACTIVATE + DialPrefix
+                            + DialNumber;
                 }
             }
         }
