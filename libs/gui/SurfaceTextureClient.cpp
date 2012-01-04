@@ -178,6 +178,12 @@ int SurfaceTextureClient::cancelBuffer(android_native_buffer_t* buffer) {
 
 int SurfaceTextureClient::getSlotFromBufferLocked(
         android_native_buffer_t* buffer) const {
+
+    if (buffer == NULL) {
+        LOGE("getSlotFromBufferLocked: encountered NULL buffer");
+        return BAD_VALUE;
+    }
+
     bool dumpedState = false;
     for (int i = 0; i < NUM_BUFFER_SLOTS; i++) {
         // XXX: Dump the slots whenever we hit a NULL entry while searching for
