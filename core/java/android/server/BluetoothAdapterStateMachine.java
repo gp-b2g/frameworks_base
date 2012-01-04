@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -184,9 +185,8 @@ final class BluetoothAdapterStateMachine extends StateMachine {
             switch(message.what) {
                 case USER_TURN_ON:
                     // starts turning on BT module, broadcast this out
-                    transitionTo(mPreWarmUp);
                     broadcastState(BluetoothAdapter.STATE_TURNING_ON);
-                    transitionTo(mWarmUp);
+                    transitionTo(mPreWarmUp);
                     if (prepareBluetooth()) {
                         // this is user request, save the setting
                         if ((Boolean) message.obj) {
@@ -208,17 +208,15 @@ final class BluetoothAdapterStateMachine extends StateMachine {
                 case AIRPLANE_MODE_OFF:
                     if (getBluetoothPersistedSetting()) {
                         // starts turning on BT module, broadcast this out
-                        transitionTo(mPreWarmUp);
                         broadcastState(BluetoothAdapter.STATE_TURNING_ON);
-                        transitionTo(mWarmUp);
                         if (prepareBluetooth()) {
                             // We will continue turn the BT on all the way to the BluetoothOn state
                             deferMessage(obtainMessage(TURN_ON_CONTINUE));
                             transitionTo(mPreWarmUp);
                         } else {
                             Log.e(TAG, "failed to prepare bluetooth, abort turning on");
-                            transitionTo(mPowerOff);
                             broadcastState(BluetoothAdapter.STATE_OFF);
+                            transitionTo(mPowerOff);
                         }
                     } else if (mContext.getResources().getBoolean
                             (com.android.internal.R.bool.config_bluetooth_adapter_quick_switch)) {
