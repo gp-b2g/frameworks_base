@@ -9621,6 +9621,7 @@ package android.hardware {
     field public static final java.lang.String SCENE_MODE_LANDSCAPE = "landscape";
     field public static final java.lang.String SCENE_MODE_NIGHT = "night";
     field public static final java.lang.String SCENE_MODE_NIGHT_PORTRAIT = "night-portrait";
+    field public static final java.lang.String SCENE_MODE_OFF = "off";
     field public static final java.lang.String SCENE_MODE_PARTY = "party";
     field public static final java.lang.String SCENE_MODE_PORTRAIT = "portrait";
     field public static final java.lang.String SCENE_MODE_SNOW = "snow";
@@ -10729,7 +10730,6 @@ package android.media {
     field public static final int QUALITY_HIGH = 1; // 0x1
     field public static final int QUALITY_LOW = 0; // 0x0
     field public static final int QUALITY_QCIF = 2; // 0x2
-    //YPHSIAO field public static final int QUALITY_QVGA = 7; // 0x7
     field public static final int QUALITY_TIME_LAPSE_1080P = 1006; // 0x3ee
     field public static final int QUALITY_TIME_LAPSE_480P = 1004; // 0x3ec
     field public static final int QUALITY_TIME_LAPSE_720P = 1005; // 0x3ed
