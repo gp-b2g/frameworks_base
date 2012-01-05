@@ -35,6 +35,7 @@ import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Bundle;
 import android.os.ParcelUuid;
 import android.provider.Settings;
 import android.util.Log;
@@ -227,7 +228,15 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
                     for (String path: getConnectedSinksPaths())
                         sendMetaData(path);
                 }
-                boolean playStatus = intent.getBooleanExtra("playing", false);
+                boolean playStatus = false;
+                Bundle meta = intent.getExtras();
+                if (meta.containsKey("playing") == true) {
+                    playStatus = meta.getBoolean("playing");
+                } else if (meta.containsKey("playstate") == true) {
+                    playStatus = meta.getBoolean("playstate");
+                } else {
+                    playStatus = (mPlayingA2dpDevice != null) ? true : false;
+                }
                 mPosition = intent.getLongExtra("position", 0);
                 if (mPosition < 0)
                     mPosition = 0;
@@ -687,9 +696,11 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
             } else {
                 if (state == BluetoothA2dp.STATE_PLAYING && mPlayingA2dpDevice == null) {
                    mPlayingA2dpDevice = device;
+                   mPlayStatus = STATUS_PLAYING;
                    handleSinkPlayingStateChange(device, state, BluetoothA2dp.STATE_NOT_PLAYING);
                 } else if (state == BluetoothA2dp.STATE_CONNECTED && mPlayingA2dpDevice != null) {
                     mPlayingA2dpDevice = null;
+                    mPlayStatus = STATUS_PAUSED;
                     handleSinkPlayingStateChange(device, BluetoothA2dp.STATE_NOT_PLAYING,
                         BluetoothA2dp.STATE_PLAYING);
                 } else {
