@@ -190,7 +190,11 @@ DefaultKeyedVector<KEY,VALUE>::DefaultKeyedVector(const VALUE& defValue)
 
 template<typename KEY, typename VALUE> inline
 const VALUE& DefaultKeyedVector<KEY,VALUE>::valueFor(const KEY& key) const {
+#ifdef __clang__
+    ssize_t i = this->indexOfKey(key);
+#else
     ssize_t i = indexOfKey(key);
+#endif
     return i >= 0 ? KeyedVector<KEY,VALUE>::valueAt(i) : mDefault;
 }
 
