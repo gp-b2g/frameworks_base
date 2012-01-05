@@ -239,9 +239,6 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
             log("Data not allowed due to" + reason);
         }
 
-        if (DBG) log("FMC: mCheckForConnectivity:" + mCheckForConnectivity +
-                    "mCheckForSubscription:" + mCheckForSubscription);
-
         return allowed;
     }
 
@@ -1028,6 +1025,9 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
             boolean checkConnectivity, boolean checkSubscription, boolean tryDataCalls) {
         mCheckForConnectivity = checkConnectivity;
         mCheckForSubscription = checkSubscription;
+
+        if (DBG) log("FMC: mCheckForConnectivity:" + mCheckForConnectivity +
+                    " mCheckForSubscription:" + mCheckForSubscription);
 
         if (tryDataCalls) {
             sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA,
