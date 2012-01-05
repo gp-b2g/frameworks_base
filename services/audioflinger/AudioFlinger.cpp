@@ -1,7 +1,7 @@
 /* //device/include/server/AudioFlinger/AudioFlinger.cpp
 **
 ** Copyright 2007, The Android Open Source Project
-** Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+** Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -167,7 +167,7 @@ static uint32_t getInputChannelCount(uint32_t channels) {
 
 AudioFlinger::AudioFlinger()
     : BnAudioFlinger(),
-        mPrimaryHardwareDev(0), mMasterVolume(1.0f), mMasterMute(false), mNextUniqueId(1),
+        mPrimaryHardwareDev(0), mLPALeftVol(1.0), mLPARightVol(1.0), mMasterVolume(1.0f), mMasterMute(false), mNextUniqueId(1),
         mBtNrecIsOff(false)
 {
 
@@ -863,6 +863,17 @@ bool AudioFlinger::masterMute() const
     return mMasterMute;
 }
 
+status_t AudioFlinger::setSessionVolume(int stream, float left, float right)
+{
+    mLPALeftVol  = left;
+    mLPARightVol = right;
+    if( (mLPAOutput != NULL) && (mLPAStreamType == stream) ) {
+        mLPAOutput->stream->set_volume(mLPAOutput->stream,left*mStreamTypes[stream].volume,
+                                       right*mStreamTypes[stream].volume);
+    }
+    return NO_ERROR;
+}
+
 status_t AudioFlinger::setStreamVolume(int stream, float value, int output)
 {
     // check calling permissions
@@ -878,7 +889,8 @@ status_t AudioFlinger::setStreamVolume(int stream, float value, int output)
 
     if( (mLPAOutput != NULL) &&
         (mLPAStreamType == stream) ) {
-        mLPAOutput->stream->set_volume(mLPAOutput->stream,value,value);
+         mLPAOutput->stream->set_volume(mLPAOutput->stream,mLPALeftVol*value,
+                                          mLPARightVol*value);
     }
 
     PlaybackThread *thread = NULL;

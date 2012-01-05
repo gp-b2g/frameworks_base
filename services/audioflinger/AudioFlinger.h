@@ -108,6 +108,7 @@ public:
     virtual     float       masterVolume() const;
     virtual     bool        masterMute() const;
 
+    virtual     status_t    setSessionVolume(int stream, float left, float right);
     virtual     status_t    setStreamVolume(int stream, float value, int output);
     virtual     status_t    setStreamMute(int stream, bool muted);
 
@@ -1436,6 +1437,8 @@ private:
 
                 DefaultKeyedVector< int, sp<PlaybackThread> >  mPlaybackThreads;
                 PlaybackThread::stream_type_t       mStreamTypes[AUDIO_STREAM_CNT];
+                float                               mLPALeftVol;
+                float                               mLPARightVol;
                 float                               mMasterVolume;
                 bool                                mMasterMute;
 

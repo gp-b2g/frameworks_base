@@ -100,6 +100,7 @@ public:
     virtual     float       masterVolume() const = 0;
     virtual     bool        masterMute() const = 0;
 
+    virtual     status_t    setSessionVolume(int stream, float value, float right) = 0;
     /* set/get stream type state. This will probably be used by
      * the preference panel, mostly.
      */

@@ -40,6 +40,7 @@ enum {
     SET_MASTER_MUTE,
     MASTER_VOLUME,
     MASTER_MUTE,
+    SET_SESSION_VOLUME,
     SET_STREAM_VOLUME,
     SET_STREAM_MUTE,
     STREAM_VOLUME,
@@ -309,6 +310,17 @@ public:
         Parcel data, reply;
         data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
         remote()->transact(MASTER_MUTE, data, &reply);
+        return reply.readInt32();
+    }
+
+    virtual status_t setSessionVolume(int stream, float left, float right)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(stream);
+        data.writeFloat(left);
+        data.writeInt32(right);
+        remote()->transact(SET_SESSION_VOLUME, data, &reply);
         return reply.readInt32();
     }
 
@@ -908,6 +920,14 @@ status_t BnAudioFlinger::onTransact(
         case MASTER_MUTE: {
             CHECK_INTERFACE(IAudioFlinger, data, reply);
             reply->writeInt32( masterMute() );
+            return NO_ERROR;
+        } break;
+        case SET_SESSION_VOLUME: {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            int stream = data.readInt32();
+            float left = data.readFloat();
+            float right = data.readFloat();
+            reply->writeInt32( setSessionVolume(stream, left, right) );
             return NO_ERROR;
         } break;
         case SET_STREAM_VOLUME: {
