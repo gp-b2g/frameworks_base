@@ -1040,6 +1040,7 @@ void SurfaceTexture::freeAllBuffersLocked() {
     for (int i = 0; i < NUM_BUFFER_SLOTS; i++) {
         freeBufferLocked(i);
     }
+    mGraphicBufferAlloc->freeAllGraphicBuffersExcept(-1);
 }
 
 void SurfaceTexture::freeAllBuffersExceptHeadLocked() {
@@ -1056,6 +1057,7 @@ void SurfaceTexture::freeAllBuffersExceptHeadLocked() {
             freeBufferLocked(i);
         }
     }
+    mGraphicBufferAlloc->freeAllGraphicBuffersExcept(head);
 }
 
 status_t SurfaceTexture::drainQueueLocked() {

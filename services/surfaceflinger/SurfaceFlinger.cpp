@@ -2675,9 +2675,21 @@ sp<GraphicBuffer> GraphicBufferAlloc::createGraphicBuffer(uint32_t w, uint32_t h
                 w, h, strerror(-err), graphicBuffer->handle);
         return 0;
     }
+    Mutex::Autolock _l(mLock);
+    mBuffers.add(graphicBuffer);
     return graphicBuffer;
 }
 
+void GraphicBufferAlloc::freeAllGraphicBuffersExcept(int bufIdx) {
+    Mutex::Autolock _l(mLock);
+    if (0 <= bufIdx && bufIdx < mBuffers.size()) {
+        sp<GraphicBuffer> b(mBuffers[bufIdx]);
+        mBuffers.clear();
+        mBuffers.add(b);
+    } else {
+        mBuffers.clear();
+    }
+}
 // ---------------------------------------------------------------------------
 
 GraphicPlane::GraphicPlane()
