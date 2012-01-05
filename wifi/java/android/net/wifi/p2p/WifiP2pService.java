@@ -380,6 +380,15 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                 case WifiP2pManager.REQUEST_PEERS:
                     replyToMessage(message, WifiP2pManager.RESPONSE_PEERS, mPeers);
                     break;
+                case WifiP2pManager.REQUEST_CUSTOM_STRING:
+                    WifiP2pConfig config = (WifiP2pConfig)message.obj;
+                    String cmd = config.deviceAddress;//hack
+                    loge("Custom command " + cmd );
+                    String cmdResponse = WifiNative.p2pCustomCommand(cmd);
+                    loge("Custom command response " + cmdResponse );
+                    config.deviceAddress = cmdResponse;
+                    replyToMessage(message, WifiP2pManager.RESPONSE_CUSTOM_STRING, config);
+                    break;
                 case WifiP2pManager.REQUEST_CONNECTION_INFO:
                     replyToMessage(message, WifiP2pManager.RESPONSE_CONNECTION_INFO, mWifiP2pInfo);
                     break;
