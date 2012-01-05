@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (C) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (C) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -352,10 +352,11 @@ public final class ShutdownThread extends Thread {
             if (!radioOff) {
                 try {
                     if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                        radioOff = true;
                         final ITelephonyMSim mphone = ITelephonyMSim.Stub.asInterface(
                                 ServiceManager.checkService("phone_msim"));
-                        for (i = 0; i < TelephonyManager.getDefault().getPhoneCount(); i++) {
-                            radioOff = radioOff && !mphone.isRadioOn(i);
+                        for (int j = 0; j < TelephonyManager.getDefault().getPhoneCount(); j++) {
+                            radioOff = radioOff && !mphone.isRadioOn(j);
                         }
                     } else {
                         radioOff = !phone.isRadioOn();
