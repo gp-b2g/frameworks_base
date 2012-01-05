@@ -23,22 +23,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import android.content.Context;
-import android.content.Intent;
-import android.bluetooth.BluetoothDevice;
-
 class BluetoothDeviceProperties {
 
     private static final String TAG = "BluetoothDeviceProperties";
 
     private final HashMap<String, Map<String, String>> mPropertiesMap;
     private final BluetoothService mService;
-    private final Context mContext;
 
-    BluetoothDeviceProperties(BluetoothService service, Context context) {
+    BluetoothDeviceProperties(BluetoothService service) {
         mPropertiesMap = new HashMap<String, Map<String, String>>();
         mService = service;
-        mContext = context;
     }
 
     Map<String, String> addProperties(String address, String[] properties) {
@@ -83,18 +77,7 @@ class BluetoothDeviceProperties {
 
         // We have added a new remote device or updated its properties.
         // Also update the serviceChannel cache.
-
-        /* updateDeviceServiceChannelCache has been commented to avoid deadlock between
-        BluetoothDeviceProperties and BluetoothService thread during scanning process.
-        This call has been handled by BluetoothService by listening for ACTION_UPDATE_SERVICE_CACHE
-        intent.
-
-        mService.updateDeviceServiceChannelCache(address); */
-        Intent intent = new Intent(BluetoothService.ACTION_UPDATE_SERVICE_CACHE);
-        intent.putExtra(BluetoothDevice.EXTRA_DEVICE, address);
-        mContext.sendBroadcast(intent, BluetoothService.BLUETOOTH_PERM);
-
-
+        mService.updateDeviceServiceChannelCache(address);
         return propertyValues;
     }
 

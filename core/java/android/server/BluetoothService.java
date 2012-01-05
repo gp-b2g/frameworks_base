@@ -123,8 +123,6 @@ public class BluetoothService extends IBluetooth.Stub {
 
     private static final String SHARED_PREFERENCE_DOCK_ADDRESS = "dock_bluetooth_address";
     private static final String SHARED_PREFERENCES_NAME = "bluetooth_service_settings";
-    public static final String ACTION_UPDATE_SERVICE_CACHE =
-                       "android.server.bluetoothservice.action.SCAN_MODE_CHANGED";
 
     private static final int MESSAGE_UUID_INTENT = 1;
     private static final int MESSAGE_AUTO_PAIRING_FAILURE_ATTEMPT_DELAY = 2;
@@ -142,7 +140,9 @@ public class BluetoothService extends IBluetooth.Stub {
     private static final long MAX_AUTO_PAIRING_FAILURE_ATTEMPT_DELAY = 12000;
 
     private static final int SDP_ATTR_PROTO_DESC_LIST = 0x0004;
+    private static final int SDP_ATTR_ADD_PROTO_DESC_LIST = 0x000d;
     private static final int SDP_ATTR_GOEP_L2CAP_PSM = 0x0200;
+    private static final int SDP_ATTR_BPP_SUPPORTED_DOC_FORMAT = 0x0350;
 
     // The timeout used to sent the UUIDs Intent
     // This timeout should be greater than the page timeout
@@ -269,7 +269,7 @@ public class BluetoothService extends IBluetooth.Stub {
 
         mBondState = new BluetoothBondState(context, this);
         mAdapterProperties = new BluetoothAdapterProperties(context, this);
-        mDeviceProperties = new BluetoothDeviceProperties(this, context);
+        mDeviceProperties = new BluetoothDeviceProperties(this);
 
         mGattProperties = new HashMap<String, Map<String,String>>();
 
@@ -299,7 +299,6 @@ public class BluetoothService extends IBluetooth.Stub {
         // Register for connection-oriented notifications
         filter.addAction(BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED);
         filter.addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
-        filter.addAction(ACTION_UPDATE_SERVICE_CACHE);
 
         filter.addAction(Intent.ACTION_DOCK_EVENT);
         filter.addAction(BluetoothDevice.ACTION_CONNECTION_ACCESS_REPLY);
@@ -1746,31 +1745,32 @@ public class BluetoothService extends IBluetooth.Stub {
             return false;
         }
 
+        if (uuid != null) {
+            mUuidCallbackTracker.put(service, callback);
+        }
+
         if (mUuidIntentTracker.contains(address)) {
             // An SDP query for this address is already in progress
             // Add this uuid onto the in-progress SDP query
-            if (uuid != null) {
-                mUuidCallbackTracker.put(new RemoteService(address, uuid), callback);
-            }
             return true;
         }
+        mUuidIntentTracker.add(address);
 
         boolean ret;
         // Just do the SDP if the device is already  created and UUIDs are not
         // NULL, else create the device and then do SDP.
-        if (isRemoteDeviceInCache(address) && getRemoteUuids(address) != null && findDeviceNative(address) != null) {
+        if (isRemoteDeviceInCache(address) && getRemoteUuids(address) != null &&
+                findDeviceNative(address) != null) {
             String path = getObjectPathFromAddress(address);
-            if (path == null) return false;
+            if (path == null) {
+                mUuidIntentTracker.remove(address);
+                return false;
+            }
 
             // Use an empty string for the UUID pattern
             ret = discoverServicesNative(path, "");
         } else {
             ret = createDeviceNative(address);
-        }
-
-        mUuidIntentTracker.add(address);
-        if (uuid != null) {
-            mUuidCallbackTracker.put(new RemoteService(address, uuid), callback);
         }
 
         Message message = mHandler.obtainMessage(MESSAGE_UUID_INTENT);
@@ -2005,7 +2005,6 @@ public class BluetoothService extends IBluetooth.Stub {
         // only for the uuids we are interested in.
         int channel;
         int psm;
-        if (DBG) Log.d(TAG,"updateDeviceServiceChannelCache(" + address + ")");
 
         // Remove service channel timeout handler
         mHandler.removeMessages(MESSAGE_UUID_INTENT);
@@ -2031,31 +2030,25 @@ public class BluetoothService extends IBluetooth.Stub {
                         uuid.toString(), SDP_ATTR_GOEP_L2CAP_PSM);
                 l2capPsmValue.put(uuid, psm);
                 if (DBG) log("\tuuid(system): " + uuid + " PSM: "+ psm );
-                if(!BluetoothUuid.isPrintingStatus(uuid)){
-                    channel = getDeviceServiceChannelNative(getObjectPathFromAddress(address),
-                             uuid.toString(), SDP_ATTR_PROTO_DESC_LIST);
-                    rfcommValue.put(uuid, channel);
-                    if (DBG) log("\tuuid(system): " + uuid + " SCN: "+ channel );
+                int attributeId = SDP_ATTR_PROTO_DESC_LIST;
+                // Retrieve Additional RFCOMM Channel for BPP
+                if(BluetoothUuid.isPrintingStatus(uuid)){
+                    attributeId = SDP_ATTR_ADD_PROTO_DESC_LIST; // find additional Channel Number
+                }
+                channel = getDeviceServiceChannelNative(getObjectPathFromAddress(address),
+                        uuid.toString(), attributeId);
+                rfcommValue.put(uuid, channel);
+                if (DBG) log("\tuuid(system): " + uuid + " SCN: "+ channel );
+
+                if (BluetoothUuid.isDirectPrinting(uuid)) {
+                    String supportedFormats;
+                    supportedFormats = getDeviceStringAttrValue(getObjectPathFromAddress(address),
+                            uuid.toString(), SDP_ATTR_BPP_SUPPORTED_DOC_FORMAT);
+                    if (DBG) log("\tSupportedFormats: " + uuid + " " + supportedFormats);
+                    feature.put("SupportedFormats", supportedFormats);
+                    mDeviceFeatureCache.put(address, feature);
                 }
             }
-
-            // Retrieve Additional RFCOMM Channel for BPP
-            if (BluetoothUuid.isPrintingStatus(uuid)) {
-                channel = getDeviceServiceChannelNative(getObjectPathFromAddress(address),
-                         uuid.toString(), 0x000d); // find additional Channel Number
-                if (DBG) log("\tuuid(system): " + uuid + " " + channel);
-                rfcommValue.put(uuid, channel);
-            }
-
-            if (BluetoothUuid.isDirectPrinting(uuid)) {
-                String SupportedFormats;
-                SupportedFormats = getDeviceStringAttrValue(getObjectPathFromAddress(address),
-                                   uuid.toString(), 0x0350); // find additional Channel Number
-                if (DBG) log("\tSupportedFormats: " + uuid + " " + SupportedFormats);
-                feature.put("SupportedFormats", SupportedFormats);
-                mDeviceFeatureCache.put(address, feature);
-            }
-
         }
         // Retrieve RFCOMM channel and L2CAP PSM (if available) for
         // application requested uuids
@@ -2334,14 +2327,6 @@ public class BluetoothService extends IBluetooth.Stub {
                 } else {
                     Log.e(TAG, "BluetoothA2dp service not available");
                 }
-            } else if (ACTION_UPDATE_SERVICE_CACHE.equals(action)) {
-                String address = intent.getStringExtra(BluetoothDevice.EXTRA_DEVICE);
-                if (address == null) {
-                    Log.e(TAG, "address is null");
-                    return;
-                }
-                Log.d(TAG, "Received ACTION_UPDATE_SERVICE_CACHE" + address);
-                updateDeviceServiceChannelCache(address);
             } else if (BluetoothDevice.ACTION_CONNECTION_ACCESS_REPLY.equals(action)) {
                 Log.i(TAG, "Received ACTION_CONNECTION_ACCESS_REPLY");
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
