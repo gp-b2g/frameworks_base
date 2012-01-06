@@ -527,6 +527,7 @@ void LPAPlayer::pause(bool playPendingSamples) {
 
 void LPAPlayer::resume() {
     LOGV("resume: isPaused %d",isPaused);
+    Mutex::Autolock autoLock(resumeLock);
     if ( isPaused) {
         CHECK(mStarted);
         if (!bIsA2DPEnabled) {
@@ -1582,6 +1583,7 @@ void LPAPlayer::requestAndWaitForA2DPNotificationThreadExit() {
 }
 
 void LPAPlayer::onPauseTimeOut() {
+    Mutex::Autolock autoLock(resumeLock);
     struct msm_audio_stats stats;
     int nBytesConsumed = 0;
     LOGV("onPauseTimeOut");
