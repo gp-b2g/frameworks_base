@@ -592,6 +592,13 @@ void LPAPlayer::resume() {
         }
         isPaused = false;
         pthread_cond_signal(&decoder_cv);
+
+        /*
+        Signal to effects thread so that it can apply the new effects
+        enabled during pause state
+        */
+        pthread_cond_signal(&effect_cv);
+
         /* Set timeStarted to current systemTime */
         timeStarted = nanoseconds_to_microseconds(systemTime(SYSTEM_TIME_MONOTONIC));
     }
@@ -1115,7 +1122,7 @@ void LPAPlayer::EffectsThreadEntry() {
         }
         pthread_mutex_lock(&effect_mutex);
 
-        if(bEffectConfigChanged) {
+        if(bEffectConfigChanged && !isPaused) {
             bEffectConfigChanged = false;
 
             // 1. Clear current effectQ
@@ -1141,7 +1148,7 @@ void LPAPlayer::EffectsThreadEntry() {
         }
         // If effectQ is empty just wait for a signal
         // Else dequeue a buffer, apply effects and delete it from effectQ
-        if(effectsQueue.empty() || asyncReset || bIsA2DPEnabled) {
+        if(effectsQueue.empty() || asyncReset || bIsA2DPEnabled || isPaused) {
             LOGV("EffectQ is empty or Reset called or A2DP enabled, waiting for signal");
             pthread_cond_wait(&effect_cv, &effect_mutex);
             LOGV("effectsThread: received signal to wake up");
