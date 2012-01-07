@@ -55,7 +55,6 @@ namespace android {
 #define HDMI_EVT_DISCONNECTED   "hdmi_disconnected"
 #define HDMI_EVT_AUDIO_ON       "hdmi_audio_on"
 #define HDMI_EVT_AUDIO_OFF      "hdmi_audio_off"
-#define HDMI_EVT_NO_BROADCAST_ONLINE "hdmi_no_broadcast_online"
 
 #define HDMI_CMD_ENABLE_HDMI    "enable_hdmi"
 #define HDMI_CMD_DISABLE_HDMI   "disable_hdmi"
@@ -68,6 +67,7 @@ namespace android {
 #define SYSFS_EDID_MODES        DEVICE_ROOT "/" DEVICE_NODE "/edid_modes"
 #define SYSFS_HPD               DEVICE_ROOT "/" DEVICE_NODE "/hpd"
 #define SYSFS_HDCP_PRESENT      DEVICE_ROOT "/" DEVICE_NODE "/hdcp_present"
+#define SYSFS_HDMI_MODE         DEVICE_ROOT "/" DEVICE_NODE "/hdmi_mode"
 
 HDMIDaemon::HDMIDaemon() : Thread(false),
            mFrameworkSock(-1), mAcceptedConnection(-1), mUeventSock(-1),
@@ -199,12 +199,6 @@ bool HDMIDaemon::threadLoop()
                 strerror(errno));
         }
         else {
-            // Check if HDCP Keys are present
-            if(checkHDCPPresent()) {
-                LOGD("threadLoop: HDCP keys are present, delay Broadcast.");
-                sendCommandToFramework(action_no_broadcast_online);
-            }
-
             mSession = new SurfaceComposerClient();
             processUeventQueue();
 
@@ -243,6 +237,40 @@ bool HDMIDaemon::checkHDCPPresent() {
     close(hdcpFile);
     return (present == '1') ? true : false;
 }
+
+bool HDMIDaemon::isHDMIMode() {
+    bool ret = false;
+    char mode = '0';
+    int modeFile = open (SYSFS_HDMI_MODE, O_RDONLY, 0);
+    if(modeFile < 0) {
+        LOGE("%s:hdmi_mode_file '%s' not found", __func__, SYSFS_HDMI_MODE);
+    } else {
+        //Read from the hdmi_mode file
+        int r = read(modeFile, &mode, 1);
+        if (r <= 0) {
+            LOGE("%s: hdmi_mode file empty '%s'", __func__, SYSFS_HDMI_MODE);
+        }
+    }
+    close(modeFile);
+    return (mode == '1') ? true : false;
+}
+
+/* function handles the cable connect event
+ * sends audio_on event if it is not a HDCP
+ * sink or its not in HDMI Mode(DVI)
+ */
+bool HDMIDaemon::handleAudioOn() {
+    if(checkHDCPPresent()) {
+        return true;
+    } else if(!isHDMIMode()) {
+        return true;
+    } else {
+        // Send audio on event
+        sendCommandToFramework(action_audio_on);
+    }
+    return true;
+}
+
 bool HDMIDaemon::cableConnected(bool defaultValue) const
 {
     int hdmiStateFile = open(SYSFS_CONNECTED, O_RDONLY, 0);
@@ -522,6 +550,7 @@ void HDMIDaemon::setResolution(int ID)
             if (cur->video_format == ID)
                 mode = cur;
         }
+        sendCommandToFramework(action_audio_off);
         SurfaceComposerClient::enableHDMIOutput(0);
         ioctl(fd1, FBIOGET_VSCREENINFO, &info);
         LOGD("GET Info<ID=%d %dx%d (%d,%d,%d), (%d,%d,%d) %dMHz>",
@@ -547,6 +576,8 @@ void HDMIDaemon::setResolution(int ID)
     property_set("hw.hdmiON", "1");
     //Inform SF about HDMI
     SurfaceComposerClient::enableHDMIOutput(1);
+    // Send audio_on event if required
+    handleAudioOn();
 }
 
 int HDMIDaemon::processFrameworkCommand()
@@ -662,10 +693,6 @@ bool HDMIDaemon::sendCommandToFramework(uevent_action action)
     //action_audio_off
     case action_audio_off:
         strncpy(message, HDMI_EVT_AUDIO_OFF, sizeof(message));
-        break;
-    //action_no_broadcast_online
-    case action_no_broadcast_online:
-        strncpy(message, HDMI_EVT_NO_BROADCAST_ONLINE, sizeof(message));
         break;
     default:
         LOGE("sendCommandToFramework: Unknown event received");
