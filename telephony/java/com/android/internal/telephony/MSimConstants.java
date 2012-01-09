@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,4 +36,10 @@ public class MSimConstants {
 
     public static final int EVENT_SUBSCRIPTION_ACTIVATED   = 500;
     public static final int EVENT_SUBSCRIPTION_DEACTIVATED = 501;
+
+    public enum CardUnavailableReason {
+        REASON_CARD_REMOVED,
+        REASON_RADIO_UNAVAILABLE,
+        REASON_SIM_REFRESH_RESET
+    };
 }
