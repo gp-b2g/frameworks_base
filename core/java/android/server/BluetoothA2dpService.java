@@ -464,7 +464,6 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
         if (!mBluetoothService.isEnabled()) return false;
 
         int state = mAudioDevices.get(device);
-
         // ignore if there are any active sinks
         if (getDevicesMatchingConnectionStates(new int[] {
                 BluetoothA2dp.STATE_CONNECTING,
@@ -526,8 +525,10 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
 
         switch (state) {
             case BluetoothA2dp.STATE_DISCONNECTED:
-            case BluetoothA2dp.STATE_DISCONNECTING:
                 return false;
+              // already in disconnecting state not a failure case.
+            case BluetoothA2dp.STATE_DISCONNECTING:
+                return true;
         }
         // State is CONNECTING or CONNECTED or PLAYING
         handleSinkStateChange(device, state, BluetoothA2dp.STATE_DISCONNECTING);
