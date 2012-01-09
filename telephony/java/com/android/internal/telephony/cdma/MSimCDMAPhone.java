@@ -55,6 +55,7 @@ import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OP
 
 import static com.android.internal.telephony.MSimConstants.EVENT_SUBSCRIPTION_ACTIVATED;
 import static com.android.internal.telephony.MSimConstants.EVENT_SUBSCRIPTION_DEACTIVATED;
+import static com.android.internal.telephony.MSimConstants.SUBSCRIPTION_KEY;
 
 public class MSimCDMAPhone extends CDMAPhone {
 
@@ -231,7 +232,7 @@ public class MSimCDMAPhone extends CDMAPhone {
         //Send an Intent
         Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         intent.putExtra(PHONE_IN_ECM_STATE, mIsPhoneInEcmState);
-        intent.putExtra("SUBSCRIPTION_KEY", mSubscription);
+        intent.putExtra(SUBSCRIPTION_KEY, mSubscription);
         ActivityManagerNative.broadcastStickyIntent(intent,null);
         Log.d(LOG_TAG, "sendEmergencyCallbackModeChange");
     }
