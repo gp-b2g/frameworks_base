@@ -123,6 +123,7 @@ public class GSMPhone extends PhoneBase {
     private String mVmNumber;
     private String mMdn;
     private String mPrlVersion;
+    private String mSetCfNumber;
 
 
     // Constructors
@@ -974,6 +975,7 @@ public class GSMPhone extends PhoneBase {
 
             Message resp;
             if (commandInterfaceCFReason == CF_REASON_UNCONDITIONAL) {
+                mSetCfNumber = dialingNumber;
                 resp = obtainMessage(EVENT_SET_CALL_FORWARD_DONE,
                         isCfEnable(commandInterfaceCFAction) ? 1 : 0, 0, onComplete);
             } else {
@@ -1298,7 +1300,7 @@ public class GSMPhone extends PhoneBase {
             case EVENT_SET_CALL_FORWARD_DONE:
                 ar = (AsyncResult)msg.obj;
                 if (ar.exception == null && mIccRecords != null) {
-                    mIccRecords.setVoiceCallForwardingFlag(1, msg.arg1 == 1);
+                    mIccRecords.setVoiceCallForwardingFlag(1, msg.arg1 == 1, mSetCfNumber);
                 }
                 onComplete = (Message) ar.userObj;
                 if (onComplete != null) {
@@ -1583,7 +1585,8 @@ public class GSMPhone extends PhoneBase {
             for (int i = 0, s = infos.length; i < s; i++) {
                 if ((infos[i].serviceClass & SERVICE_CLASS_VOICE) != 0) {
                     if (mIccRecords != null) {
-                        mIccRecords.setVoiceCallForwardingFlag(1, (infos[i].status == 1));
+                        mIccRecords.setVoiceCallForwardingFlag(1, (infos[i].status == 1),
+                            infos[i].number);
                     }
                     // should only have the one
                     break;
