@@ -1149,7 +1149,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      * code is registration state 0-5 from TS 27.007 7.2
      * returns true if registered roam, false otherwise
      */
-    private boolean
+    protected boolean
     regCodeIsRoaming (int code) {
         // 5 is  "in service -- roam"
         return 5 == code;
