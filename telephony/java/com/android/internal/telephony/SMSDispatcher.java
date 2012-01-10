@@ -143,7 +143,6 @@ public abstract class SMSDispatcher extends Handler {
     /** true if IMS is registered, false otherwise.*/
     static protected boolean mIms = false;
     static protected RadioTechnologyFamily mImsSmsEncoding = RadioTechnologyFamily.RADIO_TECH_UNKNOWN;
-    static protected Registrant mSendRetryRegistrant;
     protected Phone mPhone;
     protected final Context mContext;
     protected final ContentResolver mResolver;
@@ -339,11 +338,8 @@ public abstract class SMSDispatcher extends Handler {
             break;
 
         case EVENT_SEND_RETRY:
-            //re-routing to ImsSMSDispatcher
-            if (mSendRetryRegistrant != null) {
-                mSendRetryRegistrant
-                    .notifyRegistrant(new AsyncResult(null, (SmsTracker) msg.obj, null));
-            }
+            Log.d(TAG, "SMS retry..");
+            sendRetrySms((SmsTracker) msg.obj);
             break;
 
         case EVENT_POST_ALERT:
@@ -1092,6 +1088,13 @@ public abstract class SMSDispatcher extends Handler {
     protected abstract void sendSms(SmsTracker tracker);
 
     /**
+     * Retry the message along to the radio.
+     *
+     * @param tracker holds the SMS message to send
+     */
+    protected abstract void sendRetrySms(SmsTracker tracker);
+
+    /**
      * Send the multi-part SMS based on multipart Sms tracker
      *
      * @param tracker holds the multipart Sms tracker ready to be sent
@@ -1321,14 +1324,6 @@ public abstract class SMSDispatcher extends Handler {
         }
         // IMS is registered
         return isImsSmsEncodingCdma();
-    }
-
-    protected void registerSendRetry(Handler h, int what, Object obj) {
-        mSendRetryRegistrant = new Registrant (h, what, obj);
-    }
-
-    protected void unregisterSendRetry(Handler h) {
-        mSendRetryRegistrant.clear();
     }
 
     protected abstract void updateIccAvailability();

@@ -54,6 +54,7 @@ import android.content.res.Resources;
 
 final class CdmaSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "CDMA";
+    private ImsSMSDispatcher mImsSMSDispatcher;
 
     private byte[] mLastDispatchedSmsFingerprint;
     private byte[] mLastAcknowledgedSmsFingerprint;
@@ -62,8 +63,9 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
 
     CdmaSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
-            SmsUsageMonitor usageMonitor) {
+            SmsUsageMonitor usageMonitor, ImsSMSDispatcher imsSMSDispatcher) {
         super(phone, storageMonitor, usageMonitor);
+        mImsSMSDispatcher = imsSMSDispatcher;
         mCm.setOnNewCdmaSms(this, EVENT_NEW_SMS, null);
         Log.d(TAG, "CdmaSMSDispatcher created");
     }
@@ -376,6 +378,11 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             // next retry will be sent using IMS request again.
             tracker.mImsRetry++;
         }
+    }
+
+    protected void sendRetrySms(SmsTracker tracker) {
+        //re-routing to ImsSMSDispatcher
+        mImsSMSDispatcher.sendRetrySms(tracker);
     }
 
     /** {@inheritDoc} */
