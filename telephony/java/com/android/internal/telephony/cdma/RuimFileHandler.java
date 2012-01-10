@@ -60,6 +60,13 @@ public final class RuimFileHandler extends IccFileHandler {
     }
 
     protected String getEFPath(int efid) {
+        // Both EF_ADN and EF_CSIM_LI are referring to same constant value 0x6F3A.
+        // So cannot derive different paths for them using exisitng logic
+        // hence added work around to derive path for EF_ADN.
+        if (efid == EF_ADN) {
+            return MF_SIM + DF_TELECOM;
+        }
+
         switch(efid) {
         case EF_SMS:
         case EF_CST:
