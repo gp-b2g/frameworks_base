@@ -76,7 +76,7 @@ import java.util.concurrent.CountDownLatch;
 public class NetworkManagementService extends INetworkManagementService.Stub
         implements Watchdog.Monitor {
     private static final String TAG = "NetworkManagementService";
-    private static final boolean DBG = false;
+    private static final boolean DBG = true;
     private static final String NETD_TAG = "NetdConnector";
 
     private static final int ADD = 1;
@@ -1006,7 +1006,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         try {
             modifyNat("enable", internalInterface, externalInterface);
         } catch (Exception e) {
-            Log.e(TAG, "enableNat got Exception " + e.toString());
+            Log.e(TAG, "enableNat got Exception ", e);
             throw new IllegalStateException(
                     "Unable to communicate to native daemon for enabling NAT interface");
         }
@@ -1020,7 +1020,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         try {
             modifyNat("disable", internalInterface, externalInterface);
         } catch (Exception e) {
-            Log.e(TAG, "disableNat got Exception " + e.toString());
+            Log.e(TAG, "disableNat got Exception: ", e);
             throw new IllegalStateException(
                     "Unable to communicate to native daemon for disabling NAT interface");
         }

@@ -110,7 +110,7 @@ import java.lang.reflect.InvocationTargetException;
 public class ConnectivityService extends IConnectivityManager.Stub {
 
     private static final boolean DBG = true;
-    private static final boolean VDBG = false;
+    private static final boolean VDBG = true;
     private static final String TAG = "ConnectivityService";
 
     private static final boolean LOGD_RULES = false;
