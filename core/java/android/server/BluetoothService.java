@@ -506,6 +506,13 @@ public class BluetoothService extends IBluetooth.Stub {
         long ident = Binder.clearCallingIdentity();
         try {
             mBatteryStats.noteBluetoothOff();
+            //Balancing calls to unbind Headset service which is bound
+            //earlier via local getProfileProxy()
+            //ToDo: Need to find a way to balance the calls to bind/unbind
+            //      Headset service. There are still some clients not
+            //      ensuring this but these are outside Bluetooth on/off
+            //      path.
+            mAdapter.closeProfileProxy(BluetoothProfile.HEADSET, mHeadsetProxy);
         } catch (RemoteException e) {
         } finally {
             Binder.restoreCallingIdentity(ident);
@@ -2434,6 +2441,11 @@ public class BluetoothService extends IBluetooth.Stub {
         dumpPanProfile(pw);
         dumpApplicationServiceRecords(pw);
         dumpProfileState(pw);
+        //Balancing calls to unbind Headset service and trigger
+        //GC for service listener references
+        mAdapter.closeProfileProxy(BluetoothProfile.HEADSET, mHeadsetProxy);
+        mAdapter.closeProfileProxy(BluetoothProfile.INPUT_DEVICE, mInputDevice);
+        mAdapter.closeProfileProxy(BluetoothProfile.PAN, mPan);
     }
 
     private void dumpProfileState(PrintWriter pw) {
