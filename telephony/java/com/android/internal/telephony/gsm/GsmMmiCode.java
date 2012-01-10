@@ -339,7 +339,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                       ssData.serviceType.isTypeUnConditional()) {
                     /*
                      * When ServiceType is SS_CFU/SS_CF_ALL and RequestType is activate/register
-                     * and ServiceClass is Voice/None, set IccRecords.setVoiceCallForwardingFlag
+                     * and ServiceClass is Voice/None, set IccRecords.setVoiceCallForwardingFlag.
+                     * Only CF status can be set here since number is not available.
                      */
                     boolean cffEnabled = ((ssData.requestType == SsData.RequestType.SS_ACTIVATION ||
                             ssData.requestType == SsData.RequestType.SS_REGISTRATION) &&
@@ -1123,7 +1124,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 if ((ar.exception == null) && (msg.arg1 == 1)) {
                     boolean cffEnabled = (msg.arg2 == 1);
                     if (mIccRecords != null) {
-                        mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled);
+                        mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled, dialingNumber);
                     }
                 }
 
@@ -1472,7 +1473,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                         == CommandsInterface.SERVICE_CLASS_VOICE) {
             boolean cffEnabled = (info.status == 1);
             if (mIccRecords != null) {
-                mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled);
+                mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled, info.number);
             }
         }
 
