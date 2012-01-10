@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (C) 2012 Code Aurora Forum
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -221,8 +222,9 @@ void SoftMP3::onQueueFilled(OMX_U32 portIndex) {
                 != NO_DECODING_ERROR) {
             LOGV("mp3 decoder returned error %d", decoderErr);
 
-            if (decoderErr != NO_ENOUGH_MAIN_DATA_ERROR ||
-                    mConfig->outputFrameSize == 0) {
+            if ((decoderErr != NO_ENOUGH_MAIN_DATA_ERROR ||
+                    mConfig->outputFrameSize == 0) &&
+                    (decoderErr != SIDE_INFO_ERROR)) {
                 LOGE("mp3 decoder returned error %d", decoderErr);
 
                 if (mConfig->outputFrameSize == 0) {
