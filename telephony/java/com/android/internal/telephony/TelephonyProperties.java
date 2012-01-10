@@ -222,4 +222,10 @@ public interface TelephonyProperties
      * Type: boolean ( true = multi sim feature enabled, false = multi sim disabled)
      */
     static final String PROPERTY_MULTI_SIM_ENABLED = "persist.dsds.enabled";
+
+    /**
+     * Property to control EONS.
+     * Type: boolean ( true = EONS enabled, false = EONS disabled)
+     */
+    static final String PROPERTY_EONS_ENABLED = "persist.eons.enabled";
 }

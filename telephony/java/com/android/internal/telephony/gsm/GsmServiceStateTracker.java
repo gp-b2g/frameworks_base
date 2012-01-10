@@ -157,6 +157,10 @@ class GsmServiceStateTracker extends ServiceStateTracker {
     private int mDataRadioTechnology = 0;
     private int mTAC = -1;
 
+    /** EONS enabled flag. */
+    private boolean mEonsEnabled =
+            SystemProperties.getBoolean(TelephonyProperties.PROPERTY_EONS_ENABLED, true);
+
     /** Notification type. */
     static final int PS_ENABLED = 1001;            // Access Control blocks data service
     static final int PS_DISABLED = 1002;           // Access Control enables data service
@@ -247,6 +251,8 @@ class GsmServiceStateTracker extends ServiceStateTracker {
 
         // Gsm doesn't support OTASP so its not needed
         phone.notifyOtaspChanged(OTASP_NOT_NEEDED);
+
+        Log.i(LOG_TAG,"Is EONS enabled: " + mEonsEnabled);
     }
 
     public void dispose() {
@@ -505,10 +511,13 @@ class GsmServiceStateTracker extends ServiceStateTracker {
                 updateSpnDisplay();
                 break;
             case SIMRecords.EVENT_EONS:
-                int lactac = getLacOrTac();
-                boolean needsSpnUpdate = ((SIMRecords)phone.mIccRecords).updateEons(ss.getOperatorNumeric(), lactac);
-                if (needsSpnUpdate) {
-                    updateSpnDisplay();
+                if (mEonsEnabled) {
+                    int lactac = getLacOrTac();
+                    boolean needsSpnUpdate =
+                       ((SIMRecords)phone.mIccRecords).updateEons(ss.getOperatorNumeric(), lactac);
+                    if (needsSpnUpdate) {
+                        updateSpnDisplay();
+                    }
                 }
                 break;
         }
@@ -925,8 +934,13 @@ class GsmServiceStateTracker extends ServiceStateTracker {
             mNetworkAttachedRegistrants.notifyRegistrants();
         }
 
-        Log.i(LOG_TAG,"Network State Changed, get EONS and update operator name display");
-        updateEons();
+        if (mEonsEnabled) {
+            Log.i(LOG_TAG,"Network State Changed, get EONS and update operator name display");
+            updateEons();
+        } else {
+            Log.i(LOG_TAG,"Network State Changed, update operator name display");
+            updateSpnDisplay();
+        }
 
         if (hasChanged) {
             String operatorNumeric;
