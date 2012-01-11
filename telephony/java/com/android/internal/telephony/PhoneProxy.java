@@ -38,7 +38,7 @@ import com.android.internal.telephony.gsm.UsimServiceTable;
 import com.android.internal.telephony.ims.IsimRecords;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.CallManager;
-
+import com.android.internal.telephony.QosSpec;
 import java.util.List;
 
 public class PhoneProxy extends Handler implements Phone {
@@ -729,6 +729,30 @@ public class PhoneProxy extends Handler implements Phone {
 
     public int disableApnType(String type) {
         return mActivePhone.disableApnType(type);
+    }
+
+    public int enableQos(QosSpec qosSpec, String type) {
+        return mActivePhone.enableQos(qosSpec, type);
+    }
+
+    public int disableQos(int qosId) {
+        return mActivePhone.disableQos(qosId);
+    }
+
+    public int modifyQos(int qosId, QosSpec qosSpec) {
+        return mActivePhone.modifyQos(qosId, qosSpec);
+    }
+
+    public int suspendQos(int qosId) {
+        return mActivePhone.suspendQos(qosId);
+    }
+
+    public int resumeQos(int qosId) {
+        return mActivePhone.resumeQos(qosId);
+    }
+
+    public int getQosStatus(int qosId) {
+        return mActivePhone.getQosStatus(qosId);
     }
 
     public boolean isDataConnectivityPossible() {

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +20,8 @@ package com.android.internal.telephony;
 
 import com.android.internal.telephony.DataCallState.SetupResult;
 import com.android.internal.telephony.DataProfile;
+import com.android.internal.telephony.QosSpec;
+import com.android.internal.telephony.QosIndication;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
@@ -34,6 +37,7 @@ import android.os.SystemProperties;
 import android.text.TextUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -97,6 +101,8 @@ public abstract class DataConnection extends StateMachine {
     }
 
     /**
+     * Used internally for saving disconnecting parameters.
+
      * Returned as the reason for a connection failure as defined
      * by RIL_DataCallFailCause in ril.h and some local errors.
      */
@@ -203,7 +209,21 @@ public abstract class DataConnection extends StateMachine {
     protected static final int EVENT_DISCONNECT = BASE + 4;
     protected static final int EVENT_RIL_CONNECTED = BASE + 5;
 
-    //***** Tag IDs for EventLog
+    protected static final int EVENT_QOS_ENABLE = BASE + 30;
+    protected static final int EVENT_QOS_ENABLE_DONE = BASE + 31;
+    protected static final int EVENT_QOS_DISABLE = BASE + 32;
+    protected static final int EVENT_QOS_DISABLE_DONE = BASE + 33;
+    protected static final int EVENT_QOS_MODIFY = BASE + 34;
+    protected static final int EVENT_QOS_MODIFY_DONE = BASE + 35;
+    protected static final int EVENT_QOS_SUSPEND = BASE + 36;
+    protected static final int EVENT_QOS_SUSPEND_DONE = BASE + 37;
+    protected static final int EVENT_QOS_RESUME = BASE + 38;
+    protected static final int EVENT_QOS_RESUME_DONE = BASE + 39;
+    protected static final int EVENT_QOS_GET_STATUS = BASE + 40;
+    protected static final int EVENT_QOS_GET_STATUS_DONE = BASE + 41;
+    protected static final int EVENT_QOS_IND = BASE + 42;
+
+    // ***** Tag IDs for EventLog
     protected static final int EVENT_LOG_BAD_DNS_ADDRESS = 50100;
 
     //***** Member Variables
@@ -214,6 +234,7 @@ public abstract class DataConnection extends StateMachine {
     protected int cid;
     protected LinkProperties mLinkProperties = new LinkProperties();
     protected LinkCapabilities mCapabilities = new LinkCapabilities();
+    protected ArrayList<Integer> mQosFlowIds = new ArrayList<Integer>();
     protected long createTime;
     protected long lastFailTime;
     protected FailCause lastFailCause;
@@ -232,7 +253,6 @@ public abstract class DataConnection extends StateMachine {
 
     protected abstract void log(String s);
 
-
    //***** Constructor
     protected DataConnection(PhoneBase phone, String name, int id, RetryManager rm) {
         super(name);
@@ -247,6 +267,7 @@ public abstract class DataConnection extends StateMachine {
             addState(mInactiveState, mDefaultState);
             addState(mActivatingState, mDefaultState);
             addState(mActiveState, mDefaultState);
+                addState(mQosActiveState, mActiveState);
             addState(mDisconnectingState, mDefaultState);
             addState(mDisconnectingErrorCreatingConnection, mDefaultState);
         setInitialState(mInactiveState);
@@ -279,6 +300,15 @@ public abstract class DataConnection extends StateMachine {
             if (DBG) log("tearDownData radio is off sendMessage EVENT_DEACTIVATE_DONE immediately");
             AsyncResult ar = new AsyncResult(o, null, null);
             sendMessage(obtainMessage(EVENT_DEACTIVATE_DONE, ar));
+        }
+    }
+
+    /**
+     * Tear down all the QoS flows that has been setup
+     */
+    private void tearDownQos() {
+        for (int id: (Integer[])mQosFlowIds.toArray(new Integer[0])) {
+            qosRelease(id);
         }
     }
 
@@ -566,10 +596,12 @@ public abstract class DataConnection extends StateMachine {
         @Override
         public void enter() {
             phone.mCM.registerForRilConnected(getHandler(), EVENT_RIL_CONNECTED, null);
+            phone.mCM.registerForQosStateChangedInd(getHandler(), EVENT_QOS_IND, null);
         }
         @Override
         public void exit() {
             phone.mCM.unregisterForRilConnected(getHandler());
+            phone.mCM.unregisterForQosStateChangedInd(getHandler());
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -978,6 +1010,14 @@ public abstract class DataConnection extends StateMachine {
                     }
                     retVal = HANDLED;
                     break;
+                case EVENT_QOS_ENABLE:
+                case EVENT_QOS_GET_STATUS:
+                    if (DBG) log("DcActiveState moving to DcQosActiveState msg.what="
+                                + msg.what);
+                    deferMessage(msg);
+                    transitionTo(mQosActiveState);
+                    retVal = HANDLED;
+                    break;
                 case EVENT_DISCONNECT:
                     mRefCount--;
                     if (DBG) log("DcActiveState msg.what=EVENT_DISCONNECT RefCount=" + mRefCount);
@@ -994,7 +1034,6 @@ public abstract class DataConnection extends StateMachine {
                     }
                     retVal = HANDLED;
                     break;
-
                 default:
                     if (VDBG) {
                         log("DcActiveState not handled msg.what=0x" +
@@ -1007,6 +1046,158 @@ public abstract class DataConnection extends StateMachine {
         }
     }
     private DcActiveState mActiveState = new DcActiveState();
+
+    /**
+     * The state machine is connected, expecting QoS requests
+     */
+    private class DcQosActiveState extends State {
+        private QosSpec qosSpec = null;
+
+        @Override
+        public void enter() {
+        }
+
+        @Override
+        public void exit() {
+            // clear QosSpec
+        }
+
+        @Override
+        public boolean processMessage(Message msg) {
+            boolean retVal = NOT_HANDLED;
+            int qosId;
+            String error;
+
+            switch (msg.what) {
+            case EVENT_QOS_ENABLE:
+                if (DBG) log("DcQosActiveState msg.what=EVENT_QOS_ENABLE");
+                // Send out qosRequest
+                qosSpec = (QosSpec) msg.obj;
+                onQosSetup(qosSpec);
+                retVal = HANDLED;
+                break;
+            case EVENT_QOS_DISABLE:
+                if (DBG) log("DcQosActiveState msg.what=EVENT_QOS_DISABLE");
+                // Send out qosRequest
+                qosId = msg.arg1;
+                onQosRelease(qosId);
+                retVal = HANDLED;
+                break;
+            case EVENT_QOS_SUSPEND:
+                if (DBG) log("DcQosActiveState msg.what=EVENT_QOS_SUSPEND");
+                // Send out qosSuspend
+                qosId = msg.arg1;
+                onQosSuspend(qosId);
+                retVal = HANDLED;
+                break;
+            case EVENT_QOS_RESUME:
+                if (DBG) log("DcQosActiveState msg.what=EVENT_QOS_RESUME");
+                // Send out qosResume
+                qosId = msg.arg1;
+                onQosResume(qosId);
+                retVal = HANDLED;
+                break;
+            case EVENT_QOS_GET_STATUS:
+                if (DBG) log("DcQosActiveState msg.what=EVENT_QOS_GET_STATUS");
+                // Send out qosRequest
+                qosId = msg.arg1;
+                onQosGetStatus(qosId);
+                retVal = HANDLED;
+                break;
+            case EVENT_QOS_IND:
+                log("DcQosActiveState msg.what=EVENT_QOS_IND");
+                onQosStateChangedInd((AsyncResult)msg.obj);
+                // If all QosSpecs are empty, go back to active.
+                if (mQosFlowIds.size() == 0) {
+                    transitionTo(mActiveState);
+                }
+                retVal = HANDLED;
+                break;
+
+            case EVENT_QOS_ENABLE_DONE:
+                if (DBG) log("DcQosActiveState msg.what=EVENT_QOS_ENABLE_DONE");
+
+                error = getAsyncException(msg);
+                AsyncResult ar = (AsyncResult) msg.obj;
+
+                String responses[] = (String[])ar.result;
+                int userData = (Integer) ar.userObj;
+                onQosSetupDone(userData, responses, error);
+                retVal = HANDLED;
+                break;
+
+            case EVENT_QOS_DISABLE_DONE:
+                if (DBG) log("DcQosActiveState msg.what=EVENT_QOS_DISABLE_DONE");
+
+                error = getAsyncException(msg);
+
+                qosId = (Integer) ((AsyncResult)msg.obj).userObj;
+                onQosReleaseDone(qosId, error);
+                retVal = HANDLED;
+                break;
+
+            case EVENT_QOS_SUSPEND_DONE:
+                if (DBG) log("DcQosActiveState msg.what=EVENT_QOS_SUSPEND_DONE");
+
+                error = getAsyncException(msg);
+
+                qosId = (Integer) ((AsyncResult)msg.obj).userObj;
+                onQosSuspendDone(qosId, error);
+                retVal = HANDLED;
+                break;
+
+            case EVENT_QOS_RESUME_DONE:
+                if (DBG) log("DcQosActiveState msg.what=EVENT_QOS_RESUME_DONE");
+
+                error = getAsyncException(msg);
+
+                qosId = (Integer) ((AsyncResult)msg.obj).userObj;
+                onQosResumeDone(qosId, error);
+                retVal = HANDLED;
+                break;
+
+            case EVENT_QOS_GET_STATUS_DONE:
+                if (DBG) log("DcQosActiveState msg.what=EVENT_QOS_GET_STATUS_DONE");
+
+                error = getAsyncException(msg);
+                qosId = (Integer) ((AsyncResult)msg.obj).userObj;
+                onQosGetStatusDone(qosId, (AsyncResult)msg.obj, error);
+                // If all QosSpecs are empty, go back to active.
+                if (mQosFlowIds.size() == 0) {
+                    transitionTo(mActiveState);
+                }
+                retVal = HANDLED;
+                break;
+
+            case EVENT_DISCONNECT:
+                if (DBG) log("DcQosActiveState msg.what=EVENT_DISCONNECT");
+                //Release QoS for all flows
+                tearDownQos();
+                deferMessage(msg);
+                retVal = HANDLED;
+                break;
+
+            default:
+                if (VDBG)
+                    log("DcQosActiveState nothandled msg.what=" + msg.what);
+                retVal = NOT_HANDLED;
+                break;
+            }
+            return retVal;
+        }
+
+        private String getAsyncException(Message msg) {
+            AsyncResult ar = (AsyncResult) msg.obj;
+            String ex = null;
+
+            if (ar.exception != null) {
+                if (DBG) log("Error in response" + ar.result);
+                ex = ar.result == null ? null : (String)ar.result;
+            }
+            return ex;
+        }
+    }
+    private DcQosActiveState mQosActiveState = new DcQosActiveState();
 
     /**
      * The state machine is disconnecting.
@@ -1123,5 +1314,338 @@ public abstract class DataConnection extends StateMachine {
      */
     public void tearDown(String reason, Message onCompletedMsg) {
         sendMessage(obtainMessage(EVENT_DISCONNECT, new DisconnectParams(reason, onCompletedMsg)));
+    }
+
+    public void qosSetup(QosSpec qosSpec) {
+        sendMessage(obtainMessage(EVENT_QOS_ENABLE, qosSpec));
+    }
+
+    public void qosRelease(int qosId) {
+        sendMessage(obtainMessage(EVENT_QOS_DISABLE, qosId, 0));
+    }
+
+    public void qosModify(int qosId, QosSpec qosSpec) {
+        sendMessage(obtainMessage(EVENT_QOS_MODIFY, qosId, 0,
+                qosSpec));
+    }
+
+    public void qosSuspend(int qosId) {
+        sendMessage(obtainMessage(EVENT_QOS_SUSPEND, qosId, 0));
+    }
+
+    public void qosResume(int qosId) {
+        sendMessage(obtainMessage(EVENT_QOS_RESUME, qosId, 0));
+    }
+
+    public void getQosStatus(int qosId) {
+        sendMessage(obtainMessage(EVENT_QOS_GET_STATUS, qosId, 0));
+    }
+
+    /**
+     * Initiate QoS Setup with the given parameters
+     *
+     * @param qosSpec
+     *            QoS Spec
+     */
+    protected void onQosSetup(QosSpec qosSpec) {
+        if (DBG) log("Requesting QoS Setup. QosSpec:" + qosSpec.toString());
+        phone.mCM.setupQosReq(cid, qosSpec.getRilQosSpec(),
+                obtainMessage(EVENT_QOS_ENABLE_DONE, qosSpec.getUserData()));
+    }
+
+    /**
+     * Initiate QoS Release for the given QoS ID
+     *
+     * @param qosId
+     *            QoS ID
+     */
+    protected void onQosRelease(int qosId) {
+        if (DBG) log("Requesting QoS Release, qosId" + qosId);
+
+        phone.mCM.releaseQos(qosId, obtainMessage(EVENT_QOS_DISABLE_DONE, qosId));
+    }
+
+    /**
+     * Initiate QoS Suspend for the given QoS ID
+     *
+     * @param qosId
+     *            QoS ID
+     */
+    protected void onQosSuspend(int qosId) {
+        if (DBG) log("Requesting QoS Suspend, qosId" + qosId);
+
+        phone.mCM.suspendQos(qosId, obtainMessage(EVENT_QOS_SUSPEND_DONE, qosId));
+    }
+
+    /**
+     * Initiate QoS Resume for the given QoS ID
+     *
+     * @param qosId
+     *            QoS ID
+     */
+    protected void onQosResume(int qosId) {
+        if (DBG) log("Requesting QoS Resume, qosId" + qosId);
+
+        phone.mCM.resumeQos(qosId, obtainMessage(EVENT_QOS_RESUME_DONE, qosId));
+    }
+
+    /**
+     * Get QoS status and parameters for a given QoS ID
+     *
+     * @param qosId
+     *            QoS ID
+     */
+    protected void onQosGetStatus(int qosId) {
+        if (DBG) log("Get QoS Status, qosId:" + qosId);
+
+        phone.mCM.getQosStatus(qosId, obtainMessage(EVENT_QOS_GET_STATUS_DONE, qosId));
+    }
+
+    /**
+     * QoS Setup is complete. Notify upper layers
+     *
+     * @param userData
+     *            User Data recieved in the asynchronous response
+     * @param responses
+     *            Fields from the QoS Setup Response
+     * @param error
+     *            error string
+     */
+    protected void onQosSetupDone(int userData, String[] responses, String error) {
+        boolean failure = false;
+        int state = QosSpec.QosIndStates.REQUEST_FAILED;
+
+        QosIndication ind = new QosIndication();
+        ind.setUserData(userData);
+
+        if (error == null) {
+            try {
+                // non zero response is a failure
+                if (responses[0].equals("0")) {
+                    ind.setQosId(Integer.parseInt(responses[1]));
+                    mQosFlowIds.add(Integer.parseInt(responses[1]));
+                    if (DBG) log("Added QosId:" + Integer.parseInt(responses[1])
+                            + " to DC:" + cid + " QoS Flow Count:" + mQosFlowIds.size());
+                } else {
+                    failure = true;
+                }
+            } catch (NumberFormatException e) {
+                log("onQosSetupDone: Exception" + e);
+                failure = true;
+            } catch (NullPointerException e) {
+                log("onQosSetupDone: Exception" + e);
+                failure = true;
+            }
+        }
+
+        if (!failure) {
+            state = QosSpec.QosIndStates.INITIATED;
+        } else {
+            log("Error in Qos Setup, going back to Active State");
+            transitionTo(mActiveState);
+        }
+
+        ind.setIndState(state, error);
+        phone.mContext.sendBroadcast(ind.getIndication());
+
+        if (DBG) log("onQosSetupDone Complete, userData:" + userData + " error:" + error);
+    }
+
+    /**
+     * QoS Release Done. Notify upper layers.
+     *
+     * @param error
+     */
+    protected void onQosReleaseDone(int qosId, String error) {
+
+        if (mQosFlowIds.contains(qosId)) {
+            QosIndication ind = new QosIndication();
+            ind.setIndState(QosSpec.QosIndStates.RELEASING, error);
+            ind.setQosId(qosId);
+            phone.mContext.sendBroadcast(ind.getIndication());
+
+            mQosFlowIds.remove(mQosFlowIds.indexOf(qosId));
+
+            if (DBG) log("onQosReleaseDone Complete, qosId:" + qosId
+                    + " error:" + error + " QoS Flow Count:" + mQosFlowIds.size());
+        } else {
+            if (DBG) log("onQosReleaseDone Invalid qosId:" + qosId + " error:" + error);
+        }
+    }
+
+    /**
+     * QoS Suspend Done. Notify upper layers.
+     *
+     * @param error
+     */
+    protected void onQosSuspendDone(int qosId, String error) {
+
+        if (mQosFlowIds.contains(qosId)) {
+            QosIndication ind = new QosIndication();
+            ind.setIndState(QosSpec.QosIndStates.SUSPENDING, error);
+            ind.setQosId(qosId);
+            phone.mContext.sendBroadcast(ind.getIndication());
+
+            if (DBG) log("onQosSuspendDone Complete, qosId:" + qosId
+                    + " error:" + error);
+        } else {
+            if (DBG) log("onQosSuspendDone Invalid qosId:" + qosId + " error:" + error);
+        }
+    }
+
+    /**
+     * QoS Resume Done. Notify upper layers.
+     *
+     * @param error
+     */
+    protected void onQosResumeDone(int qosId, String error) {
+
+        if (mQosFlowIds.contains(qosId)) {
+            QosIndication ind = new QosIndication();
+            ind.setIndState(QosSpec.QosIndStates.RESUMING, error);
+            ind.setQosId(qosId);
+            phone.mContext.sendBroadcast(ind.getIndication());
+
+            if (DBG) log("onQosResumeDone Complete, qosId:" + qosId
+                    + " error:" + error);
+        } else {
+            if (DBG) log("onQosResumeDone Invalid qosId:" + qosId + " error:" + error);
+        }
+    }
+
+    /**
+     * QoS Get Status Done. Notify upper layers.
+     *
+     * @param ar
+     */
+    protected void onQosGetStatusDone(int qosId, AsyncResult ar, String error) {
+        String qosStatusResp[] = (String[])ar.result;
+        QosSpec spec = null;
+        int qosStatus = QosSpec.QosStatus.NONE;
+        int status = QosSpec.QosIndStates.REQUEST_FAILED;
+
+        if (qosStatusResp != null && qosStatusResp.length >= 2) {
+            if (DBG) log("Entire Status Msg:" + Arrays.toString(qosStatusResp));
+
+            // Process status for valid QoS status and QoS ID
+            if (isValidQos(qosId) && (qosStatusResp[1] != null)) {
+                qosStatus = Integer.parseInt(qosStatusResp[1]);
+
+                switch (qosStatus) {
+                    case QosSpec.QosStatus.NONE:
+                        status = QosSpec.QosIndStates.NONE;
+                        break;
+                    case QosSpec.QosStatus.ACTIVATED:
+                    case QosSpec.QosStatus.SUSPENDED:
+                        status = QosSpec.QosIndStates.ACTIVATED;
+                        break;
+                    default:
+                        log("Invalid qosStatus:" + qosStatus);
+                        break;
+                }
+
+                if (qosStatusResp.length > 2) {
+                    // There are QoS flow/filter specs, create QoS Spec object
+                    spec = new QosSpec();
+
+                    for (int i = 2; i < qosStatusResp.length; i++)
+                        spec.createPipe(qosStatusResp[i]);
+
+                    if (DBG) log("QoS Spec for upper layers:" + spec.toString());
+                }
+            }
+        } else {
+            log("Invalid Qos Status message, going back to Active State");
+            transitionTo(mActiveState);
+        }
+
+        // send an indication
+        QosIndication ind = new QosIndication();
+        ind.setQosId(qosId);
+        ind.setIndState(status, error);
+        ind.setQosState(qosStatus);
+        ind.setQosSpec(spec);
+        phone.mContext.sendBroadcast(ind.getIndication());
+    }
+
+    /**
+     * Handler for all QoS indications
+     */
+    protected void onQosStateChangedInd(AsyncResult ar) {
+        String qosInd[] = (String[])ar.result;
+        int qosIndState = QosSpec.QosIndStates.REQUEST_FAILED;
+
+        if (qosInd == null || qosInd.length != 2) {
+            // Invalid QoS Indication, ignore it
+            log("Invalid Qos State Changed Ind:" + ar.result);
+            return;
+        }
+
+        if (DBG) log("onQosStateChangedInd: qosId:" + qosInd[0] + ":" + qosInd[1]);
+
+        QosIndication ind = new QosIndication();
+
+        try {
+            ind.setQosId(Integer.parseInt(qosInd[0]));
+
+            // Converting RIL's definition of QoS state into the one defined in QosSpec
+            int qosState = Integer.parseInt(qosInd[1]);
+
+            switch(qosState) {
+                case RIL_QosIndStates.RIL_QOS_ACTIVATED:
+                    qosIndState = QosSpec.QosIndStates.ACTIVATED;
+                    break;
+                case RIL_QosIndStates.RIL_QOS_USER_RELEASE:
+                    qosIndState = QosSpec.QosIndStates.RELEASED;
+                    break;
+                case RIL_QosIndStates.RIL_QOS_NETWORK_RELEASE:
+                    qosIndState = QosSpec.QosIndStates.RELEASED_NETWORK;
+                    break;
+                case RIL_QosIndStates.RIL_QOS_SUSPENDED:
+                    qosIndState = QosSpec.QosIndStates.SUSPENDED;
+                    break;
+                case RIL_QosIndStates.RIL_QOS_MODIFIED:
+                    qosIndState = QosSpec.QosIndStates.MODIFIED;
+                    break;
+                default:
+                    log("Invalid Qos State, ignoring indication!");
+                    break;
+            }
+        } catch (NumberFormatException e) {
+            if (DBG) log("Exception processing indication:" + e);
+        } catch (NullPointerException e) {
+            if (DBG) log("Exception processing indication:" + e);
+        }
+
+        ind.setIndState(qosIndState, null);
+        phone.mContext.sendBroadcast(ind.getIndication());
+    }
+
+    /**
+     * TODO: This should be an asynchronous call and we wouldn't
+     * have to use handle the notification in the DcInactiveState.enter.
+     *
+     * @return true if the state machine is in the inactive state.
+     */
+    public boolean isInactive() {
+        boolean retVal = getCurrentState() == mInactiveState;
+        return retVal;
+    }
+
+    /**
+     * Check if QoS enabled for this data call
+     * @return
+     */
+    public boolean isQosAvailable() {
+        boolean retVal = getCurrentState() == mQosActiveState;
+        return retVal;
+    }
+
+    /**
+     * Check if the QoS ID is valid
+     * @return
+     */
+    public boolean isValidQos(int qosId) {
+        return !mQosFlowIds.isEmpty() && mQosFlowIds.contains(qosId);
     }
 }
