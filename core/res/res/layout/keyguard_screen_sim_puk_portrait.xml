@@ -33,7 +33,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:singleLine="true"
             android:ellipsize="marquee"
             android:layout_marginRight="6dip"
             android:layout_marginLeft="6dip"

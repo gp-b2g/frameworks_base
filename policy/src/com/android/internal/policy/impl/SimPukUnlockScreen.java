@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +25,11 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 
 import com.android.internal.telephony.ITelephony;
+import com.android.internal.telephony.ITelephonyMSim;
 import com.android.internal.widget.LockPatternUtils;
 
+import android.telephony.MSimTelephonyManager;
+import android.telephony.TelephonyManager;
 import android.text.Editable;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -66,11 +70,13 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
 
     private int mKeyboardHidden;
 
+    private int mSubscription = 0;
+
     private static final char[] DIGITS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
     public SimPukUnlockScreen(Context context, Configuration configuration,
             KeyguardUpdateMonitor updateMonitor, KeyguardScreenCallback callback,
-            LockPatternUtils lockpatternutils) {
+            LockPatternUtils lockpatternutils, int subscription) {
         super(context);
         mUpdateMonitor = updateMonitor;
         mCallback = callback;;
@@ -78,6 +84,8 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
         mCreationOrientation = configuration.orientation;
         mKeyboardHidden = configuration.hardKeyboardHidden;
         mLockPatternUtils = lockpatternutils;
+
+        mSubscription = subscription;
 
         LayoutInflater inflater = LayoutInflater.from(context);
         if (mKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO) {
@@ -102,11 +110,19 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
         mOkButton.setOnClickListener(this);
 
         mHeaderText.setText(R.string.keyguard_password_enter_puk_code);
-        // To make marquee work
-        mHeaderText.setSelected(true);
 
-        mKeyguardStatusViewManager = new KeyguardStatusViewManager(this, updateMonitor,
-                lockpatternutils, callback, false);
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            mKeyguardStatusViewManager = new MSimKeyguardStatusViewManager(this, updateMonitor,
+                    lockpatternutils, callback, true);
+            String displayText = getContext().getString
+                    (R.string.keyguard_password_enter_puk_code_for_subscription) +
+                    (mSubscription + 1);
+            mHeaderText.setText(displayText);
+        } else {
+            mKeyguardStatusViewManager = new KeyguardStatusViewManager(this, updateMonitor,
+                    lockpatternutils, callback, true);
+            mHeaderText.setText(R.string.keyguard_password_enter_puk_code);
+        }
 
         mPinText.setFocusableInTouchMode(true);
         mPinText.setOnFocusChangeListener(this);
@@ -127,7 +143,15 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
     /** {@inheritDoc} */
     public void onResume() {
         // start fresh
-        mHeaderText.setText(R.string.keyguard_password_enter_puk_code);
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            String displayText = getContext().getString
+                    (R.string.keyguard_password_enter_puk_code_for_subscription)
+                    + (mSubscription + 1);
+            mHeaderText.setText(displayText);
+        } else {
+            mHeaderText.setText(R.string.keyguard_password_enter_puk_code);
+        }
+
         mKeyguardStatusViewManager.onResume();
     }
 
@@ -160,8 +184,14 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
         @Override
         public void run() {
             try {
-                final boolean result = ITelephony.Stub.asInterface(ServiceManager
-                        .checkService("phone")).supplyPuk(mPuk, mPin);
+                final boolean result;
+                if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                    result = ITelephonyMSim.Stub.asInterface(ServiceManager
+                            .checkService("phone_msim")).supplyPuk(mPuk, mPin, mSubscription);
+                } else {
+                    result = ITelephony.Stub.asInterface(ServiceManager
+                            .checkService("phone")).supplyPuk(mPuk, mPin);
+                }
 
                 post(new Runnable() {
                     public void run() {
@@ -254,7 +284,30 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
                             mUpdateMonitor.reportSimUnlocked();
                             mCallback.goToUnlockScreen();
                         } else {
-                            mHeaderText.setText(R.string.badPuk);
+                            try {
+                                //Displays No. of attempts remaining to unlock PIN1 in case
+                                // of wrong entry.
+                                int attemptsRemaining;
+                                if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                                    attemptsRemaining = ITelephonyMSim.Stub.asInterface
+                                            (ServiceManager.checkService("phone_msim"))
+                                            .getIccPin1RetryCount(mSubscription);
+                                } else {
+                                    attemptsRemaining = ITelephony.Stub.asInterface(ServiceManager
+                                            .checkService("phone")).getIccPin1RetryCount();
+                                }
+                                if (attemptsRemaining >= 0) {
+                                    String displayMessage = getContext().getString
+                                            (R.string.keyguard_password_wrong_puk_code) +
+                                            getContext().getString(R.string.pinpuk_attempts)
+                                            + attemptsRemaining;
+                                    mHeaderText.setText(displayMessage);
+                                } else {
+                                    mHeaderText.setText(R.string.keyguard_password_wrong_puk_code);
+                                }
+                            } catch (RemoteException ex) {
+                                mHeaderText.setText(R.string.keyguard_password_wrong_puk_code);
+                            }
                             mPukText.setText("");
                             mPinText.setText("");
                         }
@@ -386,6 +439,9 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
                 // clear the PIN/PUK entry fields if the user cancels
                 mPinText.setText("");
                 mPukText.setText("");
+                if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                        mCallback.updatePukUnlockCancel(mSubscription);
+                }
                 mCallback.goToLockScreen();
                 return;
             }

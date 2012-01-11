@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,8 +62,10 @@ import com.android.internal.app.ShutdownThread;
 import com.android.internal.policy.PolicyManager;
 import com.android.internal.statusbar.IStatusBarService;
 import com.android.internal.telephony.ITelephony;
+import com.android.internal.telephony.ITelephonyMSim;
 import com.android.internal.view.BaseInputHandler;
 import com.android.internal.widget.PointerLocationView;
+import android.telephony.TelephonyManager;
 
 import android.util.DisplayMetrics;
 import android.util.EventLog;
@@ -1493,6 +1496,15 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             Log.w(TAG, "Unable to find ITelephony interface.");
         }
         return telephonyService;
+    }
+
+    static ITelephonyMSim getMSimTelephonyService() {
+        ITelephonyMSim telephonyServiceMSim = ITelephonyMSim.Stub.asInterface(
+                ServiceManager.checkService(Context.MSIM_TELEPHONY_SERVICE));
+        if (telephonyServiceMSim == null) {
+            Log.w(TAG, "Unable to find ITelephony interface.");
+        }
+        return telephonyServiceMSim;
     }
 
     static IAudioService getAudioService() {

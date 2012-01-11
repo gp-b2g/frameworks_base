@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -239,6 +239,16 @@ public class MSimIccCardProxy extends IccCardProxy {
         MSimTelephonyManager.setTelephonyProperty(PROPERTY_SIM_STATE,
                 mCardIndex, getState().toString());
         broadcastIccStateChangedIntent(mExternalState.getIntentString(), null);
+        if (mSubscriptionData != null) {
+            MSimTelephonyManager.setTelephonyProperty
+                    (PROPERTY_SIM_STATE, mCardIndex, getState().toString());
+        }
+        broadcastIccStateChangedIntent(mExternalState.getIntentString(),
+                mExternalState.getReason());
+        // TODO: Need to notify registrants for other states as well.
+        if (State.ABSENT == mExternalState) {
+            mAbsentRegistrants.notifyRegistrants();
+        }
     }
 
     @Override

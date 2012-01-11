@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +34,20 @@ public interface KeyguardScreenCallback extends KeyguardViewCallback {
      * Transition to the unlock screen.
      */
     void goToUnlockScreen();
+
+    /**
+     * User dismissed the PIN dialog by clicking cancel.Update
+     * the subscription for which the dialog was dismissed.The
+     * dialog will not be prompted again for that subscription.
+    */
+    void updatePinUnlockCancel(int subscription);
+
+    /**
+     * User dismissed the PUK dialog by clicking cancel.Update
+     * the subscription for which the dialog was dismissed.The
+     * dialog will not be prompted again for that subscription.
+     */
+    void updatePukUnlockCancel(int subscription);
 
     /**
      * The user reported that they forgot their pattern (or not, when they want to back out of the
