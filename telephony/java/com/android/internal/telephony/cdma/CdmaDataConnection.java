@@ -74,7 +74,9 @@ public class CdmaDataConnection extends DataConnection {
 
         // TODO: The data profile's profile ID must be set when it is created.
         int dataProfile;
-        if ((cp.apn != null) && (cp.apn.types.length > 0) && (cp.apn.types[0] != null) &&
+
+        if ((cp.apn != null) && (cp.apn.types != null) &&
+                (cp.apn.types.length > 0) && (cp.apn.types[0] != null) &&
                 (cp.apn.types[0].equals(Phone.APN_TYPE_DUN))) {
             if (DBG) log("CdmaDataConnection using DUN");
             dataProfile = RILConstants.DATA_PROFILE_TETHERED;
@@ -82,14 +84,14 @@ public class CdmaDataConnection extends DataConnection {
             dataProfile = RILConstants.DATA_PROFILE_DEFAULT;
         }
 
-        ((DataProfileCdma)mApn).setProfileId(dataProfile);
+        mApn.setProfileId(dataProfile);
 
         // msg.obj will be returned in AsyncResult.userObj;
         Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
         msg.obj = cp;
         phone.mCM.setupDataCall(
                 Integer.toString(getRadioTechnology(RILConstants.SETUP_DATA_TECH_CDMA)),
-                Integer.toString(((DataProfileCdma)mApn).getProfileId()),
+                Integer.toString(mApn.getProfileId()),
                 null, mApn.user, mApn.password,
                 Integer.toString(mApn.getAuthType()),
                 mApn.protocol, msg);
