@@ -5501,12 +5501,12 @@ void OMXCodec::initOutputFormat(const sp<MetaData> &inputFormat) {
                 int32_t frameRate = 0, hfr = 0;
 
                 success = inputFormat->findInt32(kKeyHFR, &hfr);
-                success = inputFormat->findInt32(kKeySampleRate, &frameRate);
+                success = inputFormat->findInt32(kKeyFrameRate, &frameRate);
 
                 mOutputFormat->setInt32(kKeyWidth, width);
                 mOutputFormat->setInt32(kKeyHeight, height);
                 mOutputFormat->setInt32(kKeyHFR, hfr);
-                mOutputFormat->setInt32(kKeySampleRate, frameRate);
+                mOutputFormat->setInt32(kKeyFrameRate, frameRate);
             }
             break;
         }
