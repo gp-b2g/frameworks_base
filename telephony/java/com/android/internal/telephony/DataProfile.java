@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -105,4 +105,8 @@ public abstract class DataProfile {
     public abstract DataProfileType getDataProfileType();
 
     public abstract int getProfileId();
+
+    // Override this in DataProfileCdma and DataProfileOmh
+    public void setProfileId(int profileId) {
+    }
 }
