@@ -1058,7 +1058,7 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
             mLastTrack->meta->setInt32(kKeyChannelCount, num_channels);
             mLastTrack->meta->setInt32(kKeySampleRate, sample_rate);
 
-            off_t stop_offset = *offset + chunk_size;
+            off64_t stop_offset = *offset + chunk_size;
             if (!strcasecmp(MEDIA_MIMETYPE_AUDIO_MPEG,
                         FourCC2MIME(chunk_type))) {
                // ESD is not required in mp3
