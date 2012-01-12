@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (C) 2010-2012 Code Aurora Forum
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,7 +78,8 @@ public:
             const sp<DataSource> &source, String8 *mimeType,
             float *confidence, sp<AMessage> *meta);
 
-    static void RegisterSniffer(SnifferFunc func);
+    //isExtendedExtractor if true, will store the location of the sniffer to register
+    static void RegisterSniffer(SnifferFunc func, bool isExtendedExtractor = false);
     static void RegisterDefaultSniffers();
 
     // for DRM
@@ -92,12 +94,15 @@ public:
 
     virtual String8 getMIMEType() const;
 
+
 protected:
     virtual ~DataSource() {}
 
 private:
     static Mutex gSnifferMutex;
     static List<SnifferFunc> gSniffers;
+
+    static List<SnifferFunc>::iterator extendedSnifferPosition;
 
     DataSource(const DataSource &);
     DataSource &operator=(const DataSource &);
