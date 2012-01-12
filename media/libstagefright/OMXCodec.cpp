@@ -3550,6 +3550,11 @@ status_t OMXCodec::freeBuffer(OMX_U32 portIndex, size_t bufIndex) {
     if (err == OK) {
         buffers->removeAt(bufIndex);
     }
+    else {
+        LOGW("Warning, free Buffer failed, to be freed later"
+             " returning OK to prevent crash..");
+        return OK;
+    }
 
     return err;
 }
@@ -4703,6 +4708,10 @@ status_t OMXCodec::stop() {
             CHECK_EQ(err, (status_t)OK);
             if (state != OMX_StateExecuting) {
                 break;
+            }
+            else {
+                CODEC_LOGV("Component is still in executing state, fall through and move component"
+                           " to idle");
             }
             // else fall through to the idling code
             isError = true;
