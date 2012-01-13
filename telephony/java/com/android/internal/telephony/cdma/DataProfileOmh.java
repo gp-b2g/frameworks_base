@@ -29,6 +29,8 @@
 
 package com.android.internal.telephony.cdma;
 
+import java.util.ArrayList;
+
 import android.os.SystemProperties;
 import android.text.TextUtils;
 import com.android.internal.telephony.Phone;
@@ -136,6 +138,7 @@ public class DataProfileOmh extends DataProfile {
         this();
         this.mProfileId = profileId;
         this.mPriority = priority;
+        this.types = new String[0];
     }
 
     @Override
@@ -221,5 +224,14 @@ public class DataProfileOmh extends DataProfile {
 
     public void addServiceType(DataProfileTypeModem modemProfile) {
         serviceTypeMasks |= modemProfile.getid();
+
+        // Update the types
+        ArrayList<String> serviceTypes = new ArrayList<String>();
+        for (DataProfileTypeModem dpt : DataProfileTypeModem.values()) {
+            if (0 != (serviceTypeMasks & dpt.getid())) {
+                serviceTypes.add(dpt.getDataServiceType());
+            }
+        }
+        types = serviceTypes.toArray(new String[0]);
     }
 }
