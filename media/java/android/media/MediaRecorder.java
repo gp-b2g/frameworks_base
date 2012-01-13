@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -690,7 +691,9 @@ public class MediaRecorder
         native_reset();
 
         // make sure none of the listeners get called anymore
-        mEventHandler.removeCallbacksAndMessages(null);
+        if (mEventHandler != null) {
+            mEventHandler.removeCallbacksAndMessages(null);
+        }
     }
 
     private native void native_reset();
