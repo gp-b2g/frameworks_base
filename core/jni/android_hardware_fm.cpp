@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -53,7 +53,7 @@
 #define V4L2_CID_PRIVATE_IRIS_SET_CALIBRATION           (V4L2_CTRL_CLASS_USER + 0x92A)
 #define V4L2_CID_PRIVATE_TAVARUA_ON_CHANNEL_THRESHOLD   (V4L2_CTRL_CLASS_USER + 0x92B)
 #define V4L2_CID_PRIVATE_TAVARUA_OFF_CHANNEL_THRESHOLD  (V4L2_CTRL_CLASS_USER + 0x92C)
-
+#define TX_RT_LENGTH       63
 enum search_dir_t {
     SEEK_UP,
     SEEK_DN,
@@ -523,6 +523,9 @@ static jint android_hardware_fmradio_FmReceiverJNI_startRTNative
         return FM_JNI_FAILURE;
     }
 
+    if(count < TX_RT_LENGTH)
+       rt_string[count++] = 0x0d;
+    rt_string[count++] = 0x00;
     ext_ctl.id     = V4L2_CID_RDS_TX_RADIO_TEXT;
     ext_ctl.string = rt_string;
     ext_ctl.size   = count;
