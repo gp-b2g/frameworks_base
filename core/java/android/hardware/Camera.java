@@ -1801,6 +1801,11 @@ public class Camera {
         /**
          * Scene mode is off.
          */
+        public static final String SCENE_MODE_OFF = "off";
+
+        /**
+         * Scene mode is auto ASD.
+         */
         public static final String SCENE_MODE_AUTO = "auto";
 
         /**
@@ -4451,7 +4456,7 @@ public class Camera {
             Log.e(TAG, "Invalid Coordinate parameter string=" + str);
             return null;
         }
-        
+
         private boolean same(String s1, String s2) {
             if (s1 == null && s2 == null) return true;
             if (s1 != null && s1.equals(s2)) return true;
