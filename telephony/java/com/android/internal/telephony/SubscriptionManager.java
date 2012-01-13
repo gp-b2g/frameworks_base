@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2012 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1035,6 +1035,11 @@ public class SubscriptionManager extends Handler {
 
     private boolean getCurrentSubscriptionReadiness(SubscriptionId subId) {
         return mCurrentSubscriptions.get(subId).subReady;
+    }
+
+    public boolean isSubActive(int subscription) {
+        Subscription currentSelSub = getCurrentSubscription(subscription);
+        return (currentSelSub.subStatus == SubscriptionStatus.SUB_ACTIVATED);
     }
 
     /**
