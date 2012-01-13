@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,14 +100,13 @@ public class MSimProxyManager {
 
     public void checkAndUpdatePhoneObject(Subscription userSub) {
         int subId = userSub.subId;
-        if ((userSub.appType.equals("SIM")
-                || userSub.appType.equals("USIM"))
-                && (!mProxyPhones[subId].getPhoneName().equals("GSM"))) {
+        String appType = userSub.appType;
+        if (("SIM".equals(appType) || "USIM".equals(appType))
+                && (!"GSM".equals(mProxyPhones[subId].getPhoneName()))) {
             logd("gets New GSM phone" );
             ((PhoneProxy) mProxyPhones[subId]).updatePhoneObject(ServiceState.RADIO_TECHNOLOGY_GSM);
-        } else if ((userSub.appType.equals("RUIM")
-                || userSub.appType.equals("CSIM"))
-                && (!mProxyPhones[subId].getPhoneName().equals("CDMA"))) {
+        } else if ( ("RUIM".equals(appType) || "CSIM".equals(appType))
+                && (!("CDMA".equals(mProxyPhones[subId].getPhoneName())))) {
             logd("gets New CDMA phone" );
             ((PhoneProxy) mProxyPhones[subId]).updatePhoneObject(ServiceState.RADIO_TECHNOLOGY_1xRTT);
         }

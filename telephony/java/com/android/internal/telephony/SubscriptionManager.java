@@ -29,6 +29,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemProperties;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
@@ -82,6 +83,12 @@ public class SubscriptionManager extends Handler {
 
     // Number of fields in the user preferred subscription property
     private static int USER_PREF_SUB_FIELDS = 6;
+
+    // Mode types, refer to the property set in qcril
+    private static final String PROPERTY_RIL_SUBSMODE = "ril.subsmode";
+    private static final String MODE_1x = "1x";
+    private static final String MODE_GW = "gw";
+    private static final String MODE_UNKNOWN = "unknown";
 
     //***** Events
     private static final int EVENT_CARD_INFO_AVAILABLE = 0;
@@ -673,32 +680,6 @@ public class SubscriptionManager extends Handler {
         logd("processCardInfoAvailable: cardIndex = " + cardIndex
                 + "\n Card Sub Info = " + cardSubInfo);
 
-        for (Subscription userSub : mUserPrefSubs.subscription) {
-            int subId = userSub.subId;
-            Subscription currentSub = getCurrentSubscription(SubscriptionId.values()[subId]);
-
-            logd("processCardInfoAvailable: subId = " + subId
-                    + "\n user pref sub = " + userSub
-                    + "\n current sub   = " + currentSub);
-
-            if ((userSub.subStatus == SubscriptionStatus.SUB_ACTIVATED)
-                    && (currentSub.subStatus != SubscriptionStatus.SUB_ACTIVATED)
-                    && (cardSubInfo.hasSubscription(userSub))
-                    && !isPresentInActivatePendingList(userSub)){
-                logd("processCardInfoAvailable: subId = " + subId + " need to activate!!!");
-
-                // Need to activate this Subscription!!! - userSub.subId
-                // Push to the queue, so that start the SET_UICC_SUBSCRIPTION
-                // only when the both cards are ready.
-                Subscription sub = new Subscription();
-                sub.copyFrom(cardSubInfo.getSubscription(userSub));
-                sub.slotId = cardIndex;
-                sub.subId = subId;
-                sub.subStatus = SubscriptionStatus.SUB_ACTIVATE;
-                mActivatePending.put(SubscriptionId.values()[subId], sub);
-            }
-        }
-
         // If this is a new card(no user preferred subscriptions are from
         // this card), then notify a prompt to user.  Let user select
         // the subscriptions from new card!
@@ -706,30 +687,139 @@ public class SubscriptionManager extends Handler {
         for (Subscription userSub : mUserPrefSubs.subscription) {
             if (cardSubInfo.hasSubscription(userSub)) {
                 mIsNewCard[cardIndex] = false;
+
+                int subId = userSub.subId;
+                Subscription currentSub = getCurrentSubscription(SubscriptionId.values()[subId]);
+
+                logd("processCardInfoAvailable: subId = " + subId
+                        + "\n user pref sub = " + userSub
+                        + "\n current sub   = " + currentSub);
+
+                if ((userSub.subStatus == SubscriptionStatus.SUB_ACTIVATED)
+                     && (currentSub.subStatus != SubscriptionStatus.SUB_ACTIVATED)){
+
+                    logd("processCardInfoAvailable --DEBUG--: subId = "
+                        + subId + " need to activate!!!");
+
+                    // TODO Need to check if this subscription is already in the pending list!
+                    // If already there, no need to add again!
+
+                    // Need to activate this Subscription!!! - userSub.subId
+                    // Push to the queue, so that start the SET_UICC_SUBSCRIPTION
+                    // only when the both cards are ready.
+                    Subscription sub = new Subscription();
+                    sub.copyFrom(cardSubInfo.getSubscription(userSub));
+                    sub.slotId = cardIndex;
+                    sub.subId = subId;
+                    sub.subStatus = SubscriptionStatus.SUB_ACTIVATE;
+                    mActivatePending.put(SubscriptionId.values()[subId], sub);
+                }
             }
         }
         logd("processCardInfoAvailable: mIsNewCard [" + cardIndex + "] = "
                 + mIsNewCard [cardIndex]);
+
+        if (mIsNewCard [cardIndex]) {
+            // NEW CARDs Available, notify the USER HERE!!!
+            //notifyNewCardsAvailable();
+
+            // !!! HERE we set the default app and activate it !!!
+            // Need to activate this Subscription!!! - userSub.subId
+            // Push to the queue, so that start the SET_UICC_SUBSCRIPTION
+            // only when the both cards are ready.
+            Subscription newSub = new Subscription();
+            newSub.slotId = cardIndex;
+            // !!! HERE force slotId = subId
+            newSub.subId = cardIndex;
+            newSub.subStatus = SubscriptionStatus.SUB_ACTIVATE;
+            setDefaultAppIndex(newSub);
+
+            mActivatePending.put(SubscriptionId.values()[cardIndex], newSub);
+            mIsNewCard[cardIndex] = false;
+        }
 
         if (!isAllCardsInfoAvailable()) {
             logd("All cards info not available!! Waiting for all info before processing");
             return;
         }
 
-        logd("processCardInfoAvailable: mSetSubscriptionInProgress = "
-                + mSetSubscriptionInProgress);
-
+        logd("--DEBUG--: processCardInfoAvailable: " + mSetSubscriptionInProgress);
         if (!mSetSubscriptionInProgress) {
             processActivateRequests();
         }
+    }
 
-        if (isNewCardAvailable()) {
-            // NEW CARDs Available!!!
-            // Notify the USER HERE!!!
-            notifyNewCardsAvailable();
-            for (int i = 0; i < mIsNewCard.length; i++) {
-                mIsNewCard[i] = false;
+    private void setDefaultAppIndex(Subscription sub) {
+        int cardIndex = sub.slotId;
+        String mode = getPreferredMode(cardIndex);
+        int appIndex = getAppIndexByMode(cardIndex, mode);
+
+        if (MODE_1x.equals(mode)) {
+            sub.m3gpp2Index = appIndex;
+            sub.m3gppIndex = Subscription.SUBSCRIPTION_INDEX_INVALID;
+        } else if (MODE_GW.equals(mode)) {
+            sub.m3gpp2Index = Subscription.SUBSCRIPTION_INDEX_INVALID;
+            sub.m3gppIndex = appIndex;
+        } else {
+            // FIXME:
+            // !!! HERE should be wrong, then we prefer which mode?
+            logd("failed to get preferred mode, set w/g mode by default!");
+            sub.m3gpp2Index = Subscription.SUBSCRIPTION_INDEX_INVALID;
+            sub.m3gppIndex = appIndex;
+        }
+    }
+
+    private int getAppIndexByMode(int cardIndex, String mode) {
+        logd("getAppIndexByMode(" + cardIndex + ", " + mode + ")" );
+
+        SubscriptionData cardSub = mCardSubMgr.getCardSubscriptions(cardIndex);
+        int appIndex = Subscription.SUBSCRIPTION_INDEX_INVALID;
+
+        if (cardSub != null) {
+            for (int i = 0; i < cardSub.getLength(); i++) {
+                Subscription sub = cardSub.subscription[i];
+                if (MODE_1x.equals(mode)) {
+                    if (sub.appType.equals("RUIM")) {
+                        logd("find the first RUIM appIndex " + i);
+                        appIndex = i;
+                        break;
+                    } else if (sub.appType.equals("CSIM")) {
+                        logd("find the first CSIM appIndex " + i);
+                        appIndex = i;
+                        break;
+                    }
+                } else if (MODE_GW.equals(mode)) {
+                    if (sub.appType.equals("USIM")) {
+                        logd("find the first USIM appIndex " + i);
+                        appIndex = i;
+                        break;
+                    } else if (sub.appType.equals("SIM")) {
+                        logd("find the first SIM appIndex " + i);
+                        appIndex = i;
+                        break;
+                    }
+                }
             }
+            if (appIndex == Subscription.SUBSCRIPTION_INDEX_INVALID) {
+                Log.e(LOG_TAG, "failed to find the preferred app, use the first appIndex");
+                appIndex = 0;
+            }
+        }
+        return appIndex;
+    }
+
+    /** NOTE :
+     *   The proper ril.subsmode is set in qcril,
+     *   only 1x, gw and unknown are valid for each subscription.
+     */
+    private String getPreferredMode(int cardIndex) {
+        String modes = SystemProperties.get(PROPERTY_RIL_SUBSMODE);
+        logd(PROPERTY_RIL_SUBSMODE + "=[" + modes + "]");
+        String[] mode = modes.split(",");
+        if (cardIndex >= mode.length) {
+            return MODE_UNKNOWN;
+        } else {
+            return mode[cardIndex];
         }
     }
 
