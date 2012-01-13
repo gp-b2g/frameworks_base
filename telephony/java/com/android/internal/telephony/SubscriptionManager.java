@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import java.util.HashMap;
 import java.util.regex.PatternSyntaxException;
 
+import com.android.internal.telephony.MSimConstants.CardUnavailableReason;
 import com.android.internal.telephony.Subscription.SubscriptionStatus;
 
 import android.content.Context;
@@ -92,6 +93,7 @@ public class SubscriptionManager extends Handler {
     private static final int EVENT_SET_DATA_SUBSCRIPTION_DONE = 6;
     private static final int EVENT_CLEANUP_DATA_CONNECTION_DONE = 7;
     private static final int EVENT_DISABLE_DATA_CONNECTION_DONE = 8;
+    private static final int EVENT_ALL_DATA_DISCONNECTED = 9;
 
 
     // Set Subscription Return status
@@ -126,7 +128,7 @@ public class SubscriptionManager extends Handler {
 
     private HashMap<SubscriptionId, PhoneSubscriptionInfo> mCurrentSubscriptions;
 
-    private boolean mAllCardsInfoAvailable = false;
+    private boolean mAllCardsStatusAvailable = false;
 
     private boolean mSetDdsRequired = true;
 
@@ -281,8 +283,37 @@ public class SubscriptionManager extends Handler {
                 logd("EVENT_SET_DATA_SUBSCRIPTION_DONE");
                 processSetDataSubscriptionDone((AsyncResult)msg.obj);
                 break;
+
+            case EVENT_ALL_DATA_DISCONNECTED:
+                Log.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED");
+                processAllDataDisconnected((AsyncResult)msg.obj);
+                break;
+
             default:
                 break;
+        }
+    }
+
+    /**
+     * Handles EVENT_ALL_DATA_DISCONNECTED.
+     * This method invoked in case of modem initiated subscription deactivation.
+     * Subscription deactivated notification already received and all the data
+     * connections are cleaned up.  Now mark the subscription as DEACTIVATED and
+     * set the DDS to the available subscription.
+     *
+     * @param ar
+     */
+    private void processAllDataDisconnected(AsyncResult ar) {
+        Integer sub = (Integer)ar.userObj;
+        SubscriptionId subId = SubscriptionId.values()[sub];
+        logd("processAllDataDisconnected: sub = " + sub
+                + " - subscriptionReadiness[" + sub + "] = "
+                + getCurrentSubscriptionReadiness(subId));
+        if (!getCurrentSubscriptionReadiness(subId)) {
+            resetCurrentSubscription(subId);
+            // Update the subscription preferences
+            updateSubPreferences();
+            notifySubscriptionDeactivated(sub);
         }
     }
 
@@ -390,10 +421,15 @@ public class SubscriptionManager extends Handler {
             // Subscription is deactivated from below layers.
             // In case if this is DDS subscription, then wait for the all data disconnected
             // indication from the lower layers to mark the subscription as deactivated.
-            // TODO: Make changes with HOTSWAP
-            resetCurrentSubscription(SubscriptionId.values()[subId]);
-            updateSubPreferences();
-            notifySubscriptionDeactivated(subId);
+            if (subId == mCurrentDds) {
+                logd("Register for the all data disconnect");
+                MSimProxyManager.getInstance().registerForAllDataDisconnected(subId, this,
+                        EVENT_ALL_DATA_DISCONNECTED, new Integer(subId));
+            } else {
+                resetCurrentSubscription(SubscriptionId.values()[subId]);
+                updateSubPreferences();
+                notifySubscriptionDeactivated(subId);
+            }
         } else {
             logd("handleSubscriptionStatusChanged INVALID");
         }
@@ -467,10 +503,6 @@ public class SubscriptionManager extends Handler {
                 cause = SUB_ACTIVATE_SUCCESS;
                 currentSub = mActivatePending.get(SubscriptionId.values()[setSubParam.subId]);
 
-                // TODO:
-                // enable data here,
-                // or do it in the Phone on getting subscription ready??
-
                 // Clear the pending activate request list
                 mActivatePending.put(SubscriptionId.values()[setSubParam.subId], null);
             } else if (setSubParam.subStatus == SubscriptionStatus.SUB_DEACTIVATE) {
@@ -499,7 +531,6 @@ public class SubscriptionManager extends Handler {
 
         mSubResult[setSubParam.subId] = cause;
 
-        // TODO: : Process the next deactivate or activate requests!! need to check this.
         if (startNextPendingDeactivateRequests()) {
             // There are deactivate requests.
         } else if (startNextPendingActivateRequests()) {
@@ -543,7 +574,7 @@ public class SubscriptionManager extends Handler {
             }
         }
 
-        // If there is only one active subscription, set user prefered settings
+        // If there is only one active subscription, set user preferred settings
         // for voice/sms/data subscription to this subscription.
         if (activeSubCount == 1) {
             logd("updateSubPreferences: only SUB:" + activeSub.subId
@@ -595,9 +626,10 @@ public class SubscriptionManager extends Handler {
      */
     private void processAllCardsInfoAvailable() {
         int availableCards = 0;
+        mAllCardsStatusAvailable = true;
 
         for (int i = 0; i < MSimConstants.RIL_MAX_CARDS; i++) {
-            if (mCardInfoAvailable[i] || mCardSubMgr.isAbsent(i)) {
+            if (mCardInfoAvailable[i] || mCardSubMgr.isCardAbsentOrError(i)) {
                 availableCards++;
             }
         }
@@ -645,11 +677,9 @@ public class SubscriptionManager extends Handler {
 
             if ((userSub.subStatus == SubscriptionStatus.SUB_ACTIVATED)
                     && (currentSub.subStatus != SubscriptionStatus.SUB_ACTIVATED)
-                    && (cardSubInfo.hasSubscription(userSub))){
-
-                logd("processCardInfoAvailable --DEBUG--: subId = " + subId + " need to activate!!!");
-                // TODO Need to check if this subscription is already in the pending list!
-                // If already there, no need to add again!
+                    && (cardSubInfo.hasSubscription(userSub))
+                    && !isPresentInActivatePendingList(userSub)){
+                logd("processCardInfoAvailable: subId = " + subId + " need to activate!!!");
 
                 // Need to activate this Subscription!!! - userSub.subId
                 // Push to the queue, so that start the SET_UICC_SUBSCRIPTION
@@ -672,13 +702,17 @@ public class SubscriptionManager extends Handler {
                 mIsNewCard[cardIndex] = false;
             }
         }
+        logd("processCardInfoAvailable: mIsNewCard [" + cardIndex + "] = "
+                + mIsNewCard [cardIndex]);
 
         if (!isAllCardsInfoAvailable()) {
             logd("All cards info not available!! Waiting for all info before processing");
             return;
         }
 
-        logd("--DEBUG--: processCardInfoAvailable: mSetSubscriptionInProgress = " + mSetSubscriptionInProgress);
+        logd("processCardInfoAvailable: mSetSubscriptionInProgress = "
+                + mSetSubscriptionInProgress);
+
         if (!mSetSubscriptionInProgress) {
             processActivateRequests();
         }
@@ -691,6 +725,16 @@ public class SubscriptionManager extends Handler {
                 mIsNewCard[i] = false;
             }
         }
+    }
+
+    private boolean isPresentInActivatePendingList(Subscription userSub) {
+        for (SubscriptionId sub: SubscriptionId.values()) {
+            Subscription actPendingSub = mActivatePending.get(sub);
+            if (userSub != null && userSub.isSame(actPendingSub)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -713,7 +757,7 @@ public class SubscriptionManager extends Handler {
         for (boolean available : mCardInfoAvailable) {
             result = result && available;
         }
-        return result;
+        return result || mAllCardsStatusAvailable;
     }
     private boolean isNewCardAvailable() {
         boolean result = false;
@@ -729,30 +773,40 @@ public class SubscriptionManager extends Handler {
      * @param ar
      */
     private void processCardInfoNotAvailable(AsyncResult ar) {
-        Integer cardIndex = (Integer)ar.userObj;
+        if (ar.exception != null || ar.result == null) {
+            logd("processCardInfoNotAvailable - Exception");
+            return;
+        }
 
-        logd("processCardInfoNotAvailable on cardIndex = " + cardIndex);
+        Integer cardIndex = (Integer)ar.userObj;
+        CardUnavailableReason reason = (CardUnavailableReason)ar.result;
+
+        logd("processCardInfoNotAvailable on cardIndex = " + cardIndex
+                + " reason = " + reason);
 
         mCardInfoAvailable[cardIndex] = false;
 
         // Set subscription is required if both the cards are unavailable
         // and when those are available next time!
-        // TODO: --DEBUG--: Shall relay on the RADIO_AVAILABLE/UNAVAILABLE
         mSetSubsModeRequired = !mCardInfoAvailable[0] && !mCardInfoAvailable[1];
         logd("processCardInfoNotAvailable mSetSubsModeRequired = " + mSetSubsModeRequired);
 
-        // Card has been removed from slot - cardIndex.
-        // Mark the active subscription from this card as de-activated!!
-        for (SubscriptionId sub: SubscriptionId.values()) {
-            if (getCurrentSubscription(sub).slotId == cardIndex) {
-                resetCurrentSubscription(sub);
-                // Need to notify here?
-                // Do we get SUBS_STATUS_CHANGED with
-                // DEACTIVATED, when card removed ??? - Yes
-                // In case of RADIO OFF ??? - No
-
-                //notifySubscriptionDeactivated(subId);
+        // Reset the current subscription and notify the subscriptions deactivated.
+        // Notify only in case of radio off and SIM Refresh reset.
+        if (reason == CardUnavailableReason.REASON_RADIO_UNAVAILABLE
+                || reason == CardUnavailableReason.REASON_SIM_REFRESH_RESET) {
+            // Card has been removed from slot - cardIndex.
+            // Mark the active subscription from this card as de-activated!!
+            for (SubscriptionId sub: SubscriptionId.values()) {
+                if (getCurrentSubscription(sub).slotId == cardIndex) {
+                    resetCurrentSubscription(sub);
+                    notifySubscriptionDeactivated(sub.ordinal());
+                }
             }
+        }
+
+        if (reason == CardUnavailableReason.REASON_RADIO_UNAVAILABLE) {
+            mAllCardsStatusAvailable = false;
         }
     }
 
@@ -790,8 +844,13 @@ public class SubscriptionManager extends Handler {
 
         for (SubscriptionId sub: SubscriptionId.values()) {
             Subscription newSub = mDeactivatePending.get(sub);
-            if (newSub != null
-                    && newSub.subStatus == SubscriptionStatus.SUB_DEACTIVATE) {
+            if (newSub != null && newSub.subStatus == SubscriptionStatus.SUB_DEACTIVATE) {
+                if (!validateDeactivationRequest(newSub)) {
+                    // Not a valid entry. Clear the deactivate pending entry
+                    mDeactivatePending.put(sub, null);
+                    continue;
+                }
+
                 logd("startNextPendingDeactivateRequests: Need to deactivating SUB : " + newSub);
                 if (mCurrentDds == newSub.subId && mDataActive) {
                     // This is the DDS.
@@ -804,7 +863,6 @@ public class SubscriptionManager extends Handler {
                     MSimProxyManager.getInstance().disableDataConnectivity(mCurrentDds, allDataCleanedUpMsg);
                 } else {
                     logd("startNextPendingDeactivateRequests: Deactivating now");
-                    // TODO: validateDeactivationRequest
                     SetUiccSubsParams setSubParam = new SetUiccSubsParams(newSub.subId, newSub.subStatus);
                     Message msgSetUiccSubDone = Message.obtain(this,
                             EVENT_SET_UICC_SUBSCRIPTION_DONE,
@@ -832,25 +890,43 @@ public class SubscriptionManager extends Handler {
         if (!mSetSubscriptionInProgress) {
             if (mSetSubsModeRequired) {
                 mSetSubscriptionInProgress  = setSubscriptionMode();
+                if (mSetSubscriptionInProgress) {
+                    mSetSubsModeRequired = false;
+                }
                 return;
             }
             mSetSubscriptionInProgress = startNextPendingActivateRequests();
         }
     }
 
-    /*
+
     private boolean validateDeactivationRequest(Subscription sub) {
-        // TODO: Check the parameters here!
+        // Check the parameters here!
         // subStatus, subId, slotId, appIndex
-        return true;
+        if (sub.subStatus == Subscription.SubscriptionStatus.SUB_DEACTIVATE
+                && (sub.subId >= 0 && sub.subId < NUM_SUBSCRIPTIONS)
+                && (sub.slotId >= 0 && sub.slotId < NUM_SUBSCRIPTIONS)
+                && (sub.getAppIndex() >= 0
+                        && sub.getAppIndex() <
+                        mCardSubMgr.getCardSubscriptions(sub.slotId).getLength())) {
+            return true;
+        }
+        return false;
     }
 
     private boolean validateActivationRequest(Subscription sub) {
-        // TODO: Check the parameters here!
+        // Check the parameters here!
         // subStatus, subId, slotId, appIndex
-        return true;
+        if (sub.subStatus == Subscription.SubscriptionStatus.SUB_ACTIVATE
+                && (sub.subId >= 0 && sub.subId < NUM_SUBSCRIPTIONS)
+                && (sub.slotId >= 0 && sub.slotId < NUM_SUBSCRIPTIONS)
+                && (sub.getAppIndex() >= 0
+                        && sub.getAppIndex() <
+                        mCardSubMgr.getCardSubscriptions(sub.slotId).getLength())) {
+            return true;
+        }
+        return false;
     }
-    */
 
     /**
      * Start one activate request from the pending activate request queue.
@@ -861,14 +937,17 @@ public class SubscriptionManager extends Handler {
 
         for (SubscriptionId sub: SubscriptionId.values()) {
             Subscription newSub = mActivatePending.get(sub);
-            if (newSub != null
-                    && newSub.subStatus == SubscriptionStatus.SUB_ACTIVATE) {
+            if (newSub != null && newSub.subStatus == SubscriptionStatus.SUB_ACTIVATE) {
+                if (!validateActivationRequest(newSub)) {
+                    // Not a valid entry.  Clear the pending activate request list
+                    mActivatePending.put(sub, null);
+                    continue;
+                }
 
                 // We need to update the phone object for the new subscription.
                 MSimProxyManager.getInstance().checkAndUpdatePhoneObject(newSub);
 
                 logd("startNextPendingActivateRequests: Activating SUB : " + newSub);
-                // TODO: validateActivationRequest
                 SetUiccSubsParams setSubParam = new SetUiccSubsParams(newSub.subId, newSub.subStatus);
                 Message msgSetUiccSubDone = Message.obtain(this,
                         EVENT_SET_UICC_SUBSCRIPTION_DONE,
@@ -1041,10 +1120,6 @@ public class SubscriptionManager extends Handler {
 
         mSubResult[0] = SUB_NOT_CHANGED;
         mSubResult[1] = SUB_NOT_CHANGED;
-        // Check if the requested subscription's type.
-        // If the type is different than the current phone type
-        // we need to update it!
-        // TODO: --DEBUG--: Should be done just before activating the sub!
 
         // Check what are the user preferred subscriptions.
         for (SubscriptionId subId: SubscriptionId.values()) {
@@ -1052,7 +1127,6 @@ public class SubscriptionManager extends Handler {
             //    (ie., the user must have marked this subscription as deactivate or
             //    selected a new sim app for this subscription), then deactivate the
             //    previous subscription.
-            // TODO: --DEBUG--: need null check here??
             if (!getCurrentSubscription(subId).equals(subData.subscription[subId.ordinal()])) {
                 if (getCurrentSubscriptionStatus(subId) == SubscriptionStatus.SUB_ACTIVATED) {
                     logd("Need to deactivate current SUB :" + subId);
@@ -1278,6 +1352,7 @@ public class SubscriptionManager extends Handler {
 
         // Update the user preferred sub
         mUserPrefSubs.subscription[subIndex].copyFrom(userPrefSub);
+        mUserPrefSubs.subscription[subIndex].subId = subIndex;
 
         userSub = ((userPrefSub.iccId != null) ? userPrefSub.iccId : "") + ","
             + ((userPrefSub.appType != null) ? userPrefSub.appType : "") + ","

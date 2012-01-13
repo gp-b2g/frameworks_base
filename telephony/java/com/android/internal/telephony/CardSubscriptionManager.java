@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.IccCardStatus.CardState;
+import com.android.internal.telephony.MSimConstants.CardUnavailableReason;
 
 import android.content.Context;
 import android.os.AsyncResult;
@@ -208,7 +209,7 @@ public class CardSubscriptionManager extends Handler {
 
             case EVENT_UPDATE_UICC_STATUS:
                 logd("EVENT_UPDATE_UICC_STATUS");
-                onUpdateUiccStatus((Integer)msg.arg2, ((String)msg.obj), (int)msg.arg1);
+                onUpdateUiccStatus((Integer)msg.arg2, ((String)msg.obj));
                 break;
 
             case EVENT_SIM_REFRESH:
@@ -230,9 +231,10 @@ public class CardSubscriptionManager extends Handler {
             logd("processSimRefresh: slot = " + slot
                     + " refreshResult = " + state.refreshResult);
 
-            if (state.refreshResult == IccRefreshResponse.Result.ICC_RESET) {
-                mCardSubData[slot] = null;
-                notifyCardInfoNotAvailable(slot);
+            if (state.refreshResult == IccRefreshResponse.Result.ICC_RESET
+                    && (slot >= 0 && slot < MSimConstants.RIL_MAX_CARDS)) {
+                resetCardInfo(slot);
+                notifyCardInfoNotAvailable(slot, CardUnavailableReason.REASON_SIM_REFRESH_RESET);
             }
         } else {
             loge("processSimRefresh received without input");
@@ -248,7 +250,10 @@ public class CardSubscriptionManager extends Handler {
             mRadioOn[cardIndex] = false;
             resetCardInfo(cardIndex);
             // Card is not available from this slot.  Notify cards unavailable.
-            notifyCardInfoNotAvailable(cardIndex);
+            notifyCardInfoNotAvailable(cardIndex, CardUnavailableReason.REASON_RADIO_UNAVAILABLE);
+            // Reset the flag card info available to false, so that
+            // next time it notifies all cards info available.
+            mAllCardsInfoAvailable = false;
         } else {
             logd("Invalid Index!!!");
         }
@@ -277,6 +282,10 @@ public class CardSubscriptionManager extends Handler {
 
         if ((ar.exception == null) && (ar.result != null)) {
             Integer cardIndex = (Integer) ar.result;
+            if (!mRadioOn[cardIndex]) {
+                logd("handleIccChanged: radio not available - EXIT");
+                return;
+            }
             UiccCard uiccCard = mUiccManager.getIccCards()[cardIndex];
             UiccCard card = mUiccCardList.get(cardIndex).getUiccCard();
 
@@ -345,6 +354,10 @@ public class CardSubscriptionManager extends Handler {
         if (cardIndex < mCardSubData.length) {
             mCardSubData[cardIndex] = null;
         }
+
+        if (cardIndex < mUiccCardList.size()) {
+            mUiccCardList.set(cardIndex, new CardInfo(null));
+        }
     }
 
     /**
@@ -404,6 +417,11 @@ public class CardSubscriptionManager extends Handler {
 
         logd("handleGetIccIdDone: cardIndex = " + cardIndex);
 
+        if (!mRadioOn[cardIndex]) {
+            logd("handleGetIccIdDone: radio not available - EXIT");
+            return;
+        }
+
         String iccId = null;
 
         if (ar.exception != null) {
@@ -439,9 +457,8 @@ public class CardSubscriptionManager extends Handler {
     /**
      *  Update the UICC status.
      */
-    synchronized private void onUpdateUiccStatus(Integer cardIndex, String reason, int context) {
-        logd("onUpdateUiccStatus: context = " + context + " mUpdateUiccStatusContext = "
-                + mUpdateUiccStatusContext + " reason = " + reason);
+    synchronized private void onUpdateUiccStatus(Integer cardIndex, String reason) {
+        logd("onUpdateUiccStatus: cardIndex = " + cardIndex + " reason = " + reason);
 
         CardState cardState = null;
         CardInfo cardInfo = mUiccCardList.get(cardIndex);
@@ -536,12 +553,12 @@ public class CardSubscriptionManager extends Handler {
             notifyCardInfoAvailable(cardIndex);
         }
         if (cardRemoved){
-            notifyCardInfoNotAvailable(cardIndex);
+            notifyCardInfoNotAvailable(cardIndex, CardUnavailableReason.REASON_CARD_REMOVED);
         }
 
         // Required to notify only once!!!
         // Notify if all card info is available.
-        if (isValidCards() && !mAllCardsInfoAvailable ) {
+        if (isValidCards() && !mAllCardsInfoAvailable && mRadioOn[cardIndex]) {
             mAllCardsInfoAvailable = true;
             notifyAllCardsInfoAvailable();
         }
@@ -581,8 +598,9 @@ public class CardSubscriptionManager extends Handler {
         mAllCardsInfoAvailableRegistrants.notifyRegistrants();
     }
 
-    private void notifyCardInfoNotAvailable(int cardIndex) {
-        mCardInfoUnavailableRegistrants[cardIndex].notifyRegistrants();
+    private void notifyCardInfoNotAvailable(int cardIndex, CardUnavailableReason reason) {
+        mCardInfoUnavailableRegistrants[cardIndex].notifyRegistrants(
+                new AsyncResult(null, reason, null));
     }
 
     private void notifyCardInfoAvailable(int cardIndex) {
@@ -637,9 +655,10 @@ public class CardSubscriptionManager extends Handler {
         return true;
     }
 
-    public boolean isAbsent(int cardIndex) {
+    public boolean isCardAbsentOrError(int cardIndex) {
         CardInfo cardInfo = mUiccCardList.get(cardIndex);
-        return (cardInfo.getCardState() == CardState.CARDSTATE_ABSENT);
+        return ((cardInfo.getCardState() == CardState.CARDSTATE_ABSENT)
+                || (cardInfo.getCardState() == CardState.CARDSTATE_ERROR));
     }
 
     public boolean isAllCardsUpdated() {
