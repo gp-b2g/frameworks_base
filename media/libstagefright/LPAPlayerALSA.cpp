@@ -400,7 +400,8 @@ status_t LPAPlayer::start(bool sourceAlreadyStarted) {
      return -22;
     }
     mmap_buffer(local_handle);
-    pcm_prepare(local_handle);
+    if (!bIsA2DPEnabled)
+       pcm_prepare(local_handle);
     handle = (void *)local_handle;
     //Map PMEM buffer
     LOGV("LPA Driver Started");
