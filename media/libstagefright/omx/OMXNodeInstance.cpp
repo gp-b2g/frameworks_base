@@ -458,7 +458,6 @@ status_t OMXNodeInstance::useGraphicBuffer2_l(
         return UNKNOWN_ERROR;
     }
 
-    CHECK_EQ(header->pBuffer, bufferHandle);
     CHECK_EQ(header->pAppPrivate, bufferMeta);
 
     *buffer = header;
