@@ -204,9 +204,11 @@ class BluetoothEventLoop {
                 mBluetoothService.getDeviceProperties();
         deviceProperties.addProperties(address, properties);
         String rssi = deviceProperties.getProperty(address, "RSSI");
+        String broadcaster = deviceProperties.getProperty(address, "Broadcaster");
         String classValue = deviceProperties.getProperty(address, "Class");
         String devType = deviceProperties.getProperty(address, "Type");
         String name = deviceProperties.getProperty(address, "Name");
+        String addr = deviceProperties.getProperty(address, "Address");
         short rssiValue;
         // For incoming connections, we don't get the RSSI value. Use a default of MIN_VALUE.
         // If we accept the pairing, we will automatically show it at the top of the list.
@@ -225,8 +227,8 @@ class BluetoothEventLoop {
 
             mContext.sendBroadcast(intent, BLUETOOTH_PERM);
         } else if (devType != null) {
-            if (DBG) log("Device type: " + devType);
-            if ("LE".equals(devType)) {
+            if (DBG) log("Device " + addr + " type: " + devType + " Broadcaster: " + broadcaster);
+            if ("LE".equals(devType) && "false".equals(broadcaster)) {
                 Intent intent = new Intent(BluetoothDevice.ACTION_FOUND);
                 intent.putExtra(BluetoothDevice.EXTRA_DEVICE, mAdapter.getRemoteDevice(address));
                 intent.putExtra(BluetoothDevice.EXTRA_RSSI, rssiValue);
