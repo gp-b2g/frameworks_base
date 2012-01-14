@@ -2153,6 +2153,24 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
         return err;
     }
 
+    if (mFlags & kUseMinBufferCount) {
+        def.nBufferCountActual = def.nBufferCountMin;
+        if (!mIsEncoder) {
+                if (portIndex == kPortIndexOutput) {
+                    def.nBufferCountActual += 2;
+                }else {
+                    def.nBufferCountActual += 1;
+                }
+        }
+        err = mOMX->setParameter(
+                    mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+        if (err != OK) {
+            CODEC_LOGE("setting nBufferCountActual to %lu failed: %d",
+                    def.nBufferCountActual, err);
+            return err;
+        }
+    }
+
     CODEC_LOGV("allocating %lu buffers of size %lu on %s port",
             def.nBufferCountActual, def.nBufferSize,
             portIndex == kPortIndexInput ? "input" : "output");
