@@ -34,6 +34,9 @@ import android.bluetooth.IBluetoothGattService;
 interface IBluetooth
 {
     boolean isEnabled();
+    boolean isServiceRegistered(in ParcelUuid uuid);
+    boolean registerService(in ParcelUuid uuid, boolean enable);
+
     int getBluetoothState();
     boolean enable();
     boolean disable(boolean persistSetting);

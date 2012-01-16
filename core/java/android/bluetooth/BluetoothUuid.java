@@ -147,6 +147,18 @@ public final class BluetoothUuid {
         return uuid.equals(MessageNotificationServer);
     }
 
+    public static boolean isFileTransfer(ParcelUuid uuid) {
+        return uuid.equals(FileTransfer);
+    }
+
+    public static boolean isDun(ParcelUuid uuid) {
+        return uuid.equals(DUN);
+    }
+
+    public static boolean isSap(ParcelUuid uuid) {
+        return uuid.equals(SAP);
+    }
+
     /**
      * Returns true if ParcelUuid is present in uuidArray
      *

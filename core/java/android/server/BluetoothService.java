@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- *
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -406,6 +406,46 @@ public class BluetoothService extends IBluetooth.Stub {
     public boolean isEnabled() {
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
         return isEnabledInternal();
+    }
+
+    public boolean isServiceRegistered(ParcelUuid uuid) {
+       if (DBG) Log.d(TAG, "isServiceRegistered UUID: " + uuid);
+       if (uuid == null) return false;
+
+       if (BluetoothUuid.isFileTransfer(uuid)) {
+         return mFTPEnabled;
+       } else if (BluetoothUuid.isMessageAccessServer(uuid)) {
+         return mMAPEnabled;
+       } else if (BluetoothUuid.isDun(uuid)) {
+         return mDUNEnabled;
+       } else if (BluetoothUuid.isSap(uuid)) {
+         return mSAPEnabled;
+       } else {
+         if (DBG) Log.d(TAG, "Unsupported service UUID: " + uuid);
+         return false;
+       }
+    }
+
+    public  boolean registerService(ParcelUuid uuid, boolean enable) {
+       if (DBG) Log.d(TAG, "registerService UUID: " + uuid + " " + "register = " + enable);
+       if (uuid == null) return false;
+
+       if (BluetoothUuid.isFileTransfer(uuid)) {
+         if (enable) return enableFTP();
+         return  disableFTP();
+       } else if (BluetoothUuid.isMessageAccessServer(uuid)) {
+         if (enable) return enableMAP();
+         return disableMAP();
+       } else if (BluetoothUuid.isDun(uuid)) {
+         if (enable) return enableDUN();
+         return disableDUN();
+       } else if (BluetoothUuid.isSap(uuid)) {
+         if (enable) return enableSAP();
+         return disableSAP();
+       } else {
+         if (DBG) Log.d(TAG, "Unsupported service UUID: " + uuid + " " + "register = " + enable);
+         return false;
+       }
     }
 
     private boolean isEnabledInternal() {

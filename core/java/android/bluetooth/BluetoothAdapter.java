@@ -415,6 +415,32 @@ public final class BluetoothAdapter {
     }
 
     /**
+     * Query the registration state of a service
+     * @return true if the service is registered
+     * @hide
+     */
+    public boolean isServiceRegistered(ParcelUuid uuid) {
+       try {
+           return mService.isServiceRegistered(uuid);
+       } catch (RemoteException e) {Log.e(TAG, "", e);}
+       return false;
+    }
+
+    /**
+     * Register/deregister a service
+     * @param uuid uuid of the service to be registered
+     * @param enable true/false to register/deregister a service
+     * @return true if register/deregister is succeeded
+     * @hide
+     */
+    public boolean registerService(ParcelUuid uuid , boolean enable) {
+      try {
+          return mService.registerService(uuid, enable);
+      } catch (RemoteException e) {Log.e(TAG, "", e);}
+        return false;
+    }
+
+    /**
      * Get the current state of the local Bluetooth adapter.
      * <p>Possible return values are
      * {@link #STATE_OFF},
