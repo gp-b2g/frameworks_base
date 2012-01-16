@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1753,6 +1754,23 @@ public final class Settings {
          */
         public static final String[] USER_PREFERRED_SUBS = {"user_preferred_sub1",
                 "user_preferred_sub2"};
+
+        /**
+          * Channel name for subcription one and two i.e. channele name 1, channel name 2
+          * @hide
+          */
+        public static final String [] MULTI_SIM_NAME = {"perferred_name_sub1", "preferred_name_sub2"};
+
+        /**
+          * User preferred countdown waiting time when select subscription to dial or sms
+          * @hide
+          */
+        public static final String MULTI_SIM_COUNTDOWN = "mutli_sim_countdown";
+
+        /** Callback enable option
+         * @hide
+         */
+         public static final String CALLBACK_PRIORITY_ENABLED = "callback_priority_enabled";
 
         /**
          * CDMA only settings
