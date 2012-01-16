@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 
 package com.android.internal.telephony;
 
+import android.app.ActivityManagerNative;
+import android.content.Intent;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -51,6 +53,16 @@ public class MSimPhoneProxy extends PhoneProxy {
             Log.d(LOG_TAG, "MSimPhoneProxy: deleteAndCreatePhone: Creating MSimGsmPhone");
             mActivePhone = MSimPhoneFactory.getMSimGsmPhone(mSubscription);
         }
+    }
+
+    @Override
+    protected void sendBroadcastStickyIntent() {
+        // Send an Intent to the PhoneApp that we had a radio technology change
+        Intent intent = new Intent(TelephonyIntents.ACTION_RADIO_TECHNOLOGY_CHANGED);
+        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
+        intent.putExtra(Phone.PHONE_NAME_KEY, mActivePhone.getPhoneName());
+        intent.putExtra(MSimConstants.SUBSCRIPTION_KEY, mSubscription);
+        ActivityManagerNative.broadcastStickyIntent(intent, null);
     }
 
     public PhoneSubInfoProxy getPhoneSubInfoProxy(){
