@@ -133,7 +133,6 @@ SurfaceTexture::SurfaceTexture(GLuint tex, bool allowSynchronousMode,
     mAllowSynchronousMode(allowSynchronousMode),
     mConnectedApi(NO_CONNECTED_API),
     mAbandoned(false),
-    mReqSize(0),
 #ifdef USE_FENCE_SYNC
     mUseFenceSync(useFenceSync),
 #else
@@ -483,8 +482,6 @@ status_t SurfaceTexture::dequeueBuffer(int *outBuf, uint32_t w, uint32_t h,
                 mPixelFormat = format;
             }
 
-            checkBuffer((native_handle_t *)graphicBuffer->handle, mReqSize, usage);
-
             mSlots[buf].mGraphicBuffer = graphicBuffer;
             mSlots[buf].mRequestBufferCalled = false;
             mSlots[buf].mFence = EGL_NO_SYNC_KHR;
@@ -763,14 +760,15 @@ status_t SurfaceTexture::performQcomOperation(int operation, int arg1, int arg2,
     ST_LOGV("SurfaceTexture::performQcomOperation operation=%d", operation);
 
     switch(operation) {
-        case NATIVE_WINDOW_SET_BUFFERS_SIZE:
-            mReqSize = arg1;
-            break;
-        case NATIVE_WINDOW_UPDATE_BUFFERS_GEOMETRY:
+        case NATIVE_WINDOW_SET_BUFFERS_SIZE: {
+            int size = arg1;
+            mGraphicBufferAlloc->setGraphicBufferSize(size);
+        } break;
+        case NATIVE_WINDOW_UPDATE_BUFFERS_GEOMETRY: {
             mNextBufferInfo.width = arg1;
             mNextBufferInfo.height = arg2;
             mNextBufferInfo.format = arg3;
-            break;
+        } break;
         default: return BAD_VALUE;
     };
     return OK;
