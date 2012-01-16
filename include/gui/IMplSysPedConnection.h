@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_GUI_ISENSORSERVER_H
-#define ANDROID_GUI_ISENSORSERVER_H
+#ifndef ANDROID_GUI_IMPL_SYS_PED_CONNECTION_H
+#define ANDROID_GUI_IMPL_SYS_PED_CONNECTION_H
 
-#include <stdint.h>
+#include <stdint.h> 
 #include <sys/types.h>
 
 #include <utils/Errors.h>
@@ -28,27 +28,23 @@
 namespace android {
 // ----------------------------------------------------------------------------
 
-class Sensor;
-class ISensorEventConnection;
-class IMplSysConnection;
-class IMplConnection;
-class IMplSysPedConnection;
+class SensorChannel;
 
-class ISensorServer : public IInterface
+class IMplSysPedConnection : public IInterface
 {
 public:
-    DECLARE_META_INTERFACE(SensorServer);
+    DECLARE_META_INTERFACE(MplSysPedConnection);
 
-    virtual Vector<Sensor> getSensorList() = 0;
-    virtual sp<ISensorEventConnection> createSensorEventConnection() = 0;
-    virtual sp<IMplSysConnection> createMplSysConnection() = 0;
-    virtual sp<IMplSysPedConnection> createMplSysPedConnection() = 0;
-    virtual sp<IMplConnection> createMplConnection() = 0;
+    virtual status_t rpcStartPed()=0;
+    virtual status_t rpcStopPed()=0;
+    virtual status_t rpcGetSteps()=0;
+    virtual double rpcGetWalkTime()=0;
+    virtual status_t rpcClearPedData()=0;
 };
 
 // ----------------------------------------------------------------------------
 
-class BnSensorServer : public BnInterface<ISensorServer>
+class BnMplSysPedConnection : public BnInterface<IMplSysPedConnection>
 {
 public:
     virtual status_t    onTransact( uint32_t code,
@@ -60,4 +56,4 @@ public:
 // ----------------------------------------------------------------------------
 }; // namespace android
 
-#endif // ANDROID_GUI_ISENSORSERVER_H
+#endif // ANDROID_GUI_IMPL_SYS_PED_CONNECTION_H
