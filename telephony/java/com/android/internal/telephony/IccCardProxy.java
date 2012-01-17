@@ -230,16 +230,10 @@ public class IccCardProxy extends Handler implements IccCard {
         if (mIccRecords != newRecords || mUiccApplication != newApp || mUiccCard != newCard) {
             log("Icc changed. Reregestering.");
             unregisterUiccCardEvents();
-            mUiccCard = null;
-            mUiccApplication = null;
-            mIccRecords = null;
-
-            if (newRecords != null) {
-                mUiccCard = newCard;
-                mUiccApplication = newApp;
-                mIccRecords = newRecords;
-                registerUiccCardEvents();
-            }
+            mUiccCard = newCard;
+            mUiccApplication = newApp;
+            mIccRecords = newRecords;
+            registerUiccCardEvents();
         }
 
         updateExternalState();
