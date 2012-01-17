@@ -33,6 +33,7 @@ namespace android {
 enum {
     CREATE_GRAPHIC_BUFFER = IBinder::FIRST_CALL_TRANSACTION,
     FREE_ALL_GRAPHIC_BUFFERS_EXCEPT,
+    FREE_GRAPHIC_BUFFER_AT_INDEX,
 };
 
 class BpGraphicBufferAlloc : public BpInterface<IGraphicBufferAlloc>
@@ -73,6 +74,13 @@ public:
         remote()->transact(FREE_ALL_GRAPHIC_BUFFERS_EXCEPT, data, &reply);
     }
 
+    virtual void freeGraphicBufferAtIndex(int bufIdx) {
+        Parcel data, reply;
+        data.writeInterfaceToken(
+                IGraphicBufferAlloc::getInterfaceDescriptor());
+        data.writeInt32(bufIdx);
+        remote()->transact(FREE_GRAPHIC_BUFFER_AT_INDEX, data, &reply);
+    }
 };
 
 IMPLEMENT_META_INTERFACE(GraphicBufferAlloc, "android.ui.IGraphicBufferAlloc");
@@ -122,6 +130,12 @@ status_t BnGraphicBufferAlloc::onTransact(
             CHECK_INTERFACE(IGraphicBufferAlloc, data, reply);
             int bufIdx = data.readInt32();
             freeAllGraphicBuffersExcept(bufIdx);
+            return NO_ERROR;
+        } break;
+        case FREE_GRAPHIC_BUFFER_AT_INDEX: {
+            CHECK_INTERFACE(IGraphicBufferAlloc, data, reply);
+            int bufIdx = data.readInt32();
+            freeGraphicBufferAtIndex(bufIdx);
             return NO_ERROR;
         } break;
         default:

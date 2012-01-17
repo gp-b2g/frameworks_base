@@ -466,6 +466,9 @@ status_t SurfaceTexture::dequeueBuffer(int *outBuf, uint32_t w, uint32_t h,
             needNewBuffer(currentGeometry, requiredGeometry, updatedGeometry) ||
             ((uint32_t(buffer->usage) & usage) != usage))
         {
+            if (buffer != NULL) {
+                mGraphicBufferAlloc->freeGraphicBufferAtIndex(buf);
+            }
             usage |= GraphicBuffer::USAGE_HW_TEXTURE;
             status_t error;
             sp<GraphicBuffer> graphicBuffer(

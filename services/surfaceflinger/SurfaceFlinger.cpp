@@ -2657,7 +2657,9 @@ status_t Client::destroySurface(SurfaceID sid) {
 
 // ---------------------------------------------------------------------------
 
-GraphicBufferAlloc::GraphicBufferAlloc() {}
+GraphicBufferAlloc::GraphicBufferAlloc() {
+    mFreedIndex = -1;
+}
 
 GraphicBufferAlloc::~GraphicBufferAlloc() {}
 
@@ -2676,7 +2678,12 @@ sp<GraphicBuffer> GraphicBufferAlloc::createGraphicBuffer(uint32_t w, uint32_t h
         return 0;
     }
     Mutex::Autolock _l(mLock);
-    mBuffers.add(graphicBuffer);
+    if (-1 != mFreedIndex) {
+        mBuffers.insertAt(graphicBuffer, mFreedIndex);
+        mFreedIndex = -1;
+    } else {
+        mBuffers.add(graphicBuffer);
+    }
     return graphicBuffer;
 }
 
@@ -2689,6 +2696,17 @@ void GraphicBufferAlloc::freeAllGraphicBuffersExcept(int bufIdx) {
     } else {
         mBuffers.clear();
     }
+    mFreedIndex = -1;
+}
+
+void GraphicBufferAlloc::freeGraphicBufferAtIndex(int bufIdx) {
+     Mutex::Autolock _l(mLock);
+     if (0 <= bufIdx && bufIdx < mBuffers.size()) {
+        mBuffers.removeItemsAt(bufIdx);
+        mFreedIndex = bufIdx;
+     } else {
+        mFreedIndex = -1;
+     }
 }
 // ---------------------------------------------------------------------------
 
