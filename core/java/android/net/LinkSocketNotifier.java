@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (C) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,45 +20,76 @@ package android.net;
 import java.util.Map;
 
 /**
- * Interface used to get feedback about a {@link android.net.LinkSocket}.  Instance is optionally
- * passed when a LinkSocket is constructed.  Multiple LinkSockets may use the same notifier.
+ * Interface used to get feedback about a {@link android.net.LinkSocket} or
+ * {@link android.net.LinkDatagramSocket}.  Instance is optionally
+ * passed when a Link[Datagram]Socket is constructed.  Multiple Link[Datagram]Sockets may
+ * use the same notifier.
  * @hide
  */
 public interface LinkSocketNotifier {
     /**
-     * This callback function will be called if a better link
-     * becomes available.
-     * TODO - this shouldn't be checked for all cases - what's the conditional
-     *        flag?
-     * If the duplicate socket is accepted, the original will be marked invalid
-     * and additional use will throw exceptions.
-     * @param original the original LinkSocket
-     * @param duplicate the new LinkSocket that better meets the application
-     *                  requirements
-     * @return {@code true} if the application intends to use this link
+     * This callback function will be called if the system determines
+     * an application will get a better link if it creates a new
+     * LinkSocket right now.
      *
-     * REM
-     * TODO - how agressive should we be?
-     * At a minimum CS tracks which LS have this turned on and tracks the requirements
-     * When a new link becomes available, automatically check if any of the LinkSockets
-     *   will care.
-     * If found, grab a refcount on the link so it doesn't go away and send notification
-     * Optionally, periodically setup connection on available networks to check for better links
-     * Maybe pass this info into the LinkFactories so condition changes can be acted on more quickly
+     * If a new LinkSocket is created, it is important to close the
+     * old LinkSocket once it is no longer in use.
+     *
+     * @param socket the original LinkSocket whose connection could be improved
      */
-    public boolean onBetterLinkAvailable(LinkSocket original, LinkSocket duplicate);
+    public void onBetterLinkAvailable(LinkSocket socket);
+
+    /**
+     * This callback function will be called if the system determines
+     * an application will get a better link if it creates a new
+     * LinkDatagramSocket right now.
+     *
+     * Note: This callback is not applicable for QoS needs
+     *
+     * If a new LinkDatagramSocket is created, it is important to
+     * close the old LinkDatagramSocket once it is no longer in use.
+     *
+     * @param socket the original LinkDatagramSocket whose connection
+     * could be improved
+     */
+    public void onBetterLinkAvailable(LinkDatagramSocket socket);
 
     /**
      * This callback function will be called when a LinkSocket no longer has
      * an active link.
-     * @param socket the LinkSocket that lost its link
      *
-     * REM
-     * NetworkStateTracker tells us it is disconnected
-     * CS checks the table for LS on that link
-     * CS calls each callback (need to work out p2p cross process callback)
+     * @param socket the LinkSocket that lost its link
      */
     public void onLinkLost(LinkSocket socket);
+
+    /**
+     * This callback function will be called when a LinkDatagramSocket no
+     * longer has an active link.
+     *
+     * @param socket the LinkDatagramSocket that lost its link
+     */
+    public void onLinkLost(LinkDatagramSocket socket);
+
+    /**
+     * This callback function will be called when any of the notification-marked
+     * capabilities of the LinkSocket (e.g. upstream bandwidth) have changed.
+     *
+     * @param socket the LinkSocket for which capabilities have changed
+     * @param changedCapabilities the set of capabilities that the application
+     *                            is interested in and have changed (with new values)
+     */
+    public void onCapabilitiesChanged(LinkSocket socket, LinkCapabilities changedCapabilities);
+
+    /**
+     * This callback function will be called when any of the notification-marked
+     * QoS capabilities of the LinkDatagramSocket (e.g. upstream bandwidth) have
+     * changed.
+     *
+     * @param socket the LinkDatagramSocket for which capabilities have changed
+     * @param changedCapabilities the set of capabilities that the application
+     *          is interested in and have changed (with new values)
+     */
+    public void onCapabilitiesChanged(LinkDatagramSocket socket, LinkCapabilities changedCapabilities);
 
     /**
      * This callback function will be called when an application calls
@@ -71,18 +103,4 @@ public interface LinkSocketNotifier {
      * on failure, call callback
      */
     public void onNewLinkUnavailable(LinkSocket socket);
-
-    /**
-     * This callback function will be called when any of the notification-marked
-     * capabilities of the LinkSocket (e.g. upstream bandwidth) have changed.
-     * @param socket the linkSocet for which capabilities have changed
-     * @param changedCapabilities the set of capabilities that the application
-     *                            is interested in and have changed (with new values)
-     *
-     * REM
-     * Maybe pass the interesting capabilities into the Links.
-     * Get notified of every capability change
-     * check for LinkSockets on that Link that are interested in that Capability - call them
-     */
-    public void onCapabilitiesChanged(LinkSocket socket, LinkCapabilities changedCapabilities);
 }
