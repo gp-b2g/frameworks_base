@@ -1687,6 +1687,13 @@ public class VideoEditorImpl implements VideoEditor {
             } catch (InterruptedException ex) {
                 Log.w(TAG, "The thread was interrupted", new Throwable());
                 throw new IllegalStateException("The thread was interrupted");
+            } catch (RuntimeException ex) {
+                mPreviewInProgress = false;
+                if (semAcquireDone) {
+                    unlock();
+                }
+                Log.w(TAG, "The thread was interrupted due to a runtime exception", new Throwable());
+                throw new RuntimeException("The thread was interrupted");
             }
          } else {
             throw new IllegalStateException("Preview already in progress");
