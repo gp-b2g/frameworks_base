@@ -91,7 +91,8 @@ SoftwareRenderer::SoftwareRenderer(
             native_window_set_usage(
             mNativeWindow.get(),
             GRALLOC_USAGE_SW_READ_NEVER | GRALLOC_USAGE_SW_WRITE_OFTEN
-            | GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_EXTERNAL_DISP));
+            | GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_EXTERNAL_DISP
+            | GRALLOC_USAGE_PRIVATE_0));
 
     CHECK_EQ(0,
             native_window_set_scaling_mode(
