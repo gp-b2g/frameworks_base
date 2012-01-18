@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -221,7 +221,6 @@ public class MSimPhoneFactory extends PhoneFactory {
             subscription = Settings.System.getInt(sContext.getContentResolver(),
                     Settings.System.DEFAULT_SUBSCRIPTION);
         } catch (SettingNotFoundException snfe) {
-            Log.e(LOG_TAG, "Settings Exception Reading Default Subscription");
         }
 
         return subscription;
