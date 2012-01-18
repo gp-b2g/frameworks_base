@@ -749,7 +749,7 @@ public class SubscriptionManager extends Handler {
         }
     }
 
-    private void setDefaultAppIndex(Subscription sub) {
+    public void setDefaultAppIndex(Subscription sub) {
         int cardIndex = sub.slotId;
         String mode = getPreferredMode(cardIndex);
         int appIndex = getAppIndexByMode(cardIndex, mode);
