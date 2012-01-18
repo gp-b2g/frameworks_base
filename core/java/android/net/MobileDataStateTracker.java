@@ -39,6 +39,7 @@ import android.util.Slog;
 
 import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.ITelephony;
+import com.android.internal.telephony.ITelephonyMSim;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.util.AsyncChannel;
@@ -61,6 +62,7 @@ public class MobileDataStateTracker implements NetworkStateTracker {
 
     private Phone.DataState mMobileDataState;
     private ITelephony mPhoneService;
+    private ITelephonyMSim mMSimPhoneService;
 
     private String mApnType;
     private NetworkInfo mNetworkInfo;
@@ -293,6 +295,13 @@ public class MobileDataStateTracker implements NetworkStateTracker {
     }
 
     private void getPhoneService(boolean forceRefresh) {
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            if (mMSimPhoneService == null || forceRefresh) {
+                mMSimPhoneService = ITelephonyMSim.Stub.asInterface(
+                        ServiceManager.getService("phone_msim"));
+            }
+            return;
+        }
         if ((mPhoneService == null) || forceRefresh) {
             mPhoneService = ITelephony.Stub.asInterface(ServiceManager.getService("phone"));
         }
@@ -449,15 +458,33 @@ public class MobileDataStateTracker implements NetworkStateTracker {
          * RemoteException and need to re-reference the service.
          */
         for (int retry = 0; retry < 2; retry++) {
-            if (mPhoneService == null) {
-                loge("Ignoring mobile radio request because could not acquire PhoneService");
-                break;
-            }
+            if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                if (mMSimPhoneService == null) {
+                    loge("Ignoring mobile radio request because "
+                            + "could not acquire MSim Phone Service");
+                    break;
+                }
 
-            try {
-                return mPhoneService.setRadio(turnOn);
-            } catch (RemoteException e) {
-                if (retry == 0) getPhoneService(true);
+                try {
+                    boolean result = true;
+                    for (int i = 0; i < TelephonyManager.getDefault().getPhoneCount(); i++) {
+                        result = result && mMSimPhoneService.setRadio(turnOn, i);
+                    }
+                    return result;
+                } catch (RemoteException e) {
+                    if (retry == 0) getPhoneService(true);
+                }
+            } else {
+                if (mPhoneService == null) {
+                    loge("Ignoring mobile radio request because could not acquire PhoneService");
+                    break;
+                }
+
+                try {
+                    return mPhoneService.setRadio(turnOn);
+                } catch (RemoteException e) {
+                    if (retry == 0) getPhoneService(true);
+                }
             }
         }
 
@@ -529,19 +556,36 @@ public class MobileDataStateTracker implements NetworkStateTracker {
          * RemoteException and need to re-reference the service.
          */
         for (int retry = 0; retry < 2; retry++) {
-            if (mPhoneService == null) {
-                loge("Ignoring feature request because could not acquire PhoneService");
-                break;
-            }
-
-            try {
-                if (enable) {
-                    return mPhoneService.enableApnType(apnType);
-                } else {
-                    return mPhoneService.disableApnType(apnType);
+            if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                if (mMSimPhoneService == null) {
+                    loge("Ignoring feature request because could not acquire MSim Phone Service");
+                    break;
                 }
-            } catch (RemoteException e) {
-                if (retry == 0) getPhoneService(true);
+
+                try {
+                    if (enable) {
+                        return mMSimPhoneService.enableApnType(apnType);
+                    } else {
+                        return mMSimPhoneService.disableApnType(apnType);
+                    }
+                } catch (RemoteException e) {
+                    if (retry == 0) getPhoneService(true);
+                }
+            } else {
+                if (mPhoneService == null) {
+                    loge("Ignoring feature request because could not acquire PhoneService");
+                    break;
+                }
+
+                try {
+                    if (enable) {
+                        return mPhoneService.enableApnType(apnType);
+                    } else {
+                        return mPhoneService.disableApnType(apnType);
+                    }
+                } catch (RemoteException e) {
+                    if (retry == 0) getPhoneService(true);
+                }
             }
         }
 
