@@ -70,7 +70,7 @@ public:
     // gets the list flags
     uint32_t getFlags() const;
 
-    void enableHDMIOutput(bool enable);
+    void enableHDMIOutput(int externaltype);
 
     // for debugging
     void dump(String8& out, char* scratch, size_t SIZE,
