@@ -231,6 +231,7 @@ private:
     bool mOnlySubmitOneBufferAtOneTime;
     bool mInterlaceFormatDetected;
     bool mSPSParsed;
+    bool bInvalidState;
 
     // Used to record the decoding time for an output picture from
     // a video encoder.

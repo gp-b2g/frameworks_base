@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- * Copyright (C) 2011-2012 Code Aurora Forum
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*--------------------------------------------------------------------------
-Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
---------------------------------------------------------------------------*/
 
 //#define LOG_NDEBUG 0
 #define LOG_TAG "OMXCodec"
@@ -2006,6 +2003,7 @@ OMXCodec::OMXCodec(
       mIsAacFormatAdif(0),
       mInterlaceFormatDetected(false),
       mSPSParsed(false),
+      bInvalidState(false),
       latenessUs(0),
       LC_level(0),
       mThumbnailMode(false),
@@ -2826,6 +2824,11 @@ void OMXCodec::on_message(const omx_message &msg) {
 
             BufferInfo* info = &buffers->editItemAt(i);
             info->mStatus = OWNED_BY_US;
+            if ((mState == ERROR)  && (bInvalidState == true)) {
+              CODEC_LOGV("mState ERROR, freeing i/p buffer %p", buffer);
+              status_t err = freeBuffer(kPortIndexInput, i);
+              CHECK_EQ(err, (status_t)OK);
+            }
 
             // Buffer could not be released until empty buffer done is called.
             if (info->mMediaBuffer != NULL) {
@@ -2893,7 +2896,7 @@ void OMXCodec::on_message(const omx_message &msg) {
             }
 
             info->mStatus = OWNED_BY_US;
-            if (mState == ERROR) {
+            if ((mState == ERROR) && (bInvalidState == true)) {
               CODEC_LOGV("mState ERROR, freeing o/p buffer %p", buffer);
               status_t err = freeBuffer(kPortIndexOutput, i);
               CHECK_EQ(err, (status_t)OK);
@@ -3115,6 +3118,11 @@ void OMXCodec::onEvent(OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2) {
         case OMX_EventError:
         {
             CODEC_LOGE("ERROR(0x%08lx, %ld)", data1, data2);
+            if (data1 == OMX_ErrorInvalidState) {
+                bInvalidState = true;
+                mPortStatus[kPortIndexInput] = SHUTTING_DOWN;
+                mPortStatus[kPortIndexOutput] = SHUTTING_DOWN;
+            }
 
             setState(ERROR);
             break;
