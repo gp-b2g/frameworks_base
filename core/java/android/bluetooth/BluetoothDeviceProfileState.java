@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
 import java.util.Set;
+import java.util.List;
 
 /**
  * This class is the Profile connection state machine associated with a remote
@@ -434,7 +436,9 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                     }
                     if (message.arg1 == CONNECT_A2DP_OUTGOING) {
                         if (mA2dpService != null &&
-                            mA2dpService.getConnectedDevices().size() == 0) {
+                            mA2dpService.getDevicesMatchingConnectionStates(
+                                new int[] {BluetoothProfile.STATE_CONNECTED,
+                                           BluetoothProfile.STATE_CONNECTING}).size() ==0) {
                             Log.i(TAG, "A2dp:Connect Other Profiles");
                             mA2dpService.connect(mDevice);
                         }
@@ -442,7 +446,9 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                         if (mHeadsetService == null) {
                             deferMessage(message);
                         } else {
-                            if (mHeadsetService.getConnectedDevices().size() == 0) {
+                            if (mHeadsetService.getDevicesMatchingConnectionStates(
+                                new int[] {BluetoothProfile.STATE_CONNECTED,
+                                           BluetoothProfile.STATE_CONNECTING}).size() ==0) {
                                 Log.i(TAG, "Headset:Connect Other Profiles");
                                 mHeadsetService.connect(mDevice);
                             }
@@ -1364,6 +1370,14 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                 if (mA2dpService.getPriority(mDevice) == BluetoothProfile.PRIORITY_ON ||
                         mA2dpService.getPriority(mDevice) ==
                             BluetoothProfile.PRIORITY_AUTO_CONNECT) {
+                    List<BluetoothDevice> sinks =
+                        mA2dpService.getDevicesMatchingConnectionStates(
+                                new int[] {BluetoothProfile.STATE_CONNECTED,
+                                           BluetoothProfile.STATE_CONNECTING});
+
+                    if (sinks.contains(mDevice)) {
+                        return; // Already profile connection in progress
+                    }
                     Message msg = new Message();
                     msg.what = CONNECT_OTHER_PROFILES;
                     msg.arg1 = CONNECT_A2DP_OUTGOING;
@@ -1378,6 +1392,14 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                     (mHeadsetService.getPriority(mDevice) == BluetoothProfile.PRIORITY_ON ||
                         mHeadsetService.getPriority(mDevice) ==
                             BluetoothProfile.PRIORITY_AUTO_CONNECT)) {
+                    List<BluetoothDevice> headsets =
+                        mHeadsetService.getDevicesMatchingConnectionStates(
+                                new int[] {BluetoothProfile.STATE_CONNECTED,
+                                           BluetoothProfile.STATE_CONNECTING});
+
+                    if (headsets.contains(mDevice)) {
+                        return; // Already profile connection in progress
+                    }
                     Message msg = new Message();
                     msg.what = CONNECT_OTHER_PROFILES;
                     msg.arg1 = CONNECT_HFP_OUTGOING;

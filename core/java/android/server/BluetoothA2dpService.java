@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -557,8 +558,15 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
         if (DBG) log("connectSink(" + device + ")");
         if (!isConnectSinkFeasible(device)) return false;
 
+        int state;
         for (BluetoothDevice sinkDevice : mAudioDevices.keySet()) {
-            if (getConnectionState(sinkDevice) != BluetoothProfile.STATE_DISCONNECTED) {
+            state = getConnectionState(sinkDevice);
+            if (state != BluetoothProfile.STATE_DISCONNECTED) {
+                if (device.equals(sinkDevice) &&
+                    ((state == BluetoothProfile.STATE_CONNECTING) ||
+                     (state == BluetoothProfile.STATE_CONNECTED))) {
+                     return true; // already connecting to same device.
+                }
                 disconnect(sinkDevice);
             }
         }
