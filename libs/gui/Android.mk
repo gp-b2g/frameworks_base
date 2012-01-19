@@ -32,6 +32,11 @@ LOCAL_SHARED_LIBRARIES := \
 
 LOCAL_C_INCLUDES := hardware/qcom/display/libqcomui
 
+ifeq ($(TARGET_USES_TESTFRAMEWORK),true)
+LOCAL_CFLAGS += -DGFX_TESTFRAMEWORK
+LOCAL_SHARED_LIBRARIES += libtestframework
+endif
+
 LOCAL_MODULE:= libgui
 
 ifeq ($(TARGET_BOARD_PLATFORM), tegra)

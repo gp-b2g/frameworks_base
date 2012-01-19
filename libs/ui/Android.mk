@@ -63,6 +63,11 @@ LOCAL_SHARED_LIBRARIES := \
 	libskia \
 	libbinder
 
+ifeq ($(TARGET_USES_TESTFRAMEWORK),true)
+LOCAL_CFLAGS += -DGFX_TESTFRAMEWORK
+LOCAL_SHARED_LIBRARIES += libtestframework
+endif
+
 LOCAL_C_INCLUDES := \
     external/skia/include/core
 

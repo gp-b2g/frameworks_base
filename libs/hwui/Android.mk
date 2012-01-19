@@ -42,6 +42,10 @@ ifeq ($(USE_OPENGL_RENDERER),true)
 	LOCAL_CFLAGS += -fvisibility=hidden
 	LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 	LOCAL_SHARED_LIBRARIES := libcutils libutils libGLESv2 libskia libui
+	ifeq ($(TARGET_USES_TESTFRAMEWORK),true)
+        LOCAL_CFLAGS += -DGFX_TESTFRAMEWORK
+        LOCAL_SHARED_LIBRARIES += libtestframework
+        endif
 	LOCAL_MODULE := libhwui
 	LOCAL_MODULE_TAGS := optional
 	
