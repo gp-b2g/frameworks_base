@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,8 +59,6 @@ import static com.android.internal.telephony.MSimConstants.SUBSCRIPTION_KEY;
 
 public class MSimCDMAPhone extends CDMAPhone {
 
-    private String mVmNumCdmaKey = null;
-    public String mVmCountKey = null;
     Subscription mSubscriptionData; // to store subscription information
     int mSubscription = 0;
 
@@ -78,8 +76,8 @@ public class MSimCDMAPhone extends CDMAPhone {
 
         Log.d(LOG_TAG, "MSimCDMAPhone: constructor: sub = " + mSubscription);
 
-        mVmNumCdmaKey = VM_NUMBER_CDMA + mSubscription;
-        mVmCountKey = VM_COUNT + mSubscription;
+        mVmNumCdmaKey = mVmNumCdmaKey + mSubscription;
+        mVmCountKey = mVmCountKey + mSubscription;
 
         SubscriptionManager subMgr = SubscriptionManager.getInstance();
         subMgr.registerForSubscriptionActivated(mSubscription,
@@ -205,29 +203,6 @@ public class MSimCDMAPhone extends CDMAPhone {
     }
 
     @Override
-    public String getVoiceMailNumber() {
-        String number = null;
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        // TODO: The default value of voicemail number should be read from a system property
-
-        // Read platform settings for dynamic voicemail number
-        if (getContext().getResources().getBoolean(com.android.internal
-                .R.bool.config_telephony_use_own_number_for_voicemail)) {
-            number = sp.getString(mVmNumCdmaKey, getLine1Number());
-        } else {
-            number = sp.getString(mVmNumCdmaKey, "*86");
-        }
-        return number;
-    }
-
-    @Override
-    /** gets the voice mail count from preferences */
-    protected int getStoredVoiceMessageCount() {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        return (sp.getInt(mVmCountKey, 0));
-    }
-
-    @Override
     void sendEmergencyCallbackModeChange(){
         //Send an Intent
         Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
@@ -235,18 +210,6 @@ public class MSimCDMAPhone extends CDMAPhone {
         intent.putExtra(SUBSCRIPTION_KEY, mSubscription);
         ActivityManagerNative.broadcastStickyIntent(intent,null);
         Log.d(LOG_TAG, "sendEmergencyCallbackModeChange");
-    }
-
-    /**
-     * Store the voicemail number in preferences
-     */
-    @Override
-    protected void storeVoiceMailNumber(String number) {
-        // Update the preference value of voicemail number
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        SharedPreferences.Editor editor = sp.edit();
-        editor.putString(mVmNumCdmaKey, number);
-        editor.apply();
     }
 
     // Set the properties per subscription

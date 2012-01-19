@@ -1343,6 +1343,8 @@ package android {
     field public static final int title_bar_tall = 17301670; // 0x10800a6
     field public static final int toast_frame = 17301654; // 0x1080096
     field public static final int zoom_plate = 17301655; // 0x1080097
+    field public static final int stat_notify_voicemail_sub1 = 17301662; // 0x108009e
+    field public static final int stat_notify_voicemail_sub2 = 17301663; // 0x108009f
   }
 
   public static final class R.fraction {

@@ -1294,12 +1294,14 @@ public abstract class SMSDispatcher extends Handler {
 
         Log.d(TAG, " Storing Voice Mail Count = " + mwi
                     + " for imsi = " + imsi
+                    + " for mVmCountKey = " + ((PhoneBase)mPhone).mVmCountKey
+                    + " vmId = " + ((PhoneBase)mPhone).mVmId
                     + " in preferences.");
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
         SharedPreferences.Editor editor = sp.edit();
-        editor.putInt(((PhoneBase)mPhone).VM_COUNT, mwi);
-        editor.putString(((PhoneBase)mPhone).VM_ID, imsi);
+        editor.putInt(((PhoneBase)mPhone).mVmCountKey, mwi);
+        editor.putString(((PhoneBase)mPhone).mVmId, imsi);
         editor.commit();
 
     }
