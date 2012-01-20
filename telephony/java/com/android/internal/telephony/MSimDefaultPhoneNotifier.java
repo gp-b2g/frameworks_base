@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -128,10 +128,7 @@ public class MSimDefaultPhoneNotifier extends DefaultPhoneNotifier {
         log("subscription = " + subscription + ", DDS = " + dds);
         if (subscription != dds) {
             // This is not the current DDS, do not notify data connection state
-            Log.e(LOG_TAG, "[PhoneNotifier] This is not DDS. do not notify data connection");
             return;
-        } else {
-            log("This is DDS");
         }
 
         // TODO
@@ -198,6 +195,6 @@ public class MSimDefaultPhoneNotifier extends DefaultPhoneNotifier {
     }
 
     private void log(String s) {
-        Log.d(LOG_TAG, "[MSimPhoneNotifier] " + s);
+        Log.d(LOG_TAG, "[MSimDefaultPhoneNotifier] " + s);
     }
 }
