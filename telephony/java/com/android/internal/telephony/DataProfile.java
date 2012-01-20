@@ -55,6 +55,8 @@ public abstract class DataProfile {
         }
     }
 
+    private boolean mTetheredCallOn = false;
+
     private DataConnection mDc = null;
 
     public DataProfile (int id, String numeric, String apn, String user, String password,
@@ -108,5 +110,13 @@ public abstract class DataProfile {
 
     // Override this in DataProfileCdma and DataProfileOmh
     public void setProfileId(int profileId) {
+    }
+
+    public void setTetheredCallOn(boolean tetheredCallOn) {
+        mTetheredCallOn = tetheredCallOn;
+    }
+
+    public boolean getTetheredCallOn() {
+        return mTetheredCallOn;
     }
 }
