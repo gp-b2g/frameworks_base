@@ -846,6 +846,41 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         return false;
     }
 
+    public boolean replaceV4DefaultRoute(String iface, String gatewayAddr) {
+        try {
+            String cmd;
+            if ((gatewayAddr == null) || (gatewayAddr.startsWith("0")) ||
+                (gatewayAddr.length() == 0)) {
+                cmd = String.format("route replace def v4 %s", iface);
+            } else {
+                cmd = String.format("route replace def v4 %s %s", iface, gatewayAddr);
+            }
+            String rsp = mConnector.doCommand(cmd).get(0);
+
+            String []tok = rsp.split(" ");
+            int code;
+            try {
+                code = Integer.parseInt(tok[0]);
+            } catch (NumberFormatException nfe) {
+                Slog.e(TAG, String.format("Error parsing code %s", tok[0]));
+                return false;
+            }
+            if (code == NetdResponseCode.CommandOkay) {
+                Slog.d(TAG, rsp);
+                return true;
+            } else {
+                Slog.e(TAG, rsp);
+                return false;
+            }
+        } catch (NullPointerException npe) {
+            Slog.e(TAG, "Null pointer exception while trying to replace def route");
+        } catch (NativeDaemonConnectorException nde) {
+            Slog.e(TAG, String.format("Failed to replace default route %s: for iface [%s]",
+                                  nde, iface));
+        }
+        return false;
+    }
+
     public boolean getIpForwardingEnabled() throws IllegalStateException{
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.ACCESS_NETWORK_STATE, "NetworkManagementService");

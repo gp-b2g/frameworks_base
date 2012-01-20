@@ -33,11 +33,13 @@ import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.net.ConnectivityManager;
+import android.net.FmcNotifier;
 import android.net.DummyDataStateTracker;
 import android.net.EthernetDataTracker;
 import android.net.IConnectivityManager;
 import android.net.LinkCapabilities;
 import android.net.ExtraLinkCapabilities;
+import android.net.IFmcEventListener;
 import android.net.INetworkPolicyListener;
 import android.net.INetworkPolicyManager;
 import android.net.INetworkStatsService;
@@ -357,6 +359,10 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
     // the set of network types that can only be enabled by system/sig apps
     List mProtectedNetworks;
+
+    private FmcStateMachine mFmcSM = null;
+    private IFmcEventListener mListener = null;
+    private boolean mFmcEnabled = false;
 
     public ConnectivityService(Context context, INetworkManagementService netd,
             INetworkStatsService statsService, INetworkPolicyManager policyManager) {
@@ -1806,9 +1812,13 @@ private NetworkStateTracker makeWimaxStateTracker() {
         boolean isFailover = info.isFailover();
         final NetworkStateTracker thisNet = mNetTrackers[type];
 
+        if (mFmcEnabled) {
+            if (DBG) log("Not tearing down WWAN because FMC enabled");
+        }
+
         // if this is a default net and other default is running
         // kill the one not preferred
-        if (mNetConfigs[type].isDefault()) {
+        if (mNetConfigs[type].isDefault() && !(mFmcEnabled)) {
             if (mActiveDefaultNetwork != -1 && mActiveDefaultNetwork != type) {
                 if ((type != mNetworkPreference &&
                         mNetConfigs[mActiveDefaultNetwork].priority >
@@ -3276,9 +3286,113 @@ private NetworkStateTracker makeWimaxStateTracker() {
 
     public void setTrackedCapabilities(int id, int[] capabilities) {
         if (VDBG) log("setTrackedCapabilities(id=" + id + ", capabilities)");
+    }
 
-        /*
-         * we need to discuss this method
-         */
+    /* Used by FmcProvider to start FMC */
+    public boolean startFmc(IBinder listener) {
+        ConnectivityManager cm = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = cm.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+        NetworkInfo.State networkState = (networkInfo == null ? NetworkInfo.State.UNKNOWN : networkInfo.getState());
+
+        mListener = (IFmcEventListener) IFmcEventListener.Stub.asInterface(listener);
+
+        if (networkState != NetworkInfo.State.CONNECTED) {
+            try {
+                mListener.onFmcStatus(FmcNotifier.FMC_STATUS_FAILURE);
+                return false;
+            } catch (RemoteException e) {
+                Slog.d(TAG, "RemoteException " + e.getMessage());
+            }
+        }
+
+        mFmcSM = FmcStateMachine.create(mContext, mListener, this);
+        if (mFmcSM != null) {
+            try {
+                mListener.onFmcStatus(mFmcSM.getStatus());
+            } catch (RemoteException e) {
+                Slog.d(TAG, "RemoteException " + e.getMessage());
+            }
+            mFmcEnabled = mFmcSM.startFmc();
+            return mFmcEnabled;
+        } else {
+            Slog.d(TAG, "mFmcSM is null while calling startFmc");
+            return false;
+        }
+    }
+
+    /* Used by FmcProvider stop FMC */
+    public boolean stopFmc(IBinder listener) {
+        mFmcEnabled = false;
+        if (mFmcSM != null) {
+            return mFmcSM.stopFmc();
+        } else {
+            Slog.d(TAG, "mFmcSM is null while calling stopFmc");
+            return false;
+        }
+    }
+
+    /* Used by FmcProvider to get FMC status */
+    public boolean getFmcStatus(IBinder listener) {
+        if(mFmcSM != null) {
+            return mFmcSM.getStatus() >= 0;
+        }
+        else {
+            Slog.d(TAG, "mFmcSM is null while calling startFmc");
+            return false;
+        }
+    }
+
+    /* Used by FmcStateMachine to control network connections */
+    public void setFmcDisabled() {
+        mFmcEnabled = false;
+    }
+
+    /* Used by FmcStateMachine to control network connections */
+    public boolean bringUpRat(int ratType) {
+        Slog.d(TAG, "BringUpRat called for ratType=" + ratType);
+
+        if (ratType == ConnectivityManager.TYPE_MOBILE) {
+            if (!getMobileDataEnabled()) {
+                if (DBG) Slog.d(TAG, "mobile data service disabled");
+                return false;
+            }
+        } else if (ratType != ConnectivityManager.TYPE_WIFI) {
+            return false;
+        } else {
+            Slog.d(TAG, "Unknown RatType = " + ratType);
+            return false;
+        }
+
+        return reconnect(ratType);
+    }
+
+    /* Used by FmcStateMachine to control network connections */
+    public boolean bringDownRat(int ratType) {
+        Slog.d(TAG, "BringDownRat called for ratType=" + ratType);
+
+        if (ratType == ConnectivityManager.TYPE_MOBILE) {
+            NetworkStateTracker network = mNetTrackers[ratType];
+            teardown(network);
+            return true;
+        } else if (ratType != ConnectivityManager.TYPE_WIFI) {
+            return false;
+        } else {
+            Slog.d(TAG, "Unknown RatType = " + ratType);
+            return false;
+        }
+    }
+
+    /* Used by FmcStateMachine to control network connections */
+    public boolean reconnect(int networkType) {
+        NetworkStateTracker network = mNetTrackers[networkType];
+        try{
+            network.setTeardownRequested(true);
+            Slog.d(TAG, "Sending Network Connection Request to Driver.");
+            return network.reconnect();
+        } catch(NullPointerException e){
+            Slog.d(TAG, "network Obj is Null" + e);
+            e.printStackTrace();
+        }
+        return false;
     }
 }

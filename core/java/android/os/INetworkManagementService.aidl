@@ -371,4 +371,6 @@ interface INetworkManagementService
      * Flush the DNS cache associated with the specified interface.
      */
     void flushInterfaceDnsCache(String iface);
+
+    boolean replaceV4DefaultRoute(String iface, String gatewayAddr);
 }
