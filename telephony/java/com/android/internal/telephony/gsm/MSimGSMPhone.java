@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,11 +46,6 @@ import static com.android.internal.telephony.MSimConstants.EVENT_SUBSCRIPTION_DE
 public class MSimGSMPhone extends GSMPhone {
     //protected final static String LOG_TAG = "MSimGSMPhone";
 
-    // Key used to read/write voice mail number
-    public String mVmNumGsmKey = null;
-    public String mVmCountKey = null;
-    public String mVmId = null;
-
     // Holds the subscription information
     Subscription mSubscriptionData = null;
     int mSubscription = 0;
@@ -69,9 +64,9 @@ public class MSimGSMPhone extends GSMPhone {
 
         Log.d(LOG_TAG, "MSimGSMPhone: constructor: sub = " + mSubscription);
 
-        mVmNumGsmKey = VM_NUMBER + mSubscription;
-        mVmCountKey = VM_COUNT + mSubscription;
-        mVmId = VM_ID + mSubscription;
+        mVmNumGsmKey = mVmNumGsmKey + mSubscription;
+        mVmCountKey = mVmCountKey + mSubscription;
+        mVmId = mVmId + mSubscription;
 
         mDataConnectionTracker = new MSimGsmDataConnectionTracker (this);
 
@@ -175,46 +170,6 @@ public class MSimGSMPhone extends GSMPhone {
         MSimTelephonyManager.setTelephonyProperty(TelephonyProperties.CURRENT_ACTIVE_PHONE,
                 mSubscription,
                 new Integer(Phone.PHONE_TYPE_GSM).toString());
-    }
-
-    @Override
-    protected void storeVoiceMailNumber(String number) {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        SharedPreferences.Editor editor = sp.edit();
-        editor.putString(mVmNumGsmKey, number);
-        editor.apply();
-        setVmSimImsi(getSubscriberId());
-    }
-
-    @Override
-    public String getVoiceMailNumber() {
-        // Read from the SIM. If its null, try reading from the shared preference area.
-        String number = (mIccRecords != null) ? mIccRecords.getVoiceMailNumber() : "";
-        if (TextUtils.isEmpty(number)) {
-            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-            number = sp.getString(mVmNumGsmKey, null);
-        }
-        return number;
-    }
-
-    @Override
-    /** gets the voice mail count from preferences */
-    protected int getStoredVoiceMessageCount() {
-        int countVoiceMessages = 0;
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        String imsi = sp.getString(mVmId, null);
-        String currentImsi = getSubscriberId();
-
-        Log.d(LOG_TAG, "Voicemail count retrieval for Imsi = " + imsi +
-                " current Imsi = " + currentImsi );
-
-        if ((imsi != null) && (currentImsi != null)
-                && (currentImsi.equals(imsi))) {
-            // get voice mail count from preferences
-            countVoiceMessages = sp.getInt(mVmCountKey, 0);
-            Log.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages );
-        }
-        return countVoiceMessages;
     }
 
     @Override
