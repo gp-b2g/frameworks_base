@@ -140,4 +140,12 @@ interface IConnectivityManager
     boolean removeQosRegistration(int id);
 
     void setTrackedCapabilities(int id, in int[] capabilities);
+
+    /* FMC */
+
+    boolean startFmc(IBinder listener);
+
+    boolean stopFmc(IBinder listener);
+
+    boolean getFmcStatus(IBinder listener);
 }
