@@ -449,12 +449,12 @@ public final class CdmaDataProfileTracker extends Handler {
         // Go through all the profiles to find one
         for (DataProfile dp: mDataProfilesList) {
             if (dp.canHandleType(serviceType)) {
+                profile = dp;
                 if (mIsOmhEnabled &&
                     dp.getDataProfileType() != DataProfile.DataProfileType.PROFILE_TYPE_OMH) {
                     // OMH enabled - Keep looking for OMH profile
                     continue;
                 }
-                profile = dp;
                 break;
             }
         }
