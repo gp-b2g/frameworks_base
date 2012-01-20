@@ -63,6 +63,7 @@ import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.cdma.TtyIntent;
 
+import java.io.File;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -375,7 +376,10 @@ public class AudioService extends IAudioService.Stub {
         intentFilter.addAction(TtyIntent.TTY_ENABLED_CHANGE_ACTION);
         intentFilter.addAction(Intent.ACTION_DOCK_EVENT);
         intentFilter.addAction(Intent.ACTION_USB_ANLG_HEADSET_PLUG);
-        intentFilter.addAction(WindowManagerPolicy.ACTION_HDMI_PLUGGED);
+        // Check if HDMI Primary and do not add ACTION_HDMI_PLUGGED intent if primary
+        if (!new File("/sys/class/graphics/fb0/hdmi_mode").exists()) {
+            intentFilter.addAction(WindowManagerPolicy.ACTION_HDMI_PLUGGED);
+        }
         intentFilter.addAction(Intent.ACTION_FM);
         intentFilter.addAction(Intent.ACTION_FM_TX);
         intentFilter.addAction(Intent.ACTION_HDMI_AUDIO_PLUG);
