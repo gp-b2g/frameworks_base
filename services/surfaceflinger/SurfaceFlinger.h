@@ -99,10 +99,12 @@ public:
         PixelFormat format, uint32_t usage, status_t* error);
     virtual void freeAllGraphicBuffersExcept(int bufIdx);
     virtual void freeGraphicBufferAtIndex(int bufIdx);
+    virtual void setGraphicBufferSize(int size);
 private:
     Vector<sp<GraphicBuffer> > mBuffers;
     Mutex mLock;
     int mFreedIndex;
+    int mSize;
 };
 
 // ---------------------------------------------------------------------------
