@@ -36,9 +36,6 @@ import java.util.Map;
 
 public interface ILinkManager {
 
-    /* CNE feature flag */
-    static final String UseCne = "persist.cne.UseCne";
-
     /* LinkSocket */
     int requestLink(LinkCapabilities capabilities, String remoteIPAddress, IBinder binder);
 

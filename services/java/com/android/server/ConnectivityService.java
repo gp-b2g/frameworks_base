@@ -3104,16 +3104,20 @@ private NetworkStateTracker makeWimaxStateTracker() {
 
     /* CNE related methods. */
     public void startCne() {
-        if (!mCneStarted) {
+        if (!isCneStarted()) {
             qosManager = new QosManager(mContext, this);
+            mCneStarted = true;
             if (isCneAware()) {
-                Slog.v(TAG, "CNE is starting up");
                 mCneObj = makeVendorCne(qosManager);
-                mCneStarted = (mCneObj == null) ? false : true;
-                mLinkManager = (ILinkManager) mCneObj;
+                if (mCneObj != null) {
+                    Slog.v(TAG, "Vendor CNE is starting up");
+                    mLinkManager = (ILinkManager) mCneObj;
+                    return;
+                }
             } else {
                 Slog.v(TAG, "CNE is disabled.");
             }
+            mLinkManager = new LinkManager(mContext, this, qosManager);
         } else {
             Slog.e(TAG, "CNE already Started");
         }
@@ -3139,7 +3143,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        Slog.e(TAG,"Could not make vendor Cne obj falling back to reference cne");
+        Slog.e(TAG,"Could not make vendor Cne obj. Disabling CNE");
         return null;
     }
 
@@ -3156,9 +3160,12 @@ private NetworkStateTracker makeWimaxStateTracker() {
      * @return true if CNE is enabled on this device, otherwise false
      */
     public boolean isCneAware() {
-        boolean isUsingVendorCne =
-            SystemProperties.get(UseCne, "none").equalsIgnoreCase("vendor");
-        return (isUsingVendorCne);
+        try {
+            return  (SystemProperties.get(UseCne, "none")).equalsIgnoreCase("vendor");
+        } catch ( Exception e) {
+            Slog.v(TAG, "Received Exception while reading UseCne property, Disabling CNE");
+        }
+        return false;
     }
     /*
      * LinkSocket code is below here.
