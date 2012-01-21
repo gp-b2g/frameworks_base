@@ -253,6 +253,9 @@ public class GpsLocationProvider implements LocationProviderInterface {
     // true if we are enabled
     private volatile boolean mEnabled;
 
+    // true if engine has been initialized
+    private volatile boolean mInitialized = false;
+
     // true if we have network connectivity
     private boolean mNetworkAvailable;
 
@@ -794,18 +797,26 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private void handleEnable() {
         if (DEBUG) Log.d(TAG, "handleEnable");
         if (mEnabled) return;
-        mEnabled = native_init();
 
-        if (mEnabled) {
-            mSupportsXtra = native_supports_xtra();
-            if (mSuplServerHost != null) {
-                native_set_agps_server(AGpsConnectionInfo.CONNECTION_TYPE_SUPL, mSuplServerHost, mSuplServerPort);
+        /* Only init when not initialized or ULP is not supported */
+        if(!mInitialized || !hasCapability(LocationProviderInterface.ULP_CAPABILITY)) {
+
+            mInitialized = native_init();
+
+            if (mInitialized) {
+                mSupportsXtra = native_supports_xtra();
+                if (mSuplServerHost != null) {
+                    native_set_agps_server(AGpsConnectionInfo.CONNECTION_TYPE_SUPL, mSuplServerHost, mSuplServerPort);
+                }
+                if (mC2KServerHost != null) {
+                    native_set_agps_server(AGpsConnectionInfo.CONNECTION_TYPE_C2K, mC2KServerHost, mC2KServerPort);
+                }
+            } else {
+                Log.w(TAG, "Failed to enable location provider");
             }
-            if (mC2KServerHost != null) {
-                native_set_agps_server(AGpsConnectionInfo.CONNECTION_TYPE_C2K, mC2KServerHost, mC2KServerPort);
-            }
+            mEnabled = mInitialized;
         } else {
-            Log.w(TAG, "Failed to enable location provider");
+            mEnabled = true;
         }
     }
 
@@ -825,10 +836,16 @@ public class GpsLocationProvider implements LocationProviderInterface {
         if (!mEnabled) return;
 
         mEnabled = false;
-        stopNavigating();
 
-        // do this before releasing wakelock
-        native_cleanup();
+        /* Only disable when ULP is not supported */
+        if(!hasCapability(LocationProviderInterface.ULP_CAPABILITY)) {
+            stopNavigating();
+
+            // do this before releasing wakelock
+            native_cleanup();
+
+            mInitialized = false;
+        }
     }
 
     public boolean isEnabled() {
