@@ -349,6 +349,12 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
         mPendingDataConnection = conn;
 
         mActiveApn = mDpt.getDataProfile(mRequestedApnType);
+
+        if (mActiveApn == null) {
+            if (DBG) log("mActiveApn is null, unable to initiate data call");
+            return false;
+        }
+
         if (DBG) log("call conn.bringUp mActiveApn=" + mActiveApn);
 
         Message msg = obtainMessage();
