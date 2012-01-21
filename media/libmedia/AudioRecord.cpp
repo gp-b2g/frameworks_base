@@ -265,7 +265,6 @@ status_t AudioRecord::set(
     mInputSource = (uint8_t)inputSource;
     mFlags = flags;
     mInput = input;
-    mFirstread = false;
     AudioSystem::acquireAudioSessionId(mSessionId);
 
     return NO_ERROR;
