@@ -3142,9 +3142,12 @@ void OMXCodec::onEvent(OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2) {
                 // There is no need to check whether mFilledBuffers is empty or not
                 // when the OMX_EventPortSettingsChanged is not meant for reallocating
                 // the output buffers.
-                if (data1 == kPortIndexOutput) {
-                    CHECK(mFilledBuffers.empty());
+                if ((data1 == kPortIndexOutput) && (mFilledBuffers.empty()== false)) {
+                    CODEC_LOGE("Port reconfiguration not allowed during middle of playback");
+                    setState(ERROR);
+                    break;
                 }
+
                 onPortSettingsChanged(data1);
             } else if (data1 == kPortIndexOutput &&
                         (data2 == OMX_IndexConfigCommonOutputCrop ||
