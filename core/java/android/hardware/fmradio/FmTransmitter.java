@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -64,7 +64,7 @@ public class FmTransmitter extends FmTransceiver
    public static final int RDS_GRPS_TX_STOP     =  2;        /* Stops and clear the Group transmission */
 
    public static final int FM_TX_MAX_PS_LEN           =  (96+1);
-   public static final int FM_TX_MAX_RT_LEN           =  (64+1);
+   public static final int FM_TX_MAX_RT_LEN           =  (64-1); /*One space to include NULL*/
 
    private static final int MAX_PS_CHARS = 97;
    private static final int MAX_PS_REP_COUNT = 15;
