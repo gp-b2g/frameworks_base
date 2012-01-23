@@ -98,9 +98,10 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     protected int newNetworkType = 0;
 
     private boolean mCdmaRoaming = false;
-    private int mRoamingIndicator;
+    protected boolean mDataRoaming = false;
+    private int mRoamingIndicator = EriInfo.ROAMING_INDICATOR_OFF;
     private boolean mIsInPrl;
-    private int mDefaultRoamingIndicator;
+    private int mDefaultRoamingIndicator = EriInfo.ROAMING_INDICATOR_OFF;
 
     /**
      * Initially assume no data connection.
@@ -574,9 +575,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             int cssIndicator = 0;          //[7] init with 0, because it is treated as a boolean
             int systemId = 0;              //[8] systemId
             int networkId = 0;             //[9] networkId
-            int roamingIndicator = -1;     //[10] Roaming indicator
+            int roamingIndicator = EriInfo.ROAMING_INDICATOR_OFF;     //[10] Roaming indicator
             int systemIsInPrl = 0;         //[11] Indicates if current system is in PRL
-            int defaultRoamingIndicator = 0;  //[12] Is default roaming indicator from PRL
+            int defaultRoamingIndicator = EriInfo.ROAMING_INDICATOR_OFF;  //[12] def RI from PRL
             int reasonForDenial = 0;       //[13] Denial reason if registrationState = 3
 
             if (states.length >= 14) {
@@ -637,6 +638,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             // list of ERIs for home system, mCdmaRoaming is true.
             mCdmaRoaming =
                     regCodeIsRoaming(registrationState) && !isRoamIndForHomeSystem(states[10]);
+            mCdmaRoaming = mCdmaRoaming || mDataRoaming;
             newSS.setState (regCodeToServiceState(registrationState));
 
             setCdmaTechnology(radioTechnology);

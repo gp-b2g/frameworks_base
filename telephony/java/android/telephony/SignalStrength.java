@@ -28,7 +28,7 @@ import android.util.Log;
 public class SignalStrength implements Parcelable {
 
     private static final String LOG_TAG = "SignalStrength";
-    private static final boolean DBG = false;
+    private static final boolean DBG = true;
 
     /** @hide */
     public static final int SIGNAL_STRENGTH_NONE_OR_UNKNOWN = 0;
@@ -259,6 +259,7 @@ public class SignalStrength implements Parcelable {
     private void validateInput() {
         // cdma, evdo, lte values need to be sign converted from ril to telephony
         // perform range check for all values
+        if (DBG) log("SignalStrength before validate=" + this);
         mGsmSignalStrength = mGsmSignalStrength >= 0 ? mGsmSignalStrength : 99;
         // BER no change;
 
@@ -273,6 +274,7 @@ public class SignalStrength implements Parcelable {
         mLteRsrp = ((mLteRsrp >= 44) && (mLteRsrp <= 140)) ? -mLteRsrp : SignalStrength.INVALID;
         mLteRsrq = ((mLteRsrq >= 3) && (mLteRsrq <= 20)) ? -mLteRsrq : SignalStrength.INVALID;
         mLteRssnr = ((mLteRssnr >= -200) && (mLteRssnr <= 300)) ? mLteRssnr : SignalStrength.INVALID;
+        if (DBG) log("SignalStrength after validate=" + this);
         // Cqi  no change
     }
 
@@ -352,10 +354,10 @@ public class SignalStrength implements Parcelable {
             int evdoLevel = getEvdoLevel();
             if (evdoLevel == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
                 /* We don't know evdo, use cdma */
-                level = getCdmaLevel();
+                level = cdmaLevel;
             } else if (cdmaLevel == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
                 /* We don't know cdma, use evdo */
-                level = getEvdoLevel();
+                level = evdoLevel;
             } else {
                 /* We know both, use the lowest level */
                 level = cdmaLevel < evdoLevel ? cdmaLevel : evdoLevel;
@@ -373,11 +375,7 @@ public class SignalStrength implements Parcelable {
     public int getAsuLevel() {
         int asuLevel;
         if (isGsm) {
-            if ((mLteSignalStrength == -1)
-                    && (mLteRsrp == -1)
-                    && (mLteRsrq == -1)
-                    && (mLteRssnr == -1)
-                    && (mLteCqi == -1)) {
+            if (getLteLevel() == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
                 asuLevel = getGsmAsuLevel();
             } else {
                 asuLevel = getLteAsuLevel();
@@ -409,11 +407,7 @@ public class SignalStrength implements Parcelable {
         int dBm;
 
         if(isGsm()) {
-            if ((mLteSignalStrength == -1)
-                    && (mLteRsrp == -1)
-                    && (mLteRsrq == -1)
-                    && (mLteRssnr == -1)
-                    && (mLteCqi == -1)) {
+            if (getLteLevel() == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
                 dBm = getGsmDbm();
             } else {
                 dBm = getLteDbm();
@@ -672,16 +666,27 @@ public class SignalStrength implements Parcelable {
 
     }
     /**
-     * Get the LTE signal level as an asu value between 0..97, 99 is unknown
-     * Asu is calculated based on 3GPP RSRP. Refer to 3GPP 27.007 (Ver 10.3.0) Sec 8.69
-     *
+     * Get the LTE signal level as an asu value.
+     * Asu is calculated based on 3GPP RSRP.
      * @hide
      */
     public int getLteAsuLevel() {
         int lteAsuLevel = 99;
         int lteDbm = getLteDbm();
-        if (lteDbm <= -140) lteAsuLevel = 0;
-        else if (lteDbm >= -43) lteAsuLevel = 97;
+        /*
+         * 3GPP 27.007 (Ver 10.3.0) Sec 8.69
+         * 0   -140 dBm or less
+         * 1   -139 dBm
+         * 2...96  -138... -44 dBm
+         * 97  -43 dBm or greater
+         * 255 not known or not detectable
+         */
+        /*
+         * validateInput will always give a valid range between -140 t0 -44 as
+         * per ril.h. so RSRP >= -43 & <-140 will fall under asu level 255
+         * and not 97 or 0
+         */
+        if (lteDbm == SignalStrength.INVALID) lteAsuLevel = 255;
         else lteAsuLevel = lteDbm + 140;
         if (DBG) log("Lte Asu level: "+lteAsuLevel);
         return lteAsuLevel;

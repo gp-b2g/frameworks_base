@@ -62,8 +62,8 @@ import com.android.systemui.R;
 public class NetworkController extends BroadcastReceiver {
     // debug
     static final String TAG = "StatusBar.NetworkController";
-    static final boolean DEBUG = false;
-    static final boolean CHATTY = false; // additional diagnostics, but not logspew
+    static final boolean DEBUG = true;
+    static final boolean CHATTY = true; // additional diagnostics, but not logspew
 
     // telephony
     boolean mHspaDataDistinguishable;
@@ -122,6 +122,7 @@ public class NetworkController extends BroadcastReceiver {
     private int mWimaxSignal = 0;
     private int mWimaxState = 0;
     private int mWimaxExtraState = 0;
+    private int mDataServiceState = ServiceState.STATE_OUT_OF_SERVICE;
     // data connectivity (regardless of state, can we access the internet?)
     // state of inet connection - 0 not connected, 100 connected
     protected int mInetCondition = 0;
@@ -371,9 +372,19 @@ public class NetworkController extends BroadcastReceiver {
         @Override
         public void onServiceStateChanged(ServiceState state) {
             if (DEBUG) {
-                Slog.d(TAG, "onServiceStateChanged state=" + state.getState());
+                Slog.d(TAG, "onServiceStateChanged state=" + state);
             }
             mServiceState = state;
+            if (SystemProperties.getBoolean("ro.config.combined_signal", true)) {
+                /*
+                 * if combined_signal is set to true only then consider data
+                 * service state for signal display
+                 */
+                mDataServiceState = mServiceState.getDataState();
+                if (DEBUG) {
+                    Slog.d(TAG, "Combining data service state" + mDataServiceState + "for signal");
+                }
+            }
             updateTelephonySignalStrength();
             updateDataNetType();
             updateDataIcon();
@@ -468,13 +479,18 @@ public class NetworkController extends BroadcastReceiver {
     }
 
     private final void updateTelephonySignalStrength() {
-        if (!hasService()) {
-            if (CHATTY) Slog.d(TAG, "updateTelephonySignalStrength: !hasService()");
+
+        if (!hasService() &&
+                (mDataServiceState != ServiceState.STATE_IN_SERVICE)) {
+            if (DEBUG) Slog.d(TAG, " No service");
             mPhoneSignalIconId = R.drawable.stat_sys_signal_0;
             mDataSignalIconId = R.drawable.stat_sys_signal_0;
         } else {
-            if (mSignalStrength == null) {
-                if (CHATTY) Slog.d(TAG, "updateTelephonySignalStrength: mSignalStrength == null");
+            if ((mSignalStrength == null) || (mServiceState == null)) {
+                if (DEBUG) {
+                    Slog.d(TAG, " Null object, mSignalStrength= " + mSignalStrength
+                            + " mServiceState " + mServiceState);
+                }
                 mPhoneSignalIconId = R.drawable.stat_sys_signal_0;
                 mDataSignalIconId = R.drawable.stat_sys_signal_0;
                 mContentDescriptionPhoneSignal = mContext.getString(
@@ -483,20 +499,14 @@ public class NetworkController extends BroadcastReceiver {
                 int iconLevel;
                 int[] iconList;
                 mLastSignalLevel = iconLevel = mSignalStrength.getLevel();
-                if (isCdma()) {
-                    if (isCdmaEri()) {
-                        iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH_ROAMING[mInetCondition];
-                    } else {
-                        iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH[mInetCondition];
-                    }
+
+                // Though mPhone is a Manager, this call is not an IPC
+                if ((isCdma() && isCdmaEri()) || mPhone.isNetworkRoaming()) {
+                    iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH_ROAMING[mInetCondition];
                 } else {
-                    // Though mPhone is a Manager, this call is not an IPC
-                    if (mPhone.isNetworkRoaming()) {
-                        iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH_ROAMING[mInetCondition];
-                    } else {
-                        iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH[mInetCondition];
-                    }
+                    iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH[mInetCondition];
                 }
+
                 mPhoneSignalIconId = iconList[iconLevel];
                 mContentDescriptionPhoneSignal = mContext.getString(
                         AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[iconLevel]);

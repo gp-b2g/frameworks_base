@@ -726,6 +726,7 @@ class GsmServiceStateTracker extends ServiceStateTracker {
                     mDataRoaming = regCodeIsRoaming(regState);
                     mNewRadioTechnology = type;
                     newSS.setRadioTechnology(type);
+                    newSS.setDataState(newGPRSState);
                     mDataRadioTechnology = mNewRadioTechnology;
                     Log.d(LOG_TAG, "[EONS] EVENT_POLL_STATE_GPRS newGPRSState ="
                         + newGPRSState + " , mDataRadioTechnology =" + mDataRadioTechnology + " , mTAC =" + mTAC);
