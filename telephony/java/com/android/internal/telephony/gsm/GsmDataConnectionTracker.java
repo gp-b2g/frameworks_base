@@ -787,9 +787,23 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
 
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
 
-        if (SUPPORT_MPDN == false) {
-            if (disconnectOneLowerPriorityCall(apnContext.getApnType()))
+        // If MPDN is disabled and if the current active ApnContext cannot handle the
+        // requested apnType, then
+        //  - Disconnect one active low priority data call if there is any, and after
+        //    disconnect setup up the new requested connection.
+        //  - Do not bring up the requested connection, if there is any high priority
+        //    data connection is active.
+        if (SUPPORT_MPDN == false
+                && !isAnyActiveApnContextHandlesType(apnContext.getApnType())) {
+            if (disconnectOneLowerPriorityCall(apnContext.getApnType())) {
+                log("Lower/Equal priority call disconnected.");
                 return false;
+            }
+
+            if (isHigherPriorityDataCallActive(apnContext.getApnType())) {
+                log("Higher priority call active. Ignoring setup data call request.");
+                return false;
+            }
         }
 
         if ((apnContext.getState() == State.IDLE || apnContext.getState() == State.SCANNING ||
@@ -1525,6 +1539,39 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         return (DataProfile)ApnSetting.fromString(apnData);
     }
 
+    private boolean isAnyActiveApnContextHandlesType(String apnType) {
+        for (ApnContext apnContext : mApnContexts.values()) {
+            if (!apnContext.isDisconnected()) {
+                // If the ApnContext can handle the request apnType, do not disconnect
+                DataProfile apnSetting = apnContext.getApnSetting();
+                if (apnSetting != null && apnSetting.canHandleType(apnType)) {
+                    // Found a ApnContext, which can handle the required apn type
+                    log("isAnyActiveApnContextHandlesType:  - apnContext = [" + apnContext + "]"
+                            + " can handle apnType=" + apnType);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isHigherPriorityDataCallActive(String apnType) {
+        boolean result = false;
+        ApnContext apnContext = mApnContexts.get(apnType);
+
+        for (ApnContext apnContextEntry :
+                getPrioritySortedApnContextList().toArray(new ApnContext[0])) {
+            if (apnContextEntry.isHigherPriority(apnContext)
+                    && (apnContextEntry.getState() == State.CONNECTED
+                        || apnContextEntry.getState() == State.CONNECTING
+                        || apnContextEntry.getState() == State.INITING)) {
+                result = true;
+                break;
+            }
+        }
+        return result;
+    }
+
     @Override
     protected boolean disconnectOneLowerPriorityCall(String apnType) {
         boolean disconnect = false;
@@ -1532,16 +1579,16 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         ApnContext apnContext = mApnContexts.get(apnType);
 
         for (ApnContext apnContextEntry :
-            getPrioritySortedApnContextList().toArray(new ApnContext[0])) {
-                if (apnContextEntry.getState() == State.CONNECTED &&
-                        apnContextEntry.isLowerPriority(apnContext)) {
-                    disconnect = true;
+                getPrioritySortedApnContextList().toArray(new ApnContext[0])) {
+            if (!apnContextEntry.isDisconnected() &&
+                    apnContextEntry.isLowerPriority(apnContext)) {
+                disconnect = true;
 
-                    // Found a lower priority call, disconnect it.
-                    apnContext.setReason(Phone.REASON_SINGLE_PDN_ARBITRATION);
-                    cleanUpConnection(true, apnContextEntry);
-                    break;
-                }
+                // Found a lower priority call, disconnect it.
+                apnContextEntry.setReason(Phone.REASON_SINGLE_PDN_ARBITRATION);
+                cleanUpConnection(true, apnContextEntry);
+                break;
+            }
         }
 
         log("disconnectOneLowerPriorityCall:" + apnContext.getApnType() + " " + disconnect);
@@ -1717,7 +1764,8 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
     private boolean retryAfterDisconnected(String reason) {
         boolean retry = true;
 
-        if ( Phone.REASON_RADIO_TURNED_OFF.equals(reason) ) {
+        if (( Phone.REASON_RADIO_TURNED_OFF.equals(reason) )
+                || (!SUPPORT_MPDN && Phone.REASON_SINGLE_PDN_ARBITRATION.equals(reason)) ) {
             retry = false;
         }
         return retry;
