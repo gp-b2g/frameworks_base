@@ -80,6 +80,7 @@ class FmRxControls
    private static final int V4L2_CID_PRIVATE_TAVARUA_RSSI_DELTA = V4L2_CID_PRIVATE_BASE + 28;
    private static final int V4L2_CID_PRIVATE_TAVARUA_HLSI = V4L2_CID_PRIVATE_BASE + 29;
    private static final int V4L2_CID_PRIVATE_TAVARUA_SET_AUDIO_PATH = V4L2_CID_PRIVATE_BASE + 41;
+   private static final int V4L2_CID_PRIVATE_SINR = V4L2_CID_PRIVATE_BASE + 44;
 
    private static final int V4L2_CTRL_CLASS_USER = 0x980000;
    private static final int V4L2_CID_BASE = V4L2_CTRL_CLASS_USER | 0x900;
@@ -266,6 +267,14 @@ class FmRxControls
    public void setFreq (int f){
       mFreq = f;
    }
+    /*
+    * Get SINR value
+    */
+   public int getSINR(int fd)
+   {
+      return  FmReceiverJNI.getControlNative(fd, V4L2_CID_PRIVATE_SINR);
+   }
+
 
    /*
     * Start search list for auto presets
