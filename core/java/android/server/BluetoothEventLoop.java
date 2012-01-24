@@ -1064,6 +1064,11 @@ class BluetoothEventLoop {
             mBluetoothService.sendUuidIntent(address);
             mBluetoothService.sendGattIntent(address, BluetoothDevice.GATT_RESULT_FAIL);
             mBluetoothService.makeServiceChannelCallbacks(address);
+            if (btDeviceClass == BluetoothClass.Device.PERIPHERAL_POINTING) {
+                log("The device is HID pointing device,moving pairing state to BOND_NONE");
+                mBluetoothService.setBondState(address, BluetoothDevice.BOND_NONE);
+            }
+
             break;
         case CREATE_DEVICE_SUCCESS:
             // nothing to do, UUID intent's will be sent via property changed
