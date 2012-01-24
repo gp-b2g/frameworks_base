@@ -207,6 +207,7 @@ private:
     bool mBufferingEventPending;
     sp<TimedEventQueue::Event> mCheckAudioStatusEvent;
     bool mAudioStatusEventPending;
+    Condition mAudioStatusCondition;
     sp<TimedEventQueue::Event> mVideoLagEvent;
     bool mVideoLagEventPending;
 
