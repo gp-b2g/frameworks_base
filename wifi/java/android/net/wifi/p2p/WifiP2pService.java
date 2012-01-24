@@ -116,6 +116,8 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
 
     private int mP2pRestartCount = 0;
 
+    public static boolean mIsWifiP2pEnabled = false;
+
     private static final int BASE = Protocol.BASE_WIFI_P2P_SERVICE;
 
     /* Message sent to WifiStateMachine to indicate p2p enable is pending */
@@ -473,6 +475,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
             if(WifiNative.unloadDriver()) {
                 Slog.e(TAG, "Unload Driver Successful");
             }
+            mIsWifiP2pEnabled = false;
         }
 
         @Override
@@ -617,6 +620,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
 
                     if (WifiNative.startP2pSupplicant()) {
                         mWifiMonitor.startMonitoring();
+                        mIsWifiP2pEnabled = true;
                         transitionTo(mP2pEnablingState);
                     } else {
                         notifyP2pEnableFailure();
