@@ -228,7 +228,7 @@ public final class BluetoothDeviceProfileState extends StateMachine {
 
     public BluetoothDeviceProfileState(Context context, String address,
           BluetoothService service, BluetoothA2dpService a2dpService, boolean setTrust) {
-        super(address);
+        super("BDP:" + address);
         mContext = context;
         mDevice = new BluetoothDevice(address);
         mService = service;
@@ -461,31 +461,32 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                 case UNPAIR_COMPLETE:
                     processCommand(UNPAIR_COMPLETE);
                     break;
-                case SM_QUIT_CMD:
-                    mContext.unregisterReceiver(mBroadcastReceiver);
-                    mBroadcastReceiver = null;
-                    mAdapter.closeProfileProxy(BluetoothProfile.HEADSET, mHeadsetService);
-                    mBluetoothProfileServiceListener = null;
-                    mOutgoingHandsfree = null;
-                    mPbap = null;
-                    mPbapService.close();
-                    mPbapService = null;
-                    mIncomingHid = null;
-                    mOutgoingHid = null;
-                    mIncomingHandsfree = null;
-                    mOutgoingHandsfree = null;
-                    mIncomingA2dp = null;
-                    mOutgoingA2dp = null;
-                    mBondedDevice = null;
-                    // There is a problem in the State Machine code
-                    // where things are not cleaned up properly, when quit message
-                    // is handled so return NOT_HANDLED as a workaround.
-                    return NOT_HANDLED;
                 default:
                     return NOT_HANDLED;
             }
             return HANDLED;
         }
+    }
+
+    @Override
+    protected void quitting() {
+        mContext.unregisterReceiver(mBroadcastReceiver);
+        mBroadcastReceiver = null;
+        mAdapter.closeProfileProxy(BluetoothProfile.HEADSET, mHeadsetService);
+        mBluetoothProfileServiceListener = null;
+        mOutgoingHandsfree = null;
+        mPbap = null;
+        mPbapService.close();
+        mPbapService = null;
+        mIncomingHid = null;
+        mOutgoingHid = null;
+        mIncomingHandsfree = null;
+        mOutgoingHandsfree = null;
+        mIncomingA2dp = null;
+        mOutgoingA2dp = null;
+        mBondedDevice = null;
+
+        super.quitting();
     }
 
     private class OutgoingHandsfree extends State {

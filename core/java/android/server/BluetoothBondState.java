@@ -179,6 +179,7 @@ class BluetoothBondState {
             }
         } else if (state == BluetoothDevice.BOND_NONE) {
             mPairingRequestRcvd.remove(address);
+            mService.removeProfileState(address);
         }
 
         setProfilePriorities(address, state);
@@ -352,9 +353,17 @@ class BluetoothBondState {
 
         public void onServiceDisconnected(int profile) {
             if (profile == BluetoothProfile.A2DP) {
-                mA2dpProxy = null;
+                if (mA2dpProxy != null) {
+                    BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                    bluetoothAdapter.closeProfileProxy(BluetoothProfile.A2DP, mA2dpProxy);
+                    mA2dpProxy = null;
+                }
             } else if (profile == BluetoothProfile.HEADSET) {
-                mHeadsetProxy = null;
+                if (mHeadsetProxy != null) {
+                    BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                    bluetoothAdapter.closeProfileProxy(BluetoothProfile.HEADSET, mHeadsetProxy);
+                    mHeadsetProxy = null;
+                }
             }
         }
     };
