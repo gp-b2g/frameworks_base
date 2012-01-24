@@ -239,7 +239,9 @@ public class SIMRecords extends IccRecords {
         adnCache.reset();
         mEons.reset();
 
-        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, null);
+        // Do not reset the PROPERTY_ICC_OPERATOR_NUMERIC to allow the property
+        // to be updated from the CDMAPhone/RuimRecords in case of  CDMA RUIM mode.
+        //setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, null);
         setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, null);
         setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, null);
 
