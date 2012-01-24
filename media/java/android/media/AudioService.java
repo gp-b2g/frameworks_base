@@ -57,7 +57,6 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.VolumePanel;
-import android.view.WindowManagerPolicy;
 
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.Phone;
@@ -376,13 +375,12 @@ public class AudioService extends IAudioService.Stub {
         intentFilter.addAction(TtyIntent.TTY_ENABLED_CHANGE_ACTION);
         intentFilter.addAction(Intent.ACTION_DOCK_EVENT);
         intentFilter.addAction(Intent.ACTION_USB_ANLG_HEADSET_PLUG);
-        // Check if HDMI Primary and do not add ACTION_HDMI_PLUGGED intent if primary
+        // Check if HDMI Primary and do not add ACTION_HDMI_AUDIO_PLUG intent if primary
         if (!new File("/sys/class/graphics/fb0/hdmi_mode").exists()) {
-            intentFilter.addAction(WindowManagerPolicy.ACTION_HDMI_PLUGGED);
+            intentFilter.addAction(Intent.ACTION_HDMI_AUDIO_PLUG);
         }
         intentFilter.addAction(Intent.ACTION_FM);
         intentFilter.addAction(Intent.ACTION_FM_TX);
-        intentFilter.addAction(Intent.ACTION_HDMI_AUDIO_PLUG);
         intentFilter.addAction(Intent.ACTION_BOOT_COMPLETED);
         intentFilter.addAction(Intent.ACTION_SCREEN_ON);
         intentFilter.addAction(Intent.ACTION_SCREEN_OFF);
@@ -2719,22 +2717,6 @@ public class AudioService extends IAudioService.Stub {
                     Intent newIntent = new Intent(AudioManager.ACTION_SCO_AUDIO_STATE_CHANGED);
                     newIntent.putExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, state);
                     mContext.sendStickyBroadcast(newIntent);
-                }
-            }else if (action.equals(WindowManagerPolicy.ACTION_HDMI_PLUGGED)) {
-                boolean connected = intent.getBooleanExtra(
-                        WindowManagerPolicy.EXTRA_HDMI_PLUGGED_STATE, false);
-                if(connected) {
-                    Log.v(TAG, "HDMI Connected");
-                    AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_AUX_DIGITAL,
-                                                         AudioSystem.DEVICE_STATE_AVAILABLE,
-                                                         "");
-                    mConnectedDevices.put(AudioSystem.DEVICE_OUT_AUX_DIGITAL, "");
-                } else {
-                    Log.v(TAG, "HDMI disconnected");
-                    AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_AUX_DIGITAL,
-                                                         AudioSystem.DEVICE_STATE_UNAVAILABLE,
-                                                         "");
-                    mConnectedDevices.remove(AudioSystem.DEVICE_OUT_AUX_DIGITAL);
                 }
             } else if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
                 mBootCompleted = true;
