@@ -27,6 +27,7 @@ import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.ApnSetting;
+import android.telephony.ServiceState;
 
 /**
  * {@hide}
@@ -98,8 +99,13 @@ public class GsmDataConnection extends DataConnection {
             protocol = mApn.protocol;
         }
 
+        String radioTech = Integer.toString(getRadioTechnology(RILConstants.SETUP_DATA_TECH_GSM));
+        if (phone.getServiceState().getRadioTechnology() == ServiceState.RADIO_TECHNOLOGY_EHRPD) {
+            radioTech = Integer.toString(getRadioTechnology(RILConstants.SETUP_DATA_TECH_CDMA));
+        }
+
         phone.mCM.setupDataCall(
-                Integer.toString(getRadioTechnology(RILConstants.SETUP_DATA_TECH_GSM)),
+                radioTech,
                 Integer.toString(mProfileId),
                 mApn.apn, mApn.user, mApn.password,
                 Integer.toString(authType),
