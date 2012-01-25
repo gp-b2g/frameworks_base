@@ -174,14 +174,14 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
             }
         } catch (IOException ex) {
             Slog.e(TAG, "Communications error", ex);
+            throw ex;
+        } finally {
             // Unblock waiting doCommand
             try {
                 mResponseQueue.add(COMMUNICATION_FAILED_COMMAND);
             } catch (Exception e) {
                 // It's ok. We only want to make sure reader from this queue is not blocked.
             }
-            throw ex;
-        } finally {
             synchronized (mDaemonLock) {
                 if (mOutputStream != null) {
                     try {
