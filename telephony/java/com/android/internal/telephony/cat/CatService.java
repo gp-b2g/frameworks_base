@@ -815,6 +815,7 @@ public class CatService extends Handler implements AppInterface {
         // In case of CARD_ABSENT, StkAppService
         // will clean up the Idle mode Text and Stk toolkit icon
         intent.putExtra(AppInterface.CARD_STATUS, cardStatus);
+        intent.putExtra("SLOT_ID", mSlotId);
         CatLog.d(this, "Sending Card Status: "
                 + cardState + " " + "cardStatus: " + cardStatus);
 
