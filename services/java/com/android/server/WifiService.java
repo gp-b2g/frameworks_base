@@ -34,6 +34,7 @@ import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiStateMachine;
+import android.net.wifi.p2p.WifiP2pService;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiWatchdogStateMachine;
 import android.net.wifi.WifiConfiguration.KeyMgmt;
@@ -1081,7 +1082,7 @@ public class WifiService extends IWifiManager.Stub {
             mWifiStateMachine.setWifiApEnabled(null, false);
         }
 
-        if (shouldWifiBeEnabled()) {
+        if ((shouldWifiBeEnabled()) && (!WifiP2pService.mIsWifiP2pEnabled)) {
             if (wifiShouldBeStarted) {
                 reportStartWorkSource();
                 mWifiStateMachine.setWifiEnabled(true);
