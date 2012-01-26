@@ -216,6 +216,14 @@ public class ActivityManager {
      * @hide
      */
     static public boolean isHighEndGfx(Display display) {
+        String eglType = SystemProperties.get("debug.egl.hw","1");
+        Integer eglHw = Integer.parseInt(eglType.substring(0,eglType.length()));
+
+        if (eglHw == 0) {
+            // We are using s/w rendering. Don't use high end gfx.
+            return false;
+        }
+
         MemInfoReader reader = new MemInfoReader();
         reader.readMemInfo();
         if (reader.getTotalSize() >= (512*1024*1024)) {

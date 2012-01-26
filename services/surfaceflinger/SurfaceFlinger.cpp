@@ -128,6 +128,9 @@ void SurfaceFlinger::init()
         DdmConnection::start(getServiceName());
     }
 
+    property_get("debug.sf.hw", value, "1");
+    mDebugDisableHWC = (atoi(value) == 0) ? 1:0;
+
     LOGI_IF(mDebugRegion,       "showupdates enabled");
     LOGI_IF(mDebugBackground,   "showbackground enabled");
     LOGI_IF(mDebugDDMS,         "DDMS debugging enabled");
