@@ -361,11 +361,19 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                     break;
                 case CONNECT_HID_OUTGOING:
                 case DISCONNECT_HID_OUTGOING:
-                    transitionTo(mOutgoingHid);
+                    if (mUnpairStarted == true) {
+                        log("Discarding message " + message.what);
+                    } else {
+                        transitionTo(mOutgoingHid);
+                    }
                     break;
                 case CONNECT_HID_INCOMING:
                 case DISCONNECT_HID_INCOMING:
-                    transitionTo(mIncomingHid);
+                    if (mUnpairStarted == true) {
+                        log("Discarding message " + message.what);
+                    } else {
+                        transitionTo(mIncomingHid);
+                    }
                     break;
                 case DISCONNECT_PBAP_OUTGOING:
                     processCommand(DISCONNECT_PBAP_OUTGOING);
@@ -394,6 +402,9 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                     } else {
                         if (mHeadsetService == null) {
                               mAutoConnectionPending = true;
+                              log("AUTO_CONNECT Waiting for HeadsetSerive bind " +
+                                    mDevice.getAddress());
+                              break;
                         } else if (mHeadsetService.getPriority(mDevice) ==
                               BluetoothHeadset.PRIORITY_AUTO_CONNECT &&
                               mHeadsetService.getDevicesMatchingConnectionStates(
