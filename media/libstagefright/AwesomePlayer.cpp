@@ -39,7 +39,11 @@
 #include <media/stagefright/foundation/hexdump.h>
 #include <media/stagefright/foundation/ADebug.h>
 #include <media/stagefright/AudioPlayer.h>
+
+#ifndef NON_QCOM_TARGET
 #include <media/stagefright/LPAPlayer.h>
+#endif
+
 #include <media/stagefright/DataSource.h>
 #include <media/stagefright/FileSource.h>
 #include <media/stagefright/MediaBuffer.h>
@@ -926,11 +930,9 @@ status_t AwesomePlayer::play_l() {
                  */
                 if (!success)
                     durationUs = 0;
-
-                LOGV("LPAPlayer::getObjectsAlive() %d",LPAPlayer::objectsAlive);
                 int32_t isFormatAdif = 0;
                 format->findInt32(kkeyAacFormatAdif, &isFormatAdif);
-
+#ifndef NON_QCOM_TARGET
                 char lpaDecode[128];
                 property_get("lpa.decode",lpaDecode,"0");
                 if(strcmp("true",lpaDecode) == 0)
@@ -948,6 +950,7 @@ status_t AwesomePlayer::play_l() {
                         }
                     }
                 }
+#endif
                 if(mAudioPlayer == NULL) {
                     LOGE("AudioPlayer created, Non-LPA mode mime %s duration %d\n", mime, durationUs);
                     mAudioPlayer = new AudioPlayer(mAudioSink, this);

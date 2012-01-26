@@ -125,13 +125,15 @@ LOCAL_STATIC_LIBRARIES := \
         libstagefright_id3 \
         libFLAC \
 
-ifeq ($(BOARD_USES_ALSA_AUDIO),true)
+ifeq ($(call is-vendor-board-platform,QCOM),true)
+    ifeq ($(BOARD_USES_ALSA_AUDIO),true)
         LOCAL_SRC_FILES += LPAPlayerALSA.cpp
         LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-audio/libalsa-intf
         LOCAL_C_INCLUDES += $(TOP)/kernel/include/sound
         LOCAL_SHARED_LIBRARIES += libalsa-intf
-else
+    else
         LOCAL_SRC_FILES += LPAPlayer.cpp
+    endif
 endif
 ################################################################################
 
