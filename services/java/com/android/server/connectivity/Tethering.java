@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2010-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +36,7 @@ import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.NetworkInfo;
 import android.net.NetworkUtils;
+import android.net.RouteInfo;
 import android.os.Binder;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -1027,6 +1029,21 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
                         if (newUpstreamIfaceName != null) {
                             try {
                                 mNMService.enableNat(mIfaceName, newUpstreamIfaceName);
+                                //ConnectivityService is not aware of default dns servers, so
+                                //add dns routes here via the upstream interface.
+                                for (String server : mDnsServers) {
+                                    if (server == null ||
+                                            (!server.equals(DNS_DEFAULT_SERVER1) &&
+                                                !server.equals(DNS_DEFAULT_SERVER2))) continue;
+                                    RouteInfo r =
+                                        RouteInfo.makeHostRoute(InetAddress.getByName(server));
+                                    try {
+                                        mNMService.addRoute(newUpstreamIfaceName, r);
+                                    } catch (Exception e) {
+                                        Log.e(TAG,"Exception while " +
+                                                "adding tether dns route", e);
+                                    }
+                                }
                             } catch (Exception e) {
                                 Log.e(TAG, "Exception enabling Nat: " + e.toString());
                                 try {
