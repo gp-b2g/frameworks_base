@@ -157,12 +157,23 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
 
     @Override
     protected void onActionIntentReconnectAlarm(Intent intent) {
-        if (DBG) log("GPRS reconnect alarm. Previous state was " + mState);
-
         String reason = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON);
         int connectionId = intent.getIntExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE, -1);
 
         DataConnectionAc dcac= mDataConnectionAsyncChannels.get(connectionId);
+
+        if (DBG) log("GPRS reconnect alarm. reason:" + reason + " Previous state was " + mState);
+
+        /**
+         * if the retry was for partial success retry, send this info
+         * along with the retry request. This will be required to differentiate
+         * a new connect request against a retry connect request.
+         */
+        int partialRetry = 0;
+        if (reason != null && reason.equals(Phone.REASON_DUALIP_PARTIAL_FAILURE_RETRY)) {
+            if (DBG) log("reconnect request due to partial retry");
+            partialRetry = Phone.DUALIP_PARTIAL_RETRY;
+        }
 
         if (dcac != null) {
             for (ApnContext apnContext : dcac.getApnListSync()) {
@@ -170,7 +181,7 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                 if (apnContext.getState() == State.FAILED) {
                     apnContext.setState(State.IDLE);
                 }
-                sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, apnContext));
+                sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, partialRetry, 0, apnContext));
             }
             // Alram had expired. Clear pending intent recorded on the DataConnection.
             dcac.setReconnectIntentSync(null);
@@ -194,6 +205,7 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         p.getCallTracker().registerForVoiceCallStarted (this, EVENT_VOICE_CALL_STARTED, null);
         p.getServiceStateTracker().registerForDataConnectionAttached(this,
                 EVENT_DATA_CONNECTION_ATTACHED, null);
+        p.getServiceStateTracker().registerForRatChanged(this, EVENT_RAT_CHANGED, null);
         p.getServiceStateTracker().registerForDataConnectionDetached(this,
                 EVENT_DATA_CONNECTION_DETACHED, null);
         p.getServiceStateTracker().registerForRoamingOn(this, EVENT_ROAMING_ON, null);
@@ -249,6 +261,7 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         mPhone.getCallTracker().unregisterForVoiceCallEnded(this);
         mPhone.getCallTracker().unregisterForVoiceCallStarted(this);
         mPhone.getServiceStateTracker().unregisterForDataConnectionAttached(this);
+        mPhone.getServiceStateTracker().unregisterForRatChanged(this);
         mPhone.getServiceStateTracker().unregisterForDataConnectionDetached(this);
         mPhone.getServiceStateTracker().unregisterForRoamingOn(this);
         mPhone.getServiceStateTracker().unregisterForRoamingOff(this);
@@ -723,7 +736,9 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                 apnContext.setState(State.IDLE);
             }
             if (apnContext.isReady()) {
-                if (apnContext.getState() == State.IDLE) {
+                if (apnContext.getState() == State.IDLE ||
+                        (apnContext.getState() == State.CONNECTED &&
+                                apnContext.getDataConnectionAc().getPartialSuccessStatusSync())) {
                     apnContext.setReason(reason);
                     trySetupData(apnContext);
                 }
@@ -777,7 +792,9 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                 return false;
         }
 
-        if ((apnContext.getState() == State.IDLE || apnContext.getState() == State.SCANNING) &&
+        if ((apnContext.getState() == State.IDLE || apnContext.getState() == State.SCANNING ||
+                (apnContext.getState() == State.CONNECTED &&
+                    apnContext.getDataConnectionAc().getPartialSuccessStatusSync())) &&
                 isDataAllowed(apnContext) && getAnyDataEnabled() && !isEmergency()) {
 
             if (apnContext.getState() == State.IDLE) {
@@ -1094,9 +1111,12 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
             apnContext.setDataConnection(dc);
         }
 
+        DataConnectionAc dcac = mDataConnectionAsyncChannels.get(dc.getDataConnectionId());
         apnContext.setApnSetting(apn);
-        apnContext.setState(State.INITING);
-        mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
+        if (!dcac.getPartialSuccessStatusSync()) {
+            apnContext.setState(State.INITING);
+            mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
+        }
         // If reconnect alarm is active on this DataConnection, wait for the alarm being
         // fired so that we don't disruppt data retry pattern engaged.
         if (apnContext.getDataConnectionAc().getReconnectIntentSync() != null) {
@@ -1105,6 +1125,8 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
             mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
             return true;
         }
+
+        apn.setInPartialRetry(apnContext.isInPartialRetry());
 
         Message msg = obtainMessage();
         msg.what = EVENT_DATA_SETUP_COMPLETE;
@@ -1324,6 +1346,10 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                                          mPhone.notifyDataConnection(
                                                  Phone.REASON_LINK_PROPERTIES_CHANGED,
                                                  apnContext.getApnType());
+
+                                         if (dcac.getPartialSuccessStatusSync()) {
+                                             schedulePartialRetryAttempt(apnContext);
+                                         }
                                     }
                                 }
                             } else {
@@ -1388,10 +1414,13 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         apnContext.setState(State.CONNECTED);
         // setState(State.CONNECTED);
         mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
-        startNetStatPoll();
-        startDataStallAlarm();
-        // reset reconnect timer
-        apnContext.getDataConnection().resetRetryCount();
+
+        if (!apnContext.getDataConnectionAc().getPartialSuccessStatusSync()) {
+            startNetStatPoll();
+            startDataStallAlarm();
+            // reset reconnect timer
+            apnContext.getDataConnection().resetRetryCount();
+        }
     }
 
     // TODO: For multiple Active APNs not exactly sure how to do this.
@@ -1913,7 +1942,33 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         applyNewState(apnContext, enabled == ENABLED, apnContext.getDependencyMet());
     }
 
-    @Override
+    private boolean onTrySetupData(Message msg) {
+        boolean retVal = false;
+        if (msg.obj instanceof ApnContext) {
+            ApnContext apnContext = (ApnContext)msg.obj;
+
+            /**
+             * ApnContext for default may be in partial retry, but the initial setup
+             * request for mms ApnContext should succeed even with a partial success DC.
+             * So, for each setup request, set partial retry flag, the setup requests from
+             * apps wont have this value set, but the retry requests as part of partial
+             * retry will.
+             */
+            if (msg.arg1 == Phone.DUALIP_PARTIAL_RETRY) {
+                if (DBG) log("Set partial retry flag in apnContext:" + apnContext.toString());
+            }
+            apnContext.setInPartialRetry(msg.arg1 == Phone.DUALIP_PARTIAL_RETRY);
+            retVal = onTrySetupData(apnContext);
+        } else {
+            if (msg.obj instanceof String) {
+                retVal = onTrySetupData((String)msg.obj);
+            } else {
+                loge("EVENT_TRY_SETUP request w/o apnContext or String");
+            }
+        }
+        return retVal;
+    }
+
     // TODO: We shouldnt need this.
     protected boolean onTrySetupData(String reason) {
         if (DBG) log("onTrySetupData: reason=" + reason);
@@ -2009,7 +2064,6 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
             if (dcac == null) {
                 throw new RuntimeException("onDataSetupCompete: No dcac");
             }
-            DataConnection dc = apnContext.getDataConnection();
 
             if (DBG) {
                 // TODO We may use apnContext.getApnSetting() directly
@@ -2049,6 +2103,10 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                 SystemProperties.set("gsm.defaultpdpcontext.active", "false");
             }
             notifyDefaultData(apnContext);
+
+            if (dcac.getPartialSuccessStatusSync()) {
+                schedulePartialRetryAttempt(apnContext);
+            }
         } else {
             String apnString;
             DataConnection.FailCause cause;
@@ -2116,6 +2174,16 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                 startAlarmForReconnect(APN_DELAY_MILLIS, apnContext);
             }
         }
+    }
+
+    private void schedulePartialRetryAttempt(ApnContext apnContext) {
+        apnContext.setReason(Phone.REASON_DUALIP_PARTIAL_FAILURE_RETRY);
+        int nextReconnectDelay = apnContext.getDataConnection().getRetryTimer();
+        apnContext.getDataConnection().increaseRetryCount();
+        startAlarmForReconnect(nextReconnectDelay, apnContext);
+        if (DBG) log("schedulePartialRetryAttempt: retry for apnContext:" +
+                apnContext.toString() + " retry #" +
+                apnContext.getDataConnection().getRetryCount());
     }
 
     /**
@@ -2556,15 +2624,8 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                 }
                 break;
             case EVENT_TRY_SETUP_DATA:
-                if (msg.obj instanceof ApnContext) {
-                    onTrySetupData((ApnContext)msg.obj);
-                } else if (msg.obj instanceof String) {
-                    onTrySetupData((String)msg.obj);
-                } else {
-                    loge("EVENT_TRY_SETUP request w/o apnContext or String");
-                }
+                onTrySetupData(msg);
                 break;
-
             case EVENT_CLEAN_UP_CONNECTION:
                 boolean tearDown = (msg.arg1 == 0) ? false : true;
                 if (DBG) log("EVENT_CLEAN_UP_CONNECTION tearDown=" + tearDown);
@@ -2574,10 +2635,28 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                     loge("EVENT_CLEAN_UP_CONNECTION request w/o apn context");
                 }
                 break;
+            case EVENT_RAT_CHANGED:
+                onRatChanged();
+                break;
             default:
                 // handle the message in the super class DataConnectionTracker
                 super.handleMessage(msg);
                 break;
+        }
+    }
+
+    private void onRatChanged() {
+        DataConnectionAc dcac = null;
+        for (DataConnection dc : mDataConnections.values()) {
+            dcac = mDataConnectionAsyncChannels.get(dc.getDataConnectionId());
+            if (dcac.getPartialSuccessStatusSync()) {
+                // Found at least one data connection with partial success, retry
+                sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, 0, 0,
+                        Phone.REASON_RAT_CHANGED));
+                resetAllRetryCounts();
+                if (DBG) log("Retry for DC with partial failure. DC:" + dc.toString());
+                break;
+            }
         }
     }
 

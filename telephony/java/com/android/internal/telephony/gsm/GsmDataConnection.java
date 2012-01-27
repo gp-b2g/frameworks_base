@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,12 +93,7 @@ public class GsmDataConnection extends DataConnection {
                 RILConstants.SETUP_DATA_AUTH_NONE;
         }
 
-        String protocol;
-        if (phone.getServiceState().getRoaming()) {
-            protocol = mApn.roamingProtocol;
-        } else {
-            protocol = mApn.protocol;
-        }
+        String protocol = getDataCallProtocol();
 
         String radioTech = Integer.toString(getRadioTechnology(RILConstants.SETUP_DATA_TECH_GSM));
         if (phone.getServiceState().getRadioTechnology() == ServiceState.RADIO_TECHNOLOGY_EHRPD) {

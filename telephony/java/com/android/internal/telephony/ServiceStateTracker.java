@@ -77,6 +77,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected RegistrantList mDetachedRegistrants = new RegistrantList();
     protected RegistrantList mNetworkAttachedRegistrants = new RegistrantList();
     protected RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
+    protected RegistrantList mRatChangedRegistrants = new RegistrantList();
     protected RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
 
     /* Radio power off pending flag and tag counter */
@@ -395,6 +396,21 @@ public abstract class ServiceStateTracker extends Handler {
 
     public void unregisterForPsRestrictedEnabled(Handler h) {
         mPsRestrictEnabledRegistrants.remove(h);
+    }
+
+    /**
+     * Registration point for RAT change notification
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForRatChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mRatChangedRegistrants.add(r);
+    }
+
+    public void unregisterForRatChanged(Handler h) {
+        mRatChangedRegistrants.remove(h);
     }
 
     /**

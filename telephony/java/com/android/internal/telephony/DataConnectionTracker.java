@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -144,6 +144,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected static final int EVENT_READ_MODEM_PROFILES = BASE + 35;
     protected static final int EVENT_GET_DATA_CALL_PROFILE_DONE = BASE + 36;
     protected static final int EVENT_MODEM_DATA_PROFILE_READY = BASE + 37;
+    protected static final int EVENT_RAT_CHANGED = BASE + 38;
 
     /***** Constants *****/
 
@@ -515,7 +516,11 @@ public abstract class DataConnectionTracker extends Handler {
             msg.obj = reason;
             sendMessage(msg);
         }
-        sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA));
+
+        int partialRetry = 0;
+        if (reason != null && reason.equals(Phone.REASON_DUALIP_PARTIAL_FAILURE_RETRY))
+            partialRetry = Phone.DUALIP_PARTIAL_RETRY;
+        sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, partialRetry, 0, null));
     }
 
     protected void onActionIntentDataStallAlarm(Intent intent) {
