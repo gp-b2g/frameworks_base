@@ -719,13 +719,25 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                     if (DBG) logd(getName() + " sending connect");
                     mSavedConnectConfig = (WifiP2pConfig) message.obj;
                     mPersistGroup = false;
+                    String peerInfo = WifiNative.p2pPeer(mSavedConnectConfig.deviceAddress);
+                    String[] tokens = peerInfo.split("\n");
+                    for (String token : tokens) {
+                        //update "group_capab" before issuing a connect
+                        if (token.startsWith("group_capab=")) {
+                            String[] nameValue = token.split("=");
+                            if (nameValue.length != 2) break;
+                            mThisDevice.groupCapability = parseHexString(nameValue[1]);
+                            Slog.e(TAG, "group_capab: " + nameValue[1]);
+                        }
+                    }
                     int netId = configuredNetworkId(mSavedConnectConfig.deviceAddress);
                     if (netId >= 0) {
                         //TODO: if failure, remove config and do a regular p2pConnect()
                         WifiNative.p2pReinvoke(netId, mSavedConnectConfig.deviceAddress);
                     } else {
                         boolean join = false;
-                        if (isGroupOwner(mSavedConnectConfig.deviceAddress)) join = true;
+                        if ( mThisDevice.isGroupOwner()) join = true;
+                        Slog.d(TAG, "join: " + join);
                         String pin = WifiNative.p2pConnect(mSavedConnectConfig, join);
                         try {
                             Integer.parseInt(pin);
@@ -1017,6 +1029,12 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                         if (devices.contains(d) || mGroup.getOwner().equals(d)) {
                             d.status = WifiP2pDevice.AVAILABLE;
                             changed = true;
+                            if (!(mGroup.isGroupOwner())) {
+                                if (mPeers.remove(d))
+                                   logd("Remove peer " + d.deviceAddress);
+                                break;
+                            }
+
                         }
                     }
 
@@ -1174,6 +1192,20 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
             loge("Error resetting interface " + mInterfaceName + ", :" + e);
         }
 
+    }
+
+    private int parseHexString(String hexString) {
+        int num = 0;
+        if (hexString.startsWith("0x") || hexString.startsWith("0X")) {
+            hexString = hexString.substring(2);
+        }
+
+        try {
+            num = Integer.parseInt(hexString, 16);
+        } catch(NumberFormatException e) {
+            Slog.e(TAG, "Failed to parse hex string " + hexString);
+        }
+        return num;
     }
 
     private void notifyP2pEnableFailure() {
