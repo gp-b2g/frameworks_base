@@ -673,7 +673,6 @@ public class FmcStateMachine extends StateMachine {
             setStatus(FMC_STATUS_REGISTRATION_SUCCESS);
             startStateTimer("fmc.data.enable.timeout");
             sendEnableData();
-            handleRegisteredRouting();
         }
 
         @Override
@@ -758,6 +757,7 @@ public class FmcStateMachine extends StateMachine {
             if (DBG) Log.d(this.getName(), "enter");
 
             setStatus(FMC_STATUS_ENABLED);
+            handleRegisteredRouting();
             handleActiveRouting(mDestIp);
         }
 
@@ -776,6 +776,7 @@ public class FmcStateMachine extends StateMachine {
                     transitionToState(mFmcStateActive);
                     break;
                 case FMC_MSG_DATA_DISABLED:
+                    handleCleanUpRouting(mDestIp);
                     transitionToState(mFmcStateRegistered);
                     break;
                 case FMC_MSG_WIFI_DOWN:
