@@ -610,7 +610,7 @@ int HDMIDaemon::processFrameworkCommand()
         return -1;
 
     buffer[ret] = 0;
-
+    char actionsafe[PROPERTY_VALUE_MAX];
     if (!strcmp(buffer, HDMI_CMD_ENABLE_HDMI)) {
         if (!openFramebuffer())
             return -1;
@@ -641,13 +641,15 @@ int HDMIDaemon::processFrameworkCommand()
         float asWidthRatio;
         int ret = sscanf(buffer, HDMI_CMD_SET_ASWIDTH "%f", &asWidthRatio);
         if(ret==1) {
-            SurfaceComposerClient::setActionSafeWidthRatio(asWidthRatio);
+            sprintf(actionsafe, "%0.2f", asWidthRatio);
+            property_set("hw.actionsafe.width", actionsafe);
         }
     } else if (!strncmp(buffer, HDMI_CMD_SET_ASHEIGHT, strlen(HDMI_CMD_SET_ASHEIGHT))) {
         float asHeightRatio;
         int ret = sscanf(buffer, HDMI_CMD_SET_ASHEIGHT "%f", &asHeightRatio);
         if(ret==1) {
-            SurfaceComposerClient::setActionSafeHeightRatio(asHeightRatio);
+            sprintf(actionsafe, "%0.2f", asHeightRatio);
+            property_set("hw.actionsafe.height", actionsafe);
         }
     } else if (!strncmp(buffer, HDMI_CMD_HPDOPTION, strlen(HDMI_CMD_HPDOPTION))) {
         int option;
