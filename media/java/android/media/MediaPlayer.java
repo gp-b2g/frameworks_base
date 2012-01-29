@@ -18,6 +18,7 @@ package android.media;
 
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.AssetFileDescriptor;
 import android.net.Uri;
 import android.os.Handler;
@@ -513,6 +514,19 @@ public class MediaPlayer
      */
     public static final boolean APPLY_METADATA_FILTER = true;
 
+    /* {@hide}
+    */
+    private Context mContext = null;
+
+    /* {@hide}
+     */
+    private Uri mUri = null;
+
+    /* {@hide}
+     */
+    private static final String ACTION_METADATA_CHANGED  =
+        "android.media.MediaPlayer.action.METADATA_CHANGED";
+
     /**
        Constant to disable the metadata filter during retrieval.
        // FIXME: unhide.
@@ -563,6 +577,11 @@ public class MediaPlayer
          * It's easier to create it here than in C++.
          */
         native_setup(new WeakReference<MediaPlayer>(this));
+    }
+
+    private MediaPlayer(Context context) {
+        this();
+        mContext = context;
     }
 
     /*
@@ -691,7 +710,7 @@ public class MediaPlayer
     public static MediaPlayer create(Context context, Uri uri, SurfaceHolder holder) {
 
         try {
-            MediaPlayer mp = new MediaPlayer();
+            MediaPlayer mp = new MediaPlayer(context);
             mp.setDataSource(context, uri);
             if (holder != null) {
                 mp.setDisplay(holder);
@@ -731,7 +750,7 @@ public class MediaPlayer
             AssetFileDescriptor afd = context.getResources().openRawResourceFd(resid);
             if (afd == null) return null;
 
-            MediaPlayer mp = new MediaPlayer();
+            MediaPlayer mp = new MediaPlayer(context);
             mp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
             afd.close();
             mp.prepare();
@@ -773,6 +792,9 @@ public class MediaPlayer
         throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
 
         String scheme = uri.getScheme();
+        mContext = context;
+        mUri = uri;
+        Log.e(TAG, "Uri is  "+ mUri);
         if(scheme == null || scheme.equals("file")) {
             setDataSource(uri.getPath());
             return;
@@ -907,6 +929,16 @@ public class MediaPlayer
      */
     public  void start() throws IllegalStateException {
         stayAwake(true);
+
+        Intent intent = new Intent(ACTION_METADATA_CHANGED);
+        intent.putExtra("duration", getDuration());
+        intent.putExtra("time", System.currentTimeMillis());
+        intent.putExtra("position", getCurrentPosition());
+        Log.d(TAG, "start() mUri is " + mUri);
+        intent.putExtra("uripath", mUri);
+        intent.putExtra("playstate", 1);
+        mContext.sendBroadcast(intent);
+
         _start();
     }
 
@@ -921,6 +953,15 @@ public class MediaPlayer
     public void stop() throws IllegalStateException {
         stayAwake(false);
         _stop();
+        Intent intent = new Intent(ACTION_METADATA_CHANGED);
+        intent.putExtra("duration", getDuration());
+        intent.putExtra("time", System.currentTimeMillis());
+        intent.putExtra("position", getCurrentPosition());
+        Log.d(TAG, "stop() mUri is " + mUri);
+        intent.putExtra("uripath", mUri);
+        intent.putExtra("playstate", 0);
+        mContext.sendBroadcast(intent);
+
     }
 
     private native void _stop() throws IllegalStateException;
@@ -934,6 +975,15 @@ public class MediaPlayer
     public void pause() throws IllegalStateException {
         stayAwake(false);
         _pause();
+        Intent intent = new Intent(ACTION_METADATA_CHANGED);
+        intent.putExtra("duration", getDuration());
+        intent.putExtra("time", System.currentTimeMillis());
+        intent.putExtra("position", getCurrentPosition());
+        Log.d(TAG, "pause() mUri is " + mUri);
+        intent.putExtra("uripath", mUri);
+        intent.putExtra("playstate", 2);
+        mContext.sendBroadcast(intent);
+
     }
 
     private native void _pause() throws IllegalStateException;
@@ -1167,6 +1217,8 @@ public class MediaPlayer
     public void release() {
         stayAwake(false);
         updateSurfaceScreenOn();
+        mContext = null;
+        mUri = null;
         mOnPreparedListener = null;
         mOnBufferingUpdateListener = null;
         mOnCompletionListener = null;
