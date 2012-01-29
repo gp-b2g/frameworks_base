@@ -40,6 +40,12 @@ import android.util.Slog;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.StringTokenizer;
+import java.io.BufferedReader;
+
+import java.io.InputStreamReader;
+import java.util.Iterator;
+import java.util.List;
 
 /** This class calls its monitor every minute. Killing this process if they don't return **/
 public class Watchdog extends Thread {
@@ -379,6 +385,108 @@ public class Watchdog extends Thread {
         return newTime;
     }
 
+    /**
+     * Check if the process is alive.
+     *
+     * @param name The process name to be checked.
+     * @return Returns true if this process is alive, else retur false
+     */
+    private boolean isProcessAlive (String name)
+    {
+        String cmd;
+        String line;
+
+        StringBuffer sb = new StringBuffer();
+        sb.append ("ps ");
+        sb.append (name);
+        cmd = sb.toString ();
+
+        try {
+            java.lang.Process p = Runtime.getRuntime().exec(cmd);
+            BufferedReader input = new BufferedReader
+                (new InputStreamReader(p.getInputStream()));
+            while ((line = input.readLine()) != null) {
+                String[] tokens = line.split ("\\s+");
+                if (tokens[7].equals ("S")) {
+                    if (tokens[8].indexOf (name) >= 0) {
+                        Slog.w (TAG, line);
+                        return true;
+                    }
+                }
+            }
+            input.close();
+        }
+        catch (Exception ex) {
+            Slog.w(TAG, ex);
+        }
+
+        return false;
+    }
+
+    /**
+     * Create tombstones for the list of processes.
+     *
+     * @param ProcList The list of processes with ',' as a delimiter.
+     */
+    private void createTombstone(String procList)
+    {
+        String cmd = "ps";
+        List<String> procList4Tombstones = new ArrayList<String>();
+        String line;
+
+        StringBuffer sb = new StringBuffer();
+        sb.append (",");
+        sb.append (procList);
+        sb.append (",");
+        procList = sb.toString ();
+
+        try {
+            java.lang.Process p = Runtime.getRuntime().exec(cmd);
+            BufferedReader input = new BufferedReader
+                (new InputStreamReader(p.getInputStream()));
+            while ((line = input.readLine()) != null) {
+                String[] tokens = line.split ("\\s+");
+                if (tokens.length == 9) {
+                    String delimiter1 = "/";
+                    String[] procname = tokens[8].split (delimiter1);
+                    StringBuffer sb1 = new StringBuffer();
+                    sb1.append (",");
+                    sb1.append (procname[procname.length-1]);
+                    sb1.append (",");
+                    String pn = sb1.toString ();
+                    if (procList.indexOf (pn) >= 0) {
+                        procList4Tombstones.add (tokens[1]);
+                        procList4Tombstones.add (procname[procname.length-1]);
+                    }
+                }
+            }
+            input.close();
+        }
+        catch (Exception ex) {
+            Slog.w(TAG, ex);
+        }
+
+        Iterator<String> it = procList4Tombstones.iterator();
+        while ( it.hasNext()) {
+            /*
+             * Sometimes the debuggerd will exit after the tombstones creation which
+             * will not allow the next tombstones generation.
+             * Wait till the debuggerd is back.
+             */
+            Slog.w(TAG, "Waiting for the debuggerd process...");
+            while (false == isProcessAlive ("debuggerd")) {
+                SystemClock.sleep(500);
+            }
+            String pid = it.next();
+            Slog.w(TAG, "Creating tombstone file for process[" + it.next() + "]");
+            SystemClock.sleep(1000);
+            Process.sendSignal(Integer.parseInt(pid), 6);
+            SystemClock.sleep(1000);
+            Process.sendSignal(Integer.parseInt(pid), 6);
+            SystemClock.sleep(2000);
+        }
+    }
+
     @Override
     public void run() {
         boolean waitedHalf = false;
@@ -461,11 +569,22 @@ public class Watchdog extends Thread {
 
             // Only kill the process if the debugger is not attached.
             if(!Debug.isDebuggerConnected()) {
-               if(SystemProperties.getInt("debug.watchdog.disabled", 0) == 0) {
+               if(SystemProperties.getInt("sys.watchdog.disabled", 0) == 0) {
                   Process.sendSignal(Process.myPid(), 6);
                   SystemClock.sleep(2000);
                   Process.sendSignal(Process.myPid(), 6);
                   SystemClock.sleep(2000);
+
+                  String procs = SystemProperties.get("sys.watchdog.extraprocnames");
+                  if (procs != null && procs.length() > 0)
+                  {
+                      Slog.w(TAG, "Processes to create tombstones: [" + procs + "]");
+                      createTombstone (procs);
+                  }
+                  else
+                  {
+                      Slog.w(TAG, "No process is given for creating tombstones on framework reboot.");
+                  }
 
                   Slog.w(TAG, "*** WATCHDOG KILLING SYSTEM PROCESS: " + name);
                   Process.killProcess(Process.myPid());
