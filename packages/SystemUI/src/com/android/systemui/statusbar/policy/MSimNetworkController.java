@@ -30,6 +30,7 @@ import android.net.wifi.WifiManager;
 import android.net.wimax.WimaxManagerConstants;
 import android.os.Binder;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.PhoneStateListener;
@@ -52,7 +53,7 @@ import com.android.systemui.R;
 public class MSimNetworkController extends NetworkController {
     // debug
     static final String TAG = "StatusBar.MSimNetworkController";
-    static final boolean DEBUG = false;
+    static final boolean DEBUG = true;
     static final boolean CHATTY = false; // additional diagnostics, but not logspew
 
     // telephony
@@ -61,6 +62,7 @@ public class MSimNetworkController extends NetworkController {
     IccCard.State[] mMSimState;
     int[] mMSimDataActivity;
     ServiceState[] mMSimServiceState;
+    int[] mDataServiceState;
     SignalStrength[] mMSimSignalStrength;
     String[] mSignalIcon = {"phone_signal", "phone_signal_second_sub"};
     private PhoneStateListener[] mMSimPhoneStateListener;
@@ -128,6 +130,7 @@ public class MSimNetworkController extends NetworkController {
         mMSimContentDescriptionCombinedSignal = new String[numPhones];
         mMSimContentDescriptionDataType = new String[numPhones];
         mMSimLastSimIconId = new int[numPhones];
+        mDataServiceState = new int[numPhones];
 
         for (int i=0; i < numPhones; i++) {
             mMSimSignalStrength[i] = new SignalStrength();
@@ -145,6 +148,7 @@ public class MSimNetworkController extends NetworkController {
             mMSimDataActivity[i] = TelephonyManager.DATA_ACTIVITY_NONE;
             mMSimLastSimIconId[i] = 0;
             mMSimNetworkName[i] = mNetworkNameDefault;
+            mDataServiceState[i]= ServiceState.STATE_OUT_OF_SERVICE;
         }
 
         mDataConnected = mMSimDataConnected[MSimTelephonyManager.getDefault()
@@ -314,6 +318,15 @@ public class MSimNetworkController extends NetworkController {
                         + mSubscription + "state=" + state.getState());
                 }
                 mMSimServiceState[mSubscription] = state;
+                if (SystemProperties.getBoolean("ro.config.combined_signal", true)) {
+                    /*
+                     * if combined_signal is set to true only then consider data
+                     * service state for signal display.
+                     */
+                    mDataServiceState[mSubscription] =
+                            mMSimServiceState[mSubscription].getDataState();
+
+                }
                 updateTelephonySignalStrength(mSubscription);
                 updateDataNetType(mSubscription);
                 updateDataIcon(mSubscription);
@@ -418,14 +431,21 @@ public class MSimNetworkController extends NetworkController {
 
     private final void updateTelephonySignalStrength(int subscription) {
         Slog.d(TAG, "updateTelephonySignalStrength: subscription =" + subscription);
-        if (!hasService(subscription)) {
-            if (CHATTY) Slog.d(TAG, "updateTelephonySignalStrength: !hasService()");
+
+        if (!hasService(subscription) &&
+                mDataServiceState[subscription] != ServiceState.STATE_IN_SERVICE) {
+            if (DEBUG) Slog.d(TAG, "No service ");
             mMSimPhoneSignalIconId[subscription] = R.drawable.stat_sys_signal_0;
             mMSimDataSignalIconId[subscription] = R.drawable.stat_sys_signal_0;
         } else {
-            if (mMSimSignalStrength[subscription] == null) {
-                if (CHATTY) Slog.d(TAG, "updateTelephonySignalStrength:"
-                        + "mMSimSignalStrength == null");
+
+            if ((mMSimSignalStrength[subscription] == null) ||
+                    (mMSimServiceState[subscription] == null)) {
+                if (DEBUG) {
+                    Slog.d(TAG, " Null object -mSignalStrength= "
+                            + mMSimSignalStrength[subscription]
+                                    + " mServiceState " + mMSimServiceState[subscription]);
+                }
                 mMSimPhoneSignalIconId[subscription] = R.drawable.stat_sys_signal_0;
                 mMSimDataSignalIconId[subscription] = R.drawable.stat_sys_signal_0;
                 mMSimContentDescriptionPhoneSignal[subscription] = mContext.getString(
@@ -434,20 +454,15 @@ public class MSimNetworkController extends NetworkController {
                 int iconLevel;
                 int[] iconList;
                 mLastSignalLevel = iconLevel = mMSimSignalStrength[subscription].getLevel();
-                if (isCdma(subscription)) {
-                    if (isCdmaEri(subscription)) {
-                        iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH_ROAMING[mInetCondition];
-                    } else {
-                        iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH[mInetCondition];
-                    }
+
+                // Though mPhone is a Manager, this call is not an IPC
+                if ((isCdma(subscription) && isCdmaEri(subscription)) ||
+                        mPhone.isNetworkRoaming(subscription)) {
+                    iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH_ROAMING[mInetCondition];
                 } else {
-                    // Though mPhone is a Manager, this call is not an IPC
-                    if (mPhone.isNetworkRoaming(subscription)) {
-                        iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH_ROAMING[mInetCondition];
-                    } else {
-                        iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH[mInetCondition];
-                    }
+                    iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH[mInetCondition];
                 }
+
                 mMSimPhoneSignalIconId[subscription] = iconList[iconLevel];
                 mMSimContentDescriptionPhoneSignal[subscription] = mContext.getString(
                         AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[iconLevel]);
@@ -539,7 +554,7 @@ public class MSimNetworkController extends NetworkController {
                 break;
         }
         if ((isCdma(subscription) && isCdmaEri(subscription)) ||
-             mPhone.isNetworkRoaming(subscription)) {
+                mPhone.isNetworkRoaming(subscription)) {
             mMSimDataTypeIconId[subscription] = R.drawable.stat_sys_data_connected_roam;
         }
     }
@@ -720,7 +735,11 @@ public class MSimNetworkController extends NetworkController {
         Slog.d(TAG,"refreshViews subscription =" + subscription + "mMSimDataConnected ="
                 + mMSimDataConnected[subscription]);
         Slog.d(TAG,"refreshViews mMSimDataActivity =" + mMSimDataActivity[subscription]);
-        if (mMSimDataConnected[subscription]) {
+
+        if ((mMSimDataConnected[subscription]) ||
+                (!hasService(subscription) &&
+                        mDataServiceState[subscription] == ServiceState.STATE_IN_SERVICE)) {
+
             label = mMSimNetworkName[subscription];
             Slog.d(TAG,"refreshViews label =" + label);
             mMSimcombinedSignalIconId[subscription] = mMSimDataSignalIconId[subscription];
