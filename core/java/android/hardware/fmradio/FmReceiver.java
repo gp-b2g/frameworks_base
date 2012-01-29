@@ -2111,4 +2111,68 @@ public class FmReceiver extends FmTransceiver
       return re;
    }
 
+/*==============================================================
+   FUNCTION:  setSINRThreshold
+   ==============================================================*/
+   /**
+   *    Sets the SINR threshold value
+   *
+   *    <p>
+   *    This method sets the SINR threshold value.
+   *
+   *    <p>
+   */
+   public void setSINRThreshold(int data)
+   {
+      int re =  mControl.setSINRThreshold(sFd, data);
+   }
+
+/*==============================================================
+   FUNCTION:  getSINRThreshold
+   ==============================================================*/
+   /**
+   *    Gets the SINR threshold value
+   *
+   *    <p>
+   *    This method gets the currently set SINR threshold value.
+   *
+   *    <p>
+   */
+   public int getSINRThreshold()
+   {
+      return mControl.getSINRThreshold(sFd);
+   }
+
+/*==============================================================
+   FUNCTION:  setSINRsamples
+   ==============================================================*/
+   /**
+   *    Sets the SINR samples
+   *
+   *    <p>
+   *    This method sets the number of SINR samples to calculate the SINR value.
+   *
+   *    <p>
+   */
+   public void setSINRsamples(int data)
+   {
+      int re =  mControl.setSINRsamples(sFd, data);
+   }
+
+/*==============================================================
+   FUNCTION:  getSINRsamples
+   ==============================================================*/
+   /**
+   *    Gets the SINR samples value
+   *
+   *    <p>
+   *    This method gets the number of currently set SINR samples.
+   *
+   *    <p>
+   */
+   public int getSINRsamples()
+   {
+      return mControl.getSINRsamples(sFd);
+   }
+
 }
