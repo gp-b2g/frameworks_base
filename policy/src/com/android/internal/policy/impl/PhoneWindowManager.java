@@ -844,10 +844,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mDockMode = intent.getIntExtra(Intent.EXTRA_DOCK_STATE,
                     Intent.EXTRA_DOCK_STATE_UNDOCKED);
         }
-        // register for HDMI intents
-        IntentFilter hdmiFilter = new IntentFilter();
-        hdmiFilter.addAction(WindowManagerPolicy.ACTION_HDMI_PLUGGED);
-        Intent hdmiIntent = context.registerReceiver(mHDMIReceiver, hdmiFilter);
         mVibrator = new Vibrator();
         mLongPressVibePattern = getLongIntArray(mContext.getResources(),
                 com.android.internal.R.array.config_longPressVibePattern);
@@ -3296,22 +3292,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             }
             updateRotation(true);
             updateOrientationListenerLp();
-        }
-    };
-
-    BroadcastReceiver mHDMIReceiver = new BroadcastReceiver() {
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (action.equals(WindowManagerPolicy.ACTION_HDMI_PLUGGED)) {
-                boolean connected = intent.getBooleanExtra(
-                                    WindowManagerPolicy.EXTRA_HDMI_PLUGGED_STATE, false);
-                if(connected) {
-                    mHdmiPlugged= true;
-                } else {
-                    mHdmiPlugged= false;
-                }
-                updateRotation(true);
-            }
         }
     };
 

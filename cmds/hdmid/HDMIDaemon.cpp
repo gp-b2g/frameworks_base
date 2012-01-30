@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,9 @@
 #include <signal.h>
 
 #include <binder/IPCThreadState.h>
+#include <binder/IServiceManager.h>
+#include <media/IAudioPolicyService.h>
+#include <media/AudioSystem.h>
 #include <utils/threads.h>
 #include <utils/Atomic.h>
 #include <utils/Errors.h>
@@ -46,7 +49,7 @@ namespace android {
 
 // ---------------------------------------------------------------------------
 
-#define DEVICE_ROOT "/sys/class/graphics"
+#define DEVICE_ROOT "/sys/devices/virtual/graphics"
 #define DEVICE_NODE "fb1"
 
 #define HDMI_SOCKET_NAME        "hdmid"
@@ -90,11 +93,6 @@ HDMIDaemon::~HDMIDaemon() {
 void HDMIDaemon::onFirstRef() {
     run("HDMIDaemon", PRIORITY_AUDIO);
 }
-
-sp<SurfaceComposerClient> HDMIDaemon::session() const {
-    return mSession;
-}
-
 
 void HDMIDaemon::binderDied(const wp<IBinder>& who)
 {
@@ -199,7 +197,6 @@ bool HDMIDaemon::threadLoop()
                 strerror(errno));
         }
         else {
-            mSession = new SurfaceComposerClient();
             processUeventQueue();
 
             if (!mDriverOnline) {
@@ -221,7 +218,7 @@ bool HDMIDaemon::threadLoop()
     return true;
 }
 
-bool HDMIDaemon::checkHDCPPresent() {
+bool HDMIDaemon::isHDCPPresent() {
     char present = '0';
     //Open the hdcp file - to know if HDCP is supported
     int hdcpFile = open(SYSFS_HDCP_PRESENT, O_RDONLY, 0);
@@ -255,20 +252,43 @@ bool HDMIDaemon::isHDMIMode() {
     return (mode == '1') ? true : false;
 }
 
-/* function handles the cable connect event
- * sends audio_on event if it is not a HDCP
- * sink or its not in HDMI Mode(DVI)
- */
-bool HDMIDaemon::handleAudioOn() {
-    if(checkHDCPPresent()) {
-        return true;
-    } else if(!isHDMIMode()) {
-        return true;
+void HDMIDaemon::enableAudio() {
+    sp<IServiceManager> sm = defaultServiceManager();
+    sp<IAudioPolicyService> binder;
+    binder = interface_cast<IAudioPolicyService>(
+            sm->getService(String16("media.audio_policy")));
+    if(binder != 0) {
+        binder->setDeviceConnectionState(AUDIO_DEVICE_OUT_AUX_DIGITAL,
+            AUDIO_POLICY_DEVICE_STATE_AVAILABLE, "");
     } else {
-        // Send audio on event
-        sendCommandToFramework(action_audio_on);
+        LOGE("%s: Failed to contact audio service", __FUNCTION__);
     }
-    return true;
+}
+
+void HDMIDaemon::disableAudio() {
+    sp<IServiceManager> sm = defaultServiceManager();
+    sp<IAudioPolicyService> binder;
+    binder = interface_cast<IAudioPolicyService>(
+            sm->getService(String16("media.audio_policy")));
+    if(binder != 0) {
+        binder->setDeviceConnectionState(AUDIO_DEVICE_OUT_AUX_DIGITAL,
+            AUDIO_POLICY_DEVICE_STATE_UNAVAILABLE, "");
+    } else {
+        LOGE("%s: Failed to contact audio service", __FUNCTION__);
+    }
+}
+
+bool isAudioEnabled() {
+    sp<IServiceManager> sm = defaultServiceManager();
+    sp<IAudioPolicyService> binder;
+    binder = interface_cast<IAudioPolicyService>(
+            sm->getService(String16("media.audio_policy")));
+    if(binder != 0) {
+        if(binder->getDeviceConnectionState(AUDIO_DEVICE_OUT_AUX_DIGITAL, "")
+                == AUDIO_POLICY_DEVICE_STATE_AVAILABLE)
+            return true;
+    }
+    return false;
 }
 
 bool HDMIDaemon::cableConnected(bool defaultValue) const
@@ -550,7 +570,6 @@ void HDMIDaemon::setResolution(int ID)
             if (cur->video_format == ID)
                 mode = cur;
         }
-        sendCommandToFramework(action_audio_off);
         SurfaceComposerClient::enableHDMIOutput(0);
         ioctl(fd1, FBIOGET_VSCREENINFO, &info);
         LOGD("GET Info<ID=%d %dx%d (%d,%d,%d), (%d,%d,%d) %dMHz>",
@@ -576,8 +595,6 @@ void HDMIDaemon::setResolution(int ID)
     property_set("hw.hdmiON", "1");
     //Inform SF about HDMI
     SurfaceComposerClient::enableHDMIOutput(1);
-    // Send audio_on event if required
-    handleAudioOn();
 }
 
 int HDMIDaemon::processFrameworkCommand()
@@ -600,7 +617,16 @@ int HDMIDaemon::processFrameworkCommand()
         LOGD(HDMI_CMD_ENABLE_HDMI);
         if(mNxtMode != -1) {
             LOGD("processFrameworkCommand: setResolution with =%d", mNxtMode);
-            setResolution(mNxtMode);
+            if(isAudioEnabled()) {
+                //If Audio is enabled, turn it off because setResolution() will
+                //call power off. Also treat the following as a single
+                //transaction
+                disableAudio();
+                setResolution(mNxtMode);
+                enableAudio();
+            } else {
+                setResolution(mNxtMode);
+            }
         }
     } else if (!strcmp(buffer, HDMI_CMD_DISABLE_HDMI)) {
         LOGD(HDMI_CMD_DISABLE_HDMI);
@@ -660,7 +686,16 @@ int HDMIDaemon::processFrameworkCommand()
             }
             // If we have a valid fd1 - setresolution
             if(fd1 > 0) {
-                setResolution(mode);
+                if(isAudioEnabled()) {
+                    // Disable audio before changing resolution, since that calls
+                    // a poweroff, which could time out audio output.
+                    disableAudio();
+                    setResolution(mode);
+                    // Enable audio once we are done with resolution change.
+                    enableAudio();
+                } else {
+                    setResolution(mode);
+                }
             } else {
             // Store the mode
                 mNxtMode = mode;
@@ -677,26 +712,19 @@ bool HDMIDaemon::sendCommandToFramework(uevent_action action)
 
     switch (action)
     {
-    //Disconnect
     case action_offline:
         strncpy(message, HDMI_EVT_DISCONNECTED, sizeof(message));
         break;
-    //Connect
     case action_online:
         readResolution();
         snprintf(message, sizeof(message), "%s: %s", HDMI_EVT_CONNECTED, mEDIDs);
         break;
-    //action_audio_on
     case action_audio_on:
-        strncpy(message, HDMI_EVT_AUDIO_ON, sizeof(message));
-        break;
-    //action_audio_off
     case action_audio_off:
-        strncpy(message, HDMI_EVT_AUDIO_OFF, sizeof(message));
-        break;
+        return true;
     default:
         LOGE("sendCommandToFramework: Unknown event received");
-        break;
+        return false;
     }
     int result = write(mAcceptedConnection, message, strlen(message) + 1);
     LOGD("sendCommandToFramework: '%s' %s", message, result >= 0 ? "successful" : "failed");

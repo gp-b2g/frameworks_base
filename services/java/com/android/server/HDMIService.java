@@ -1,6 +1,6 @@
 /*
  * Copyright 2007, The Android Open Source Project
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,10 +54,6 @@ class HDMIService extends IHDMIService.Stub {
     private boolean mHDMIUserOption = false;
     private int mHDMIModes[];
     private int mCurrHDMIMode = -1;
-    public final String HDMICableConnectedEvent = "HDMI_CABLE_CONNECTED";
-    public final String HDMICableDisconnectedEvent = "HDMI_CABLE_DISCONNECTED";
-    public final String HDMIONEvent = "HDMI_CONNECTED";
-    public final String HDMIOFFEvent = "HDMI_DISCONNECTED";
 
     final int m640x480p60_4_3         = 1;
     final int m720x480p60_4_3         = 2;
@@ -142,10 +138,7 @@ class HDMIService extends IHDMIService.Stub {
             String action = intent.getAction();
 
             if (action.equals(Intent.ACTION_BOOT_COMPLETED) &&
-                    (SystemProperties.getBoolean("ro.hdmi.enable", false))
-
-
-            ) {
+                    (SystemProperties.getBoolean("ro.hdmi.enable", false))) {
                 Thread thread = new Thread(mListener, HDMIListener.class.getName());
                 thread.start();
             }
@@ -173,9 +166,8 @@ class HDMIService extends IHDMIService.Stub {
 
         synchronized(mListener) {
             if(enableHDMI == false) {
-                boolean connected = false;
+                final boolean connected = false;
                 broadcastHDMIPluggedEvent(connected);
-                broadcastEvent(HDMICableDisconnectedEvent);
                 mListener.enableHDMIOutput(false);
             }
             mListener.setHPD(getHDMIUserOption());
@@ -203,34 +195,17 @@ class HDMIService extends IHDMIService.Stub {
         return mHDMIModes;
     }
 
-    public void broadcastEvent(String eventName) {
-        Intent intent = new Intent(eventName);
-        intent.addCategory(Intent.CATEGORY_DEFAULT);
-        mContext.sendStickyBroadcast(intent);
-        Log.e(TAG, "Broadcasting ... " + eventName);
-    }
-
-    public void broadcastEvent(String eventName, int[] modes) {
-        Intent intent = new Intent(eventName);
-        intent.addCategory(Intent.CATEGORY_DEFAULT);
-        intent.putExtra("EDID", modes);
-        mContext.sendStickyBroadcast(intent);
-        Log.e(TAG, "Broadcasting ... " + eventName + ", modes: " + modes.length);
-    }
-
     public void broadcastHDMIPluggedEvent(boolean connected) {
         Intent intent = new Intent(WindowManagerPolicy.ACTION_HDMI_PLUGGED);
         intent.putExtra(WindowManagerPolicy.EXTRA_HDMI_PLUGGED_STATE, connected);
         if(connected)
             intent.putExtra("EDID", mHDMIModes);
         mContext.sendStickyBroadcast(intent);
-        Log.e(TAG, "Broadcasting ... ACTION_HDMI_PLUGGED state = " + connected);
+        Log.e(TAG, "Broadcasting Intent ACTION_HDMI_PLUGGED state = " + connected);
     }
 
     public void notifyHDMIConnected(int[] modes) {
-        boolean connected = true;
         mHDMIModes = modes;
-        broadcastEvent(HDMICableConnectedEvent);
         if(getHDMIUserOption()) {
             synchronized(mListener) {
                 if(mCurrHDMIMode == -1) {
@@ -243,12 +218,9 @@ class HDMIService extends IHDMIService.Stub {
     }
 
     public void notifyHDMIDisconnected() {
-        boolean connected = false;
         mHDMIModes = null;
-        broadcastEvent(HDMICableDisconnectedEvent);
         if(getHDMIUserOption()) {
-             broadcastHDMIPluggedEvent(connected);
-             synchronized(mListener) {
+            synchronized(mListener) {
                 mListener.enableHDMIOutput(false);
                 mListener.setHPD(getHDMIUserOption());
             }

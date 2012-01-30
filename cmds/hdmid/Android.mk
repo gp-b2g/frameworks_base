@@ -31,10 +31,11 @@ endif
 LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES -DEGL_EGLEXT_PROTOTYPES
 
 LOCAL_SHARED_LIBRARIES := \
-	libcutils \
-	libutils \
-	libbinder \
-	libgui \
+    libcutils \
+    libutils \
+    libbinder \
+    libgui \
+    libmedia \
 
 LOCAL_C_INCLUDES := \
 	$(call include-path-for, corecg graphics)
