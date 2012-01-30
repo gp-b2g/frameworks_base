@@ -1,7 +1,7 @@
 /* //device/java/android/android/os/INetworkManagementService.aidl
 **
 ** Copyright 2007, The Android Open Source Project
-** Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+** Copyright (c) 2011,2012 Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import android.net.InterfaceConfiguration;
 import android.net.INetworkManagementEventObserver;
 import android.net.NetworkStats;
 import android.net.RouteInfo;
+import android.net.LinkAddress;
 import android.net.wifi.WifiConfiguration;
 
 /**
@@ -218,6 +219,26 @@ interface INetworkManagementService
      *  Disables Network Address Translation between two interfaces.
      */
     void disableNat(String internalInterface, String externalInterface);
+
+    /**
+     *  Extension of 'enableNat' interface by subnets
+     *  @param internalInterface is the tethered internal interface
+     *  @param externalInterface is the upStreaminterface that is tethered
+     *  @param subnets[] comprises of an array of LinkAdrresses
+     *  associated with a given network interface
+     */
+    void enableNatBySubnet(String internalInterface, String externalInterface,
+            in LinkAddress[] subnets);
+
+    /**
+     *  Extension of 'disableNat' interface by subnets
+     *  @param internalInterface is the tethered internal interface
+     *  @param externalInterface is the upStreaminterface that is tethered
+     *  @param subnets[] comprises of an array of LinkAdrresses
+     *  associated with a given network interface
+     */
+    void disableNatBySubnet(String internalInterface, String externalInterface,
+            in LinkAddress[] subnets);
 
     /**
      * Add an upstream IPv6 interface
