@@ -718,18 +718,19 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                     if (mPeers.remove(device)) sendP2pPeersChangedBroadcast();
                     break;
                 case WifiP2pManager.CONNECT:
+                    boolean join = false;
                     if (DBG) logd(getName() + " sending connect");
                     mSavedConnectConfig = (WifiP2pConfig) message.obj;
+                    WifiP2pConfig mTempConnectConfig = new WifiP2pConfig(mSavedConnectConfig);
                     mPersistGroup = false;
-                    String peerInfo = WifiNative.p2pPeer(mSavedConnectConfig.deviceAddress);
-                    String[] tokens = peerInfo.split("\n");
+                    String bssInfo = WifiNative.bssInfo(mSavedConnectConfig.deviceAddress);
+                    String[] tokens = bssInfo.split("\n");
                     for (String token : tokens) {
-                        //update "group_capab" before issuing a connect
-                        if (token.startsWith("group_capab=")) {
+                        if (token.startsWith("bssid=")) {
                             String[] nameValue = token.split("=");
                             if (nameValue.length != 2) break;
-                            mThisDevice.groupCapability = parseHexString(nameValue[1]);
-                            Slog.e(TAG, "group_capab: " + nameValue[1]);
+                            mTempConnectConfig.deviceAddress = nameValue[1];
+                            join = true;
                         }
                     }
                     int netId = configuredNetworkId(mSavedConnectConfig.deviceAddress);
@@ -737,10 +738,13 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                         //TODO: if failure, remove config and do a regular p2pConnect()
                         WifiNative.p2pReinvoke(netId, mSavedConnectConfig.deviceAddress);
                     } else {
-                        boolean join = false;
-                        if ( mThisDevice.isGroupOwner()) join = true;
-                        Slog.d(TAG, "join: " + join);
-                        String pin = WifiNative.p2pConnect(mSavedConnectConfig, join);
+                         WifiP2pConfig mConnectConfig;
+                         if ( join == true )
+                             mConnectConfig = mTempConnectConfig;
+                         else
+                             mConnectConfig = mSavedConnectConfig;
+
+                            String pin = WifiNative.p2pConnect(mConnectConfig, join);
                         try {
                             Integer.parseInt(pin);
                             notifyWpsPin(pin, mSavedConnectConfig.deviceAddress);
@@ -1031,12 +1035,6 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                         if (devices.contains(d) || mGroup.getOwner().equals(d)) {
                             d.status = WifiP2pDevice.AVAILABLE;
                             changed = true;
-                            if (!(mGroup.isGroupOwner())) {
-                                if (mPeers.remove(d))
-                                   logd("Remove peer " + d.deviceAddress);
-                                break;
-                            }
-
                         }
                     }
 
@@ -1050,6 +1048,8 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                     }
                     clearInterfaceAddress(mGroup.getInterface());
                     mGroup = null;
+                    //Flush the entries after the group removal
+                    WifiNative.p2pFlush();
                     if (changed) sendP2pPeersChangedBroadcast();
                     transitionTo(mInactiveState);
                     break;

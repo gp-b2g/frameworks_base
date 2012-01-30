@@ -387,6 +387,10 @@ public class WifiNative {
         return doStringCommand("P2P_PEER " + deviceAddress);
     }
 
+    public static String bssInfo(String deviceAddress) {
+        return doStringCommand("BSS p2p_dev_addr=" + deviceAddress);
+    }
+
     public static String p2pCustomCommand(String command) {
         return doStringCommand(command);
     }
