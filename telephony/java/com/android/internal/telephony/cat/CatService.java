@@ -424,7 +424,6 @@ public class CatService extends Handler implements AppInterface {
             case GET_CHANNEL_STATUS:
                 sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
                 break;
-            case OPEN_CHANNEL:
             case LAUNCH_BROWSER:
                 if ((((LaunchBrowserParams) cmdParams).confirmMsg.text != null)
                         && (((LaunchBrowserParams) cmdParams).confirmMsg.text.equals(STK_DEFAULT))) {
@@ -448,6 +447,7 @@ public class CatService extends Handler implements AppInterface {
                 break;
             case PLAY_TONE:
                 break;
+            case OPEN_CHANNEL:
             case SET_UP_CALL:
                 if ((((CallSetupParams) cmdParams).confirmMsg.text != null)
                         && (((CallSetupParams) cmdParams).confirmMsg.text.equals(STK_DEFAULT))) {
