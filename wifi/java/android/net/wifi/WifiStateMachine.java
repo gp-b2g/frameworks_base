@@ -2198,6 +2198,7 @@ public class WifiStateMachine extends StateMachine {
             switch(message.what) {
                 case WifiMonitor.SUP_CONNECTION_EVENT:
                     if (DBG) log("Supplicant connection established");
+                    WifiNative.setP2pDisable(1);
                     setWifiState(WIFI_STATE_ENABLED);
                     mSupplicantRestartCount = 0;
                     /* Reset the supplicant state to indicate the supplicant

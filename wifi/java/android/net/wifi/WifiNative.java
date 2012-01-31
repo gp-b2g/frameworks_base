@@ -221,6 +221,10 @@ public class WifiNative {
         return doBooleanCommand("WPS_PIN any " + pin);
     }
 
+    public static boolean setP2pDisable (int value) {
+        return WifiNative.doBooleanCommand("P2P_SET disabled " + value);
+    }
+
     public static boolean setPersistentReconnect(boolean enabled) {
         int value = (enabled == true) ? 1 : 0;
         return WifiNative.doBooleanCommand("SET persistent_reconnect " + value);
