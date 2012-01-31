@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -246,7 +247,14 @@ public class CallLog {
         public static final String CACHED_FORMATTED_NUMBER = "formatted_number";
 
         /**
-         * Adds a call to the call log.
+         * The subscription id.
+         * <P>Type: Integer</P>
+         * @hide
+         */
+        public static final String SUBSCRIPTION = "sub_id";
+
+        /**
+         * Adds a call to the call log for SINGLE SIM.
          *
          * @param ci the CallerInfo object to get the target contact from.  Can be null
          * if the contact is unknown.
@@ -262,6 +270,29 @@ public class CallLog {
          */
         public static Uri addCall(CallerInfo ci, Context context, String number,
                 int presentation, int callType, long start, int duration) {
+                // for single SIM, use 0 as the subscription value
+                return addCall(ci, context, number,
+                    presentation, callType, start, duration, 0);
+        }
+
+        /**
+         * Adds a call to the call log for dual SIM.
+         *
+         * @param ci the CallerInfo object to get the target contact from.  Can be null
+         * if the contact is unknown.
+         * @param context the context used to get the ContentResolver
+         * @param number the phone number to be added to the calls db
+         * @param presentation the number presenting rules set by the network for
+         *        "allowed", "payphone", "restricted" or "unknown"
+         * @param callType enumerated values for "incoming", "outgoing", or "missed"
+         * @param start time stamp for the call in milliseconds
+         * @param duration call duration in seconds
+         * @param subscription valid value is 0 or 1
+         *
+         * {@hide}
+         */
+        public static Uri addCall(CallerInfo ci, Context context, String number,
+                int presentation, int callType, long start, int duration, int subscription) {
             final ContentResolver resolver = context.getContentResolver();
 
             // If this is a private number then set the number to Private, otherwise check
@@ -285,6 +316,7 @@ public class CallLog {
             values.put(DATE, Long.valueOf(start));
             values.put(DURATION, Long.valueOf(duration));
             values.put(NEW, Integer.valueOf(1));
+            values.put(SUBSCRIPTION, Integer.valueOf(subscription));
             if (callType == MISSED_TYPE) {
                 values.put(IS_READ, Integer.valueOf(0));
             }
