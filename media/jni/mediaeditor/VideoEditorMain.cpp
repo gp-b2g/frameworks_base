@@ -3615,12 +3615,26 @@ static int videoEditor_generateAudioWaveFormSync (JNIEnv*  pEnv, jobject thiz,
     VIDEOEDIT_LOG_API(ANDROID_LOG_INFO, "VIDEO_EDITOR",
         "videoEditor_generateAudioWaveFormSync Retrieving pStringOutAudioGraphFile");
 
+    if (pcmfilePath == M4OSA_NULL) {
+        jniThrowException(pEnv, "java/lang/RuntimeException",
+            "Input string PCMFilePath is null");
+        result = M4ERR_PARAMETER;
+        goto out;
+    }
+
     pPCMFilePath = pEnv->GetStringUTFChars(pcmfilePath, NULL);
     if (pPCMFilePath == M4OSA_NULL) {
         jniThrowException(pEnv, "java/lang/RuntimeException",
             "Input string PCMFilePath is null");
         result = M4ERR_PARAMETER;
         goto out;
+    }
+
+    if (outGraphfilePath == M4OSA_NULL) {
+        jniThrowException(pEnv, "java/lang/RuntimeException",
+            "Input string outGraphfilePath is null");
+        result = M4ERR_PARAMETER;
+        goto out2;
     }
 
     pStringOutAudioGraphFile = pEnv->GetStringUTFChars(outGraphfilePath, NULL);
