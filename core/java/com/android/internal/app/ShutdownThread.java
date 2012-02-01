@@ -48,6 +48,8 @@ import com.android.internal.telephony.ITelephonyMSim;
 import android.util.Log;
 import android.view.WindowManager;
 
+import com.qrd.plugin.feature_query.FeatureQuery;
+
 public final class ShutdownThread extends Thread {
     // constants
     private static final String TAG = "ShutdownThread";
@@ -176,6 +178,9 @@ public final class ShutdownThread extends Thread {
             }
             sIsStarted = true;
         }
+
+        if (FeatureQuery.FEATURE_BOOT_ANIMATION)
+            showShutdownAnimation();
 
         // throw up an indeterminate system dialog to indicate radio is
         // shutting down.
@@ -448,5 +453,9 @@ public final class ShutdownThread extends Thread {
         // Shutdown power
         Log.i(TAG, "Performing low-level shutdown...");
         Power.shutdown();
+    }
+
+    private static void showShutdownAnimation() {
+        SystemProperties.set("ctl.start", "bootanim");
     }
 }

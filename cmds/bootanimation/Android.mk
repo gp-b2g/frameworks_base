@@ -1,4 +1,8 @@
 LOCAL_PATH:= $(call my-dir)
+
+QRDExt_BootAnimation:=yes
+include vendor/qcom/proprietary/qrdplus/QRDExtensions/QRDExt_target.min
+
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:= \
@@ -16,6 +20,13 @@ LOCAL_SHARED_LIBRARIES := \
     libEGL \
     libGLESv1_CM \
     libgui
+
+# Boot Animation Processing
+ifeq ($(strip $(QRDExt_BootAnimation)),no)
+else
+LOCAL_CFLAGS += -DBOOT_ANIMATION_ENABLE
+endif
+# Boot Animation Processing
 
 LOCAL_C_INCLUDES := \
 	$(call include-path-for, corecg graphics)

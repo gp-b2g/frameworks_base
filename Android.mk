@@ -229,7 +229,7 @@ LOCAL_INTERMEDIATE_SOURCES := \
 			$(framework_res_source_path)/com/android/internal/R.java
 
 LOCAL_NO_STANDARD_LIBRARIES := true
-LOCAL_JAVA_LIBRARIES := bouncycastle core core-junit ext
+LOCAL_JAVA_LIBRARIES := bouncycastle core core-junit ext com.qrd.plugin.feature_query
 
 LOCAL_MODULE := framework
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES

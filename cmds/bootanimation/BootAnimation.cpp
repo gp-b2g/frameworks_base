@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  * Copyright (C) 2007 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -270,14 +271,14 @@ status_t BootAnimation::readyToRun() {
     bool encryptedAnimation = atoi(decrypt) != 0 || !strcmp("trigger_restart_min_framework", decrypt);
 
     if ((encryptedAnimation &&
-            (access(SYSTEM_ENCRYPTED_BOOTANIMATION_FILE, R_OK) == 0) &&
-            (mZip.open(SYSTEM_ENCRYPTED_BOOTANIMATION_FILE) == NO_ERROR)) ||
+            (access(getAnimationFileName(IMG_ENC), R_OK) == 0) &&
+            (mZip.open(getAnimationFileName(IMG_ENC)) == NO_ERROR)) ||
 
-            ((access(USER_BOOTANIMATION_FILE, R_OK) == 0) &&
-            (mZip.open(USER_BOOTANIMATION_FILE) == NO_ERROR)) ||
+            ((access(getAnimationFileName(IMG_DATA), R_OK) == 0) &&
+            (mZip.open(getAnimationFileName(IMG_DATA)) == NO_ERROR)) ||
 
-            ((access(SYSTEM_BOOTANIMATION_FILE, R_OK) == 0) &&
-            (mZip.open(SYSTEM_BOOTANIMATION_FILE) == NO_ERROR))) {
+            ((access(getAnimationFileName(IMG_SYS), R_OK) == 0) &&
+            (mZip.open(getAnimationFileName(IMG_SYS)) == NO_ERROR))) {
         mAndroidAnimation = false;
     }
 
@@ -468,6 +469,10 @@ bool BootAnimation::movie()
     Region clearReg(Rect(mWidth, mHeight));
     clearReg.subtractSelf(Rect(xc, yc, xc+animation.width, yc+animation.height));
 
+#ifdef BOOT_ANIMATION_ENABLE
+    playBackgroundMusic();
+#endif
+
     for (int i=0 ; i<pcount && !exitPending() ; i++) {
         const Animation::Part& part(animation.parts[i]);
         const size_t fcount = part.frames.size();
@@ -528,6 +533,56 @@ bool BootAnimation::movie()
     return false;
 }
 
+char *BootAnimation::getAnimationFileName(ImageID image)
+{
+    char *fileName[2][3] = { { "/data/local/bootanimation.zip",
+			"/system/media/bootanimation.zip",
+			"/system/media/bootanimation-encrypted.zip" }, {
+			"/data/local/shutdownanimation.zip",
+			"/system/media/shutdownanimation.zip",
+			"/system/media/shutdownanimation-encrypted.zip" } };
+    int state;
+
+    state = checkBootState() ? 0 : 1;
+
+    return fileName[state][image];
+}
+
+void BootAnimation::playBackgroundMusic(void)
+{
+    char bootAudioFile[] = "/system/media/boot.wav";
+    char shutdownAudioFile[] = "/system/media/shutdown.wav";
+    char *fileName;
+
+    if (checkBootState()) {
+        // boot
+        fileName = bootAudioFile;
+    }
+    else {
+        // shutdown
+        fileName = shutdownAudioFile;
+    }
+
+    if (access(fileName, F_OK) != 0)
+        return;
+
+    if (fork() == 0) {
+        execlp("sound", "sound", fileName, (char *)0);
+    }
+}
+
+bool BootAnimation::checkBootState(void)
+{
+    char value[PROPERTY_VALUE_MAX];
+    bool ret = true;
+
+    property_get("sys.shutdown.requested", value, "null");
+    if (strcmp(value, "null") != 0) {
+        ret = false;
+    }
+
+    return ret;
+}
 // ---------------------------------------------------------------------------
 
 }

@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  * Copyright (C) 2007 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,6 +83,11 @@ private:
     status_t initTexture(void* buffer, size_t len);
     bool android();
     bool movie();
+
+    enum ImageID { IMG_DATA = 0, IMG_SYS = 1, IMG_ENC = 2 };
+    char *getAnimationFileName(ImageID image);
+    void playBackgroundMusic();
+    bool checkBootState();
 
     sp<SurfaceComposerClient>       mSession;
     AssetManager mAssets;
