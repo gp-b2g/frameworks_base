@@ -188,17 +188,26 @@ LOCAL_C_INCLUDES += \
 	external/harfbuzz/src \
 	external/zlib \
 	frameworks/opt/emoji \
-	libcore/include \
-	$(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+	libcore/include
 
+ifeq ($(call is-vendor-board-platform,QCOM),true)
+
+LOCAL_C_INCLUDES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 LOCAL_CFLAGS += -include bionic/libc/kernel/arch-arm/asm/posix_types.h
 LOCAL_CFLAGS += -include bionic/libc/kernel/arch-arm/asm/byteorder.h
-LOCAL_CFLAGS += -include bionic/libc/kernel/common/linux/posix_types.h
 LOCAL_CFLAGS += -include bionic/libc/kernel/common/linux/types.h
+LOCAL_CFLAGS += -include bionic/libc/kernel/common/linux/posix_types.h
 LOCAL_CFLAGS += -include bionic/libc/kernel/common/linux/socket.h
 LOCAL_CFLAGS += -include bionic/libc/kernel/common/linux/in.h
+
+else
+
+LOCAL_CFLAGS += -DNON_QCOM_TARGET
+
+endif
+
 
 
 LOCAL_SHARED_LIBRARIES := \

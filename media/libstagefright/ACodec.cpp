@@ -150,18 +150,16 @@ class ColorFormatInfo {
 const int32_t ColorFormatInfo::preferredFormat =
 #ifdef TARGET7x30
     QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka;
-#endif
-#ifdef TARGET8x60
+#elif TARGET8x60
     QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka;
-#endif
-#ifdef TARGET7x27
+#elif TARGET7x27
     OMX_QCOM_COLOR_FormatYVU420SemiPlanar;
-#endif
-#ifdef TARGET7x27A
+#elif TARGET7x27A
     OMX_QCOM_COLOR_FormatYVU420SemiPlanar;
-#endif
-#ifdef TARGET8x50
+#elif TARGET8x50
     OMX_QCOM_COLOR_FormatYVU420SemiPlanar;
+#else
+    OMX_COLOR_FormatUnused;
 #endif
 
 
