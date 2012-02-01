@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -488,6 +488,7 @@ public class BluetoothService extends IBluetooth.Stub {
         }
 
         mBluetoothState.sendMessage(BluetoothAdapterStateMachine.USER_TURN_OFF, saveSetting);
+        SystemProperties.set("bluetooth.isEnabled","false");
         return true;
     }
 
@@ -609,7 +610,10 @@ public class BluetoothService extends IBluetooth.Stub {
         if (mIsAirplaneSensitive && isAirplaneModeOn() && !mIsAirplaneToggleable) {
             return false;
         }
-        mBluetoothState.sendMessage(BluetoothAdapterStateMachine.USER_TURN_ON, saveSetting);
+        // Delay to bringup BTC module
+        mBluetoothState.sendMessageDelayed(BluetoothAdapterStateMachine.USER_TURN_ON,
+                                           saveSetting, 200);
+        SystemProperties.set("bluetooth.isEnabled","true");
         return true;
     }
 
@@ -2306,6 +2310,9 @@ public class BluetoothService extends IBluetooth.Stub {
         } else {
             type = BluetoothAdapterStateMachine.PER_PROCESS_TURN_OFF;
         }
+
+        /* Currently BTC module is not started/stopped for per process (application)
+         usecases. But only for user action of on/off via Settings application. */
 
         mBluetoothState.sendMessage(type, callback);
         return true;
