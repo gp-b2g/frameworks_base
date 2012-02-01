@@ -681,6 +681,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected abstract boolean disconnectOneLowerPriorityCall(String apnType);
     protected abstract void setDataReadinessChecks(
             boolean checkConnectivity, boolean checkSubscription, boolean tryDataCalls);
+    protected abstract void clearTetheredStateOnStatus();
 
     protected void onDataStallAlarm(int tag) {
         loge("onDataStallAlarm: not impleted tag=" + tag);
@@ -1336,10 +1337,7 @@ public abstract class DataConnectionTracker extends Handler {
 
         switch (mode) {
         case RILConstants.RIL_TETHERED_MODE_ON:
-            /*
-             * Indicates that an internal data call was created in the modem. Do
-             * nothing, just information for now
-             */
+            // Indicates that an internal data call was created in the modem.
             if (DBG)
                 log("Unsol Indication: RIL_TETHERED_MODE_ON");
             break;
@@ -1352,6 +1350,7 @@ public abstract class DataConnectionTracker extends Handler {
              * attempt to bring up all data calls
              */
             resetAllRetryCounts();
+            clearTetheredStateOnStatus();
             sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, 0, 0,
                     Phone.REASON_TETHERED_MODE_STATE_CHANGED));
             break;

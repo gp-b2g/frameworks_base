@@ -191,7 +191,7 @@ public class ApnContext {
     }
 
     public boolean isReady() {
-        return mDataEnabled.get() && mDependencyMet.get();
+        return mDataEnabled.get() && mDependencyMet.get() && !getTetheredCallOn();
     }
 
     public void setEnabled(boolean enabled) {
@@ -225,5 +225,13 @@ public class ApnContext {
 
     protected void log(String s) {
         Log.d(LOG_TAG, "[ApnContext] " + s);
+    }
+
+    public void setTetheredCallOn(boolean tetheredCallOn) {
+        if (mDataProfile != null) mDataProfile.setTetheredCallOn(tetheredCallOn);
+    }
+
+    public boolean getTetheredCallOn() {
+        return mDataProfile == null ? false : mDataProfile.getTetheredCallOn();
     }
 }
