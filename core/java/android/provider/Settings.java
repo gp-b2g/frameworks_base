@@ -1551,6 +1551,10 @@ public final class Settings {
          * @see #DEFAULT_RINGTONE_URI
          */
         public static final String RINGTONE = "ringtone";
+        /**
+         * @hide
+         */
+        public static final String RINGTONE_2 = "ringtone_2";
 
         /**
          * A {@link Uri} that will point to the current default ringtone at any
@@ -1561,6 +1565,10 @@ public final class Settings {
          * FileNotFoundException.
          */
         public static final Uri DEFAULT_RINGTONE_URI = getUriFor(RINGTONE);
+        /**
+         * @hide
+         */
+        public static final Uri DEFAULT_RINGTONE_URI_2 = getUriFor(RINGTONE_2);
 
         /**
          * Persistent store for the system-wide default notification sound.
