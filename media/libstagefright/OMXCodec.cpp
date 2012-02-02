@@ -5652,9 +5652,19 @@ void OMXCodec::initOutputFormat(const sp<MetaData> &inputFormat) {
                     CHECK_GE(rect.nTop, 0);
                     CHECK_GE(rect.nWidth, 0u);
                     CHECK_GE(rect.nHeight, 0u);
-                    CHECK_LE(rect.nLeft + rect.nWidth - 1, video_def->nFrameWidth);
-                    CHECK_LE(rect.nTop + rect.nHeight - 1, video_def->nFrameHeight);
-
+                    /* Due to padding requirements of Ittiam SW decoder, nStride,
+                     * nSliceHeight contains actual buffer width where as crop will
+                     * give actual frame resolution.
+                     * TBD: implement padding without changing crop values in next
+                     * release and remove the below check */
+                    if (!strncmp("OMX.ittiam.video.decoder", mComponentName, 24)) {
+                        CHECK_LE(rect.nLeft + rect.nWidth - 1, (video_def->nStride));
+                        CHECK_LE(rect.nTop + rect.nHeight - 1, (video_def->nSliceHeight));
+                    }
+                    else {
+                        CHECK_LE(rect.nLeft + rect.nWidth - 1, video_def->nFrameWidth);
+                        CHECK_LE(rect.nTop + rect.nHeight - 1, video_def->nFrameHeight);
+                    }
                     mOutputFormat->setRect(
                             kKeyCropRect,
                             rect.nLeft,
