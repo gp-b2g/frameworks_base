@@ -53,7 +53,6 @@ class HDMIService extends IHDMIService.Stub {
     private HDMIListener mListener;
     private boolean mHDMIUserOption = false;
     private int mHDMIModes[];
-    private int mCurrHDMIMode = -1;
 
     final int m640x480p60_4_3         = 1;
     final int m720x480p60_4_3         = 2;
@@ -125,6 +124,13 @@ class HDMIService extends IHDMIService.Stub {
         // start processing events before we ought-to
         mContext.registerReceiver(mBroadcastReceiver,
                 new IntentFilter(Intent.ACTION_BOOT_COMPLETED), null, null);
+        if(SystemProperties.getBoolean("ro.hdmi.enable", false)) {
+            //Stop and start the daemon if its already started
+            SystemProperties.set("ctl.stop", "hdmid");
+            SystemProperties.set("ctl.start", "hdmid");
+            //yield for the daemon to start
+            Thread.yield();
+        }
         mListener =  new HDMIListener(this);
         String hdmiUserOption = Settings.System.getString(
                               mContext.getContentResolver(),
@@ -187,7 +193,6 @@ class HDMIService extends IHDMIService.Stub {
     }
 
     public void setMode(int mode) {
-        mCurrHDMIMode = mode;
         mListener.changeDisplayMode(mode);
     }
 
@@ -208,10 +213,7 @@ class HDMIService extends IHDMIService.Stub {
         mHDMIModes = modes;
         if(getHDMIUserOption()) {
             synchronized(mListener) {
-                if(mCurrHDMIMode == -1) {
-                    mCurrHDMIMode = getBestMode();
-                }
-                mListener.changeDisplayMode(mCurrHDMIMode);
+                mListener.changeDisplayMode(getBestMode());
                 mListener.enableHDMIOutput(true);
             }
         }
