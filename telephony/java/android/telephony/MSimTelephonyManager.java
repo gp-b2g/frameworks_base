@@ -24,6 +24,7 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemProperties;
+import android.provider.SpnProvider;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -814,6 +815,44 @@ public class MSimTelephonyManager extends TelephonyManager {
         } catch (NullPointerException ex) {
             return MSimConstants.DEFAULT_SUBSCRIPTION;
         }
+    }
+
+    /**
+     * Returns the MCC+MNC (mobile country code + mobile network code) of the
+     * provider of the SIM for a particular subscription. 5 or 6 decimal digits.
+     * <p>
+     * Availability: SIM state must be {@link #SIM_STATE_READY}
+     *
+     * @see #getSimState
+     *
+     * @param subscription for which provider's MCC+MNC is returned
+     * @hide
+     */
+    public String getSimOperator(int subscription) {
+        if (!isMultiSimEnabled) return getSimOperator();
+        return getTelephonyProperty
+                (TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, subscription, "");
+    }
+
+    /**
+     * Returns the Service Provider Name (SPN) of a subscription.
+     * <p>
+     * Availability: SIM state must be {@link #SIM_STATE_READY}
+     *
+     * @see #getSimState
+     *
+     * @hide
+     */
+    public String getSimOperatorName(int subscription) {
+        if (!isMultiSimEnabled) return getSimOperatorName();
+        String alpha = getTelephonyProperty(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA,
+                subscription, "");
+        if ("".equals(alpha)) {
+            String numeric = getSimOperator(subscription);
+            if (numeric != null && numeric.length() > 3)
+                alpha = (String) SpnProvider.getSPNByMCCMNC(sContext, numeric);
+        }
+        return alpha;
     }
 }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-/* //device/apps/common/assets/res/any/strings.xml
+/* Copyright (C) 2012, Code Aurora Forum. All rights reserved.
 **
 ** Copyright 2006, The Android Open Source Project
 **
@@ -3428,4 +3428,8 @@
     <!-- STK setup Call -->
     <string name="SetupCallDefault">Accept Call?</string>
 
+    <!-- On carrier name display -->
+    <string name="China_Mobile">China Mobile</string>
+    <string name="China_Unicom">China Unicom</string>
+    <string name="China_Telecom">China Telecom</string>
 </resources>

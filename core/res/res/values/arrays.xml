@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-/* //device/apps/common/assets/res/any/colors.xml
+/* Copyright (C) 2012, Code Aurora Forum. All rights reserved.
 **
 ** Copyright 2006, The Android Open Source Project
 **
@@ -511,4 +511,15 @@
         <item>@null</item>
     </array>
 
+    <string-array name="origin_carrier_names">
+        <item>China Mobile</item>
+        <item>China Unicom</item>
+        <item>China Telecom</item>
+    </string-array>
+
+    <string-array translatable="true" name="locale_carrier_names">
+        <item>China_Mobile</item>
+        <item>China_Unicom</item>
+        <item>China_Telecom</item>
+    </string-array>
 </resources>
