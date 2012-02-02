@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011,2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1086,6 +1086,37 @@ public class NetworkManagementService extends INetworkManagementService.Stub
             throw new IllegalStateException(
                     "Unable to communicate to native daemon for disabling NAT interface");
         }
+    }
+
+    public void enableNatBySubnet(String internalInterface, String externalInterface,
+            LinkAddress[] subnets) {
+        String cmd = String.format("nat enable %s %s %s", internalInterface,
+                externalInterface, getSubnetsString(subnets));
+        if (DBG)
+            Log.d(TAG, "enableNatBySubnet: " + cmd);
+        mConnector.doCommand(cmd);
+    }
+
+    public void disableNatBySubnet(String internalInterface, String externalInterface,
+            LinkAddress[] subnets) {
+        String cmd = String.format("nat disable %s %s %s", internalInterface,
+                externalInterface, getSubnetsString(subnets));
+        if (DBG)
+            Log.d(TAG, "disableNatBySubnet: " + cmd);
+        mConnector.doCommand(cmd);
+    }
+
+    private String getSubnetsString(LinkAddress[] subnets) {
+        if (subnets == null) {
+            return "0";
+        }
+
+        String cmd = "";
+        cmd += subnets.length;
+        for (int i = 0; i < subnets.length; i++) {
+            cmd += " " + subnets[i].toString();
+        }
+        return cmd;
     }
 
     public String[] listTtys() throws IllegalStateException {

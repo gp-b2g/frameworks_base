@@ -57,6 +57,9 @@ import com.google.android.collect.Lists;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.net.InetAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -366,6 +369,28 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
             }
             return sm.getLastError();
         }
+    }
+
+    private LinkAddress[] getSubnetFromIface(String ifaceName)
+            throws SocketException {
+        ArrayList<LinkAddress> result = Lists.newArrayList();
+        NetworkInterface internalNetworkInterface =
+                NetworkInterface.getByName(ifaceName);
+        if (internalNetworkInterface == null) {
+            // do nothing here
+            if (DBG)
+                Log.d(TAG, "internalNetworkInterface is null");
+        } else {
+            Collection<InterfaceAddress> interfaceAddresses =
+                    internalNetworkInterface.getInterfaceAddresses();
+            for (InterfaceAddress ia : interfaceAddresses) {
+                InetAddress addr = NetworkUtils.getNetworkPart(ia.getAddress(),
+                        ia.getNetworkPrefixLength());
+                result.add(new LinkAddress(addr, ia.getNetworkPrefixLength()));
+            }
+        }
+
+        return result.toArray(new LinkAddress[result.size()]);
     }
 
     // TODO - move all private methods used only by the state machine into the state machine
@@ -776,6 +801,8 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
 
         boolean mUsb;
 
+        LinkAddress[] mLinkAddrs;
+
         TetherInterfaceSM(String name, Looper looper, boolean usb) {
             super(name, looper);
             mIfaceName = name;
@@ -977,7 +1004,7 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
                         if (VDBG) Log.e(TAG, "Exception in forceUpdate: " + e.toString());
                     }
                     try {
-                        mNMService.disableNat(mIfaceName, mMyUpstreamIfaceName);
+                        mNMService.disableNatBySubnet(mIfaceName, mMyUpstreamIfaceName, mLinkAddrs);
                     } catch (Exception e) {
                         if (VDBG) Log.e(TAG, "Exception in disableNat: " + e.toString());
                     }
@@ -1028,9 +1055,11 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
                         cleanupUpstream();
                         if (newUpstreamIfaceName != null) {
                             try {
-                                mNMService.enableNat(mIfaceName, newUpstreamIfaceName);
-                                //ConnectivityService is not aware of default dns servers, so
-                                //add dns routes here via the upstream interface.
+                                mLinkAddrs = getSubnetFromIface(mIfaceName);
+                                mNMService.enableNatBySubnet(mIfaceName, newUpstreamIfaceName,
+                                        mLinkAddrs);
+                                // ConnectivityService is not aware of default dns servers, so
+                                // add dns routes here via the upstream interface.
                                 for (String server : mDnsServers) {
                                     if (server == null ||
                                             (!server.equals(DNS_DEFAULT_SERVER1) &&
@@ -1040,15 +1069,18 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
                                     try {
                                         mNMService.addRoute(newUpstreamIfaceName, r);
                                     } catch (Exception e) {
-                                        Log.e(TAG,"Exception while " +
+                                        Log.e(TAG, "Exception while " +
                                                 "adding tether dns route", e);
                                     }
                                 }
                             } catch (Exception e) {
                                 Log.e(TAG, "Exception enabling Nat: " + e.toString());
+                                mLinkAddrs = null;
                                 try {
                                     mNMService.untetherInterface(mIfaceName);
-                                } catch (Exception ee) {}
+                                } catch (Exception ee) {
+                                    Log.e(TAG, "Exception untetherInterface: ", ee);
+                                }
 
                                 setLastError(ConnectivityManager.TETHER_ERROR_ENABLE_NAT_ERROR);
                                 transitionTo(mInitialState);
