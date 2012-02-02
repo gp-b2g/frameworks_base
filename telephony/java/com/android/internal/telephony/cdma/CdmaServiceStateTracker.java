@@ -307,6 +307,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 queueNextSignalStrengthPoll();
             }
             // This will do nothing in the 'radio not available' case.
+            mRadioPowerIsInProgress = false;
             setPowerStateToDesired();
             pollState();
             break;
