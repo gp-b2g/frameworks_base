@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -3016,6 +3017,13 @@ public class PowerManagerService extends IPowerManager.Stub
             Slog.d(TAG, "Ignoring proximity change after sensor is disabled");
             return;
         }
+
+        int proximityFlag = Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.PROXIMITY_SENSOR, 1);
+        if (proximityFlag == 0) {
+            return;
+        }
+
         if (active) {
             if (mDebugProximitySensor) {
                 Slog.d(TAG, "b mProxIgnoredBecauseScreenTurnedOff="
