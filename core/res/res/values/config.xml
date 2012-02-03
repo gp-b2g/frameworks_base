@@ -244,7 +244,7 @@
     <string translatable="false" name="config_tether_apndata"></string>
 
     <!-- Boolean indicating whether the wifi chipset has dual frequency band support -->
-    <bool translatable="false" name="config_wifi_dual_band_support">false</bool>
+    <bool translatable="false" name="config_wifi_dual_band_support">true</bool>
 
     <!-- Boolean indicating whether the wifi chipset has p2p support -->
     <bool translatable="false" name="config_wifi_p2p_support">false</bool>
