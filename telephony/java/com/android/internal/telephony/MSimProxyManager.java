@@ -22,6 +22,9 @@ import android.os.Message;
 import android.util.Log;
 import android.telephony.ServiceState;
 
+import android.provider.Settings;
+import android.provider.Settings.SettingNotFoundException;
+
 public class MSimProxyManager {
     static final String LOG_TAG = "PROXY";
 
@@ -48,6 +51,12 @@ public class MSimProxyManager {
     private CardSubscriptionManager mCardSubscriptionManager;
 
     private SubscriptionManager mSubscriptionManager;
+    //the number of multi sim is 2
+    private static final int NUM_SUBSCRIPTIONS = 2;
+    //default multi sim names
+    private static final String[] MULTI_SIM_NAMES = {"SLOT1", "SLOT2"};
+    //default countdown time is 5s
+    private static final int DEFAULT_COUNTDOWN_TIME = 5;
 
     //***** Class Methods
     public static MSimProxyManager getInstance(Context context, Phone[] phoneProxy,
@@ -70,6 +79,8 @@ public class MSimProxyManager {
         mProxyPhones = phoneProxy;
         mUiccManager = uiccManager;
         mCi = ci;
+
+        setDefaultProperties(context);
 
         mMSimIccPhoneBookInterfaceManagerProxy
                 = new MSimIccPhoneBookInterfaceManagerProxy(mProxyPhones);
@@ -118,5 +129,23 @@ public class MSimProxyManager {
 
     public void registerForAllDataDisconnected(int sub, Handler h, int what, Object obj) {
         ((MSimPhoneProxy) mProxyPhones[sub]).registerForAllDataDisconnected(h, what, obj);
+    }
+
+    /* set default properties for multi sim name and count down tiem */
+    private void setDefaultProperties(Context context) {
+        for (int i=0; i<NUM_SUBSCRIPTIONS; i++) {
+            String simName = Settings.System.getString(context.getContentResolver(),Settings.System.MULTI_SIM_NAME[i]);
+            if (simName == null) {
+                Settings.System.putString(context.getContentResolver(),
+                    Settings.System.MULTI_SIM_NAME[i],MULTI_SIM_NAMES[i]);
+            }
+        }
+        try {
+            Settings.System.getInt(context.getContentResolver(),Settings.System.MULTI_SIM_COUNTDOWN);
+             } catch(SettingNotFoundException snfe) {
+                   logd(Settings.System.MULTI_SIM_COUNTDOWN+" setting does not exist, set default vaule");
+                   Settings.System.putInt(context.getContentResolver(),
+                    Settings.System.MULTI_SIM_COUNTDOWN, DEFAULT_COUNTDOWN_TIME);
+            }
     }
 }
