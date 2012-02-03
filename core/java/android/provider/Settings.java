@@ -1743,6 +1743,13 @@ public final class Settings {
         public static final String MULTI_SIM_DATA_CALL_SUBSCRIPTION = "multi_sim_data_call";
 
         /**
+          * Subscription to be used for multi Sim IP Call Prefix Setting. The supported values
+          * are  0 = SUB1, 1 = SUB2.
+          * @hide
+          */
+        public static final String [] IPCALL_PREFIX = { "ipcall_prefix_sub1", "ipcall_prefix_sub2" };
+
+        /**
           * Subscription to be used for SMS on a multi sim device. The supported values
           * are 0 = SUB1, 1 = SUB2.
           */
@@ -1778,7 +1785,15 @@ public final class Settings {
         /** Callback enable option
          * @hide
          */
-         public static final String CALLBACK_PRIORITY_ENABLED = "callback_priority_enabled";
+        public static final String CALLBACK_PRIORITY_ENABLED = "callback_priority_enabled";
+
+        /**
+         * Set the proximity sensor on or off.
+         *                 0 = Off
+         *                 1 = On
+         * @hide
+         */
+        public static final String PROXIMITY_SENSOR = "proximity_sensor";
 
         /**
          * CDMA only settings
