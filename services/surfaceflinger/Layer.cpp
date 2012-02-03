@@ -419,7 +419,12 @@ void Layer::lockPageFlip(bool& recomputeVisibleRegions)
             mFlinger->signalEvent();
         }
 
-        if (mSurfaceTexture->updateTexImage() < NO_ERROR) {
+        const DisplayHardware& hw(graphicPlane(0).displayHardware());
+        
+        bool avoidTex = (hw.getFlags() | DisplayHardware::C2D_COMPOSITION) ? 
+                          true : false;
+
+        if (mSurfaceTexture->updateTexImage(avoidTex) < NO_ERROR) {
             // something happened!
             recomputeVisibleRegions = true;
             return;

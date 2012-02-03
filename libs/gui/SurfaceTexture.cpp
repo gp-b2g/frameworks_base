@@ -791,7 +791,7 @@ status_t SurfaceTexture::setScalingMode(int mode) {
     return OK;
 }
 
-status_t SurfaceTexture::updateTexImage() {
+status_t SurfaceTexture::updateTexImage(bool avoidBindTexture) {
     ST_LOGV("updateTexImage");
     Mutex::Autolock lock(mMutex);
 
@@ -808,8 +808,10 @@ status_t SurfaceTexture::updateTexImage() {
 
         EGLImageKHR image = mSlots[buf].mEglImage;
         EGLDisplay dpy = eglGetCurrentDisplay();
-        if (isGPUSupportedFormat(mSlots[buf].mGraphicBuffer->format)) {
-            // Update the GL texture object.
+        if (isGPUSupportedFormat(mSlots[buf].mGraphicBuffer->format) &&
+            (avoidBindTexture == false) ||
+            (isGPUSupportedFormatInHW(mSlots[buf].mGraphicBuffer->format))) {
+
             if (image == EGL_NO_IMAGE_KHR) {
                 if (mSlots[buf].mGraphicBuffer == 0) {
                     ST_LOGE("buffer at slot %d is null", buf);
