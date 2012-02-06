@@ -237,6 +237,7 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
                 mOutputStream.write(builder.toString().getBytes());
             } catch (IOException ex) {
                 Slog.e(TAG, "IOException in sendCommand", ex);
+                throw new NativeDaemonConnectorException("Failed to write to output stream!");
             }
         }
     }
