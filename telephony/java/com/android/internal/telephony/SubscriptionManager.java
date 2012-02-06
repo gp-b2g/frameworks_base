@@ -21,6 +21,7 @@ import java.util.regex.PatternSyntaxException;
 
 import com.android.internal.telephony.MSimConstants.CardUnavailableReason;
 import com.android.internal.telephony.Subscription.SubscriptionStatus;
+import android.telephony.TelephonyManager;
 
 import android.content.Context;
 import android.content.Intent;
@@ -33,6 +34,8 @@ import android.os.SystemProperties;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
+
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 /**
  * Keep track of all the subscription related informations.
@@ -653,9 +656,21 @@ public class SubscriptionManager extends Handler {
         }
 
         if (isNewCardAvailable()) {
-            // NEW CARDs Available!!!
-            // Notify the USER HERE!!!
-            notifyNewCardsAvailable();
+            //modify for CU feature
+            if (FeatureQuery.FEATURE_TELEPHONY_CARD_CHANGED_PROMPT) {
+                if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                    logd("goto activity that show card has changed!");
+                    Intent intent = new Intent(Intent.ACTION_MAIN);
+                    intent.setClassName("com.android.qrd.configurationprompt",
+                                        "com.android.qrd.configurationprompt.CardChangedActivity");
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    mContext.startActivity(intent);
+                }
+            } else {
+                // NEW CARDs Available!!!
+                // Notify the USER HERE!!!
+                notifyNewCardsAvailable();
+            }
             for (int i = 0; i < mIsNewCard.length; i++) {
                 mIsNewCard[i] = false;
             }
@@ -735,7 +750,9 @@ public class SubscriptionManager extends Handler {
             setDefaultAppIndex(newSub);
 
             mActivatePending.put(SubscriptionId.values()[cardIndex], newSub);
-            mIsNewCard[cardIndex] = false;
+            if (!FeatureQuery.FEATURE_TELEPHONY_CARD_CHANGED_PROMPT) {
+                mIsNewCard[cardIndex] = false;
+            }
         }
 
         if (!isAllCardsInfoAvailable()) {
