@@ -17,6 +17,7 @@
 
 package com.android.internal.telephony.gsm;
 
+import android.app.NotificationManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -49,6 +50,12 @@ public class MSimGSMPhone extends GSMPhone {
     // Holds the subscription information
     Subscription mSubscriptionData = null;
     int mSubscription = 0;
+    NotificationManager mNotificationManager;
+
+    // Call Forward icons. Values have to be same as mentioned in
+    // NotificationMgr.java
+    private static final int CALL_FORWARD_NOTIFICATION = 6;
+    private static final int CALL_FORWARD_NOTIFICATION_SUB2 = 21;
 
     public
     MSimGSMPhone (Context context, CommandsInterface ci, PhoneNotifier notifier, int subscription) {
@@ -63,6 +70,9 @@ public class MSimGSMPhone extends GSMPhone {
         mSubscription = subscription;
 
         Log.d(LOG_TAG, "MSimGSMPhone: constructor: sub = " + mSubscription);
+
+        mNotificationManager = (NotificationManager) mContext
+                .getSystemService(Context.NOTIFICATION_SERVICE);
 
         mVmNumGsmKey = mVmNumGsmKey + mSubscription;
         mVmCountKey = mVmCountKey + mSubscription;
@@ -139,6 +149,12 @@ public class MSimGSMPhone extends GSMPhone {
         mImei = null;
         mImeiSv = null;
         setVoiceMessageCount(0);
+        if (getCallForwardingIndicator()) {
+            int notificationId = (mSubscription == 0) ? CALL_FORWARD_NOTIFICATION :
+                    CALL_FORWARD_NOTIFICATION_SUB2;
+            mNotificationManager.cancel(notificationId);
+        }
+
     }
 
     //Gets Subscription information in the Phone Object
@@ -256,5 +272,44 @@ public class MSimGSMPhone extends GSMPhone {
 
     public void unregisterForAllDataDisconnected(Handler h) {
         ((MSimGsmDataConnectionTracker)mDataConnectionTracker).unregisterForAllDataDisconnected(h);
+    }
+
+    @Override
+    protected String getVmSimImsi() {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        return sp.getString((VM_SIM_IMSI + mSubscription), null);
+    }
+
+    @Override
+    protected void setVmSimImsi(String imsi) {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putString((VM_SIM_IMSI + mSubscription), imsi);
+        editor.apply();
+    }
+
+    /**
+     * This method stores the CF_ENABLED flag in preferences
+     * @param enabled
+     */
+    @Override
+    /*package*/ void setCallForwardingPreference(boolean enabled) {
+        if (LOCAL_DEBUG) Log.d(LOG_TAG, "Set callforwarding info to perferences");
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor edit = sp.edit();
+        edit.putBoolean((CF_ENABLED + mSubscription), enabled);
+        edit.commit();
+
+        // Using the same method as VoiceMail to be able to track when the sim card is changed.
+        setVmSimImsi(getSubscriberId());
+    }
+
+    @Override
+    protected boolean getCallForwardingPreference() {
+        if (LOCAL_DEBUG) Log.d(LOG_TAG, "Get callforwarding info from perferences");
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        boolean cf = sp.getBoolean((CF_ENABLED + mSubscription), false);
+        return cf;
     }
 }
