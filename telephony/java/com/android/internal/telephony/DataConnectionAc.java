@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (c) 2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,6 +83,9 @@ public class DataConnectionAc extends AsyncChannel {
 
     public static final int REQ_GET_RECONNECT_INTENT = BASE + 26;
     public static final int RSP_GET_RECONNECT_INTENT = BASE + 27;
+
+    public static final int REQ_GET_PARTIAL_FAILURE_STATUS = BASE + 28;
+    public static final int RSP_GET_PARTIAL_FAILURE_STATUS = BASE + 29;
 
     /**
      * enum used to notify action taken or necessary to be
@@ -477,6 +481,20 @@ public class DataConnectionAc extends AsyncChannel {
         }
     }
 
+    /**
+     * Get the status of the partial success status
+     * @return boolean indicating partial success status
+     */
+    public boolean getPartialSuccessStatusSync() {
+        Message response = sendMessageSynchronously(REQ_GET_PARTIAL_FAILURE_STATUS);
+        if ((response != null) && (response.what == RSP_GET_PARTIAL_FAILURE_STATUS)) {
+            if (DBG) log("getPartialSuccessStatusSync ok");
+            return response.arg1 == 1;
+        } else {
+            log("getPartialSuccessStatusSync error response=" + response + " returning false");
+            return false;
+        }
+    }
     /**
      * Request to set Pending ReconnectIntent to DC.
      * Response RSP_SET_RECONNECT_INTENT when complete.

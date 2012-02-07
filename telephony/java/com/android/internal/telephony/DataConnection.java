@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-12 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
 import android.app.PendingIntent;
+import android.net.LinkAddress;
 import android.net.LinkCapabilities;
 import android.net.LinkProperties;
 import android.net.ProxyProperties;
@@ -36,6 +37,8 @@ import android.os.Message;
 import android.os.SystemProperties;
 import android.text.TextUtils;
 
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -72,6 +75,13 @@ public abstract class DataConnection extends StateMachine {
 
     private List<ApnContext> mApnList = null;
     PendingIntent mReconnectIntent = null;
+
+    /* Used for data call retry for partial failures of dual-ip calls */
+    private boolean mPartialSuccess = false;
+    // Stores the protocol to be used if network returns
+    // v4-only or v6-only error codes.
+    private String mPendingProtocol = null;
+    private boolean mInPartialRetry = false;
 
     /**
      * Used internally for saving connecting parameters.
@@ -481,6 +491,9 @@ public abstract class DataConnection extends StateMachine {
         cid = -1;
 
         mLinkProperties = new LinkProperties();
+        mInPartialRetry = false;
+        mPartialSuccess = false;
+        mPendingProtocol = null;
         mApn = null;
     }
 
@@ -520,6 +533,7 @@ public abstract class DataConnection extends StateMachine {
         } else if (response.status != 0) {
             result = DataCallState.SetupResult.ERR_RilError;
             result.mFailCause = FailCause.fromInt(response.status);
+            handleErrorCodes(response);
         } else {
             if (DBG) log("onSetupConnectionCompleted received DataCallState: " + response);
             cid = response.cid;
@@ -527,6 +541,31 @@ public abstract class DataConnection extends StateMachine {
         }
 
         return result;
+    }
+
+    private void handleErrorCodes(DataCallState response) {
+        LinkProperties lp = new LinkProperties();
+        response.setLinkProperties(lp, false);
+
+        // update mPendingProtocol, its picked up for next retry
+        if (response.status == FailCause.ONLY_IPV4_ALLOWED.getErrorCode()) {
+            if (!isV4AddrPresent(lp)) {
+                // ONLY_IPV4_ALLOWED error code returned but data call not established
+                // Set mPendingProtocol appropriately for next retry
+                mPendingProtocol = RILConstants.SETUP_DATA_PROTOCOL_IP;
+            }
+        } else {
+            if (response.status == FailCause.ONLY_IPV6_ALLOWED.getErrorCode()) {
+                if (!isV6AddrPresent(lp)) {
+                    // ONLY_IPV6_ALLOWED error code returned but data call not established
+                    // Set mPendingProtocol appropriately for next retry
+                    mPendingProtocol = RILConstants.SETUP_DATA_PROTOCOL_IPV6;
+                }
+            }
+        }
+        if (mPendingProtocol != null) {
+            if (DBG) log("mPendingProtocol set to:" + mPendingProtocol);
+        }
     }
 
     private int getSuggestedRetryTime(AsyncResult ar) {
@@ -585,8 +624,41 @@ public abstract class DataConnection extends StateMachine {
             if (VDBG) log("updateLinkProperty new LP=" + result.newLp);
         }
         mLinkProperties = result.newLp;
+        // Data call was successful, clear pending protocol
+        mPendingProtocol = null;
+
+        checkAndUpdatePartialProtocolFailure(mLinkProperties);
 
         return result;
+    }
+
+    /* Check for partial protocol failure if it was a IPV4V6 attempt */
+    private void checkAndUpdatePartialProtocolFailure(LinkProperties lp) {
+        if (getDataCallProtocol().equals(RILConstants.SETUP_DATA_PROTOCOL_IPV4V6)) {
+            if (DBG) log("checkAndUpdatePartialProtocolFailure() LP:" + lp.toString());
+
+            /* Save v4 and v6 connected states */
+            boolean isIpv4Connected = isV4AddrPresent(lp);
+            boolean isIpv6Connected = isV6AddrPresent(lp);
+
+            /* If only v4 or v6 got connected, its partial success */
+            if ((isIpv4Connected && !isIpv6Connected) || (!isIpv4Connected && isIpv6Connected)) {
+                mPartialSuccess = true;
+                if (DBG) {
+                    log("Warning: partial data call failure, isIpv4Connected:" +
+                            isIpv4Connected + " isIpv6Connected:" + isIpv6Connected);
+                }
+            } else {
+                if (isIpv4Connected && isIpv6Connected) {
+                    if (DBG) log("Dual-IP call successful.");
+
+                    mPartialSuccess = false;
+                    mInPartialRetry = false;
+                } else {
+                    if (DBG) log("Error: Both v4 and v6 calls have failed.");
+                }
+            }
+        }
     }
 
     /**
@@ -710,6 +782,13 @@ public abstract class DataConnection extends StateMachine {
                     if (VDBG) log("REQ_GET_APNCONTEXT_LIST num in list=" + mApnList.size());
                     mAc.replyToMessage(msg, DataConnectionAc.RSP_GET_APNCONTEXT_LIST,
                                        new ArrayList<ApnContext>(mApnList));
+                    break;
+                }
+                case DataConnectionAc.REQ_GET_PARTIAL_FAILURE_STATUS: {
+                    if (VDBG) log("REQ_GET_PARTIAL_FAILURE_STATUS mPartialSuccess=" + isPartialSuccess());
+                    // send 1 for true, 0 for false
+                    mAc.replyToMessage(msg, DataConnectionAc.RSP_GET_PARTIAL_FAILURE_STATUS,
+                                       (isPartialSuccess() ? 1 : 0), 0, null);
                     break;
                 }
                 case DataConnectionAc.REQ_SET_RECONNECT_INTENT: {
@@ -969,6 +1048,7 @@ public abstract class DataConnection extends StateMachine {
     private class DcActiveState extends State {
         private ConnectionParams mConnectionParams = null;
         private FailCause mFailCause = null;
+        private boolean mPendingRequest = false;
 
         public void setEnterNotificationParams(ConnectionParams cp, FailCause cause) {
             if (VDBG) log("DcInactiveState: setEnterNoticationParams cp,cause");
@@ -995,20 +1075,54 @@ public abstract class DataConnection extends StateMachine {
             // clear notifications
             mConnectionParams = null;
             mFailCause = null;
+            mPendingProtocol = null;
+            mInPartialRetry = false;
+            mPartialSuccess = false;
         }
 
         @Override
         public boolean processMessage(Message msg) {
             boolean retVal;
+            AsyncResult ar;
+            ConnectionParams cp;
 
             switch (msg.what) {
                 case EVENT_CONNECT:
-                    mRefCount++;
-                    if (DBG) log("DcActiveState msg.what=EVENT_CONNECT RefCount=" + mRefCount);
-                    if (msg.obj != null) {
-                        notifyConnectCompleted((ConnectionParams) msg.obj, FailCause.NONE);
+                    cp = (ConnectionParams) msg.obj;
+                    if (cp != null && !cp.apn.isInPartialRetry()) {
+                        /* No partial retry necessary */
+                        mRefCount++;
+                        if (DBG)
+                            log("DcActiveState msg.what=EVENT_CONNECT RefCount=" + mRefCount);
+                        if (msg.obj != null) {
+                            notifyConnectCompleted(cp, FailCause.NONE);
+                        }
+                    } else {
+                        if (mPendingRequest) {
+                            log("DcActiveState Already in partial retry, ignoring multiple requests");
+                        } else {
+                            handlePartialRetrySetupRequest(msg);
+                            mPendingRequest = true;
+                        }
                     }
                     retVal = HANDLED;
+                    break;
+                case EVENT_SETUP_DATA_CONNECTION_DONE:
+                    if (DBG) log("DcActiveState msg.what=EVENT_SETUP_DATA_CONNECTION_DONE");
+
+                    ar = (AsyncResult) msg.obj;
+                    cp = (ConnectionParams) ar.userObj;
+
+                    retVal = NOT_HANDLED;
+                    if (mInPartialRetry) {
+                        handlePartialRetrySetupRequestCompleted(msg);
+                        /* update the partial retry result in the APN so that
+                         * the next retry can reuse this information.
+                         */
+                        cp.apn.setInPartialRetry(mInPartialRetry);
+                        retVal = HANDLED;
+                    }
+                    mPendingRequest = false;
                     break;
                 case EVENT_QOS_ENABLE:
                 case EVENT_QOS_GET_STATUS:
@@ -1043,6 +1157,38 @@ public abstract class DataConnection extends StateMachine {
                     break;
             }
             return retVal;
+        }
+
+        private void handlePartialRetrySetupRequest(Message msg) {
+            ConnectionParams cp;
+            mInPartialRetry = true;
+            if (msg.obj != null) {
+                cp = ((ConnectionParams)msg.obj);
+                // Increment tag since we are retrying from the same DC state
+                mTag++;
+                cp.tag = mTag;
+                if (DBG) log("DcActiveState partial retry for apn" + cp.apn.toString());
+                onConnect(cp);
+            }
+        }
+
+        private void handlePartialRetrySetupRequestCompleted(Message msg) {
+            AsyncResult ar;
+            ConnectionParams cp;
+            ar = (AsyncResult) msg.obj;
+            cp = (ConnectionParams) ar.userObj;
+
+            DataCallState.SetupResult result = onSetupConnectionCompleted(ar);
+            if (DBG) {
+                log("DcActiveState onSetupConnectionCompleted result=" +
+                        result + " isPartialSuccess:" + isPartialSuccess());
+            }
+
+            /* For all errors, notify state, DCT does error handling */
+            if ((cp != null) && (result.mFailCause != null)) {
+                if (VDBG) log("DcActiveState: partial retry: notifyConnectCompleted");
+                notifyConnectCompleted(cp, result.mFailCause);
+            }
         }
     }
     private DcActiveState mActiveState = new DcActiveState();
@@ -1647,5 +1793,42 @@ public abstract class DataConnection extends StateMachine {
      */
     public boolean isValidQos(int qosId) {
         return !mQosFlowIds.isEmpty() && mQosFlowIds.contains(qosId);
+    }
+
+    protected String getDataCallProtocol() {
+        String protocol = null;
+        if (phone.getServiceState().getRoaming()) {
+            protocol = mApn.roamingProtocol;
+        } else {
+            protocol = mApn.protocol;
+        }
+
+        return mPendingProtocol == null ? protocol : mPendingProtocol;
+    }
+
+    public boolean isV4AddrPresent(LinkProperties lp) {
+        boolean found = false;
+        for (LinkAddress linkAddr : lp.getLinkAddresses()) {
+            if (linkAddr.getAddress() instanceof Inet4Address) {
+                found = true;
+                break;
+            }
+        }
+        return found;
+    }
+
+    public boolean isV6AddrPresent(LinkProperties lp) {
+        boolean found = false;
+        for (LinkAddress linkAddr : lp.getLinkAddresses()) {
+            if (linkAddr.getAddress() instanceof Inet6Address) {
+                found = true;
+                break;
+            }
+        }
+        return found;
+    }
+
+    private boolean isPartialSuccess() {
+        return mPartialSuccess;
     }
 }

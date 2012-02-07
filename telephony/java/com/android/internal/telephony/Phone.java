@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -164,6 +164,11 @@ public interface Phone {
     static final int QOS_REQUEST_FAILURE = 1;
 
     /**
+     * Constants for Dual-IP partial retries
+     */
+    static final int DUALIP_PARTIAL_RETRY = 1;
+
+    /**
      * Optional reasons for disconnect and connect
      */
     static final String REASON_ROAMING_ON = "roamingOn";
@@ -192,6 +197,8 @@ public interface Phone {
     static final String REASON_TETHERED_MODE_STATE_CHANGED = "tetheredModeStateChanged";
     static final String REASON_SINGLE_PDN_ARBITRATION = "SinglePdnArbitration";
     static final String REASON_DATA_READINESS_CHECKS_MODIFIED = "dataReadinessChecksModified";
+    static final String REASON_DUALIP_PARTIAL_FAILURE_RETRY = "DualIpPartialFailureRetry";
+    static final String REASON_RAT_CHANGED = "RatChanged";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
