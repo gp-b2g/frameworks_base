@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009,2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -93,7 +93,9 @@ class FmRxEventListner {
                                     /*Set the state as FMOff */
                                     FmTransceiver.setFMPowerState(FmTransceiver.FMState_Turned_Off);
                                     Log.v(TAG, "RxEvtList: CURRENT-STATE : FMTurningOff ---> NEW-STATE : FMOff");
+                                    FmTransceiver.release("/dev/radio0");
                                     cb.FmRxEvDisableReceiver();
+                                    Thread.currentThread().interrupt();
                                 }
                                 break;
                             case 1:
@@ -142,7 +144,7 @@ class FmRxEventListner {
                             case 8:
                                 Log.d(TAG, "Got BELOW_TH_EVENT");
                                 cb.FmRxEvServiceAvailable (false);
-                            break;
+                                break;
                             case 9:
                                 Log.d(TAG, "Got ABOVE_TH_EVENT");
                                 cb.FmRxEvServiceAvailable(true);

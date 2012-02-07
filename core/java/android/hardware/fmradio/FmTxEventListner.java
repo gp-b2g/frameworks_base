@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011,2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,7 @@
 package android.hardware.fmradio;
 
 import android.util.Log;
-
+import android.hardware.fmradio.FmTransceiver;
 
 class FmTxEventListner {
 
@@ -91,6 +91,7 @@ class FmTxEventListner {
     }
 
     public void stopListener(){
+        FmTransceiver.release("/dev/radio0");
         //
         Log.d(TAG, "Thread Stopped\n");
         //Thread stop is deprecate API

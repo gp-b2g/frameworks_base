@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009,2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -517,16 +517,9 @@ public class FmReceiver extends FmTransceiver
 
       setFMPowerState(subPwrLevel_FMTurning_Off);
       Log.v(TAG, "disable: CURRENT-STATE : FMRxOn ---> NEW-STATE : FMTurningOff");
-      status = unregisterClient();
-      if( status == true ) {
-          status = super.disable();
-      }
-      else {
-          status = false;
-          Log.e(TAG, "disable: Error while turning FM Off");
-      }
+      super.disable();
 
-      return status;
+      return true;
    }
 
    /*==============================================================

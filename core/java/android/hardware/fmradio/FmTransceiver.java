@@ -220,15 +220,15 @@ public class FmTransceiver
    *            device could not be released
    *    @see   #acquire
    */
-   protected boolean release(String device) {
+   static boolean release(String device) {
       if (sFd!=0)
       {
          FmReceiverJNI.closeFdNative(sFd);
          sFd = 0;
-         Log.d(TAG, "Turned off: " + sFd);
+         Log.d("FmTransceiver", "Turned off: " + sFd);
       } else
       {
-         Log.d(TAG, "Error turning off");
+         Log.d("FmTransceiver", "Error turning off");
       }
       return true;
    }
@@ -438,9 +438,6 @@ public class FmTransceiver
    */
    public boolean disable(){
       mControl.fmOff(sFd);
-
-      /* Release the device on Disable */
-      release("/dev/radio0");
       return true;
    }
 
