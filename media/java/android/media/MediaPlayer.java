@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2006-2012 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -930,14 +930,16 @@ public class MediaPlayer
     public  void start() throws IllegalStateException {
         stayAwake(true);
 
-        Intent intent = new Intent(ACTION_METADATA_CHANGED);
-        intent.putExtra("duration", getDuration());
-        intent.putExtra("time", System.currentTimeMillis());
-        intent.putExtra("position", getCurrentPosition());
-        Log.d(TAG, "start() mUri is " + mUri);
-        intent.putExtra("uripath", mUri);
-        intent.putExtra("playstate", 1);
-        mContext.sendBroadcast(intent);
+        if (mContext != null) {
+           Intent intent = new Intent(ACTION_METADATA_CHANGED);
+           intent.putExtra("duration", getDuration());
+           intent.putExtra("time", System.currentTimeMillis());
+           intent.putExtra("position", getCurrentPosition());
+           Log.d(TAG, "start() mUri is " + mUri);
+           intent.putExtra("uripath", mUri);
+           intent.putExtra("playstate", 1);
+           mContext.sendBroadcast(intent);
+        }
 
         _start();
     }
@@ -953,14 +955,16 @@ public class MediaPlayer
     public void stop() throws IllegalStateException {
         stayAwake(false);
         _stop();
-        Intent intent = new Intent(ACTION_METADATA_CHANGED);
-        intent.putExtra("duration", getDuration());
-        intent.putExtra("time", System.currentTimeMillis());
-        intent.putExtra("position", getCurrentPosition());
-        Log.d(TAG, "stop() mUri is " + mUri);
-        intent.putExtra("uripath", mUri);
-        intent.putExtra("playstate", 0);
-        mContext.sendBroadcast(intent);
+        if (mContext != null) {
+           Intent intent = new Intent(ACTION_METADATA_CHANGED);
+           intent.putExtra("duration", getDuration());
+           intent.putExtra("time", System.currentTimeMillis());
+           intent.putExtra("position", getCurrentPosition());
+           Log.d(TAG, "stop() mUri is " + mUri);
+           intent.putExtra("uripath", mUri);
+           intent.putExtra("playstate", 0);
+           mContext.sendBroadcast(intent);
+        }
 
     }
 
@@ -975,14 +979,16 @@ public class MediaPlayer
     public void pause() throws IllegalStateException {
         stayAwake(false);
         _pause();
-        Intent intent = new Intent(ACTION_METADATA_CHANGED);
-        intent.putExtra("duration", getDuration());
-        intent.putExtra("time", System.currentTimeMillis());
-        intent.putExtra("position", getCurrentPosition());
-        Log.d(TAG, "pause() mUri is " + mUri);
-        intent.putExtra("uripath", mUri);
-        intent.putExtra("playstate", 2);
-        mContext.sendBroadcast(intent);
+        if (mContext != null) {
+           Intent intent = new Intent(ACTION_METADATA_CHANGED);
+           intent.putExtra("duration", getDuration());
+           intent.putExtra("time", System.currentTimeMillis());
+           intent.putExtra("position", getCurrentPosition());
+           Log.d(TAG, "pause() mUri is " + mUri);
+           intent.putExtra("uripath", mUri);
+           intent.putExtra("playstate", 2);
+           mContext.sendBroadcast(intent);
+        }
 
     }
 
