@@ -197,6 +197,7 @@ public class BluetoothService extends IBluetooth.Stub {
 
     private BluetoothA2dpService mA2dpService;
     private final HashMap<String, Pair<byte[], byte[]>> mDeviceOobData;
+    private HostPatchForIOP mHostPatchForIOP;
 
     private int mProfilesConnected = 0, mProfilesConnecting = 0, mProfilesDisconnecting = 0;
 
@@ -247,6 +248,98 @@ public class BluetoothService extends IBluetooth.Stub {
         }
     }
 
+    private static class HostPatchForIOP {
+        private static final String HOST_PATCH_IOP_BLACKLIST =
+                 "/etc/bluetooth/iop_device_list.conf";
+        private ArrayList <String> mDontRemoveServiceBlackList;
+        private ArrayList <String> mAvoidConnectOnPairBlackList;
+        private ArrayList <String> mAvoidAutoConnectBlackList;
+
+        public HostPatchForIOP() {
+             // Read the IOP device list into patch table
+            if(DBG) Log.d(TAG, " HostPatchForIOT: Loading from conf");
+            FileInputStream fstream = null;
+            try {
+                fstream = new FileInputStream(HOST_PATCH_IOP_BLACKLIST);
+                DataInputStream in = new DataInputStream(fstream);
+                BufferedReader file = new BufferedReader(new InputStreamReader(in));
+                String line;
+                while((line = file.readLine()) != null) {
+                    line = line.trim();
+                    if (line.length() == 0 || line.startsWith("//")) continue;
+                    String[] value = line.split(" ");
+                    if (value != null && value.length == 2) {
+                        String[] val = value[1].split(";");
+                        if (value[0].equalsIgnoreCase("sdp_missing_uuids")) {
+                            mDontRemoveServiceBlackList =
+                                new ArrayList<String>(Arrays.asList(val));
+                            if(DBG) Log.d(TAG, " HostPatchForIOT: Loaded DontRemoveService");
+                        } else if (value[0].equalsIgnoreCase("avoid_connect_after_pair")) {
+                            mAvoidConnectOnPairBlackList =
+                                new ArrayList<String>(Arrays.asList(val));
+                            if(DBG) Log.d(TAG, " HostPatchForIOT: Loaded NoConnectionOnPair");
+                        } else if (value[0].equalsIgnoreCase("avoid_autoconnect")) {
+                            mAvoidAutoConnectBlackList =
+                                new ArrayList<String>(Arrays.asList(val));
+                            if(DBG) Log.d(TAG, " HostPatchForIOT: Loaded NoAutoConnectList");
+                        }
+                    }
+                }
+            } catch (FileNotFoundException e) {
+                Log.e(TAG, "HOST Patch conf File Not found : " + HOST_PATCH_IOP_BLACKLIST);
+            } catch (IOException e) {
+                Log.e(TAG, "IOException: read HOST Patch conf File " + e);
+            } finally {
+                if (fstream != null) {
+                    try {
+                        fstream.close();
+                    } catch (IOException e) {
+                        // Ignore
+                    }
+                }
+            }
+        }
+
+        public boolean isHostPatchRequired(String address, int patch_id) {
+            // Check the device address in patch table
+            // If the device is found in the list for the patch, return true
+            if(DBG) Log.d(TAG, " HostPatchForIOT: Checking");
+            switch (patch_id) {
+            case BluetoothAdapter.HOST_PATCH_DONT_REMOVE_SERVICE:
+                if (mDontRemoveServiceBlackList != null) {
+                    for (String blacklistAddress : mDontRemoveServiceBlackList) {
+                        if (address.startsWith(blacklistAddress)) {
+                            if(DBG) Log.d(TAG, " HostPatchForIOT: Apply DontRemoveService");
+                            return true;
+                        }
+                    }
+                }
+                break;
+            case BluetoothAdapter.HOST_PATCH_AVOID_CONNECT_ON_PAIR:
+                if (mAvoidConnectOnPairBlackList != null) {
+                    for (String blacklistAddress : mAvoidConnectOnPairBlackList) {
+                        if (address.startsWith(blacklistAddress)) {
+                            if(DBG) Log.d(TAG, " HostPatchForIOT: Apply DontGoforConnect");
+                            return true;
+                        }
+                    }
+                }
+                break;
+            case BluetoothAdapter.HOST_PATCH_AVOID_AUTO_CONNECT:
+                if (mAvoidAutoConnectBlackList != null) {
+                    for (String blacklistAddress : mAvoidAutoConnectBlackList) {
+                        if (address.startsWith(blacklistAddress)) {
+                            if(DBG) Log.d(TAG, " HostPatchForIOT: Apply DontAutoConnect");
+                            return true;
+                        }
+                    }
+                }
+                break;
+            }
+            return false;
+        }
+    }
+
     static {
         classInitNative();
     }
@@ -287,11 +380,12 @@ public class BluetoothService extends IBluetooth.Stub {
         mDeviceProfileState = new HashMap<String, BluetoothDeviceProfileState>();
         mA2dpProfileState = new BluetoothProfileState(mContext, BluetoothProfileState.A2DP);
         mHfpProfileState = new BluetoothProfileState(mContext, BluetoothProfileState.HFP);
-
         mHfpProfileState.start();
         mA2dpProfileState.start();
 
         mConnectionManager = new ConnectionManager();
+
+        mHostPatchForIOP = new HostPatchForIOP();
 
         IntentFilter filter = new IntentFilter();
         registerForAirplaneMode(filter);
@@ -343,6 +437,14 @@ public class BluetoothService extends IBluetooth.Stub {
         }
         mDockAddress = null;
         return null;
+    }
+
+    public boolean isHostPatchRequired (BluetoothDevice btDevice, int patch_id) {
+        if (mHostPatchForIOP != null) {
+            String address = btDevice.getAddress();
+            return mHostPatchForIOP.isHostPatchRequired(address, patch_id);
+        }
+        return false;
     }
 
     private synchronized boolean writeDockPin() {

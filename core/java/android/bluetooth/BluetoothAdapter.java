@@ -342,6 +342,10 @@ public final class BluetoothAdapter {
 
     private static final int ADDRESS_LENGTH = 17;
 
+    /** @hide */ public static final int HOST_PATCH_DONT_REMOVE_SERVICE = 1;
+    /** @hide */ public static final int HOST_PATCH_AVOID_CONNECT_ON_PAIR = 2;
+    /** @hide */ public static final int HOST_PATCH_AVOID_AUTO_CONNECT = 3;
+
     /**
      * Lazily initialized singleton. Guaranteed final after first object
      * constructed.
@@ -351,6 +355,14 @@ public final class BluetoothAdapter {
     private final IBluetooth mService;
 
     private Handler mServiceRecordHandler;
+
+    /** @hide */
+    public boolean isHostPatchRequired (BluetoothDevice btDevice, int patch_id) {
+        try {
+            return mService.isHostPatchRequired (btDevice, patch_id);
+        } catch (RemoteException e) {Log.e(TAG, "", e);}
+        return false;
+    }
 
     /**
      * Get a handle to the default local Bluetooth adapter.
