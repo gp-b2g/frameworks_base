@@ -29,7 +29,7 @@
         android:id="@+id/wifi_combo"
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"
-        android:layout_marginRight="-6dp"
+
         >
         <ImageView
             android:id="@+id/wifi_signal"
@@ -50,50 +50,6 @@
         android:layout_height="6dp"
         android:layout_width="6dp"
         android:visibility="gone"
-        android:id="@+id/spacer"
-        />
-    <FrameLayout
-        android:layout_height="wrap_content"
-        android:layout_width="wrap_content"
-        >
-        <View
-            android:layout_height="6dp"
-            android:layout_width="6dp"
-            android:visibility="invisible"
-            />
-        <FrameLayout
-            android:id="@+id/mobile_combo_sub2"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            >
-            <ImageView
-                android:id="@+id/mobile_signal_sub2"
-                android:layout_height="wrap_content"
-                android:layout_width="wrap_content"
-                android:layout_gravity="center|bottom"
-                />
-            <ImageView
-                android:id="@+id/mobile_type_sub2"
-                android:layout_height="wrap_content"
-                android:layout_width="wrap_content"
-                android:layout_gravity="center|bottom"
-                />
-            <ImageView
-                android:id="@+id/mobile_inout_sub2"
-                android:layout_height="wrap_content"
-                android:layout_width="wrap_content"
-                android:layout_gravity="right|bottom"
-                />
-            <ImageView
-                android:id="@+id/no_sim_slot2"
-                android:layout_height="wrap_content"
-                android:layout_width="wrap_content"
-                />
-        </FrameLayout>
-    </FrameLayout>
-    <View
-        android:layout_height="8dp"
-        android:layout_width="8dp"
         android:id="@+id/spacer"
         />
     <FrameLayout
@@ -135,4 +91,49 @@
                 />
         </FrameLayout>
     </FrameLayout>
+    <View
+        android:layout_height="8dp"
+        android:layout_width="8dp"
+        android:id="@+id/spacer"
+        />
+    <FrameLayout
+        android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        >
+        <View
+            android:layout_height="6dp"
+            android:layout_width="6dp"
+            android:visibility="invisible"
+            />
+        <FrameLayout
+            android:id="@+id/mobile_combo_sub2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            >
+            <ImageView
+                android:id="@+id/mobile_signal_sub2"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:layout_gravity="center|bottom"
+                />
+            <ImageView
+                android:id="@+id/mobile_type_sub2"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:layout_gravity="center|bottom"
+                />
+            <ImageView
+                android:id="@+id/mobile_inout_sub2"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:layout_gravity="right|bottom"
+                />
+            <ImageView
+                android:id="@+id/no_sim_slot2"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                />
+        </FrameLayout>
+    </FrameLayout>
+
 </com.android.systemui.statusbar.MSimSignalClusterView>

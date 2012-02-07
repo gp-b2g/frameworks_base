@@ -45,6 +45,7 @@ import android.util.Slog;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.util.Log;
 
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.TelephonyIntents;
@@ -53,6 +54,7 @@ import com.android.internal.telephony.cdma.EriInfo;
 import com.android.internal.util.AsyncChannel;
 
 import com.android.systemui.R;
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 public class MSimNetworkController extends NetworkController {
     // debug
@@ -91,6 +93,16 @@ public class MSimNetworkController extends NetworkController {
     int[] mMSimcombinedSignalIconId;
     int[] mMSimcombinedActivityIconId;
     int[] mMSimLastSimIconId;
+
+    private static final int[] MULTI_NO_SIM_NEW = {
+        R.drawable.stat_sys_no_sim1_new,
+        R.drawable.stat_sys_no_sim2_new
+    };
+
+    private static final int[] MULTI_SIGNAL_NULL = {
+        R.drawable.stat_sys_signal_null_sim1,
+        R.drawable.stat_sys_signal_null_sim2
+    };
 
     ArrayList<MSimSignalCluster> mSimSignalClusters = new ArrayList<MSimSignalCluster>();
 
@@ -140,7 +152,16 @@ public class MSimNetworkController extends NetworkController {
             mMSimServiceState[i] = new ServiceState();
             mMSimState[i] = IccCard.State.READY;
             // phone_signal
-            mMSimPhoneSignalIconId[i] = R.drawable.stat_sys_signal_0;
+            if (FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) {
+                mMSimPhoneSignalIconId[i] = MULTI_SIGNAL_NULL[i];
+            } else {
+                mMSimPhoneSignalIconId[i] = R.drawable.stat_sys_signal_0;
+            }
+            if (FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) {
+                mNoMSimIconId[i] = MULTI_NO_SIM_NEW[i];
+            } else {
+                mNoMSimIconId[i] = R.drawable.stat_sys_no_sim;
+            }
             mMSimLastPhoneSignalIconId[i] = -1;
             mMSimLastDataTypeIconId[i] = -1;
             mMSimDataConnected[i] = false;
@@ -469,14 +490,12 @@ public class MSimNetworkController extends NetworkController {
 
     private final void updateTelephonySignalStrength(int subscription) {
         Slog.d(TAG, "updateTelephonySignalStrength: subscription =" + subscription);
-
         if (!hasService(subscription) &&
                 mDataServiceState[subscription] != ServiceState.STATE_IN_SERVICE) {
             if (DEBUG) Slog.d(TAG, "No service ");
             mMSimPhoneSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
             mMSimDataSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
         } else {
-
             if ((mMSimSignalStrength[subscription] == null) ||
                     (mMSimServiceState[subscription] == null)) {
                 if (DEBUG) {
@@ -486,6 +505,7 @@ public class MSimNetworkController extends NetworkController {
                 }
                 mMSimPhoneSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
                 mMSimDataSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
+
                 mMSimContentDescriptionPhoneSignal[subscription] = mContext.getString(
                         AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[0]);
             } else {
@@ -505,19 +525,66 @@ public class MSimNetworkController extends NetworkController {
                 // Though mPhone is a Manager, this call is not an IPC
                 if ((isCdma(subscription) && isCdmaEri(subscription)) ||
                         ((MSimTelephonyManager)mPhone).isNetworkRoaming(subscription)) {
-                    iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH_ROAMING[mInetCondition];
+                    if (FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) {
+                        iconList = getIconListFromSubType(subscription,true);
+                    } else {
+                        iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH_ROAMING[mInetCondition];
+                    }
                 } else {
-                    iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH[mInetCondition];
+                    if (FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) {
+                        iconList = getIconListFromSubType(subscription,false);
+                    } else {
+                        iconList = TelephonyIcons.TELEPHONY_SIGNAL_STRENGTH[mInetCondition];
+                    }
                 }
 
                 mMSimPhoneSignalIconId[subscription] = iconList[iconLevel];
                 mMSimContentDescriptionPhoneSignal[subscription] = mContext.getString(
                         AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[iconLevel]);
 
-                mMSimDataSignalIconId[subscription] = TelephonyIcons
-                        .DATA_SIGNAL_STRENGTH[mInetCondition][iconLevel];
+                if (FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) {
+                    int[] dataSignal = getIconListFromSubType(subscription,false);
+                    mMSimDataSignalIconId[subscription] = dataSignal[iconLevel];
+                } else {
+                    mMSimDataSignalIconId[subscription] = TelephonyIcons.DATA_SIGNAL_STRENGTH[mInetCondition][iconLevel];
+                }
             }
         }
+    }
+
+    private int[] getIconListFromSubType(int subscription, boolean roaming) {
+        int[] iconList;
+        /* find out radio technology by looking at service state */
+        switch (mMSimServiceState[subscription].getRadioTechnology()) {
+            case ServiceState.RADIO_TECHNOLOGY_IS95A:
+            case ServiceState.RADIO_TECHNOLOGY_IS95B:
+            case ServiceState.RADIO_TECHNOLOGY_1xRTT:
+            case ServiceState.RADIO_TECHNOLOGY_GPRS:
+            case ServiceState.RADIO_TECHNOLOGY_EDGE:
+                iconList = roaming?TelephonyIcons.MULTI_SIGNAL_IMAGES_R_G[subscription][mInetCondition]
+                           :TelephonyIcons.MULTI_SIGNAL_IMAGES_G[subscription][mInetCondition];
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_LTE:
+            case ServiceState.RADIO_TECHNOLOGY_UMTS:
+            case ServiceState.RADIO_TECHNOLOGY_EVDO_0:
+            case ServiceState.RADIO_TECHNOLOGY_EVDO_A:
+            case ServiceState.RADIO_TECHNOLOGY_EVDO_B:
+            case ServiceState.RADIO_TECHNOLOGY_EHRPD:
+                iconList = roaming?TelephonyIcons.MULTI_SIGNAL_IMAGES_R_3G[subscription][mInetCondition]
+                           :TelephonyIcons.MULTI_SIGNAL_IMAGES_3G[subscription][mInetCondition];
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_HSDPA:
+            case ServiceState.RADIO_TECHNOLOGY_HSUPA:
+            case ServiceState.RADIO_TECHNOLOGY_HSPA:
+                iconList = roaming?TelephonyIcons.MULTI_SIGNAL_IMAGES_R_H[subscription][mInetCondition]
+                           :TelephonyIcons.MULTI_SIGNAL_IMAGES_H[subscription][mInetCondition];
+                break;
+            default:
+                iconList = roaming?TelephonyIcons.MULTI_SIGNAL_IMAGES_R_G[subscription][mInetCondition]
+                           :TelephonyIcons.MULTI_SIGNAL_IMAGES_G[subscription][mInetCondition];
+                break;
+        }
+        return iconList;
     }
 
     private final void updateDataNetType(int subscription) {
@@ -624,8 +691,13 @@ public class MSimNetworkController extends NetworkController {
 
     private final void updateSimIcon(int cardIndex) {
         Slog.d(TAG,"In updateSimIcon card =" + cardIndex + ", simState= " + mMSimState[cardIndex]);
+Log.i(TAG,"In updateSimIcon card =" + cardIndex + ", simState= " + mMSimState[cardIndex]);
         if (mMSimState[cardIndex] ==  IccCard.State.ABSENT) {
-            mNoMSimIconId[cardIndex] = R.drawable.stat_sys_no_sim;
+            if (FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) {
+                mNoMSimIconId[cardIndex] = MULTI_NO_SIM_NEW[cardIndex];
+            } else {
+                mNoMSimIconId[cardIndex] = R.drawable.stat_sys_no_sim;
+            }
         } else {
             mNoMSimIconId[cardIndex] = 0;
         }
