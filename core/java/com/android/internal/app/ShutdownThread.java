@@ -18,6 +18,8 @@
  
 package com.android.internal.app;
 
+import java.io.File;
+
 import android.app.ActivityManagerNative;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -83,7 +85,11 @@ public final class ShutdownThread extends Thread {
     private PowerManager.WakeLock mCpuWakeLock;
     private PowerManager.WakeLock mScreenWakeLock;
     private Handler mHandler;
-    
+
+    private static final String USER_BOOTANIMATION_FILE = "/data/local/shutdownanimation.zip";
+    private static final String SYSTEM_BOOTANIMATION_FILE = "/system/media/shutdownanimation.zip";
+    private static final String SYSTEM_ENCRYPTED_BOOTANIMATION_FILE = "/system/media/shutdownanimation-encrypted.zip";
+
     private ShutdownThread() {
     }
  
@@ -179,7 +185,7 @@ public final class ShutdownThread extends Thread {
             sIsStarted = true;
         }
 
-        if (FeatureQuery.FEATURE_BOOT_ANIMATION)
+        if (FeatureQuery.FEATURE_BOOT_ANIMATION && checkAnimationFileExist())
             showShutdownAnimation();
 
         // throw up an indeterminate system dialog to indicate radio is
@@ -453,6 +459,15 @@ public final class ShutdownThread extends Thread {
         // Shutdown power
         Log.i(TAG, "Performing low-level shutdown...");
         Power.shutdown();
+    }
+
+    private static boolean checkAnimationFileExist() {
+        if (new File(USER_BOOTANIMATION_FILE).exists()
+                || new File(SYSTEM_BOOTANIMATION_FILE).exists()
+                || new File(SYSTEM_ENCRYPTED_BOOTANIMATION_FILE).exists())
+            return true;
+        else
+            return false;
     }
 
     private static void showShutdownAnimation() {

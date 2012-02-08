@@ -270,6 +270,7 @@ status_t BootAnimation::readyToRun() {
 
     bool encryptedAnimation = atoi(decrypt) != 0 || !strcmp("trigger_restart_min_framework", decrypt);
 
+#ifdef BOOT_ANIMATION_ENABLE
     if ((encryptedAnimation &&
             (access(getAnimationFileName(IMG_ENC), R_OK) == 0) &&
             (mZip.open(getAnimationFileName(IMG_ENC)) == NO_ERROR)) ||
@@ -281,6 +282,7 @@ status_t BootAnimation::readyToRun() {
             (mZip.open(getAnimationFileName(IMG_SYS)) == NO_ERROR))) {
         mAndroidAnimation = false;
     }
+#endif
 
     return NO_ERROR;
 }
@@ -469,9 +471,7 @@ bool BootAnimation::movie()
     Region clearReg(Rect(mWidth, mHeight));
     clearReg.subtractSelf(Rect(xc, yc, xc+animation.width, yc+animation.height));
 
-#ifdef BOOT_ANIMATION_ENABLE
     playBackgroundMusic();
-#endif
 
     for (int i=0 ; i<pcount && !exitPending() ; i++) {
         const Animation::Part& part(animation.parts[i]);
