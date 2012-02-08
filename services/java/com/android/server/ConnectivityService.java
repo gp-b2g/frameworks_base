@@ -3340,13 +3340,13 @@ private NetworkStateTracker makeWimaxStateTracker() {
     }
 
     /* Used by FmcProvider to get FMC status */
-    public boolean getFmcStatus(IBinder listener) {
+    public int getFmcStatus(IBinder listener) {
         if(mFmcSM != null) {
-            return mFmcSM.getStatus() >= 0;
+            return mFmcSM.getStatus();
         }
         else {
             Slog.d(TAG, "mFmcSM is null while calling startFmc");
-            return false;
+            return -1;
         }
     }
 
