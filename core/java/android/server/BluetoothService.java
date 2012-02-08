@@ -611,10 +611,8 @@ public class BluetoothService extends IBluetooth.Stub {
         if (mIsAirplaneSensitive && isAirplaneModeOn() && !mIsAirplaneToggleable) {
             return false;
         }
-        // Delay to bringup BTC module
-        mBluetoothState.sendMessageDelayed(BluetoothAdapterStateMachine.USER_TURN_ON,
-                                           saveSetting, 200);
-        SystemProperties.set("bluetooth.isEnabled","true");
+        mBluetoothState.sendMessage(BluetoothAdapterStateMachine.USER_TURN_ON,
+                                           saveSetting);
         return true;
     }
 

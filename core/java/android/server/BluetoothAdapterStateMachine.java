@@ -421,6 +421,13 @@ final class BluetoothAdapterStateMachine extends StateMachine {
                     // let it fall to TURN_ON_CONTINUE:
                     //$FALL-THROUGH$
                 case TURN_ON_CONTINUE:
+                    // Start the BTC module and wait for it to come up
+                    SystemProperties.set("bluetooth.isEnabled","true");
+                    try {
+                         Thread.sleep(200);
+                    } catch (InterruptedException e) {
+                         log("Sleep interrupted: BTC is not yet up, might miss some of the events");
+                    }
                     mBluetoothService.switchConnectable(true);
                     transitionTo(mSwitching);
                     break;
