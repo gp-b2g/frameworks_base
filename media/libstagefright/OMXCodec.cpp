@@ -683,6 +683,19 @@ sp<MediaSource> OMXCodec::Create(
 
         LOGE("Attempting to allocate OMX node '%s'", componentName);
 
+#if USE_AAC_HW_DEC
+        int aacformattype = 0;
+        int aacLTPType = 0;
+        sp<MetaData> metadata = source->getFormat();
+        metadata->findInt32(kkeyAacFormatAdif, &aacformattype);
+        metadata->findInt32(kkeyAacFormatLtp, &aacLTPType);
+
+        if ((aacformattype == true)|| aacLTPType == true)  {
+            LOGE("This is ADIF/LTP clip , so using sw decoder ");
+            componentName= "OMX.google.aac.decoder";
+            componentNameBase = "OMX.google.aac.decoder";
+        }
+#endif
         uint32_t quirks = getComponentQuirks(componentNameBase, createEncoder);
         if(quirks & kRequiresWMAProComponent)
         {
@@ -701,18 +714,7 @@ sp<MediaSource> OMXCodec::Create(
               componentName= "OMX.qcom.audio.decoder.wmaLossLess";
            }
         }
-#if USE_AAC_HW_DEC
-        int aacformattype = 0;
-        int aacLTPType = 0;
-        sp<MetaData> metadata = source->getFormat();
-        metadata->findInt32(kkeyAacFormatAdif, &aacformattype);
-        metadata->findInt32(kkeyAacFormatLtp, &aacLTPType);
 
-        if ((aacformattype == true)|| aacLTPType == true)  {
-            LOGE("This is ADIF/LTP clip , so using sw decoder ");
-            componentName= "OMX.google.aac.decoder";
-        }
-#endif
         if (!createEncoder
                 && (quirks & kOutputBuffersAreUnreadable)
                 && (flags & kClientNeedsFramebuffer)) {
