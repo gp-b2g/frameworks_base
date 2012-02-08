@@ -407,8 +407,7 @@ public class SmsCbMessage {
         if (body != null) {
             // Remove trailing carriage return
             for (int i = body.length() - 1; i >= 0; i--) {
-                if (body.charAt(i) != CARRIAGE_RETURN
-                        && body.charAt(i) != '@') {
+                if (body.charAt(i) != CARRIAGE_RETURN) {
                     body = body.substring(0, i + 1);
                     break;
                 }
