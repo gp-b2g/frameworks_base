@@ -51,6 +51,12 @@ LOCAL_CFLAGS += -DGFX_TESTFRAMEWORK
 LOCAL_SHARED_LIBRARIES += libtestframework
 endif
 
+ifeq ($(TARGET_HAVE_BYPASS),true)
+    LOCAL_CFLAGS += -DBUFFER_COUNT_SERVER=3
+else
+    LOCAL_CFLAGS += -DBUFFER_COUNT_SERVER=2
+endif
+
 LOCAL_C_INCLUDES := \
 	$(call include-path-for, corecg graphics)
 
