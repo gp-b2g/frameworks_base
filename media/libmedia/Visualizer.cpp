@@ -25,6 +25,7 @@
 #include <limits.h>
 
 #include <cutils/bitops.h>
+#include <cutils/properties.h>
 
 #include <media/Visualizer.h>
 
@@ -41,10 +42,19 @@ Visualizer::Visualizer (int32_t priority,
     :   AudioEffect(SL_IID_VISUALIZATION, NULL, priority, cbf, user, sessionId),
         mCaptureRate(CAPTURE_RATE_DEF),
         mCaptureSize(CAPTURE_SIZE_DEF),
-        mSampleRate(44100000),
         mCaptureCallBack(NULL),
         mCaptureCbkUser(NULL)
 {
+    char value[PROPERTY_VALUE_MAX];
+    int quality = 0;
+    if (property_get("af.resampler.quality", value, 0)) {
+        quality = atoi(value);
+    }
+    if(quality == 255) {
+        mSampleRate = 48000000;
+    } else {
+        mSampleRate = 44100000;
+    }
     initCaptureSize();
 }
 

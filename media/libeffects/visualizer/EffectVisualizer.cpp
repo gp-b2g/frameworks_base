@@ -17,6 +17,7 @@
 #define LOG_TAG "Visualizer"
 //#define LOG_NDEBUG 0
 #include <cutils/log.h>
+#include <cutils/properties.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -128,7 +129,17 @@ int Visualizer_init(VisualizerContext *pContext)
     pContext->mConfig.inputCfg.accessMode = EFFECT_BUFFER_ACCESS_READ;
     pContext->mConfig.inputCfg.channels = AUDIO_CHANNEL_OUT_STEREO;
     pContext->mConfig.inputCfg.format = AUDIO_FORMAT_PCM_16_BIT;
-    pContext->mConfig.inputCfg.samplingRate = 44100;
+
+    char value[PROPERTY_VALUE_MAX];
+    int quality = 0;
+    if (property_get("af.resampler.quality", value, 0)) {
+        quality = atoi(value);
+    }
+    if(quality == 255) {
+        pContext->mConfig.inputCfg.samplingRate = 48000;
+    } else {
+        pContext->mConfig.inputCfg.samplingRate = 44100;
+    }
     pContext->mConfig.inputCfg.bufferProvider.getBuffer = NULL;
     pContext->mConfig.inputCfg.bufferProvider.releaseBuffer = NULL;
     pContext->mConfig.inputCfg.bufferProvider.cookie = NULL;
@@ -136,7 +147,11 @@ int Visualizer_init(VisualizerContext *pContext)
     pContext->mConfig.outputCfg.accessMode = EFFECT_BUFFER_ACCESS_ACCUMULATE;
     pContext->mConfig.outputCfg.channels = AUDIO_CHANNEL_OUT_STEREO;
     pContext->mConfig.outputCfg.format = AUDIO_FORMAT_PCM_16_BIT;
-    pContext->mConfig.outputCfg.samplingRate = 44100;
+    if(quality == 255) {
+        pContext->mConfig.outputCfg.samplingRate = 48000;
+    } else {
+        pContext->mConfig.outputCfg.samplingRate = 44100;
+    }
     pContext->mConfig.outputCfg.bufferProvider.getBuffer = NULL;
     pContext->mConfig.outputCfg.bufferProvider.releaseBuffer = NULL;
     pContext->mConfig.outputCfg.bufferProvider.cookie = NULL;
