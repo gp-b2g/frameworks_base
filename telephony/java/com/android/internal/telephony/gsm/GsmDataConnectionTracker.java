@@ -1797,8 +1797,11 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE,
                         dcac.dataConnection.getDataConnectionId());
 
-        PendingIntent alarmIntent = PendingIntent.getBroadcast (mPhone.getContext(), 0,
-                                                                intent, 0);
+        // FLAG_UPDATE_CURRENT is used to update a pending intent each time since
+        // the parameters used for initial setup retries differ from the parameters
+        // used for retries for dual-ip partial success.
+        PendingIntent alarmIntent = PendingIntent.getBroadcast
+                    (mPhone.getContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         dcac.setReconnectIntentSync(alarmIntent);
         am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 SystemClock.elapsedRealtime() + delay, alarmIntent);
