@@ -529,7 +529,9 @@ class AlarmManagerService extends IAlarmManager.Stub {
 
             // Recurring alarms may have passed several alarm intervals while the
             // phone was asleep or off, so pass a trigger count when sending them.
-            if (localLOGV) Slog.v(TAG, "Alarm triggering: " + alarm);
+            if (localLOGV || SystemProperties.getInt("persist.alarm.debug", 0) == 1)
+                Slog.v(TAG, "Alarm triggering: " + alarm);
+
             alarm.count = 1;
             if (alarm.repeatInterval > 0) {
                 // this adjustment will be zero if we're late by
