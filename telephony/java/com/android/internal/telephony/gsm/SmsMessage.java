@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2010-2012, Code Aurora Forum. All rights reserved.
  * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -924,6 +925,9 @@ public class SmsMessage extends SmsMessageBase {
                 //This should be processed in the same way as MTI == 0 (Deliver)
             parseSmsDeliver(p, firstByte);
             break;
+        case 1:
+            parseSmsSubmit(p, firstByte);
+            break;
         case 2:
             parseSmsStatusReport(p, firstByte);
             break;
@@ -982,6 +986,39 @@ public class SmsMessage extends SmsMessageBase {
         }
     }
 
+    private void parseSmsSubmit(PduParser p, int firstByte) {
+        replyPathPresent = (firstByte & 0x80) == 0x80;
+
+        // TP-Message-Reference
+        messageRef = p.getByte();
+        // TP-Recipient-Address
+        recipientAddress = p.getAddress();
+
+        if (recipientAddress != null) {
+            if (true) Log.v(LOG_TAG, "SMS originating address: "
+                    + recipientAddress.address);
+        }
+
+        // TP-Protocol-Identifier (TP-PID)
+        // TS 23.040 9.2.3.9
+        protocolIdentifier = p.getByte();
+
+        // TP-Data-Coding-Scheme
+        // see TS 23.038
+        dataCodingScheme = p.getByte();
+
+        if (true) {
+            Log.v(LOG_TAG, "SMS TP-PID:" + protocolIdentifier
+                    + " data coding scheme: " + dataCodingScheme);
+        }
+
+        int validityPeriodFormat = firstByte & 0x18;
+        parseValidityPeriod(p, validityPeriodFormat);
+
+        boolean hasUserDataHeader = (firstByte & 0x40) == 0x40;
+
+        parseUserData(p, hasUserDataHeader);
+    }
     private void parseSmsDeliver(PduParser p, int firstByte) {
         replyPathPresent = (firstByte & 0x80) == 0x80;
 
@@ -1012,6 +1049,31 @@ public class SmsMessage extends SmsMessageBase {
         boolean hasUserDataHeader = (firstByte & 0x40) == 0x40;
 
         parseUserData(p, hasUserDataHeader);
+    }
+
+    private void parseValidityPeriod(PduParser p, int validityPeriodFormat) {
+        // TODO: make this parse has real meaning.
+        switch (validityPeriodFormat) {
+            case 0: { // TP-VP field not present
+                break;
+            }
+            case 2: { // TP VP field present - relative format
+                p.getByte();
+                break;
+            }
+            case 1: { // TP-VP field present - enhanced format
+                for (int i = 0; i < 7; i++) {
+                    p.getByte();
+                }
+                break;
+            }
+            case 3: { // TP VP field present - absolute format
+                for (int i = 0; i < 7; i++) {
+                    p.getByte();
+                }
+                break;
+            }
+        }
     }
 
     /**
