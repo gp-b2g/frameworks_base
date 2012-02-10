@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  * Copyright (C) 2010 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -321,6 +322,10 @@ public class RecoverySystem {
     public static void installPackage(Context context, File packageFile)
         throws IOException {
         String filename = packageFile.getCanonicalPath();
+        // recovery just mount "/sdcard" and the file start with "/mnt/sdcard/"
+        // can not be read
+        if (filename.startsWith("/mnt/sdcard/"))
+            filename = filename.substring(4);
         Log.w(TAG, "!!! REBOOTING TO INSTALL " + filename + " !!!");
         String arg = "--update_package=" + filename;
         bootCommand(context, arg);
