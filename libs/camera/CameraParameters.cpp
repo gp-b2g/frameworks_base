@@ -124,6 +124,9 @@ const char CameraParameters::KEY_VIDEO_STABILIZATION_SUPPORTED[] = "video-stabil
 const char CameraParameters::KEY_ZSL[] = "zsl";
 const char CameraParameters::KEY_SUPPORTED_ZSL_MODES[] = "zsl-values";
 const char CameraParameters::KEY_CAMERA_MODE[] = "camera-mode";
+const char CameraParameters::KEY_AE_BRACKET_HDR[] = "ae-bracket-hdr";
+/*only effective when KEY_AE_BRACKET_HDR set to ae_bracketing*/
+//const char CameraParameters::KEY_AE_BRACKET_SETTING_KEY[] = "ae-bracket-setting";
 
 const char CameraParameters::TRUE[] = "true";
 const char CameraParameters::FALSE[] = "false";
@@ -298,6 +301,11 @@ const char CameraParameters::HDR_DISABLE[] = "disable";
 // Values for ZSL settings.
 const char CameraParameters::ZSL_OFF[] = "off";
 const char CameraParameters::ZSL_ON[] = "on";
+
+// Values for HDR Bracketing settings.
+const char CameraParameters::AE_BRACKET_HDR_OFF[] = "Off";
+const char CameraParameters::AE_BRACKET_HDR[] = "HDR";
+const char CameraParameters::AE_BRACKET[] = "AE-Bracket";
 
 static const char* portrait = "portrait";
 static const char* landscape = "landscape";

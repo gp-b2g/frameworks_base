@@ -802,6 +802,9 @@ status_t CameraService::Client::takePicture(int msgType) {
     memset(prop, 0, sizeof(prop));
     property_get("persist.camera.snapshot.number", prop, "0");
     mburstCnt = atoi(prop);
+    if (!mburstCnt) {
+        mburstCnt = mHardware->getParameters().getInt("num-snaps-per-shutter");
+    }
     LOG1("mburstCnt = %d", mburstCnt);
     return mHardware->takePicture();
 }
