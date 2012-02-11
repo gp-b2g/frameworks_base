@@ -40,6 +40,7 @@ import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
+import android.provider.Telephony;
 import android.telephony.ServiceState;
 import android.text.TextUtils;
 import android.util.Log;
@@ -270,7 +271,6 @@ public abstract class DataConnectionTracker extends Handler {
     protected IccRecords mIccRecords;
     protected Activity mActivity = Activity.NONE;
     protected State mState = State.IDLE;
-    protected Handler mDataConnectionTracker = null;
 
 
     protected long mTxPkts;
@@ -357,6 +357,26 @@ public abstract class DataConnectionTracker extends Handler {
     // data call even when there is no service on mobile networks.
     protected boolean mCheckForConnectivity = true;
     protected boolean mCheckForSubscription = true;
+
+    /** Watches for changes to the APN db. */
+    private ApnChangeObserver mApnObserver;
+
+    /**
+     * Handles changes to the APN db.
+     */
+    private class ApnChangeObserver extends ContentObserver {
+        public ApnChangeObserver (Handler h) {
+            super(h);
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            sendMessage(obtainMessage(EVENT_APN_CHANGED));
+        }
+    }
+
+    // Handles changes in Profiles database
+    protected abstract void onApnChanged();
 
     protected BroadcastReceiver mIntentReceiver = new BroadcastReceiver ()
     {
@@ -576,6 +596,10 @@ public abstract class DataConnectionTracker extends Handler {
         // watch for changes to Settings.Secure.DATA_ROAMING
         mDataRoamingSettingObserver = new DataRoamingSettingObserver(mPhone);
         mDataRoamingSettingObserver.register(mPhone.getContext());
+
+        mApnObserver = new ApnChangeObserver(this);
+        mPhone.getContext().getContentResolver().registerContentObserver(
+                Telephony.Carriers.CONTENT_URI, true, mApnObserver);
     }
 
     public void dispose() {
@@ -588,6 +612,7 @@ public abstract class DataConnectionTracker extends Handler {
         mDataRoamingSettingObserver.unregister(mPhone.getContext());
         mUiccManager.unregisterForIccChanged(this);
         mPhone.mCM.unregisterForTetheredModeStateChanged(this);
+        mPhone.getContext().getContentResolver().unregisterContentObserver(this.mApnObserver);
     }
 
     protected void broadcastMessenger() {
@@ -814,6 +839,9 @@ public abstract class DataConnectionTracker extends Handler {
                 break;
             case EVENT_TETHERED_MODE_STATE_CHANGED:
                 onTetheredModeStateChanged((AsyncResult) msg.obj);
+                break;
+            case EVENT_APN_CHANGED:
+                onApnChanged();
                 break;
             default:
                 Log.e("DATA", "Unidentified event msg=" + msg);
