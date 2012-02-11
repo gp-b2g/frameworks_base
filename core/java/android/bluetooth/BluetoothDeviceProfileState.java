@@ -99,6 +99,7 @@ public final class BluetoothDeviceProfileState extends StateMachine {
     private static final String ACCESS_AUTHORITY_PACKAGE = "com.android.settings";
     private static final String ACCESS_AUTHORITY_CLASS =
         "com.android.settings.bluetooth.BluetoothPermissionRequest";
+    private static final String BLUETOOTH_PERM = android.Manifest.permission.BLUETOOTH;
 
     private BondedDevice mBondedDevice = new BondedDevice();
     private OutgoingHandsfree mOutgoingHandsfree = new OutgoingHandsfree();
@@ -280,6 +281,7 @@ public final class BluetoothDeviceProfileState extends StateMachine {
         public void onServiceConnected(int profile, BluetoothProfile proxy) {
             synchronized(BluetoothDeviceProfileState.this) {
                 mHeadsetService = (BluetoothHeadset) proxy;
+                mHeadsetState = BluetoothProfile.STATE_DISCONNECTED;
                 if (mAutoConnectionPending) {
                     sendMessage(AUTO_CONNECT_PROFILES);
                     mAutoConnectionPending = false;
@@ -289,6 +291,20 @@ public final class BluetoothDeviceProfileState extends StateMachine {
         public void onServiceDisconnected(int profile) {
             synchronized(BluetoothDeviceProfileState.this) {
                 mHeadsetService = null;
+                if (mHeadsetState != BluetoothHeadset.STATE_DISCONNECTED) {
+                    // It seems BluetoothHeadsetService crashed. I am the only
+                    // class to know valid BluetoothHeadset state. Let me send the
+                    // updated status to other listeners.
+                    int prevState = mHeadsetState;
+                    Intent intent = new Intent(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED);
+                    mHeadsetState = BluetoothHeadset.STATE_DISCONNECTED;
+                    mService.sendConnectionStateChange(mDevice, BluetoothProfile.HEADSET,
+                                                       mHeadsetState, prevState);
+                    intent.putExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, prevState);
+                    intent.putExtra(BluetoothProfile.EXTRA_STATE, mHeadsetState);
+                    intent.putExtra(BluetoothDevice.EXTRA_DEVICE, mDevice);
+                    mContext.sendBroadcast(intent, BLUETOOTH_PERM);
+                }
             }
         }
     };
