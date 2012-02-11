@@ -809,8 +809,8 @@ status_t SurfaceTexture::updateTexImage(bool avoidBindTexture) {
         EGLImageKHR image = mSlots[buf].mEglImage;
         EGLDisplay dpy = eglGetCurrentDisplay();
         if (isGPUSupportedFormat(mSlots[buf].mGraphicBuffer->format) &&
-            (avoidBindTexture == false) ||
-            (isGPUSupportedFormatInHW(mSlots[buf].mGraphicBuffer->format))) {
+            ((avoidBindTexture == false) ||
+            (isGPUSupportedFormatInHW(mSlots[buf].mGraphicBuffer->format)))) {
 
             if (image == EGL_NO_IMAGE_KHR) {
                 if (mSlots[buf].mGraphicBuffer == 0) {
