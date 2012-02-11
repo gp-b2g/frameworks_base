@@ -3764,7 +3764,11 @@ public class BluetoothService extends IBluetooth.Stub {
                 charPaths = getCharacteristicsFromCache(servicePath);
             try {
                 callback.onCharacteristicsDiscovered(charPaths, result);
-            } catch (RemoteException e) {Log.e(TAG, "", e);}
+            } catch (RemoteException e) {
+                Log.e(TAG, "", e);
+                forceCloseGattService(servicePath);
+            }
+
         } else
             Log.d(TAG, "Discover Characteristics Callback for  service " + servicePath + " not queued");
 
@@ -3788,7 +3792,11 @@ public class BluetoothService extends IBluetooth.Stub {
         if (callback != null) {
             try {
                 callback.onSetCharacteristicProperty(charPath, property, result);
-            } catch (RemoteException e) {Log.e(TAG, "", e);}
+            } catch (RemoteException e) {
+                Log.e(TAG, "", e);
+                forceCloseGattService(servicePath);
+            }
+
         } else
             Log.d(TAG, "Set Characteristics Property Callback for  service " + servicePath + " not queued");
 
@@ -3813,7 +3821,10 @@ public class BluetoothService extends IBluetooth.Stub {
         if (callback != null) {
             try {
                 callback.onValueChanged(charPath, value);
-            } catch (RemoteException e) {Log.e(TAG, "", e);}
+            } catch (RemoteException e) {
+                Log.e(TAG, "", e);
+                forceCloseGattService(servicePath);
+            }
         } else {
             Log.d(TAG, "Callback for service " + servicePath + " not registered");
         }
@@ -3834,7 +3845,10 @@ public class BluetoothService extends IBluetooth.Stub {
         if (callback != null) {
             try {
                 callback.onCharacteristicValueUpdated(charPath, result);
-            } catch (RemoteException e) {Log.e(TAG, "", e);}
+            } catch (RemoteException e) {
+                Log.e(TAG, "", e);
+                forceCloseGattService(servicePath);
+            }
         } else {
             Log.d(TAG, "Callback for service " + servicePath + " not registered");
         }
@@ -4080,6 +4094,35 @@ public class BluetoothService extends IBluetooth.Stub {
         return true;
     }
 
+    private void clearGattService(String path, boolean flush) {
+
+        Map<String, String> properties = mGattProperties.get(path);
+
+        if (properties != null) {
+            String chars = properties.get("Characteristics");
+
+            if (chars != null) {
+                String[] charPaths = chars.split(",");
+
+                for (int i = 0; i < charPaths.length; i++)
+                    mGattServiceTracker.remove(charPaths[i]);
+            }
+        }
+
+        if (flush)
+            removeGattServiceProperties(path);
+
+        mGattServiceTracker.remove(path);
+        mGattWatcherTracker.remove(path);
+    }
+
+    private void forceCloseGattService(String path) {
+
+        Log.d(TAG, "Cleanup GATT service " + path);
+        clearGattService(path, false);
+        mGattServices.remove(path);
+    }
+
     public synchronized void closeRemoteGattService(String path) {
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
         if (!isEnabledInternal()) return;
@@ -4100,24 +4143,10 @@ public class BluetoothService extends IBluetooth.Stub {
             return;
         }
 
-        Map<String, String> properties = mGattProperties.get(path);
 
-        if (properties != null) {
-            String chars = properties.get("Characteristics");
+        forceCloseGattService(path);
 
-            if (chars != null) {
-                String[] charPaths = chars.split(",");
-
-                for (int i = 0; i < charPaths.length; i++)
-                    mGattServiceTracker.remove(charPaths[i]);
-            }
-        }
-
-        removeGattServiceProperties(path);
-        mGattServiceTracker.remove(path);
-        mGattServices.remove(path);
-
-        //Check if we can disconnect from the remote device (LE only)
+        //Check if we should request GATT disconnect
         String devicePath = path.substring(0, path.indexOf("/service"));
 
         if (devicePath == null)
@@ -4145,8 +4174,8 @@ public class BluetoothService extends IBluetooth.Stub {
         boolean res;
         res = disconnectGattNative(path);
         Log.d(TAG, "disconnectGatt " + res);
-
     }
+
     public synchronized void disconnectSap() {
         Log.d(TAG, "disconnectSap");
         int res = disConnectSapNative();
@@ -4166,11 +4195,10 @@ public class BluetoothService extends IBluetooth.Stub {
         services = value.split(",");
 
         for(int i = 0; i < services.length; i++)
-            closeRemoteGattService(services[i]);
+            clearGattService(services[i], true);
 
         setRemoteDeviceProperty(address, "Services", null);
     }
-
 
     private native static void classInitNative();
     private native void initializeNativeDataNative();
