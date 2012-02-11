@@ -33,6 +33,11 @@
 #include "SurfaceFlinger.h"
 #include "DisplayHardware/DisplayHardware.h"
 
+extern int drawRotatedTexture(int orientation, int tWidth, int fbHeight,
+                                   const android::Region& clip,
+                                   GLfloat *vertices, GLfloat *texCoords)
+                                   __attribute__((weak));
+
 namespace android {
 
 // ---------------------------------------------------------------------------
@@ -451,6 +456,16 @@ void LayerBase::drawWithOpenGL(const Region& clip) const
     texCoords[2].v = 0;
     texCoords[3].u = 1;
     texCoords[3].v = 1;
+
+    if (drawRotatedTexture) {
+        int tWidth = mTransformedBounds.right - mTransformedBounds.left;
+        int val = drawRotatedTexture(mOrientation, tWidth, fbHeight,
+                                             clip, (GLfloat *) mVertices,
+                                                  (GLfloat *) texCoords);
+        if (val == NO_ERROR) {
+            return;
+        }
+    }
 
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     glVertexPointer(2, GL_FLOAT, 0, mVertices);
