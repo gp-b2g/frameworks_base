@@ -563,7 +563,7 @@ void SoftAAC::helperOnQueueFilledForADIF(){
                 mTempBufferTotalSize = 0;
                 mInputBufferSize= 0;
                 mTempBufferOffset =0;
-
+                mTempBufferDataLen = 0;
                 mCheckFragment = false;
 
                 //reset the progress bar
@@ -659,7 +659,12 @@ void SoftAAC::helperOnQueueFilledForADIF(){
 
             if(decoderErr == MP4AUDEC_INCOMPLETE_FRAME) {
                 LOGD("Handle Incomplete frame error ");
-
+                if((inHeader != NULL) && (inHeader->nFlags & OMX_BUFFERFLAG_EOS))
+                {
+                    LOGW("No more data available to make a complete frame\n");
+                    mTempBufferDataLen = mTempBufferOffset = 0;
+                    continue;
+                }
                 if(mConfig->inputBufferUsedLength == mInputBufferSize) {
                     LOGW("Decoder cannot process the buffer due to invalid frame");
                     decoderErr = MP4AUDEC_INVALID_FRAME;
@@ -699,7 +704,7 @@ void SoftAAC::helperOnQueueFilledForADIF(){
                             mTempBufferTotalSize = 0;
                             mInputBufferSize= 0;
                             mTempBufferOffset =0;
-
+                            mTempBufferDataLen = 0;
                             mCheckFragment = false;
 
                             //reset the progress bar
@@ -767,15 +772,16 @@ void SoftAAC::helperOnQueueFilledForADIF(){
                 mTempBufferTotalSize = 0;
                 mInputBufferSize= 0;
                 mTempBufferOffset =0;
-
+                mTempBufferDataLen = 0;
                 mCheckFragment = false;
 
-                //reset the progress bar
-                mNumSamplesOutput = 0;
+               //reset the progress bar
+               mNumSamplesOutput = 0;
 
-                LOGE("In ADIF, this is non recoverable, so just exit ...");
-                notify(OMX_EventError, OMX_ErrorUndefined, UNKNOWN_ERROR, NULL);
-                return;
+               LOGE("In ADIF, this is non recoverable, so just exit ...");
+               mSignalledError = true;
+               notify(OMX_EventError, OMX_ErrorUndefined, UNKNOWN_ERROR, NULL);
+               return;
 
             }
 
