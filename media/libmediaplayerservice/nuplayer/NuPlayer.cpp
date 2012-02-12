@@ -63,7 +63,8 @@ NuPlayer::NuPlayer()
       mSkipRenderingVideoUntilMediaTimeUs(-1ll),
       mVideoLateByUs(0ll),
       mNumFramesTotal(0ll),
-      mNumFramesDropped(0ll) {
+      mNumFramesDropped(0ll),
+      mIsHttpLive(false) {
 }
 
 NuPlayer::~NuPlayer() {
@@ -92,9 +93,11 @@ void NuPlayer::setDataSource(
     if (!strncasecmp(url, "rtsp://", 7)) {
         msg->setObject(
                 "source", new RTSPSource(url, headers, mUIDValid, mUID));
+        mIsHttpLive = false;
     } else {
         msg->setObject(
                 "source", new HTTPLiveSource(url, headers, mUIDValid, mUID));
+        mIsHttpLive = true;
     }
 
     msg->post();
@@ -393,7 +396,6 @@ void NuPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 mRenderer->queueEOS(audio, UNKNOWN_ERROR);
             } else {
                 CHECK_EQ((int)what, (int)ACodec::kWhatDrainThisBuffer);
-
                 renderBuffer(audio, codecRequest);
             }
 
@@ -522,10 +524,15 @@ void NuPlayer::onMessageReceived(const sp<AMessage> &msg) {
             LOGV("kWhatSeek seekTimeUs=%lld us (%.2f secs)",
                  seekTimeUs, seekTimeUs / 1E6);
 
-            mSource->seekTo(seekTimeUs, &newSeekTime);
-            LOGV("newSeekTime %lld", newSeekTime);
+            mSource->seekTo(seekTimeUs);
+
+            if( mIsHttpLive ) {
+                mSource->getNewSeekTime(&newSeekTime);
+                LOGV("newSeekTime %lld", newSeekTime);
+            }
 
             if( newSeekTime >= 0 ) {
+               mTimeDiscontinuityPending = true;
                if( (mAudioDecoder != NULL) &&
                    (mFlushingAudio == NONE || mFlushingAudio == AWAITING_DISCONTINUITY) ) {
                   flushDecoder( true, true );
