@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (C) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +18,18 @@
 package com.android.internal.telephony;
 
 import android.content.pm.PackageManager;
+import android.content.ContentValues;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.PhoneNumberUtils;
 import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
-
 
 /**
  * SimPhoneBookInterfaceManager to provide an inter-process communication to
@@ -58,6 +60,13 @@ public class IccPhoneBookInterfaceManagerProxy extends IIccPhoneBook.Stub {
                 efid, oldTag, oldPhoneNumber, newTag, newPhoneNumber, pin2);
     }
 
+    public boolean
+    updateAdnRecordsInEfBySearch (int efid,
+            ContentValues values,
+            String pin2) throws android.os.RemoteException {
+        return mIccPhoneBookInterfaceManager.updateAdnRecordsInEfBySearch(
+                efid, values, pin2);
+    }
     public boolean
     updateAdnRecordsInEfByIndex(int efid, String newTag,
             String newPhoneNumber, int index, String pin2) throws android.os.RemoteException {

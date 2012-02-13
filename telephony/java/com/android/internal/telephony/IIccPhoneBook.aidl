@@ -1,5 +1,6 @@
 /*
 ** Copyright 2007, The Android Open Source Project
+** Copyright (c) 2012, 2010-2011, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -17,7 +18,7 @@
 package com.android.internal.telephony;
 
 import com.android.internal.telephony.AdnRecord;
-
+import android.content.ContentValues;
 
 
 /** Interface for applications to access the ICC phone book.
@@ -64,8 +65,7 @@ interface IIccPhoneBook {
      * @return true for success
      */
     boolean updateAdnRecordsInEfBySearch(int efid,
-            String oldTag, String oldPhoneNumber,
-            String newTag, String newPhoneNumber,
+            in ContentValues values,
             String pin2);
 
     /**

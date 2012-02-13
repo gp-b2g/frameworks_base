@@ -18,7 +18,7 @@
 package com.android.internal.telephony;
 
 import com.android.internal.telephony.AdnRecord;
-
+import android.content.ContentValues;
 
 
 /** Interface for applications to access the ICC phone book.
@@ -65,8 +65,7 @@ interface IIccPhoneBookMSim {
      * @return true for success
      */
     boolean updateAdnRecordsInEfBySearch(int efid,
-            String oldTag, String oldPhoneNumber,
-            String newTag, String newPhoneNumber,
+            in ContentValues values,
             String pin2);
 
     /**
@@ -126,10 +125,8 @@ interface IIccPhoneBookMSim {
      * @return true for success
      */
     boolean updateAdnRecordsInEfBySearchOnSubscription(int efid,
-            String oldTag, String oldPhoneNumber,
-            String newTag, String newPhoneNumber,
+            in ContentValues values,
             String pin2, int subscription);
-
     /**
      * Update an ADN-like EF record by record index
      *

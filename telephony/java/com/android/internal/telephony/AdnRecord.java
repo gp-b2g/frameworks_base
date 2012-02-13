@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +24,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.Arrays;
-
+import java.io.UnsupportedEncodingException;
 
 /**
  *
@@ -40,6 +41,7 @@ public class AdnRecord implements Parcelable {
     String alphaTag = null;
     String number = null;
     String[] emails;
+    String[] additionalNumbers = null;
     int extRecord = 0xff;
     int efid;                   // or 0 if none
     int recordNumber;           // or 0 if none
@@ -77,14 +79,15 @@ public class AdnRecord implements Parcelable {
             String alphaTag;
             String number;
             String[] emails;
-
+            String[] additionalNumbers;
             efid = source.readInt();
             recordNumber = source.readInt();
             alphaTag = source.readString();
             number = source.readString();
             emails = source.readStringArray();
+            additionalNumbers = source.readStringArray();
 
-            return new AdnRecord(efid, recordNumber, alphaTag, number, emails);
+            return new AdnRecord(efid, recordNumber, alphaTag, number, emails, additionalNumbers);
         }
 
         public AdnRecord[] newArray(int size) {
@@ -112,20 +115,33 @@ public class AdnRecord implements Parcelable {
         this(0, 0, alphaTag, number, emails);
     }
 
+    public AdnRecord (String alphaTag, String number, String[] emails, String[] additionalNumbers) {
+        this(0, 0, alphaTag, number, emails, additionalNumbers);
+    }
     public AdnRecord (int efid, int recordNumber, String alphaTag, String number, String[] emails) {
         this.efid = efid;
         this.recordNumber = recordNumber;
         this.alphaTag = alphaTag;
         this.number = number;
         this.emails = emails;
+        this.additionalNumbers = null;
     }
 
+    public AdnRecord (int efid, int recordNumber, String alphaTag, String number, String[] emails, String[] additionalNumbers) {
+        this.efid = efid;
+        this.recordNumber = recordNumber;
+        this.alphaTag = alphaTag;
+        this.number = number;
+        this.emails = emails;
+        this.additionalNumbers = additionalNumbers;
+    }
     public AdnRecord(int efid, int recordNumber, String alphaTag, String number) {
         this.efid = efid;
         this.recordNumber = recordNumber;
         this.alphaTag = alphaTag;
         this.number = number;
         this.emails = null;
+        this.additionalNumbers = null;
     }
 
     //***** Instance Methods
@@ -146,12 +162,20 @@ public class AdnRecord implements Parcelable {
         this.emails = emails;
     }
 
+    public String[] getAdditionalNumbers() {
+        return additionalNumbers;
+    }
+    public void setAdditionalNumbers(String[] additionalNumbers) {
+        this.additionalNumbers = additionalNumbers;
+    }
     public String toString() {
-        return "ADN Record '" + alphaTag + "' '" + number + " " + emails + "'";
+        return "ADN Record '" + alphaTag + "' '" + number + " "
+            + emails + " " + additionalNumbers + "'" ;
     }
 
     public boolean isEmpty() {
-        return TextUtils.isEmpty(alphaTag) && TextUtils.isEmpty(number) && emails == null;
+        return TextUtils.isEmpty(alphaTag) && TextUtils.isEmpty(number)
+            && emails == null && additionalNumbers == null;
     }
 
     public boolean hasExtendedRecord() {
@@ -175,7 +199,8 @@ public class AdnRecord implements Parcelable {
     public boolean isEqual(AdnRecord adn) {
         return ( stringCompareNullEqualsEmpty(alphaTag, adn.alphaTag) &&
                 stringCompareNullEqualsEmpty(number, adn.number) &&
-                Arrays.equals(emails, adn.emails));
+                Arrays.equals(emails, adn.emails) &&
+                Arrays.equals(additionalNumbers, adn.additionalNumbers)) ;
     }
     //***** Parcelable Implementation
 
@@ -189,6 +214,7 @@ public class AdnRecord implements Parcelable {
         dest.writeString(alphaTag);
         dest.writeString(number);
         dest.writeStringArray(emails);
+        dest.writeStringArray(additionalNumbers);
     }
 
     /**
@@ -236,9 +262,30 @@ public class AdnRecord implements Parcelable {
             adnString[footerOffset + ADN_EXTENSION_ID]
                     = (byte) 0xFF; // Extension Record Id
 
-            if (!TextUtils.isEmpty(alphaTag)) {
+            if (TextUtils.isEmpty(alphaTag)){
+                Log.d(LOG_TAG, " alphaTag is " + alphaTag);
+            } else if (GsmAlphabet.isStringToGsm8Bit(alphaTag)) {
                 byteTag = GsmAlphabet.stringToGsm8BitPacked(alphaTag);
+                if (byteTag.length > footerOffset) {
+                    System.arraycopy(byteTag, 0, adnString, 0, footerOffset);
+                } else {
                 System.arraycopy(byteTag, 0, adnString, 0, byteTag.length);
+                }
+                Log.w(LOG_TAG,"use stringToGsm8BitPacked to encode");
+            } else {
+                adnString[0] = (byte)0x80;
+                try {
+                    byteTag = alphaTag.getBytes("UTF-16BE");
+                    if ((byteTag.length + 1) > footerOffset) {
+                        System.arraycopy(byteTag, 0, adnString, 1, footerOffset-1);
+                    } else {
+                        System.arraycopy(byteTag, 0, adnString, 1, byteTag.length);
+                    }
+                    Log.w(LOG_TAG,"use UTF-16BE to encode");
+                }
+                catch(UnsupportedEncodingException e) {
+                    Log.w(LOG_TAG,"encoding alphaTag failed : UnsupportedEncodingException");
+                }
             }
 
             return adnString;
@@ -310,12 +357,14 @@ public class AdnRecord implements Parcelable {
             extRecord = 0xff & record[record.length - 1];
 
             emails = null;
+            additionalNumbers = null;
 
         } catch (RuntimeException ex) {
             Log.w(LOG_TAG, "Error parsing AdnRecord", ex);
             number = "";
             alphaTag = "";
             emails = null;
+            additionalNumbers = null;
         }
     }
 }

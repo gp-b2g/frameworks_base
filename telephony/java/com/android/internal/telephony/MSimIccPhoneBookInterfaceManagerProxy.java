@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
 import android.os.ServiceManager;
 import android.os.RemoteException;
 import java.util.List;
@@ -37,22 +38,18 @@ public class MSimIccPhoneBookInterfaceManagerProxy extends IIccPhoneBookMSim.Stu
     }
 
     public boolean
-    updateAdnRecordsInEfBySearch(int efid, String oldTag, String oldPhoneNumber,
-            String newTag, String newPhoneNumber,
+    updateAdnRecordsInEfBySearch(int efid, ContentValues values,
             String pin2) throws android.os.RemoteException {
-        return updateAdnRecordsInEfBySearchOnSubscription(efid, oldTag,
-                oldPhoneNumber, newTag, newPhoneNumber, pin2, getDefaultSubscription());
+        return updateAdnRecordsInEfBySearchOnSubscription(efid, values, pin2, getDefaultSubscription());
     }
 
     public boolean
-    updateAdnRecordsInEfBySearchOnSubscription(int efid, String oldTag,
-            String oldPhoneNumber, String newTag, String newPhoneNumber,
+    updateAdnRecordsInEfBySearchOnSubscription(int efid, ContentValues values,
             String pin2, int subscription) throws android.os.RemoteException {
         IccPhoneBookInterfaceManagerProxy iccPbkIntMgrProxy =
                              getIccPhoneBookInterfaceManagerProxy(subscription);
         if (iccPbkIntMgrProxy != null) {
-            return iccPbkIntMgrProxy.updateAdnRecordsInEfBySearch(efid, oldTag,
-                    oldPhoneNumber, newTag, newPhoneNumber, pin2);
+            return iccPbkIntMgrProxy.updateAdnRecordsInEfBySearch(efid, values, pin2);
         } else {
             Log.e(TAG,"updateAdnRecordsInEfBySearchOnSubscription iccPbkIntMgrProxy is" +
                       " null for Subscription:"+subscription);

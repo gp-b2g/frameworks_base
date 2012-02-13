@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -182,10 +183,10 @@ public class AdnRecordLoader extends Handler {
                     data = (byte[])(ar.result);
 
                     if (ar.exception != null) {
-                        throw new RuntimeException("load failed", ar.exception);
+                        throw new RuntimeException(" EVENT_ADN_LOAD_DONE load failed", ar.exception);
                     }
 
-                    if (false) {
+                    if (true) {
                         Log.d(LOG_TAG,"ADN EF: 0x"
                             + Integer.toHexString(ef)
                             + ":" + recordNumber
@@ -214,7 +215,7 @@ public class AdnRecordLoader extends Handler {
                     adn = (AdnRecord)(ar.userObj);
 
                     if (ar.exception != null) {
-                        throw new RuntimeException("load failed", ar.exception);
+                        throw new RuntimeException("EVENT_EXT_RECORD_LOAD_DONE load failed", ar.exception);
                     }
 
                     Log.d(LOG_TAG,"ADN extension EF: 0x"
@@ -234,7 +235,7 @@ public class AdnRecordLoader extends Handler {
                     ArrayList<byte[]> datas = (ArrayList<byte[]>)(ar.result);
 
                     if (ar.exception != null) {
-                        throw new RuntimeException("load failed", ar.exception);
+                        throw new RuntimeException("EVENT_ADN_LOAD_ALL_DONE load failed", ar.exception);
                     }
 
                     adns = new ArrayList<AdnRecord>(datas.size());
@@ -261,6 +262,7 @@ public class AdnRecordLoader extends Handler {
             }
         } catch (RuntimeException exc) {
             if (userResponse != null) {
+                Log.e(LOG_TAG,"exception " ,exc);
                 AsyncResult.forMessage(userResponse)
                                 .exception = exc;
                 userResponse.sendToTarget();

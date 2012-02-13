@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +17,17 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.ServiceManager;
+import android.text.TextUtils;
+
+import com.android.internal.telephony.IccProvider;
+
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -185,6 +191,52 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
         return success;
     }
 
+   //TODO: need give key values
+    public boolean
+    updateAdnRecordsInEfBySearch (int efid,
+            ContentValues values, String pin2) {
+
+
+        if (phone.getContext().checkCallingOrSelfPermission(
+                android.Manifest.permission.WRITE_CONTACTS)
+            != PackageManager.PERMISSION_GRANTED) {
+            throw new SecurityException(
+                    "Requires android.permission.WRITE_CONTACTS permission");
+        }
+
+        String oldTag = values.getAsString(IccProvider.STR_TAG);
+        String newTag = values.getAsString(IccProvider.STR_NEW_TAG);
+        String oldPhoneNumber = values.getAsString(IccProvider.STR_NUMBER);
+        String newPhoneNumber = values.getAsString(IccProvider.STR_NEW_NUMBER);
+        String oldEmail = values.getAsString(IccProvider.STR_EMAILS);
+        String newEmail = values.getAsString(IccProvider.STR_NEW_EMAILS);
+        String oldAnr = values.getAsString(IccProvider.STR_ANRS);
+        String newAnr = values.getAsString(IccProvider.STR_NEW_ANRS);
+        String[] oldEmailArray = TextUtils.isEmpty(oldEmail)? null: getStringArray(oldEmail);
+        String[] newEmailArray = TextUtils.isEmpty(newEmail)? null: getStringArray(newEmail);
+        String[] oldAnrArray = TextUtils.isEmpty(oldAnr)? null: getStringArray(oldAnr);
+        String[] newAnrArray = TextUtils.isEmpty(newAnr)? null: getStringArray(newAnr);
+        efid = updateEfForIccType(efid);
+
+        if (DBG) logd("updateAdnRecordsInEfBySearch: efid=" + efid +
+                ", values = " + values + ", pin2=" + pin2);
+        synchronized(mLock) {
+            checkThread();
+            success = false;
+            AtomicBoolean status = new AtomicBoolean(false);
+            Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
+            AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber, oldEmailArray, oldAnrArray);
+            AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber, newEmailArray, newAnrArray);
+            if (adnCache != null) {
+                adnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
+                waitForResult(status);
+            } else {
+                logd("Failure while trying to update by search due to uninitialised adncache");
+            }
+        }
+        return success;
+    }
+
     /**
      * Update an ADN-like EF record by record index
      *
@@ -287,6 +339,12 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
                         "You cannot call query on this provder from the main UI thread.");
             }
         }
+    }
+
+    private String[] getStringArray(String str) {
+        if (str != null)
+            return str.split(",");
+        return null;
     }
 
     protected void waitForResult(AtomicBoolean status) {
