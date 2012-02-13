@@ -35,6 +35,7 @@ import com.android.internal.telephony.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.IccCardStatus.CardState;
 import com.android.internal.telephony.IccCardStatus.PinState;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
+import com.android.internal.telephony.cdma.RuimRecords;
 import com.android.internal.telephony.UiccManager.AppFamily;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_SIM_STATE;
 
@@ -120,6 +121,31 @@ public class IccCardProxy extends Handler implements IccCard {
             mCurrentAppType = AppFamily.APP_FAM_3GPP2;
         }
         updateQuietMode();
+    }
+
+    /**
+     * This method sets the IccRecord, corresponding to the currently active
+     * subscription, as the active record.
+     */
+    private void updateActiveRecord() {
+        log("updateActiveRecord app type = " + mCurrentAppType +
+                "mIccRecords = " + mIccRecords);
+
+        if (null == mIccRecords) {
+            return;
+        }
+
+        if (mCurrentAppType == AppFamily.APP_FAM_3GPP2) {
+            int newSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
+            if (newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM) {
+                // Set this as the Active record.
+                log("Setting Ruim Record as active");
+                mIccRecords.recordsRequired();
+            }
+        } else if (mCurrentAppType == AppFamily.APP_FAM_3GPP) {
+            log("Setting SIM Record as active");
+            mIccRecords.recordsRequired();
+        }
     }
 
     /** This function does not necessarily update mQuietMode right away
@@ -234,6 +260,7 @@ public class IccCardProxy extends Handler implements IccCard {
             mUiccApplication = newApp;
             mIccRecords = newRecords;
             registerUiccCardEvents();
+            updateActiveRecord();
         }
 
         updateExternalState();
