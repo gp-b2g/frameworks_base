@@ -204,7 +204,7 @@ public class MSimSignalClusterView
                 mMobileActivity.setImageResource(mMobileActivityId[subscription]);
                 mMobileType.setImageResource(mMobileTypeId[subscription]);
                 mMobileType.setVisibility(
-                    !mWifiVisible ? View.VISIBLE : View.GONE);
+                    (!mWifiVisible && !FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) ? View.VISIBLE : View.GONE);
                 mNoSimSlot.setImageResource(mNoSimIconId[subscription]);
                 mNoSimSlot.setVisibility(mMNoSimIconVisiable[subscription] ? View.VISIBLE : View.GONE);
             } else {
@@ -216,7 +216,7 @@ public class MSimSignalClusterView
                 mMobileActivitySub2.setImageResource(mMobileActivityId[subscription]);
                 mMobileTypeSub2.setImageResource(mMobileTypeId[subscription]);
                 mMobileTypeSub2.setVisibility(
-                    !mWifiVisible ? View.VISIBLE : View.GONE);
+                    (!mWifiVisible && !FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) ? View.VISIBLE : View.GONE);
                 mNoSimSlotSub2.setImageResource(mNoSimIconId[subscription]);
                 mNoSimSlot.setVisibility(mMNoSimIconVisiable[subscription] ? View.VISIBLE : View.GONE);
             }
