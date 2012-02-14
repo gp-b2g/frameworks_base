@@ -3287,6 +3287,12 @@ public class BluetoothService extends IBluetooth.Stub {
         }
         for (String path : bonds) {
             String address = getAddressFromObjectPath(path);
+            if ((mHostPatchForIOP != null) &&
+                (mHostPatchForIOP.isHostPatchRequired(address,
+                 BluetoothAdapter.HOST_PATCH_AVOID_AUTO_CONNECT))) {
+                 Log.w(TAG, "No autoconnect with specific carkit : " + address);
+                 continue;
+            }
             BluetoothDeviceProfileState state = mDeviceProfileState.get(address);
             if (state != null) {
                 Message msg = new Message();
