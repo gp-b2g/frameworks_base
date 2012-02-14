@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+   Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +43,11 @@ import java.lang.ref.WeakReference;
 import java.util.Locale;
 
 import libcore.icu.NativePluralRules;
+import android.os.SystemProperties;
+import java.io.InputStream;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipEntry;
+
 
 /**
  * Class for accessing an application's resources.  This sits on top of the
@@ -70,6 +76,7 @@ import libcore.icu.NativePluralRules;
  */
 public class Resources {
     static final String TAG = "Resources";
+	private static String currentTheme = null;
     private static final boolean DEBUG_LOAD = false;
     private static final boolean DEBUG_CONFIG = false;
     private static final boolean DEBUG_ATTRIBUTES_CACHE = false;
@@ -1931,6 +1938,41 @@ public class Resources {
 
                 } else {
                     try {
+						//try first from theme package in SD card.
+
+						if (currentTheme == null)
+							currentTheme = SystemProperties.get("persist.sys.qrd_theme.current", "default");
+						
+						boolean bNeedFallback = true;
+						
+						if (((id >>> 24) != 0x1) && (!currentTheme.equals("default"))) {
+							String packageDirInTheme = getResourcePackageName(id);
+							if (null != packageDirInTheme) {				
+								ZipFile themeSrc = new ZipFile("/system/qrd_theme/" + currentTheme + ".zip");
+								InputStream stream = null;
+								String filePathInTheme = packageDirInTheme + "/" + file;
+								android.util.Log.e("filePathInTheme", filePathInTheme);									
+								ZipEntry entry = themeSrc.getEntry(filePathInTheme);
+								if (entry != null) {
+									stream = themeSrc.getInputStream(entry);									
+									dr = Drawable.createFromStream(stream, null);
+									if (null != dr) {
+										bNeedFallback = false;
+										android.util.Log.e("filePathInTheme", "use theme instead"); 
+									}
+								}
+								themeSrc.close();
+
+								
+							}
+						}
+
+						//fallback
+
+						if (bNeedFallback) {
+
+						android.util.Log.e("filePathInTheme", "fallback to res");	
+						
                         InputStream is = mAssets.openNonAsset(
                                 value.assetCookie, file, AssetManager.ACCESS_STREAMING);
         //                System.out.println("Opened file " + file + ": " + is);
@@ -1938,6 +1980,9 @@ public class Resources {
                                 file, null);
                         is.close();
         //                System.out.println("Created stream: " + dr);
+							}
+
+                        
                     } catch (Exception e) {
                         NotFoundException rnf = new NotFoundException(
                             "File " + file + " from drawable resource ID #0x"
