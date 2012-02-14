@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,6 +50,20 @@ public class MSimPhoneSubInfoProxy extends IPhoneSubInfoMSim.Stub {
             return getPhoneSubInfoProxy(subscription).getSubscriberId();
         } else {
             Log.e(TAG,"getSubscriberId phoneSubInfoProxy is" +
+                      " null for Subscription:"+subscription);
+            return null;
+        }
+    }
+
+    /**
+     * Retrieves the serial number of the ICC, if applicable.
+     */
+    public String getIccSerialNumber(int subscription) {
+        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(subscription);
+        if (phoneSubInfoProxy != null) {
+            return getPhoneSubInfoProxy(subscription).getIccSerialNumber();
+        } else {
+            Log.e(TAG,"getIccSerialNumber phoneSubInfoProxy is" +
                       " null for Subscription:"+subscription);
             return null;
         }

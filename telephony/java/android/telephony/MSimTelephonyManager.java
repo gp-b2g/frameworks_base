@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -341,6 +341,25 @@ public class MSimTelephonyManager extends TelephonyManager {
         } catch (NullPointerException ex) {
             // This could happen before phone restarts due to crashing
             return Phone.LTE_ON_CDMA_UNKNOWN;
+        }
+    }
+
+    /**
+     * Returns the serial number for the given subscription, if applicable. Return null if it is
+     * unavailable.
+     * <p>
+     * Requires Permission:
+     *   {@link android.Manifest.permission#READ_PHONE_STATE READ_PHONE_STATE}
+     */
+    public String getSimSerialNumber(int subscription) {
+        if (!isMultiSimEnabled) return getSimSerialNumber();
+        try {
+            return getMSimSubscriberInfo().getIccSerialNumber(subscription);
+        } catch (RemoteException ex) {
+            return null;
+        } catch (NullPointerException ex) {
+            // This could happen before phone restarts due to crashing
+            return null;
         }
     }
 
