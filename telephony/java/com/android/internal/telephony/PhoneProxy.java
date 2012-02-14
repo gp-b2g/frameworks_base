@@ -52,6 +52,7 @@ public class PhoneProxy extends Handler implements Phone {
     protected IccCardProxy mIccCardProxy;
 
     private boolean mResetModemOnRadioTechnologyChange = false;
+    private int mVoiceTechQueryContext = 0;
 
     private static final int EVENT_VOICE_RADIO_TECHNOLOGY_CHANGED = 1;
     private static final int EVENT_RADIO_ON = 2;
@@ -89,12 +90,18 @@ public class PhoneProxy extends Handler implements Phone {
         switch(msg.what) {
         case EVENT_RADIO_ON:
             /* Proactively query voice radio technologies */
+            mVoiceTechQueryContext++;
             mCommandsInterface.getVoiceRadioTechnology(
-                    this.obtainMessage(EVENT_REQUEST_VOICE_RADIO_TECH_DONE));
+                    this.obtainMessage(EVENT_REQUEST_VOICE_RADIO_TECH_DONE,mVoiceTechQueryContext));
             break;
 
         case EVENT_VOICE_RADIO_TECHNOLOGY_CHANGED:
+            mVoiceTechQueryContext++;
+            mCommandsInterface.getVoiceRadioTechnology(
+                    this.obtainMessage(EVENT_REQUEST_VOICE_RADIO_TECH_DONE,mVoiceTechQueryContext));
+            break;
         case EVENT_REQUEST_VOICE_RADIO_TECH_DONE:
+            if ((Integer)ar.userObj != mVoiceTechQueryContext) return;
 
             if (ar.exception == null) {
                 if ((ar.result != null) && (((int[]) ar.result).length != 0)) {
