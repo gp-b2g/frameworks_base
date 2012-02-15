@@ -116,6 +116,8 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
 
     private int mP2pRestartCount = 0;
 
+    private String mInvitedDeviceAddress;
+
     public static boolean mIsWifiP2pEnabled = false;
 
     private static final int BASE = Protocol.BASE_WIFI_P2P_SERVICE;
@@ -1070,6 +1072,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                 case WifiP2pManager.CONNECT:
                     WifiP2pConfig config = (WifiP2pConfig) message.obj;
                     logd("Inviting device : " + config.deviceAddress);
+                    mInvitedDeviceAddress = config.deviceAddress;
                     if (WifiNative.p2pInvite(mGroup, config.deviceAddress)) {
                         updateDeviceStatus(config.deviceAddress, WifiP2pDevice.INVITED);
                         sendP2pPeersChangedBroadcast();
@@ -1081,7 +1084,13 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                     // TODO: figure out updating the status to declined when invitation is rejected
                     break;
                 case WifiMonitor.P2P_INVITATION_RESULT_EVENT:
-                    logd("===> INVITATION RESULT EVENT : " + message.obj);
+                     logd("===> INVITATION RESULT EVENT : " + message.obj);
+                     //update the device status based on the invitation result
+                     String result = (String)message.obj;
+                     int status = Integer.parseInt(result);
+                     if(status == -1)
+                         updateDeviceStatus(mInvitedDeviceAddress, WifiP2pDevice.FAILED);
+                     sendP2pPeersChangedBroadcast();
                     break;
                 case WifiMonitor.P2P_PROV_DISC_PBC_REQ_EVENT:
                     notifyP2pProvDiscPbcRequest((WifiP2pDevice) message.obj);
