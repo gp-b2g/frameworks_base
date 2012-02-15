@@ -743,6 +743,8 @@ public class SubscriptionManager extends Handler {
             // Push to the queue, so that start the SET_UICC_SUBSCRIPTION
             // only when the both cards are ready.
             Subscription newSub = new Subscription();
+            int appIndex = getAppIndexByMode(cardIndex, getPreferredMode(cardIndex));
+            newSub.copyFrom(cardSubInfo.subscription[appIndex]);
             newSub.slotId = cardIndex;
             // !!! HERE force slotId = subId
             newSub.subId = cardIndex;
@@ -1098,7 +1100,9 @@ public class SubscriptionManager extends Handler {
         if (subStatus == SubscriptionStatus.SUB_ACTIVATED) {
             getCurrentSubscription(sub).copyFrom(subscription);
         } else {
-            getCurrentSubscription(sub).clear();
+            // Here data can't be cleared, for it will be saved in user_preferred_sub1/2
+            // getCurrentSubscription(sub).clear();
+
             // If not activated, mark as deactivated always!!
             subStatus = SubscriptionStatus.SUB_DEACTIVATED;
         }
