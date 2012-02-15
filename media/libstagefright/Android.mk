@@ -135,6 +135,11 @@ ifeq ($(call is-vendor-board-platform,QCOM),true)
         LOCAL_SHARED_LIBRARIES += libalsa-intf
     else
         LOCAL_SRC_FILES += LPAPlayer.cpp
+        ifeq ($(call is-board-platform,msm8660),true)
+            LOCAL_SRC_FILES += LPAPlayerION.cpp
+        else
+            LOCAL_SRC_FILES += LPAPlayerPMEM.cpp
+        endif
     endif
 endif
 ################################################################################
