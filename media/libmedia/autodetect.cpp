@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -868,9 +869,10 @@ static bool charMatchesEncoding(int ch, const CharRange* encodingRanges, int ran
 extern uint32_t findPossibleEncodings(int ch)
 {
     // ASCII matches everything
-    if (ch < 256) return kEncodingAll;
+    if (ch < 128) return kEncodingAll;
 
-    int result = kEncodingNone;
+    // Any character with encoding number beyond 128 could be single encoded with CP1252
+    int result = kEncodingCP1252;
 
     if (charMatchesEncoding(ch, kShiftJISRanges, ARRAY_SIZE(kShiftJISRanges)))
         result |= kEncodingShiftJIS;

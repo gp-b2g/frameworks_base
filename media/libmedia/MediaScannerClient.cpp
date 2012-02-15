@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +15,10 @@
  * limitations under the License.
  */
 
+//#define LOG_NDEBUG 0
+#define LOG_TAG "MediaScannerClient"
+
+#include <utils/Log.h>
 #include <media/mediascanner.h>
 
 #include <utils/StringArray.h>
@@ -41,7 +46,11 @@ void MediaScannerClient::setLocale(const char* locale)
 {
     if (!locale) return;
 
-    if (!strncmp(locale, "ja", 2))
+    if (!strcmp(locale, "en_US"))
+        mLocaleEncoding = kEncodingUTF8;
+    else if (!strcmp(locale, "es_US") || !strcmp(locale, "de_DE"))
+        mLocaleEncoding = kEncodingCP1252;
+    else if (!strncmp(locale, "ja", 2))
         mLocaleEncoding = kEncodingShiftJIS;
     else if (!strncmp(locale, "ko", 2))
         mLocaleEncoding = kEncodingEUCKR;
@@ -54,6 +63,7 @@ void MediaScannerClient::setLocale(const char* locale)
             mLocaleEncoding = kEncodingBig5;
         }
     }
+    LOGV("setLocale [%s], mLocaleEncoding [%u]", locale, mLocaleEncoding);
 }
 
 void MediaScannerClient::beginFile()
@@ -135,6 +145,9 @@ void MediaScannerClient::convertValues(uint32_t encoding)
         case kEncodingEUCKR:
             enc = "EUC-KR";
             break;
+        case kEncodingCP1252:
+            enc = "windows-1252";
+            break;
     }
 
     if (enc) {
@@ -200,15 +213,58 @@ void MediaScannerClient::endFile()
 {
     if (mLocaleEncoding != kEncodingNone) {
         int size = mNames->size();
-        uint32_t encoding = kEncodingAll;
+        uint32_t encoding    = kEncodingAll;
+        uint32_t tmpEncoding = kEncodingAll;
+        uint32_t srcEncoding = kEncodingNone;
 
         // compute a bit mask containing all possible encodings
-        for (int i = 0; i < mNames->size(); i++)
-            encoding &= possibleEncodings(mValues->getEntry(i));
+        for (int i = 0; i < mNames->size(); i++) {
+            tmpEncoding = possibleEncodings(mValues->getEntry(i));
+            // If no multibyte encoding is detected or GBK is the only possible multibyte encoding, just ignore
+            if( (kEncodingNone != tmpEncoding) && (kEncodingCP1252 != tmpEncoding)
+                && ((kEncodingGBK | kEncodingCP1252) != tmpEncoding) ) {
+                encoding &= tmpEncoding;
+            }
+            LOGV("value: %s, tmpEncoding: %x\n", mValues->getEntry(i), tmpEncoding);
+        }
+        LOGV("possibleEncodings: %x\n", encoding);
 
-        // if the locale encoding matches, then assume we have a native encoding.
-        if (encoding & mLocaleEncoding)
-            convertValues(mLocaleEncoding);
+        /*
+        **  Leave the highest encoding methodolgy in bit mask,
+        **  EXCEPT:
+        **     ASCII characters are detected.
+        **     Locale encodings matches.
+        **     GBK is one of the encodings.
+        */
+        while( kEncodingNone != encoding ) {
+            // If bit mask contains all possible encodings,
+            // that probably means ASCII char is detected.
+            // Don't need convertion.
+            if(kEncodingAll == encoding) {
+                srcEncoding = kEncodingAll;
+                break;
+            }
+
+            // Set locale native encoding, if it matches.
+            if(encoding & mLocaleEncoding) {
+                srcEncoding = mLocaleEncoding;
+                break;
+            }
+
+            // Set GBK as preference, if GBK is one of the possible encodings.
+            if(encoding & kEncodingGBK) {
+                srcEncoding = kEncodingGBK;
+                break;
+            }
+
+            // Clear the lowest bit in bit mask and continue to loop
+            srcEncoding = encoding;
+            encoding &= (encoding - 1);
+        }
+
+        if( (kEncodingNone != srcEncoding) && (kEncodingAll != srcEncoding) ) {
+            convertValues(srcEncoding);
+        }
 
         // finally, push all name/value pairs to the client
         for (int i = 0; i < mNames->size(); i++) {

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,10 +25,12 @@ enum {
     kEncodingNone               = 0,
     kEncodingShiftJIS           = (1 << 0),
     kEncodingGBK                = (1 << 1),
-    kEncodingBig5               = (1 << 2),
-    kEncodingEUCKR              = (1 << 3),
-
-    kEncodingAll                = (kEncodingShiftJIS | kEncodingGBK | kEncodingBig5 | kEncodingEUCKR),
+    kEncodingEUCKR              = (1 << 2),
+    kEncodingBig5               = (1 << 3),
+    kEncodingUTF8               = (1 << 4),
+    kEncodingCP1252             = (1 << 5),
+    kEncodingAll                = ( kEncodingShiftJIS | kEncodingGBK | kEncodingEUCKR
+                                    | kEncodingBig5 | kEncodingUTF8 | kEncodingCP1252 ),
 };
 
 
