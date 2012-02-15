@@ -403,6 +403,14 @@ class KeyguardStatusViewManager implements OnClickListener {
                     string = getContext().getString(R.string.lockscreen_plugged_in, mBatteryLevel);
                 }
                 icon.value = CHARGING_ICON;
+                //When in charge mode, if also the owner info is set,
+                //owing to the priority of owner info is lower than charging,
+                //and the owner info will not be displayed.
+                //Considering in this way, the UI will not friendly,
+                //so add the owner info before charging state.
+                if(mOwnerInfoText != null){
+                    string = mOwnerInfoText + "    " + string;
+                }
             } else if (mBatteryLevel < KeyguardUpdateMonitor.LOW_BATTERY_THRESHOLD) {
                 // Battery is low
                 string = getContext().getString(R.string.lockscreen_low_battery);
