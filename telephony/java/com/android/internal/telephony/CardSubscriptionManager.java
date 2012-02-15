@@ -29,6 +29,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemProperties;
 import android.util.Log;
 
 
@@ -189,7 +190,9 @@ public class CardSubscriptionManager extends Handler {
         switch(msg.what) {
             case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:
                 logd("EVENT_RADIO_OFF_OR_NOT_AVAILABLE");
-                processRadioUnavailable((AsyncResult)msg.obj);
+                if (0 == SystemProperties.getInt("persist.radio.apm_sim_not_pwdn", 0)) {
+                    processRadioUnavailable((AsyncResult)msg.obj);
+                }
                 break;
 
             case EVENT_RADIO_ON:
