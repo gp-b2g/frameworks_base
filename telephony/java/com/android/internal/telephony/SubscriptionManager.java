@@ -855,7 +855,8 @@ public class SubscriptionManager extends Handler {
     private boolean isPresentInActivatePendingList(Subscription userSub) {
         for (SubscriptionId sub: SubscriptionId.values()) {
             Subscription actPendingSub = mActivatePending.get(sub);
-            if (userSub != null && userSub.isSame(actPendingSub)) {
+            if (userSub != null && userSub.isSame(actPendingSub) &&
+                userSub.slotId == actPendingSub.slotId) {
                 return true;
             }
         }
