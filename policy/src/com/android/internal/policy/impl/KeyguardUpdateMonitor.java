@@ -475,15 +475,16 @@ public class KeyguardUpdateMonitor {
      * @return The string to use for the plmn, or null if it should not be shown.
      */
     private CharSequence getTelephonyPlmnFrom(Intent intent) {
-        if (intent.getBooleanExtra(EXTRA_SHOW_PLMN, false)) {
+        //this flag may not correct, so do not check.
+        //if (intent.getBooleanExtra(EXTRA_SHOW_PLMN, false)) {
             final String plmn = intent.getStringExtra(EXTRA_PLMN);
             if (plmn != null) {
                 return plmn;
             } else {
                 return getDefaultPlmn();
             }
-        }
-        return null;
+        //}
+       // return null;
     }
 
     /**
@@ -499,13 +500,15 @@ public class KeyguardUpdateMonitor {
      * @return The string to use for the plmn, or null if it should not be shown.
      */
     private CharSequence getTelephonySpnFrom(Intent intent) {
-        if (intent.getBooleanExtra(EXTRA_SHOW_SPN, false)) {
+        //this flag may not correct, so do not check
+        /*if (intent.getBooleanExtra(EXTRA_SHOW_SPN, false)) {
             final String spn = intent.getStringExtra(EXTRA_SPN);
             if (spn != null) {
                 return spn;
             }
         }
-        return null;
+        return null;*/
+        return intent.getStringExtra(EXTRA_SPN);
     }
 
     /**

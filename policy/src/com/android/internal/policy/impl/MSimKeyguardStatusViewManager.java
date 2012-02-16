@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
- * Copyright (c) 2012 Code Aurora Forum. All rights reserved
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,8 +85,8 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
     }
 
     void setCarrierText() {
-        mCarrierText = mCarrierTextSub[MSimConstants.SUB2] + " , " +
-                mCarrierTextSub[MSimConstants.SUB1];
+        mCarrierText = mCarrierTextSub[MSimConstants.SUB1] + " , " +
+                mCarrierTextSub[MSimConstants.SUB2];
         update(CARRIER_TEXT, mCarrierText);
     }
 
