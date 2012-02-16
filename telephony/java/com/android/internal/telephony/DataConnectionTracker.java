@@ -197,6 +197,8 @@ public abstract class DataConnectionTracker extends Handler {
 
     private int enabledCount = 0;
 
+    private int mTetheredMode = RILConstants.RIL_TETHERED_MODE_OFF;
+
     /* Currently requested APN type (TODO: This should probably be a parameter not a member) */
     protected String mRequestedApnType = Phone.APN_TYPE_DEFAULT;
 
@@ -1349,6 +1351,13 @@ public abstract class DataConnectionTracker extends Handler {
         int mode = ret[0];
         if (DBG)
             log("onTetheredModeStateChanged: mode:" + mode);
+
+        if (mTetheredMode == mode) {
+            if (DBG) log("Ignoring duplicate tethered mode change notification");
+            return;
+        }
+
+        mTetheredMode = mode;
 
         switch (mode) {
         case RILConstants.RIL_TETHERED_MODE_ON:
