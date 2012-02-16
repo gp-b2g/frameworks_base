@@ -48,7 +48,6 @@
 #include <OMX_Audio.h>
 #include <OMX_Component.h>
 
-#include <cutils/properties.h>
 #include <OMX_QCOMExtns.h>
 
 #include <gralloc_priv.h>
@@ -4806,7 +4805,8 @@ status_t OMXCodec::stop() {
             */
 
             bool canFree = true;
-            if (!strncmp(mComponentName, "OMX.qcom.video.decoder.", 23)) {
+            if (!strncmp(mComponentName, "OMX.qcom.video.decoder.", 23) ||
+                    !strncmp(mComponentName, "OMX.qcom.video.encoder.", 23)) {
                 if (state == OMX_StateInvalid) {
                     canFree = true;
                 }
