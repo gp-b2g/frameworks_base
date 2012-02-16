@@ -655,24 +655,21 @@ public class SubscriptionManager extends Handler {
             processActivateRequests();
         }
 
-        if (isNewCardAvailable()) {
-            //modify for CU feature
-            if (FeatureQuery.FEATURE_TELEPHONY_CARD_CHANGED_PROMPT) {
-                if (TelephonyManager.getDefault().isMultiSimEnabled()) {
-                    logd("goto activity that show card has changed!");
-                    Intent intent = new Intent(Intent.ACTION_MAIN);
-                    intent.setClassName("com.android.qrd.configurationprompt",
-                                        "com.android.qrd.configurationprompt.CardChangedActivity");
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    mContext.startActivity(intent);
-                }
-            } else {
+        if (FeatureQuery.FEATURE_TELEPHONY_CARD_CHANGED_PROMPT) {
+            //when dual sim mode and card change, show card change prompt
+            if (TelephonyManager.getDefault().isMultiSimEnabled() && isCardChanaged()) {
+                logd("goto activity that show card has changed!");
+                Intent intent = new Intent(Intent.ACTION_MAIN);
+                intent.setClassName("com.android.qrd.configurationprompt",
+                                    "com.android.qrd.configurationprompt.CardChangedActivity");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                mContext.startActivity(intent);
+            }
+        } else {
+            if (isNewCardAvailable()) {
                 // NEW CARDs Available!!!
                 // Notify the USER HERE!!!
                 notifyNewCardsAvailable();
-            }
-            for (int i = 0; i < mIsNewCard.length; i++) {
-                mIsNewCard[i] = false;
             }
         }
     }
@@ -710,24 +707,28 @@ public class SubscriptionManager extends Handler {
                         + "\n user pref sub = " + userSub
                         + "\n current sub   = " + currentSub);
 
+                // TODO Need to check if this subscription is already in the pending list!
+                // If already there, no need to add again!
+
+                Subscription sub = new Subscription();
+                sub.copyFrom(cardSubInfo.getSubscription(userSub));
+                sub.slotId = cardIndex;
+                sub.subId = subId;
                 if ((userSub.subStatus == SubscriptionStatus.SUB_ACTIVATED)
-                     && (currentSub.subStatus != SubscriptionStatus.SUB_ACTIVATED)){
-
-                    logd("processCardInfoAvailable --DEBUG--: subId = "
-                        + subId + " need to activate!!!");
-
-                    // TODO Need to check if this subscription is already in the pending list!
-                    // If already there, no need to add again!
-
+                    && (currentSub.subStatus != SubscriptionStatus.SUB_ACTIVATED)) {
                     // Need to activate this Subscription!!! - userSub.subId
                     // Push to the queue, so that start the SET_UICC_SUBSCRIPTION
                     // only when the both cards are ready.
-                    Subscription sub = new Subscription();
-                    sub.copyFrom(cardSubInfo.getSubscription(userSub));
-                    sub.slotId = cardIndex;
-                    sub.subId = subId;
+                    logd("processCardInfoAvailable --DEBUG--: subId = "
+                         + subId + " need to activate!!!");
+
                     sub.subStatus = SubscriptionStatus.SUB_ACTIVATE;
                     mActivatePending.put(SubscriptionId.values()[subId], sub);
+                } else if ((userSub.subStatus == SubscriptionStatus.SUB_DEACTIVATED)
+                           && (currentSub.subStatus != SubscriptionStatus.SUB_DEACTIVATED)) {
+                    //if the subscription is deactivated, should set card info to current subscription
+                    sub.subStatus = SubscriptionStatus.SUB_DEACTIVATED;
+                    currentSub.copyFrom(sub);
                 }
             }
         }
@@ -752,9 +753,7 @@ public class SubscriptionManager extends Handler {
             setDefaultAppIndex(newSub);
 
             mActivatePending.put(SubscriptionId.values()[cardIndex], newSub);
-            if (!FeatureQuery.FEATURE_TELEPHONY_CARD_CHANGED_PROMPT) {
-                mIsNewCard[cardIndex] = false;
-            }
+            mIsNewCard[cardIndex] = false;
         }
 
         if (!isAllCardsInfoAvailable()) {
@@ -1512,4 +1511,19 @@ public class SubscriptionManager extends Handler {
     public boolean isSetSubscriptionInProgress() {
         return mSetSubscriptionInProgress;
     }
+
+    /*
+     ** check whether a new card insert, include the card change the slot
+     */
+    private boolean isCardChanaged() {
+        for (int cardIndex=0; cardIndex<NUM_SUBSCRIPTIONS; cardIndex++) {
+            SubscriptionData cardSubInfo = mCardSubMgr.getCardSubscriptions(cardIndex);
+            Subscription userPrefSubscription = mUserPrefSubs.subscription[cardIndex];
+            if (!cardSubInfo.hasSubscription(userPrefSubscription)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }
