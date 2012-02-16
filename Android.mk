@@ -198,6 +198,7 @@ LOCAL_SRC_FILES += \
 	telephony/java/com/android/internal/telephony/IPhoneStateListener.aidl \
 	telephony/java/com/android/internal/telephony/IPhoneSubInfo.aidl \
 	telephony/java/com/android/internal/telephony/IPhoneSubInfoMSim.aidl \
+	telephony/java/com/android/internal/telephony/IOemHookCallback.aidl \
 	telephony/java/com/android/internal/telephony/ITelephony.aidl \
 	telephony/java/com/android/internal/telephony/ITelephonyMSim.aidl \
 	telephony/java/com/android/internal/telephony/ITelephonyRegistry.aidl \
