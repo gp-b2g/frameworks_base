@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -208,7 +209,11 @@ class BatteryService extends Binder {
     private final void shutdownIfNoPower() {
         // shut down gracefully if our battery is critically low and we are not powered.
         // wait until the system has booted before attempting to display the shutdown dialog.
-        if (mBatteryLevel == 0 && !isPowered() && ActivityManagerNative.isSystemReady()) {
+        // Since the battery level is updated every 3s now,
+        // it's quite possible that the level may change from 1 to -1 in the next sampling time.
+        // Thus we should change our policy to shut-down the phone when the level is extremely low.
+        if (mBatteryLevel <= 0 && !isPowered() && ActivityManagerNative.isSystemReady()) {
+            Slog.d(TAG, "Shut down the phone by BatteryService due to low power level: " + mBatteryLevel);
             Intent intent = new Intent(Intent.ACTION_REQUEST_SHUTDOWN);
             intent.putExtra(Intent.EXTRA_KEY_CONFIRM, false);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -220,6 +225,7 @@ class BatteryService extends Binder {
         // shut down gracefully if temperature is too high (> 68.0C)
         // wait until the system has booted before attempting to display the shutdown dialog.
         if (mBatteryTemperature > 680 && ActivityManagerNative.isSystemReady()) {
+            Slog.d(TAG, "Shut down the phone by BatteryService due to over temperature: " + mBatteryTemperature);
             Intent intent = new Intent(Intent.ACTION_REQUEST_SHUTDOWN);
             intent.putExtra(Intent.EXTRA_KEY_CONFIRM, false);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
