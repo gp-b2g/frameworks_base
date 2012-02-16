@@ -19,6 +19,7 @@
 package com.android.internal.app;
 
 import java.io.File;
+import java.io.IOException;
 
 import android.app.ActivityManagerNative;
 import android.app.AlertDialog;
@@ -32,6 +33,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.Power;
 import android.os.PowerManager;
@@ -89,6 +91,8 @@ public final class ShutdownThread extends Thread {
     private static final String USER_BOOTANIMATION_FILE = "/data/local/shutdownanimation.zip";
     private static final String SYSTEM_BOOTANIMATION_FILE = "/system/media/shutdownanimation.zip";
     private static final String SYSTEM_ENCRYPTED_BOOTANIMATION_FILE = "/system/media/shutdownanimation-encrypted.zip";
+
+    private static final String MUSIC_SHUTDOWN_FILE = "/system/media/shutdown.wav";
 
     private ShutdownThread() {
     }
@@ -185,8 +189,10 @@ public final class ShutdownThread extends Thread {
             sIsStarted = true;
         }
 
-        if (FeatureQuery.FEATURE_BOOT_ANIMATION && checkAnimationFileExist())
+        if (FeatureQuery.FEATURE_BOOT_ANIMATION && checkAnimationFileExist()){
             showShutdownAnimation();
+            playShutdownMusic(MUSIC_SHUTDOWN_FILE);
+        }
 
         // throw up an indeterminate system dialog to indicate radio is
         // shutting down.
@@ -472,5 +478,18 @@ public final class ShutdownThread extends Thread {
 
     private static void showShutdownAnimation() {
         SystemProperties.set("ctl.start", "bootanim");
+    }
+
+    private static void playShutdownMusic(String path) {
+        MediaPlayer mediaPlayer = new MediaPlayer();
+        try
+        {
+            mediaPlayer.reset();
+            mediaPlayer.setDataSource(path);
+            mediaPlayer.prepare();
+            mediaPlayer.start();
+        } catch (IOException e) {
+            Log.d(TAG, "play shutdown music error:" + e);
+        }
     }
 }
