@@ -119,6 +119,7 @@ const char CameraParameters::KEY_MAX_NUM_DETECTED_FACES_HW[] = "max-num-detected
 const char CameraParameters::KEY_MAX_NUM_DETECTED_FACES_SW[] = "max-num-detected-faces-sw";
 const char CameraParameters::KEY_RECORDING_HINT[] = "recording-hint";
 const char CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED[] = "video-snapshot-supported";
+const char CameraParameters::KEY_FULL_VIDEO_SNAP_SUPPORTED[] = "full-video-snap-supported";
 const char CameraParameters::KEY_VIDEO_STABILIZATION[] = "video-stabilization";
 const char CameraParameters::KEY_VIDEO_STABILIZATION_SUPPORTED[] = "video-stabilization-supported";
 const char CameraParameters::KEY_ZSL[] = "zsl";

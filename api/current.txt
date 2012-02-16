@@ -1316,6 +1316,8 @@ package android {
     field public static final int stat_notify_sync = 17301628; // 0x108007c
     field public static final int stat_notify_sync_noanim = 17301629; // 0x108007d
     field public static final int stat_notify_voicemail = 17301630; // 0x108007e
+    field public static final int stat_notify_voicemail_sub1 = 17301662; // 0x108009e
+    field public static final int stat_notify_voicemail_sub2 = 17301663; // 0x108009f
     field public static final int stat_sys_data_bluetooth = 17301632; // 0x1080080
     field public static final int stat_sys_download = 17301633; // 0x1080081
     field public static final int stat_sys_download_done = 17301634; // 0x1080082
@@ -1343,8 +1345,6 @@ package android {
     field public static final int title_bar_tall = 17301670; // 0x10800a6
     field public static final int toast_frame = 17301654; // 0x1080096
     field public static final int zoom_plate = 17301655; // 0x1080097
-    field public static final int stat_notify_voicemail_sub1 = 17301662; // 0x108009e
-    field public static final int stat_notify_voicemail_sub2 = 17301663; // 0x108009f
   }
 
   public static final class R.fraction {
@@ -9494,6 +9494,7 @@ package android.hardware {
     method public java.util.List<java.lang.Integer> getZoomRatios();
     method public boolean isAutoExposureLockSupported();
     method public boolean isAutoWhiteBalanceLockSupported();
+    method public boolean isFullsizeVideoSnapSupported();
     method public boolean isSmoothZoomSupported();
     method public boolean isVideoSnapshotSupported();
     method public boolean isVideoStabilizationSupported();

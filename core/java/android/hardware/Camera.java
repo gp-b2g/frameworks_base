@@ -1676,6 +1676,7 @@ public class Camera {
         private static final String KEY_MAX_NUM_DETECTED_FACES_SW = "max-num-detected-faces-sw";
         private static final String KEY_RECORDING_HINT = "recording-hint";
         private static final String KEY_VIDEO_SNAPSHOT_SUPPORTED = "video-snapshot-supported";
+        private static final String KEY_FULL_VIDEO_SNAP_SUPPORTED = "full-video-snap-supported";
         private static final String KEY_VIDEO_STABILIZATION = "video-stabilization";
         private static final String KEY_VIDEO_STABILIZATION_SUPPORTED = "video-stabilization-supported";
         private static final String KEY_SHARPNESS = "sharpness";
@@ -4205,6 +4206,14 @@ public class Camera {
          */
         public boolean isVideoSnapshotSupported() {
             String str = get(KEY_VIDEO_SNAPSHOT_SUPPORTED);
+            return TRUE.equals(str);
+        }
+
+        /** 
+         * @return true if full size video snapshot is supported. 
+         */ 
+        public boolean isFullsizeVideoSnapSupported() {
+            String str = get(KEY_FULL_VIDEO_SNAP_SUPPORTED);
             return TRUE.equals(str);
         }
 
