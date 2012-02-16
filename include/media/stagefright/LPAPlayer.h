@@ -88,6 +88,8 @@ private:
     bool a2dpThreadStarted;
     volatile bool asyncReset;
     bool eventThreadCreated;
+    int mBuffSize;
+    int mBuffNumber;
     //Structure to hold pmem buffer information
     class BuffersAllocated {
     public:
