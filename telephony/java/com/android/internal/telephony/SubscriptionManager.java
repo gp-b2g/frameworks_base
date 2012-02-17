@@ -1536,7 +1536,7 @@ public class SubscriptionManager extends Handler {
         for (int cardIndex=0; cardIndex<NUM_SUBSCRIPTIONS; cardIndex++) {
             SubscriptionData cardSubInfo = mCardSubMgr.getCardSubscriptions(cardIndex);
             Subscription userPrefSubscription = mUserPrefSubs.subscription[cardIndex];
-            if (!cardSubInfo.hasSubscription(userPrefSubscription)) {
+            if ((cardSubInfo != null) && (!cardSubInfo.hasSubscription(userPrefSubscription))) {
                 return true;
             }
         }
