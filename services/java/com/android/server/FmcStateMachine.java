@@ -62,7 +62,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class FmcStateMachine extends StateMachine {
 
-	/* Private */
+    /* Private */
     private static final String TAG = "FmcStateMachine";
 
     private static int mFmcStatus = FMC_STATUS_CLOSED;
@@ -75,6 +75,8 @@ public class FmcStateMachine extends StateMachine {
     private static NetworkInfo mNetworkInfo = null;
     private static ConnectivityManager mConnManager = null;
 
+    private static boolean mUserShutDown = true;
+
     private FmcState mFmcStateInactive   = null;
     private FmcState mFmcStateStart      = null;
     private FmcState mFmcStateBearerUp   = null;
@@ -86,7 +88,7 @@ public class FmcStateMachine extends StateMachine {
     private FmcState mFmcStateDSNotAvail = null;
     private FmcState mFmcStateFailure    = null;
 
-	/* Protected */
+    /* Protected */
     protected static final boolean DBG = true;
 
     protected static Context mContext = null;
@@ -219,6 +221,7 @@ public class FmcStateMachine extends StateMachine {
             instance.start();
         } else {
             if (DBG) Log.d(TAG, "create instance object is not null");
+            mListener = listener; /* Upadte listener if app creates new instance onResume */
         }
 
         return instance;
@@ -591,7 +594,12 @@ public class FmcStateMachine extends StateMachine {
         @Override
         public void enter() {
             if (DBG) Log.d(this.getName(), "enter");
-            setStatus(FMC_STATUS_CLOSED);
+            /* Do not override status if tearing down from DsNotAvail or Failure states */
+            if (mUserShutDown) {
+                setStatus(FMC_STATUS_CLOSED);
+            } else {
+                mUserShutDown = true;
+            }
             handleCleanUpRouting(mDestIp);
         }
 
@@ -646,7 +654,7 @@ public class FmcStateMachine extends StateMachine {
                     transitionToState(mFmcStateDSNotAvail);
                     break;
                 case FMC_MSG_TIMEOUT:
-                    transitionToState(mFmcStateInactive);
+                    transitionToState(mFmcStateShutDown);
                     break;
                 case FMC_MSG_FAILURE:
                     transitionToState(mFmcStateFailure);
@@ -683,6 +691,9 @@ public class FmcStateMachine extends StateMachine {
                 case FMC_MSG_STOP:
                     transitionToState(mFmcStateShutDown);
                     break;
+                case FMC_MSG_BEARER_DOWN:
+                    transitionToState(mFmcStateDSNotAvail);
+                    break;
                 case FMC_MSG_DATA_ENABLED:
                     transitionToState(mFmcStateActive);
                     break;
@@ -690,7 +701,7 @@ public class FmcStateMachine extends StateMachine {
                     transitionToState(mFmcStateRegistered);
                     break;
                 case FMC_MSG_TIMEOUT:
-                    transitionToState(mFmcStateInactive);
+                    transitionToState(mFmcStateShutDown);
                     break;
                 case FMC_MSG_WIFI_DOWN:
                     transitionToState(mFmcStateBearerDown);
@@ -727,6 +738,9 @@ public class FmcStateMachine extends StateMachine {
             switch(msg.what) {
                 case FMC_MSG_STOP:
                     transitionToState(mFmcStateShutDown);
+                    break;
+                case FMC_MSG_BEARER_DOWN:
+                    transitionToState(mFmcStateDSNotAvail);
                     break;
                 case FMC_MSG_DATA_ENABLED:
                     transitionToState(mFmcStateActive);
@@ -770,7 +784,7 @@ public class FmcStateMachine extends StateMachine {
                     transitionToState(mFmcStateShutDown);
                     break;
                 case FMC_MSG_BEARER_DOWN:
-                    transitionToState(mFmcStateBearerDown);
+                    transitionToState(mFmcStateDSNotAvail);
                     break;
                 case FMC_MSG_DATA_ENABLED:
                     transitionToState(mFmcStateActive);
@@ -913,6 +927,7 @@ public class FmcStateMachine extends StateMachine {
             if (DBG) Log.d(this.getName(), "enter");
             mConnSvc.setFmcDisabled();
             setStatus(FMC_STATUS_DS_NOT_AVAIL);
+            mUserShutDown = false;
             sendDisableFmc();
             sendDisableData();
         }
@@ -930,6 +945,7 @@ public class FmcStateMachine extends StateMachine {
             if (DBG) Log.d(this.getName(), "enter");
             mConnSvc.setFmcDisabled();
             setStatus(FMC_STATUS_FAILURE);
+            mUserShutDown = false;
             sendDisableFmc();
             sendDisableData();
         }

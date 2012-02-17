@@ -153,18 +153,17 @@ public class FmcProvider
    }
 
     /** {@hide}
-    * This function will be used by apps to stop FMC.
-    * @return {@code true} if the request has been accepted by Android
-    * framework, {@code false} otherwise.
+    * This function will be used by apps to get FMC status.
+    * @return integer representing enum of FmcNotifier status.
     */
-   public boolean getFmcStatus(){
-       Log.d(LOG_TAG,"FmcProvider@stopFmc");
+   public int getFmcStatus(){
+       Log.d(LOG_TAG,"FmcProvider@getFmcStatus");
        try {
            return mService.getFmcStatus(mListener);
        } catch ( RemoteException e ) {
            Log.w(LOG_TAG,"FmcProvider@getFmcStatus: RemoteException");
            e.printStackTrace();
-           return false;
+           return -1;
        }
    }
 
