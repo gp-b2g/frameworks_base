@@ -1822,7 +1822,7 @@
                                           --> <skip />
 
     <!-- On the keyguard screen, it shows the carrier the phone is connected to.  This is displayed if the phone is not connected to a carrier.-->
-    <string name="lockscreen_carrier_default">No service.</string>
+    <string name="lockscreen_carrier_default">No service</string>
 
     <!-- Shown in the lock screen to tell the user that the screen is locked. -->
     <string name="lockscreen_screen_locked">Screen locked.</string>
@@ -1860,7 +1860,7 @@
     <string name="lockscreen_low_battery">Connect your charger.</string>
 
     <!-- Shown in the lock screen when there is no SIM card. -->
-    <string name="lockscreen_missing_sim_message_short">No SIM card.</string>
+    <string name="lockscreen_missing_sim_message_short">No SIM card</string>
     <!-- Shown in the lock screen when there is no SIM card. -->
     <string name="lockscreen_missing_sim_message" product="tablet">No SIM card in tablet.</string>
     <!-- Shown in the lock screen when there is no SIM card. -->
@@ -1887,7 +1887,7 @@
     <!-- Shown in the lock screen when there is emergency calls only mode. -->
     <string name="emergency_calls_only" msgid="2485604591272668370">Emergency calls only</string>
     <!-- Shown in the lock screen when there is SIM card IO error. -->
-    <string name="lockscreen_sim_error_message_short">Invalid Card.</string>
+    <string name="lockscreen_sim_error_message_short">Invalid Card</string>
     <!-- Shown in the lock screen when there is SIM card error. -->
     <string name="lockscreen_sim_error_message">SIM card is Invalid.</string>
 
@@ -1901,12 +1901,12 @@
 
     <!-- When the user enters a wrong sim pin too many times, it becomes
          PUK locked (Pin Unlock Kode) -->
-    <string name="lockscreen_sim_puk_locked_message">SIM card is PUK-locked.</string>
+    <string name="lockscreen_sim_puk_locked_message">SIM card is PUK-locked</string>
     <!-- Shown in the lock screen when the SIM has become PUK locked and the user must call customer care to unlock it. -->
     <string name="lockscreen_sim_puk_locked_instructions">PIN1 Blocked. Enter PUK1.\nor\nPlease see the User Guide/contact Customer Care.</string>
 
     <!-- Shown in the lock screen to tell the user that their SIM/RUIM is locked and they must unlock it. -->
-    <string name="lockscreen_sim_locked_message">SIM/RUIM card is locked.</string>
+    <string name="lockscreen_sim_locked_message">SIM/RUIM card is locked</string>
 
     <!-- For the unlock screen, When the user enters a sim unlock code, it takes a little while to check
          whether it is valid, and to unlock the sim if it is valid.  we display a

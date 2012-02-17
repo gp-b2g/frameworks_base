@@ -85,7 +85,7 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
     }
 
     void setCarrierText() {
-        mCarrierText = mCarrierTextSub[MSimConstants.SUB1] + " , " +
+        mCarrierText = mCarrierTextSub[MSimConstants.SUB1] + "    " +
                 mCarrierTextSub[MSimConstants.SUB2];
         update(CARRIER_TEXT, mCarrierText);
     }
