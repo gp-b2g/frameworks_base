@@ -353,22 +353,26 @@ class FmRxControls
    public int[] stationList (int fd)
    {
          int freq = 0;
-         int i=0;
+         int i=0, j = 0;
          int station_num = 0;
          float real_freq = 0;
          int [] stationList;
          byte [] sList = new byte[100];
          int tmpFreqByte1=0;
          int tmpFreqByte2=0;
-         float lowBand;
+         float lowBand, highBand;
 
 
-         lowBand = (float) (FmReceiverJNI.getLowerBandNative(fd) / 1000.00);
+         lowBand  = (float) (FmReceiverJNI.getLowerBandNative(fd) / 1000.00);
+         highBand = (float) (FmReceiverJNI.getUpperBandNative(fd) / 1000.00);
+
          Log.d(TAG, "lowBand: " + lowBand);
+         Log.d(TAG, "highBand: " + highBand);
+
          FmReceiverJNI.getBufferNative(fd, sList, 0);
 
          if ((int)sList[0] >0) {
-             station_num = (int)sList[0];
+            station_num = (int)sList[0];
          }
          stationList = new int[station_num+1];
          Log.d(TAG, "station_num: " + station_num);
@@ -386,9 +390,15 @@ class FmRxControls
             Log.d(TAG, " freq: " + freq);
             real_freq  = (float)(freq * 50) + (lowBand * FREQ_MUL);//tuner.rangelow * FREQ_MUL;
             Log.d(TAG, " real_freq: " + real_freq);
-            stationList[i] = (int)(real_freq);
-            Log.d(TAG, " stationList: " + stationList[i]);
-        }
+            if ( (real_freq < (lowBand * FREQ_MUL)) || (real_freq > (highBand * FREQ_MUL)) ) {
+               Log.e(TAG, "Frequency out of band limits");
+            }
+            else {
+               stationList[j] = (int)(real_freq);
+               Log.d(TAG, " stationList: " + stationList[j]);
+               j++;
+            }
+         }
 
         try {
           // mark end of list

@@ -326,6 +326,22 @@ static jint android_hardware_fmradio_FmReceiverJNI_getLowerBandNative
     return ((tuner.rangelow * 1000)/ TUNE_MULT);
 }
 
+/* native interface */
+static jint android_hardware_fmradio_FmReceiverJNI_getUpperBandNative
+    (JNIEnv * env, jobject thiz, jint fd)
+{
+    struct v4l2_tuner tuner;
+    int err;
+    tuner.index = 0;
+
+    err = ioctl(fd, VIDIOC_G_TUNER, &tuner);
+    if(err < 0){
+        LOGE("high_band value: <%x> \n", tuner.rangehigh);
+        return FM_JNI_FAILURE;
+    }
+    return ((tuner.rangehigh * 1000) / TUNE_MULT);
+}
+
 static jint android_hardware_fmradio_FmReceiverJNI_setMonoStereoNative
     (JNIEnv * env, jobject thiz, jint fd, jint val)
 {
@@ -687,6 +703,8 @@ static JNINativeMethod gMethods[] = {
             (void*)android_hardware_fmradio_FmReceiverJNI_setBandNative},
         { "getLowerBandNative", "(I)I",
             (void*)android_hardware_fmradio_FmReceiverJNI_getLowerBandNative},
+        { "getUpperBandNative", "(I)I",
+            (void*)android_hardware_fmradio_FmReceiverJNI_getUpperBandNative},
         { "getBufferNative", "(I[BI)I",
             (void*)android_hardware_fmradio_FmReceiverJNI_getBufferNative},
         { "setMonoStereoNative", "(II)I",
