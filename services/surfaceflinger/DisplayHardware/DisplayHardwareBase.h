@@ -70,6 +70,8 @@ private:
         virtual status_t readyToRun();
         virtual status_t releaseScreen() const;
         virtual status_t initCheck() const;
+    private:
+        int     always_on;
     };
 
     sp<DisplayEventThreadBase>  mDisplayEventThread;
