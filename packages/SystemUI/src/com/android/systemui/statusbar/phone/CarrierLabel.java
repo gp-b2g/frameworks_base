@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.provider.Telephony;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Slog;
 import android.view.View;
@@ -93,7 +95,11 @@ public class CarrierLabel extends TextView {
         }
         StringBuilder str = new StringBuilder();
         boolean something = false;
-        if (showPlmn && plmn != null) {
+
+        //because we need to support OMH SPN display
+        //in OMH ,the showPlmn is false and plmn is empty
+        //showPlmn is not set, we need to support UNICOM card,whose showPlmn =fasle while plmn is not empty
+        if (/*showPlmn &&*/ plmn != null && !TextUtils.isEmpty(plmn)) {
             str.append(plmn);
             something = true;
         }
