@@ -336,7 +336,7 @@ public class SubscriptionManager extends Handler {
         //if SUCCESS
         if (ar.exception == null) {
             // Mark this as the current dds
-            MSimPhoneFactory.setDataSubscription(mQueuedDds);
+            //MSimPhoneFactory.setDataSubscription(mQueuedDds);
 
             if (mCurrentDds != mQueuedDds) {
                 // The current DDS is changed.  Call update to unregister for all the
@@ -625,6 +625,23 @@ public class SubscriptionManager extends Handler {
                     mSetDdsRequired = true;
                     mCurrentDds = activeSub.subId;
                     //MSimPhoneFactory.setDataSubscription(mCurrentDds);
+                }
+            }
+        }else if (activeSubCount > 1){
+            int preferredDataSub = MSimPhoneFactory.getDataSubscription();
+            logd("active sub count = "+ activeSubCount+",mCurrentDds = "+mCurrentDds+",preferredDataSub = "+preferredDataSub);
+            if (mCurrentDds != preferredDataSub){
+                logd("current dds is "+mCurrentDds+",preferred one is "+preferredDataSub);
+                if (getCurrentSubscriptionReadiness(SubscriptionId.values()[preferredDataSub])){
+                    mQueuedDds = preferredDataSub;
+                    Message callback = Message.obtain(this,EVENT_SET_DATA_SUBSCRIPTION_DONE,
+                             Integer.toString(preferredDataSub));
+                    logd("update dds to "+preferredDataSub);
+                    mCi[preferredDataSub].setDataSubscription(callback);
+                }else{
+                    logd("updata dds later");
+                    mSetDdsRequired = true;
+                    mCurrentDds = preferredDataSub;
                 }
             }
         }
