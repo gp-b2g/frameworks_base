@@ -39,6 +39,7 @@ class FmTxEventListner {
     private final int TUNE_EVENT = 1;                   /*Tune completion event*/
     private final int TXRDSDAT_EVENT = 16;               /*RDS Group available event*/
     private final int TXRDSDONE_EVENT = 17;              /*RDS group complete event */
+    private final int RADIO_DISABLED = 18;
 
 
     private Thread mThread;
@@ -73,6 +74,10 @@ class FmTxEventListner {
                          case TXRDSDONE_EVENT:
                             Log.d(TAG, "Got TXRDSDONE_EVENT");
                                 cb.onContRDSGroupsComplete();
+                            break;
+                         case RADIO_DISABLED:
+                            Log.d(TAG, "Got RADIO_DISABLED");
+                                cb.onRadioDisabled();
                             break;
                          default:
                             Log.d(TAG, "Unknown event");

@@ -234,6 +234,33 @@ public class FmTransmitter extends FmTransceiver
 
       return status;
    }
+
+   /*==============================================================
+   FUNCTION:  reset
+   ==============================================================*/
+   /**
+   *    Reset the FM Device.
+   *    <p>
+   *    This is a synchronous command used to reset the state of FM
+   *    device in case of unrecoverable error. This function is
+   *    expected to be used when the client receives unexpected
+   *    notification of radio disabled. Once called, most
+   *    functionality offered by the FM device will be disabled
+   *    until the client re-enables the device again via
+   *    {@link #enable}.
+   *    <p>
+   *    @return true if reset succeeded, false if reset failed.
+   *    @see #enable
+   *    @see #disable
+   *    @see #registerTransmitClient
+   */
+   public boolean reset(){
+      boolean status = false;
+
+      status = unregisterTransmitClient();
+      return status;
+   }
+
   /*==============================================================
    FUNCTION:  setStation
    ==============================================================*/

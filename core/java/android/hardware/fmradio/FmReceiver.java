@@ -443,6 +443,44 @@ public class FmReceiver extends FmTransceiver
    }
 
    /*==============================================================
+   FUNCTION:  reset
+   ==============================================================*/
+   /**
+   *    Reset the FM Device.
+   *    <p>
+   *    This is a synchronous command used to reset the state of FM
+   *    device in case of unrecoverable error. This function is
+   *    expected to be used when the client receives unexpected
+   *    notification of radio disabled. Once called, most
+   *    functionality offered by the FM device will be disabled
+   *    until the client re-enables the device again via
+   *    {@link #enable}.
+   *    <p>
+   *    @return true if reset succeeded, false if reset failed.
+   *    @see #enable
+   *    @see #disable
+   *    @see #registerClient
+   */
+   public boolean reset(){
+      boolean status = false;
+      int state = getFMState();
+
+      if(state == FMState_Turned_Off) {
+         Log.d(TAG, "FM already turned Off.");
+         return false;
+      }
+
+      setFMPowerState(FMState_Turned_Off);
+      Log.v(TAG, "reset: NEW-STATE : FMState_Turned_Off");
+
+      status = unregisterClient();
+
+      release("/dev/radio0");
+
+      return status;
+   }
+
+   /*==============================================================
    FUNCTION:  disable
    ==============================================================*/
    /**

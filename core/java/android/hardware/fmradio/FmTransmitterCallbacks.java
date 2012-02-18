@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -73,4 +73,10 @@ package android.hardware.fmradio;
        *
        */
       public void onContRDSGroupsComplete();
+     /**
+       * The callback indicates that Radio has been Disabled.
+       * This indicates that the FM driver has disabled the radio.
+       *
+       */
+      public void onRadioDisabled();
    };
