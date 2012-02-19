@@ -1493,8 +1493,9 @@ status_t AwesomePlayer::initAudioDecoder() {
         mAudioSource = mAudioTrack;
     } else {
         // For LPA Playback use the decoder without OMX layer
-        char lpaDecode[128];
         char *matchComponentName = NULL;
+#ifndef NON_QCOM_TARGET
+        char lpaDecode[128];
         property_get("lpa.decode",lpaDecode,"0");
         if(strcmp("true",lpaDecode) == 0 && mVideoSource == NULL) {
             const char *mime;
@@ -1517,6 +1518,7 @@ status_t AwesomePlayer::initAudioDecoder() {
                 }
             }
         }
+#endif
         mAudioSource = OMXCodec::Create(
                 mClient.interface(), mAudioTrack->getFormat(),
                 false, // createEncoder
