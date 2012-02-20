@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import java.util.HashMap;
 import java.util.regex.PatternSyntaxException;
+import android.content.ActivityNotFoundException;
 
 import com.android.internal.telephony.MSimConstants.CardUnavailableReason;
 import com.android.internal.telephony.Subscription.SubscriptionStatus;
@@ -672,23 +673,22 @@ public class SubscriptionManager extends Handler {
             processActivateRequests();
         }
 
-        if (FeatureQuery.FEATURE_TELEPHONY_CARD_CHANGED_PROMPT) {
-            //when dual sim mode and card change, show card change prompt
-            if (TelephonyManager.getDefault().isMultiSimEnabled() && isCardChanaged()) {
-                logd("goto activity that show card has changed!");
-                Intent intent = new Intent(Intent.ACTION_MAIN);
-                intent.setClassName("com.android.qrd.configurationprompt",
-                                    "com.android.qrd.configurationprompt.CardChangedActivity");
+        //when dual sim mode and card change, show card change prompt
+        if (TelephonyManager.getDefault().isMultiSimEnabled() && isCardChanaged()) {
+            logd("goto activity that show card has changed!");
+            try {
+                Intent intent = new Intent("android.intent.action.CARD_CHANGED");
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 mContext.startActivity(intent);
-            }
-        } else {
-            if (isNewCardAvailable()) {
-                // NEW CARDs Available!!!
-                // Notify the USER HERE!!!
-                notifyNewCardsAvailable();
+            } catch(ActivityNotFoundException e) {
+                logd("not found activity that deal with android.intent.action.CARD_CHANGED");
             }
         }
+       /* if (isNewCardAvailable()) {
+            // NEW CARDs Available!!!
+            // Notify the USER HERE!!!
+            notifyNewCardsAvailable();
+        }*/
     }
 
     /**
