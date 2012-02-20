@@ -717,7 +717,7 @@ public class SubscriptionManager extends Handler {
             if (cardSubInfo.hasSubscription(userSub)) {
                 mIsNewCard[cardIndex] = false;
 
-                int subId = userSub.subId;
+                int subId = cardIndex;
                 Subscription currentSub = getCurrentSubscription(SubscriptionId.values()[subId]);
 
                 logd("processCardInfoAvailable: subId = " + subId
@@ -731,7 +731,7 @@ public class SubscriptionManager extends Handler {
                 sub.copyFrom(cardSubInfo.getSubscription(userSub));
                 sub.slotId = cardIndex;
                 sub.subId = subId;
-                if ((userSub.subStatus == SubscriptionStatus.SUB_ACTIVATED)
+                if ((mUserPrefSubs.subscription[subId].subStatus == SubscriptionStatus.SUB_ACTIVATED)
                     && (currentSub.subStatus != SubscriptionStatus.SUB_ACTIVATED)) {
                     // Need to activate this Subscription!!! - userSub.subId
                     // Push to the queue, so that start the SET_UICC_SUBSCRIPTION
@@ -741,7 +741,7 @@ public class SubscriptionManager extends Handler {
 
                     sub.subStatus = SubscriptionStatus.SUB_ACTIVATE;
                     mActivatePending.put(SubscriptionId.values()[subId], sub);
-                } else if ((userSub.subStatus == SubscriptionStatus.SUB_DEACTIVATED)
+                } else if ((mUserPrefSubs.subscription[subId].subStatus == SubscriptionStatus.SUB_DEACTIVATED)
                            && (currentSub.subStatus != SubscriptionStatus.SUB_DEACTIVATED)) {
                     //if the subscription is deactivated, should set card info to current subscription
                     sub.subStatus = SubscriptionStatus.SUB_DEACTIVATED;
