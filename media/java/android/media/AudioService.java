@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,6 +58,7 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.VolumePanel;
+import android.os.SystemProperties;
 
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.Phone;
@@ -100,6 +102,7 @@ public class AudioService extends IAudioService.Stub {
     private Context mContext;
     private ContentResolver mContentResolver;
     private boolean mVoiceCapable;
+    private static String SILENT_BOOT_KEY = "persist.sys.silent";
 
     /** The UI */
     private VolumePanel mVolumePanel;
@@ -2731,6 +2734,11 @@ public class AudioService extends IAudioService.Stub {
                 //FIXME: this is to maintain compatibility with deprecated intent
                 // AudioManager.ACTION_SCO_AUDIO_STATE_CHANGED. Remove when appropriate.
                 Intent newIntent = new Intent(AudioManager.ACTION_SCO_AUDIO_STATE_CHANGED);
+                // Support init status for SilentProfile when booting
+                if(getRingerMode()==AudioManager.RINGER_MODE_SILENT)
+                        SystemProperties.set(SILENT_BOOT_KEY, "1");
+                else
+                        SystemProperties.set(SILENT_BOOT_KEY, "0");
                 newIntent.putExtra(AudioManager.EXTRA_SCO_AUDIO_STATE,
                         AudioManager.SCO_AUDIO_STATE_DISCONNECTED);
                 mContext.sendStickyBroadcast(newIntent);
