@@ -612,6 +612,12 @@ public class TelephonyManager {
      */
     public static final int SIM_STATE_CARD_IO_ERROR = 6;
 
+    /** SIM card state: SIM Card Deactivated, only the sim card is activated,
+    *   we can get the other sim card state(eg:ready, pin lock...)
+    *@hide
+    */
+    public static final int SIM_STATE_DEACTIVATED = 0x0A;
+
     /**
      * @return true if a ICC card is present
      */

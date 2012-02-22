@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,6 +53,8 @@ public interface IccCard {
     static public final String INTENT_VALUE_LOCKED_PERSO = "PERSO";
     /* PERM_DISABLED means ICC is permanently disabled due to puk fails */
     static public final String INTENT_VALUE_ABSENT_ON_PERM_DISABLED = "PERM_DISABLED";
+    /* DEACTIVATED means the sim card is deactivated */
+    static public final String INTENT_VALUE_ICC_DEACTIVATED = "CARD_DEACTIVATED";
 
     /*
       UNKNOWN is a transient state, for example, after uesr inputs ICC pin under
@@ -67,7 +70,8 @@ public interface IccCard {
         READY,
         NOT_READY,
         PERM_DISABLED,
-        CARD_IO_ERROR;
+        CARD_IO_ERROR,
+        CARD_DEACTIVATED;
 
         public boolean isPinLocked() {
             return ((this == PIN_REQUIRED) || (this == PUK_REQUIRED));
@@ -89,6 +93,7 @@ public interface IccCard {
                 case NOT_READY: return INTENT_VALUE_ICC_NOT_READY;
                 case PERM_DISABLED: return INTENT_VALUE_ICC_LOCKED;
                 case CARD_IO_ERROR: return INTENT_VALUE_ICC_CARD_IO_ERROR;
+                case CARD_DEACTIVATED: return INTENT_VALUE_ICC_DEACTIVATED;
                 default: return INTENT_VALUE_ICC_UNKNOWN;
             }
         }

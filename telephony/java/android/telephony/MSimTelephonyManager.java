@@ -349,6 +349,9 @@ public class MSimTelephonyManager extends TelephonyManager {
         else if ("CARD_IO_ERROR".equals(prop)) {
             return SIM_STATE_CARD_IO_ERROR;
         }
+        else if ("CARD_DEACTIVATED".equals(prop)) {
+            return SIM_STATE_DEACTIVATED;
+        }
         else {
             return SIM_STATE_UNKNOWN;
         }
