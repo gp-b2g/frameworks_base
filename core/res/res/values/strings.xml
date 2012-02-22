@@ -1890,7 +1890,8 @@
     <string name="lockscreen_sim_error_message_short">Invalid Card</string>
     <!-- Shown in the lock screen when there is SIM card error. -->
     <string name="lockscreen_sim_error_message">SIM card is Invalid.</string>
-
+    <!-- Show in the lock screen when the SIM is deactivated. -->
+    <string name="lockscreen_sim_deactivate">SIM deactivated</string>
 
     <!-- When the user inserts a sim card from an unsupported network, it becomes network
          locked -->

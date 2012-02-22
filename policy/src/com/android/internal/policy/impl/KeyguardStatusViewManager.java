@@ -462,6 +462,8 @@ class KeyguardStatusViewManager implements OnClickListener {
                 return StatusMode.SimMissing;
             case CARD_IO_ERROR:
                 return StatusMode.SimIOError;
+            case CARD_DEACTIVATED:
+                return StatusMode.SimDeactivated;
         }
         return StatusMode.SimMissing;
     }
@@ -595,7 +597,12 @@ class KeyguardStatusViewManager implements OnClickListener {
         /**
          * The sim card is faulty
          */
-        SimIOError(true);
+        SimIOError(true),
+
+        /**
+        * The sim card is deactivated
+        */
+        SimDeactivated(true);
 
         private final boolean mShowStatusLines;
 

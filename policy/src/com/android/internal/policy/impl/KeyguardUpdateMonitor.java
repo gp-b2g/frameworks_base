@@ -155,6 +155,8 @@ public class KeyguardUpdateMonitor {
                 }
             } else if (IccCard.INTENT_VALUE_ICC_CARD_IO_ERROR.equals(stateExtra)) {
                 state = IccCard.State.CARD_IO_ERROR;
+            } else if (IccCard.INTENT_VALUE_ICC_DEACTIVATED.equals(stateExtra)) {
+                state = IccCard.State.CARD_DEACTIVATED;
             } else {
                 state = IccCard.State.UNKNOWN;
             }

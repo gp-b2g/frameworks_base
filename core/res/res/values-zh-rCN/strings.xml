@@ -715,6 +715,7 @@
     <string name="lockscreen_access_pattern_cleared" msgid="5583479721001639579">"图案已清除"</string>
     <string name="lockscreen_access_pattern_cell_added" msgid="6756031208359292487">"已添加单元格"</string>
     <string name="lockscreen_access_pattern_detected" msgid="4988730895554057058">"图案绘制完成"</string>
+    <string name="lockscreen_sim_deactivate">SIM卡禁用</string>
     <string name="password_keyboard_label_symbol_key" msgid="992280756256536042">"?123"</string>
     <string name="password_keyboard_label_alpha_key" msgid="8001096175167485649">"ABC"</string>
     <string name="password_keyboard_label_alt_key" msgid="1284820942620288678">"ALT"</string>

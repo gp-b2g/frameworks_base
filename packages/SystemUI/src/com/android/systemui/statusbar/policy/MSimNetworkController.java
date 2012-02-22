@@ -435,7 +435,10 @@ public class MSimNetworkController extends NetworkController {
             else {
                 simState = IccCard.State.PERSO_LOCKED;
             }
-        } else {
+        } 
+        else if (IccCard.INTENT_VALUE_ICC_DEACTIVATED.equals(stateExtra)) {
+            simState = IccCard.State.CARD_DEACTIVATED;
+        }else {
             simState = IccCard.State.UNKNOWN;
         }
         mMSimState[sub] = simState;

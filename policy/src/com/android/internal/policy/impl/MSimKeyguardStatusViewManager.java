@@ -171,6 +171,10 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
                         getContext().getText(R.string.lockscreen_sim_error_message_short));
                 mEmergencyButtonEnabledBecauseSimLocked = true;
                 break;
+            case SimDeactivated:
+                mCarrierTextSub[subscription] = getContext().getText(R.string.lockscreen_sim_deactivate);
+                carrierHelpTextId = R.string.lockscreen_sim_deactivate;
+                break;
         }
         setCarrierText();
         setCarrierHelpText(carrierHelpTextId);
