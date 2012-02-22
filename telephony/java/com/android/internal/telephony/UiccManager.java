@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
- * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemProperties;
 import android.util.Log;
 import android.telephony.TelephonyManager;
 
@@ -43,6 +44,7 @@ public class UiccManager extends Handler {
     private static final int EVENT_ICC_STATUS_CHANGED = 1;
     private static final int EVENT_GET_ICC_STATUS_DONE = 2;
     private static final int EVENT_RADIO_UNAVAILABLE = 3;
+    private static final int EVENT_RADIO_OFF = 4;
     private static UiccManager mInstance;
 
     private Context mContext;
@@ -85,6 +87,7 @@ public class UiccManager extends Handler {
             Integer index = new Integer(i);
             mCi[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, index);
             mCi[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, index);
+            mCi[i].registerForOff(this, EVENT_RADIO_OFF, index);
             // TODO remove this once modem correctly notifies the unsols
             mCi[i].registerForOn(this, EVENT_ICC_STATUS_CHANGED, index);
             mCatService[i] = new CatService( mCi[i], mContext, i);
@@ -116,9 +119,19 @@ public class UiccManager extends Handler {
                 Log.d(LOG_TAG, "EVENT_RADIO_UNAVAILABLE on index " + index);
                 disposeCard(index);
                 break;
+            case EVENT_RADIO_OFF:
+                if (!isAirplaneModeCardPowerDown()) {
+                    Log.d(LOG_TAG, "EVENT_RADIO_OFF calling getIccCardStatus on index " + index);
+                    mCi[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE, index));
+                }
+                break;
             default:
                 Log.e(LOG_TAG, " Unknown Event " + msg.what);
         }
+    }
+
+    private boolean isAirplaneModeCardPowerDown() {
+        return 0 == SystemProperties.getInt("persist.radio.apm_sim_not_pwdn", 0);
     }
 
     private Integer getCiIndex(Message msg) {

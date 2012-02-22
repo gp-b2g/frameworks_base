@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mOnRegistrants = new RegistrantList();
     protected RegistrantList mAvailRegistrants = new RegistrantList();
     protected RegistrantList mOffOrNotAvailRegistrants = new RegistrantList();
+    protected RegistrantList mOffRegistrants = new RegistrantList();
     protected RegistrantList mNotAvailRegistrants = new RegistrantList();
     protected RegistrantList mCallStateRegistrants = new RegistrantList();
     protected RegistrantList mVoiceNetworkStateRegistrants = new RegistrantList();
@@ -216,6 +217,23 @@ public abstract class BaseCommands implements CommandsInterface {
     public void unregisterForOffOrNotAvailable(Handler h) {
         synchronized(mStateMonitor) {
             mOffOrNotAvailRegistrants.remove(h);
+        }
+    }
+
+    public void registerForOff(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+
+        synchronized (mStateMonitor) {
+            mOffRegistrants.add(r);
+
+            if (mState == RadioState.RADIO_OFF) {
+                r.notifyRegistrant(new AsyncResult(null, null, null));
+            }
+        }
+    }
+    public void unregisterForOff(Handler h) {
+        synchronized(mStateMonitor) {
+            mOffRegistrants.remove(h);
         }
     }
 
@@ -685,7 +703,7 @@ public abstract class BaseCommands implements CommandsInterface {
     public void unregisterForSubscriptionStatusChanged(Handler h) {
         mSubscriptionStatusRegistrants.remove(h);
     }
-    
+
     /**
      * {@inheritDoc}
      */

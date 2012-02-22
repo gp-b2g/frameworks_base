@@ -215,6 +215,15 @@ public interface CommandsInterface {
     void registerForOffOrNotAvailable(Handler h, int what, Object obj);
     void unregisterForOffOrNotAvailable(Handler h);
 
+     /**
+     * Fires on any transition into RADIO_OFF
+     * Fires immediately if currently in that state
+     * In general, actions should be idempotent. State may change
+     * before event is received.
+     */
+    void registerForOff(Handler h, int what, Object obj);
+    void unregisterForOff(Handler h);
+
     /**
      * Fires on any change in ICC status
      */

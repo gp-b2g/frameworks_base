@@ -30,6 +30,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
+import android.provider.Settings;
 import android.util.Log;
 
 
@@ -121,11 +122,11 @@ public class CardSubscriptionManager extends Handler {
     private static final int EVENT_GET_ICCID_DONE = 3;
     private static final int EVENT_UPDATE_UICC_STATUS = 4;
     private static final int EVENT_SIM_REFRESH = 5;
-
+    private static final int EVENT_RADIO_NOT_AVAILABLE = 6;
     //***** Class Variables
     private static CardSubscriptionManager sCardSubscriptionManager;
 
-
+    private Context mContext;
     private CommandsInterface[] mCi;
     private UiccManager mUiccManager;
     private boolean[] mRadioOn = {false, false};
@@ -156,7 +157,7 @@ public class CardSubscriptionManager extends Handler {
     //***** Constructor
     private CardSubscriptionManager(Context context, UiccManager uiccManager, CommandsInterface[] ci) {
         logd("Constructor - Enter");
-
+        mContext = context;
         mCi = ci;
         mUiccManager = uiccManager;
 
@@ -164,6 +165,7 @@ public class CardSubscriptionManager extends Handler {
             // Register for Subscription ready event for both the subscriptions.
             Integer slot = new Integer(i);
             mCi[i].registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, slot);
+            //mCi[i].registerForNotAvailable(this, EVENT_RADIO_NOT_AVAILABLE, slot);
             mCi[i].registerForOn(this, EVENT_RADIO_ON, slot);
         }
 
@@ -285,7 +287,7 @@ public class CardSubscriptionManager extends Handler {
 
         if ((ar.exception == null) && (ar.result != null)) {
             Integer cardIndex = (Integer) ar.result;
-            if (!mRadioOn[cardIndex]) {
+            if (!mRadioOn[cardIndex] && isAirplaneModeCardPowerDown()) {
                 logd("handleIccChanged: radio not available - EXIT");
                 return;
             }
@@ -420,7 +422,7 @@ public class CardSubscriptionManager extends Handler {
 
         logd("handleGetIccIdDone: cardIndex = " + cardIndex);
 
-        if (!mRadioOn[cardIndex]) {
+        if (!mRadioOn[cardIndex] && isAirplaneModeCardPowerDown()) {
             logd("handleGetIccIdDone: radio not available - EXIT");
             return;
         }
@@ -473,7 +475,7 @@ public class CardSubscriptionManager extends Handler {
             uiccCard = cardInfo.getUiccCard();
         }
 
-        if (uiccCard == null || mRadioOn[cardIndex] == false) {
+        if (uiccCard == null || (isAirplaneModeCardPowerDown() && mRadioOn[cardIndex] == false)) {
             logd("onUpdateUiccStatus(): mRadioOn[" + cardIndex + "] = " + mRadioOn[cardIndex]);
             logd("onUpdateUiccStatus(): NO Card!!!!! at index : " + cardIndex);
             if (mCardSubData[cardIndex] != null) {
@@ -561,7 +563,8 @@ public class CardSubscriptionManager extends Handler {
 
         // Required to notify only once!!!
         // Notify if all card info is available.
-        if (isValidCards() && !mAllCardsInfoAvailable && mRadioOn[cardIndex]) {
+        if (isValidCards() && !mAllCardsInfoAvailable &&
+            !(!mRadioOn[cardIndex] && isAirplaneModeCardPowerDown())) {
             mAllCardsInfoAvailable = true;
             notifyAllCardsInfoAvailable();
         }
@@ -702,6 +705,10 @@ public class CardSubscriptionManager extends Handler {
             return false;
         }
         return true;
+    }
+
+    private boolean isAirplaneModeCardPowerDown() {
+        return 0 == SystemProperties.getInt("persist.radio.apm_sim_not_pwdn", 0);
     }
 
     private void logd(String string) {

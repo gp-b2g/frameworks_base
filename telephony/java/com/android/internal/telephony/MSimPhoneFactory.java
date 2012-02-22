@@ -92,9 +92,9 @@ public class MSimPhoneFactory extends PhoneFactory {
 
                 // Get preferred network mode
                 int preferredNetworkMode = RILConstants.PREFERRED_NETWORK_MODE;
-                if (BaseCommands.getLteOnCdmaModeStatic() == Phone.LTE_ON_CDMA_TRUE) {
-                    preferredNetworkMode = Phone.NT_MODE_GLOBAL;
-                }
+                //if (BaseCommands.getLteOnCdmaModeStatic() == Phone.LTE_ON_CDMA_TRUE) {
+                //    preferredNetworkMode = Phone.NT_MODE_GLOBAL;
+                //}
 
                 // TODO: for CDMA LTE and check the CDMA_SUBSCRIPTION_MODE
                 //Get cdmaSubscription mode from Settings.System
@@ -113,14 +113,14 @@ public class MSimPhoneFactory extends PhoneFactory {
 
                 for (int i = 0; i < numPhones; i++) {
                     //reads the system properties and makes commandsinterface
-                    try {
-                        networkModes[i]  = Settings.Secure.getIntAtIndex(
-                                context.getContentResolver(),
-                                Settings.Secure.PREFERRED_NETWORK_MODE, i);
-                    } catch (SettingNotFoundException snfe) {
-                        Log.e(LOG_TAG, "Settings Exception Reading Value At Index", snfe);
+                    //try {
+                    //    networkModes[i]  = Settings.Secure.getIntAtIndex(
+                    //            context.getContentResolver(),
+                    //            Settings.Secure.PREFERRED_NETWORK_MODE, i);
+                    //} catch (SettingNotFoundException snfe) {
+                    //    Log.e(LOG_TAG, "Settings Exception Reading Value At Index", snfe);
                         networkModes[i] = preferredNetworkMode;
-                    }
+                    //}
                     Log.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkModes[i]));
                     sCommandsInterfaces[i] = new RIL(context, networkModes[i],
                             cdmaSubscription, i);
