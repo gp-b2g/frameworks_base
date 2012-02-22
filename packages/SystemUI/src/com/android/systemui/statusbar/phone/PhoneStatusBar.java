@@ -556,9 +556,9 @@ public class PhoneStatusBar extends StatusBar {
         StatusBarIconView view = new StatusBarIconView(mContext, slot, null);
         view.set(icon);
         if (FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) {
-            mStatusIcons.addView(view, viewIndex, new LinearLayout.LayoutParams(mIconSize, mIconSize));
-        } else {
             mStatusIcons.addView(view, viewIndex, new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, mIconSize));
+        } else {
+            mStatusIcons.addView(view, viewIndex, new LinearLayout.LayoutParams(mIconSize, mIconSize));
         }
     }
 

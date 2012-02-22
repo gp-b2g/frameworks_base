@@ -56,6 +56,7 @@ public class MSimSignalClusterView
     private String mWifiDescription, mMobileTypeDescription;
     private String[] mMobileDescription;
     private boolean[] mMNoSimIconVisiable;
+    private boolean[] mSignalIconVisiable;
 
     ViewGroup mWifiGroup, mMobileGroup, mMobileGroupSub2;
     ImageView mWifi, mWifiActivity, mMobile, mMobileActivity, mMobileType;
@@ -80,12 +81,14 @@ public class MSimSignalClusterView
         mMobileActivityId = new int[numPhones];
         mNoSimIconId = new int[numPhones];
         mMNoSimIconVisiable = new boolean[numPhones];
+        mSignalIconVisiable = new boolean[numPhones];
         for(int i=0; i < numPhones; i++) {
             mMobileStrengthId[i] = 0;
             mMobileTypeId[i] = 0;
             mMobileActivityId[i] = 0;
             mNoSimIconId[i] = 0;
             mMNoSimIconVisiable[i] = false;
+            mSignalIconVisiable[i] = false;
         }
     }
 
@@ -99,13 +102,7 @@ public class MSimSignalClusterView
         super.onAttachedToWindow();
 
         mWifiGroup      = (ViewGroup) findViewById(R.id.wifi_combo);
-        ViewGroup.MarginLayoutParams  layoutParams = (ViewGroup.MarginLayoutParams)mWifiGroup.getLayoutParams();
-        if (FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) {
-            layoutParams.setMargins(0, 0, 6, 0);
-        } else {
-            layoutParams.setMargins(0, 0, -6, 0);
-        }
-        mWifiGroup.setLayoutParams(layoutParams);
+
         mWifi           = (ImageView) findViewById(R.id.wifi_signal);
         mWifiActivity   = (ImageView) findViewById(R.id.wifi_inout);
         mMobileGroup    = (ViewGroup) findViewById(R.id.mobile_combo);
@@ -163,10 +160,15 @@ public class MSimSignalClusterView
         mMobileTypeDescription = typeContentDescription;
         mNoSimIconId[subscription] = noSimIcon;
 
-        if (noSimIcon != 0) {
+        if (!FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) {
             mMNoSimIconVisiable[subscription] = true;
+            mSignalIconVisiable[subscription] = true;
+        } else if (noSimIcon != 0) {
+            mMNoSimIconVisiable[subscription] = true;
+            mSignalIconVisiable[subscription] = false;
         } else {
             mMNoSimIconVisiable[subscription] = false;
+            mSignalIconVisiable[subscription] = true;
         }
         Log.i(TAG,"SetMobileDataIndicators MNoSimIconVisiable "+subscription+"="+mMNoSimIconVisiable[subscription]);
 
@@ -199,7 +201,7 @@ public class MSimSignalClusterView
             if (subscription == MSimConstants.SUB1) {
                 mMobileGroup.setVisibility(View.VISIBLE);
                 mMobile.setImageResource(mMobileStrengthId[subscription]);
-                mMobile.setVisibility(mMNoSimIconVisiable[subscription] ? View.GONE : View.VISIBLE);
+                mMobile.setVisibility(mSignalIconVisiable[subscription] ? View.VISIBLE : View.GONE);
                 mMobileGroup.setContentDescription(mMobileTypeDescription + " "
                     + mMobileDescription[subscription]);
                 mMobileActivity.setImageResource(mMobileActivityId[subscription]);
@@ -211,7 +213,7 @@ public class MSimSignalClusterView
             } else {
                 mMobileGroupSub2.setVisibility(View.VISIBLE);
                 mMobileSub2.setImageResource(mMobileStrengthId[subscription]);
-                mMobileSub2.setVisibility(mMNoSimIconVisiable[subscription] ? View.GONE : View.VISIBLE);
+                mMobileSub2.setVisibility(mSignalIconVisiable[subscription] ? View.VISIBLE : View.GONE);
                 mMobileGroupSub2.setContentDescription(mMobileTypeDescription + " "
                     + mMobileDescription[subscription]);
                 mMobileActivitySub2.setImageResource(mMobileActivityId[subscription]);
