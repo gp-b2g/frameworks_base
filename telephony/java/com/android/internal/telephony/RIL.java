@@ -3103,7 +3103,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 //setRadioPower(false, null);
                 //setPreferredNetworkType(mPreferredNetworkType, null);
                 //setCdmaSubscriptionSource(mCdmaSubscription, null);
-                //notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
+                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
             }
 
