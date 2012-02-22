@@ -55,6 +55,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -320,17 +322,17 @@ public abstract class DataConnectionTracker extends Handler {
     protected ConcurrentHashMap<String, ApnContext> mApnContexts;
 
     /** Priorities for APN_TYPEs. package level access, used by ApnContext */
-    static ConcurrentHashMap<String, Integer> mApnPriorities =
-        new ConcurrentHashMap<String, Integer>() {
+    static LinkedHashMap<String, Integer> mApnPriorities =
+        new LinkedHashMap<String, Integer>() {
             {
-                put(Phone.APN_TYPE_DEFAULT, 0);
-                put(Phone.APN_TYPE_MMS,     1);
-                put(Phone.APN_TYPE_SUPL,    2);
-                put(Phone.APN_TYPE_DUN,     3);
-                put(Phone.APN_TYPE_HIPRI,   4);
-                put(Phone.APN_TYPE_FOTA,    5);
-                put(Phone.APN_TYPE_IMS,     6);
                 put(Phone.APN_TYPE_CBS,     7);
+                put(Phone.APN_TYPE_IMS,     6);
+                put(Phone.APN_TYPE_FOTA,    5);
+                put(Phone.APN_TYPE_HIPRI,   4);
+                put(Phone.APN_TYPE_DUN,     3);
+                put(Phone.APN_TYPE_SUPL,    2);
+                put(Phone.APN_TYPE_MMS,     1);
+                put(Phone.APN_TYPE_DEFAULT, 0);
             }
         };
 
@@ -1303,9 +1305,9 @@ public abstract class DataConnectionTracker extends Handler {
          *  Get the prioritized enumerated APN Types and retrieve the APN
          *  context associated with it from the list of APN contexts
          */
-        for (Enumeration<String> apnTypes = mApnPriorities.keys();
-                apnTypes.hasMoreElements();) {
-            ApnContext apnContext = mApnContexts.get(apnTypes.nextElement());
+        Iterator apnTypes = mApnPriorities.keySet().iterator();
+        while(apnTypes.hasNext()) {
+            ApnContext apnContext = mApnContexts.get(apnTypes.next());
             if (apnContext != null)
                 sortedList.add(apnContext);
         }
