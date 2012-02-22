@@ -268,7 +268,14 @@ int FramebufferNativeWindow::lockBuffer(ANativeWindow* window,
     GraphicLog& logger(GraphicLog::getInstance());
     logger.log(GraphicLog::SF_FB_LOCK_BEFORE, index);
 
-    fb->lockBuffer(fb, index);
+    if (!fb->lockBuffer) {
+        while (self->front == buffer) {
+            self->mCondition.wait(self->mutex);
+        }
+    }
+    else {
+        fb->lockBuffer(fb, index);
+    }
 
     logger.log(GraphicLog::SF_FB_LOCK_AFTER, index);
 #ifdef GFX_TESTFRAMEWORK
