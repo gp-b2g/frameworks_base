@@ -781,8 +781,11 @@ final class BluetoothAdapterStateMachine extends StateMachine {
     }
 
     private void shutoffBluetooth() {
-        mBluetoothService.shutoffBluetooth();
+        // Stop event loop before Bluetooth Service shutoff to avoid
+        // race condition during tearing down eventloop and accessing
+        // eventloop from BluetoothService.
         mEventLoop.stop();
+        mBluetoothService.shutoffBluetooth();
         mBluetoothService.cleanNativeAfterShutoffBluetooth();
         stopHcidump();
     }
