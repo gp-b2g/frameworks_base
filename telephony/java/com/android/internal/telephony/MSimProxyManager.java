@@ -51,12 +51,14 @@ public class MSimProxyManager {
     private CardSubscriptionManager mCardSubscriptionManager;
 
     private SubscriptionManager mSubscriptionManager;
-    //the number of multi sim is 2
-    private static final int NUM_SUBSCRIPTIONS = 2;
     //default multi sim names
     private static final String[] MULTI_SIM_NAMES = {"SLOT1", "SLOT2"};
     //default countdown time is 5s
     private static final int DEFAULT_COUNTDOWN_TIME = 5;
+    //default callback enable is 1
+    private static final int DEFAULT_CALLBACK_ENABLED = 1;
+    //deault sim voice prompt is 1
+    private static final int DEFAULT_PROMPT_VALUE = 1;
 
     //***** Class Methods
     public static MSimProxyManager getInstance(Context context, Phone[] phoneProxy,
@@ -133,19 +135,47 @@ public class MSimProxyManager {
 
     /* set default properties for multi sim name and count down tiem */
     private void setDefaultProperties(Context context) {
-        for (int i=0; i<NUM_SUBSCRIPTIONS; i++) {
-            String simName = Settings.System.getString(context.getContentResolver(),Settings.System.MULTI_SIM_NAME[i]);
-            if (simName == null) {
-                Settings.System.putString(context.getContentResolver(),
-                    Settings.System.MULTI_SIM_NAME[i],MULTI_SIM_NAMES[i]);
-            }
-        }
+        boolean bSetToDefault = true;
+
         try {
-            Settings.System.getInt(context.getContentResolver(),Settings.System.MULTI_SIM_COUNTDOWN);
+                 Settings.System.getInt(context.getContentResolver(), Settings.System.MULTI_SIM_VOICE_CALL_SUBSCRIPTION);
+                 Settings.System.getInt(context.getContentResolver(), Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION);
+                 Settings.System.getInt(context.getContentResolver(), Settings.System.MULTI_SIM_SMS_SUBSCRIPTION);
+                 Settings.System.getInt(context.getContentResolver(), Settings.System.DEFAULT_SUBSCRIPTION);
+                 bSetToDefault = false;
              } catch(SettingNotFoundException snfe) {
-                   logd(Settings.System.MULTI_SIM_COUNTDOWN+" setting does not exist, set default vaule");
-                   Settings.System.putInt(context.getContentResolver(),
-                    Settings.System.MULTI_SIM_COUNTDOWN, DEFAULT_COUNTDOWN_TIME);
+                 Log.e(LOG_TAG, "Settings Exception Reading Voice/Sms/Data/Default subscription", snfe);
+             }
+
+        //if these property does not exist, we should set default value to them
+        if (bSetToDefault) {
+            //set default subscription to voice call, sms, data and default sub.
+            Settings.System.putInt(context.getContentResolver(),
+                Settings.System.MULTI_SIM_VOICE_CALL_SUBSCRIPTION, MSimConstants.DEFAULT_SUBSCRIPTION);
+            Settings.System.putInt(context.getContentResolver(),
+                Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION, MSimConstants.DEFAULT_SUBSCRIPTION);
+            Settings.System.putInt(context.getContentResolver(),
+                Settings.System.MULTI_SIM_SMS_SUBSCRIPTION, MSimConstants.DEFAULT_SUBSCRIPTION);
+            Settings.System.putInt(context.getContentResolver(),
+                Settings.System.DEFAULT_SUBSCRIPTION, MSimConstants.DEFAULT_SUBSCRIPTION);
+
+            //set defult voice prompt is enabled
+            Settings.System.putInt(context.getContentResolver(),
+                 Settings.System.MULTI_SIM_VOICE_PROMPT, DEFAULT_PROMPT_VALUE);
+
+            //set default sim name
+            for (int i=0; i<MSimConstants.NUM_SUBSCRIPTIONS; i++) {
+                Settings.System.putString(context.getContentResolver(),
+                    Settings.System.MULTI_SIM_NAME[i], MULTI_SIM_NAMES[i]);
             }
+
+            //set defualt count down time to 5s.
+            Settings.System.putInt(context.getContentResolver(),
+                Settings.System.MULTI_SIM_COUNTDOWN, DEFAULT_COUNTDOWN_TIME);
+
+            //set default CALLBACK_PRIORITY_ENABLED to enabled.
+            Settings.System.putInt(context.getContentResolver(),
+                Settings.System.CALLBACK_PRIORITY_ENABLED, DEFAULT_CALLBACK_ENABLED);
+        }
     }
 }
