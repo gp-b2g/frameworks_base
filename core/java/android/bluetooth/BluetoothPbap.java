@@ -207,7 +207,11 @@ public class BluetoothPbap {
             try {
                 mService.disconnect();
                 return true;
-            } catch (RemoteException e) {Log.e(TAG, e.toString());}
+            } catch (RemoteException e) {Log.e(TAG, e.toString());
+            } catch (NullPointerException e) {
+                Log.w(TAG, "Pbap Service is already disconnected");
+            }
+
         } else {
             Log.w(TAG, "Proxy not attached to service");
             if (DBG) log(Log.getStackTraceString(new Throwable()));
