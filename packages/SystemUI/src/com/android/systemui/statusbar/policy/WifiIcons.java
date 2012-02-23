@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,4 +34,19 @@ class WifiIcons {
         };
 
     static final int WIFI_LEVEL_COUNT = WIFI_SIGNAL_STRENGTH[0].length;
+
+    // FMC icon
+    static final int[][] sFmcDataImages = {
+        { R.drawable.stat_sys_fmc_data_1,
+          R.drawable.stat_sys_fmc_data_2,
+          R.drawable.stat_sys_fmc_data_3,
+          R.drawable.stat_sys_fmc_data_4 },
+        { R.drawable.stat_sys_fmc_data_connectd_1,
+          R.drawable.stat_sys_fmc_data_connectd_2,
+          R.drawable.stat_sys_fmc_data_connectd_3,
+          R.drawable.stat_sys_fmc_data_connectd_4 }
+    };
+
+    static final int FMC_LEVEL_COUNT = sFmcDataImages[0].length;
+    static final int sFmcInitImage = R.drawable.stat_sys_fmc_data_init;
 }

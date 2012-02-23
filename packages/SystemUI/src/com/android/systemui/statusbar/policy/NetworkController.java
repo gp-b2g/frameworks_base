@@ -28,6 +28,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.net.ConnectivityManager;
+import android.net.FmcNotifier;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
@@ -45,6 +46,7 @@ import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
+import android.util.Log;
 import android.util.Slog;
 import android.view.View;
 import android.widget.ImageView;
@@ -64,6 +66,18 @@ public class NetworkController extends BroadcastReceiver {
     static final String TAG = "StatusBar.NetworkController";
     static final boolean DEBUG = true;
     static final boolean CHATTY = true; // additional diagnostics, but not logspew
+
+    // FMC related
+    private static final String FMC_STATE_CHANGED_ACTION = "android.fmc.FMC_STATE_CHANGED_ACTION";
+    // private static final String ENABLE_FMC_ACTION = "android.fmc.ENABLE_FMC_ACTION";
+    private static final String FMC_ENABLED_STATUS = "fmc_enabled_status";
+
+    private static final int FMC_NOT_START  = -2;
+    private static final int FMC_INITIALIZE = -1;
+    private static final int FMC_REG_SUCCESS = 0;
+    private static final int FMC_ENABLED  = 1;
+
+    private int mFmcState = FMC_NOT_START;
 
     // telephony
     boolean mHspaDataDistinguishable;
@@ -211,6 +225,7 @@ public class NetworkController extends BroadcastReceiver {
         filter.addAction(ConnectivityManager.INET_CONDITION_ACTION);
         filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
         filter.addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED);
+        filter.addAction(FMC_STATE_CHANGED_ACTION);
         mWimaxSupported = mContext.getResources().getBoolean(
                 com.android.internal.R.bool.config_wimaxEnabled);
         if(mWimaxSupported) {
@@ -367,6 +382,9 @@ public class NetworkController extends BroadcastReceiver {
                 action.equals(WimaxManagerConstants.SIGNAL_LEVEL_CHANGED_ACTION) ||
                 action.equals(WimaxManagerConstants.WIMAX_NETWORK_STATE_CHANGED_ACTION)) {
             updateWimaxState(intent);
+            refreshViews();
+        } else if (action.equals(FMC_STATE_CHANGED_ACTION)) {
+            updateFmc(intent);
             refreshViews();
         }
     }
@@ -708,7 +726,8 @@ public class NetworkController extends BroadcastReceiver {
             }
         } else {
             // CDMA case, mDataActivity can be also DATA_ACTIVITY_DORMANT
-            if (mDataState == TelephonyManager.DATA_CONNECTED) {
+            if (mDataState == TelephonyManager.DATA_CONNECTED &&
+                    mFmcState != FMC_REG_SUCCESS && mFmcState != FMC_ENABLED ) {
                 switch (mDataActivity) {
                     case TelephonyManager.DATA_ACTIVITY_IN:
                         iconId = mDataIconList[1];
@@ -829,15 +848,20 @@ public class NetworkController extends BroadcastReceiver {
         } else if (action.equals(WifiManager.RSSI_CHANGED_ACTION)) {
             if (mWifiConnected) {
                 mWifiRssi = intent.getIntExtra(WifiManager.EXTRA_NEW_RSSI, -200);
+                int wifiLevelCount = (mFmcState == FMC_REG_SUCCESS || mFmcState == FMC_ENABLED)?
+                        WifiIcons.FMC_LEVEL_COUNT : WifiIcons.WIFI_LEVEL_COUNT;
                 mWifiLevel = WifiManager.calculateSignalLevel(
-                        mWifiRssi, WifiIcons.WIFI_LEVEL_COUNT);
+                        mWifiRssi, wifiLevelCount);
             }
         }
-
         updateWifiIcons();
     }
 
     protected void updateWifiIcons() {
+        if (mFmcState == FMC_INITIALIZE) {
+            mWifiIconId = WifiIcons.sFmcInitImage;
+            return;
+        }
         if (mWifiConnected) {
             mWifiIconId = WifiIcons.WIFI_SIGNAL_STRENGTH[mInetCondition][mWifiLevel];
             mContentDescriptionWifi = mContext.getString(
@@ -849,6 +873,10 @@ public class NetworkController extends BroadcastReceiver {
                 mWifiIconId = mWifiEnabled ? WifiIcons.WIFI_SIGNAL_STRENGTH[0][0] : 0;
             }
             mContentDescriptionWifi = mContext.getString(R.string.accessibility_no_wifi);
+        }
+        // if FMC already up, change the icon to FMC's
+        if (mFmcState == FMC_REG_SUCCESS || mFmcState == FMC_ENABLED ) {
+            mWifiIconId = WifiIcons.sFmcDataImages[mFmcState][mWifiLevel];
         }
     }
 
@@ -909,6 +937,80 @@ public class NetworkController extends BroadcastReceiver {
         } else {
             mWimaxIconId = 0;
         }
+    }
+
+    private final void updateFmc(Intent intent) {
+        final String action = intent.getAction();
+        if (FMC_STATE_CHANGED_ACTION.equals(action)) {
+            final int status = intent.getIntExtra("FmcStatus", -1);
+            Log.d(TAG, "updateFmc status =" + status);
+            handleFmcStatusDisplay(intent);
+        }
+    }
+
+    private void handleFmcStatusDisplay(Intent intent) {
+        final int status = intent.getIntExtra("FmcStatus", -1);
+        switch (status) {
+        case FmcNotifier.FMC_STATUS_INITIALIZED:
+            mFmcState = FMC_INITIALIZE;
+            break;
+
+        case FmcNotifier.FMC_STATUS_REGISTRATION_SUCCESS:
+            mFmcState = FMC_REG_SUCCESS;
+            break;
+
+        case FmcNotifier.FMC_STATUS_ENABLED:
+            mFmcState = FMC_ENABLED;
+            break;
+
+        default:
+            mFmcState = FMC_NOT_START;
+            break;
+        }
+        updateFmcSignal();
+        updateWifiIcons();
+    }
+
+    private void updateFmcSignal() {
+        Log.d(TAG, "updateFmcSignalIcon mFmcState=" + mFmcState);
+        if (mFmcState < FMC_NOT_START || mFmcState > FMC_ENABLED)
+            return;
+
+        if (mFmcState == FMC_INITIALIZE) {
+            mWifiIconId = WifiIcons.sFmcInitImage;
+            return;
+        }
+
+        int iconid = 0;
+        WifiInfo mWifiInfo = mWifiManager.getConnectionInfo();
+        int rssi = (mWifiInfo != null) ? mWifiInfo.getRssi() : -200;
+        int wifiLevelCount = (mFmcState == FMC_REG_SUCCESS || mFmcState == FMC_ENABLED) ? WifiIcons.FMC_LEVEL_COUNT
+                : WifiIcons.WIFI_LEVEL_COUNT;
+
+        // FMC stop for some reason, we must resume wifi icon if
+        // wifi is connected
+        mWifiLevel = WifiManager.calculateSignalLevel(rssi, wifiLevelCount);
+
+        // TODO check wifi state and update the icon
+        if (mWifiConnected) {
+            mWifiIconId = WifiIcons.WIFI_SIGNAL_STRENGTH[mInetCondition][mWifiLevel];
+            mContentDescriptionWifi = mContext
+                    .getString(AccessibilityContentDescriptions.WIFI_CONNECTION_STRENGTH[mWifiLevel]);
+        } else {
+            if (mDataAndWifiStacked) {
+                mWifiIconId = 0;
+            } else {
+                mWifiIconId = mWifiEnabled ? WifiIcons.WIFI_SIGNAL_STRENGTH[0][0]
+                        : 0;
+            }
+            mContentDescriptionWifi = mContext
+                    .getString(R.string.accessibility_no_wifi);
+        }
+
+        if (mFmcState == FMC_REG_SUCCESS || mFmcState == FMC_ENABLED) {
+            mWifiIconId = WifiIcons.sFmcDataImages[mFmcState][mWifiLevel];
+        }
+        return;
     }
 
     // ===== Full or limited Internet connectivity ==================================
@@ -1221,6 +1323,7 @@ public class NetworkController extends BroadcastReceiver {
             if (DEBUG) {
                 Slog.d(TAG, "changing data overlay icon id to " + combinedActivityIconId);
             }
+
             mLastDataDirectionOverlayIconId = combinedActivityIconId;
             N = mDataDirectionOverlayIconViews.size();
             for (int i=0; i<N; i++) {

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1377,6 +1377,20 @@ public final class Settings {
          * Whether or not to dim the screen. 0=no  1=yes
          */
         public static final String DIM_SCREEN = "dim_screen";
+
+        /**
+          * Int value to specify if FMC is enabled.
+          * 0 = Disable  1 = Enable
+          * @hide
+          */
+         public static final String FMC_ENABLED = "fmc_enabled";
+
+        /**
+          * Int value to specify if FMC status.
+          * @hide
+          */
+         public static final String FMC_STATUS = "fmc_status";
+
 
         /**
          * The timeout before the screen turns off.
