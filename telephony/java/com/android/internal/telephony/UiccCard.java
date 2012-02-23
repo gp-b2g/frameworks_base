@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,7 +71,6 @@ public class UiccCard {
     private UiccCardApplication[] mUiccApplications = new UiccCardApplication[IccCardStatus.CARD_MAX_APPS];
     private Context mContext;
     private CommandsInterface mCi;
-    private CatService mCatService;
     private boolean mDestroyed = false; //set to true once this card is commanded to be disposed of.
     
     private RegistrantList mAbsentRegistrants = new RegistrantList();
@@ -79,9 +78,9 @@ public class UiccCard {
     private static final int EVENT_CARD_REMOVED = 13;
     private static final int EVENT_CARD_ADDED = 14;
 
-    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int slotId) {
+    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics) {
         log("Creating");
-        update(c, ci, ics, slotId);
+        update(c, ci, ics);
     }
 
     public void dispose() {
@@ -91,14 +90,10 @@ public class UiccCard {
                 app.dispose();
             }
         }
-        if (mCatService != null) {
-            mCatService.dispose();
-        }
-        mCatService = null;
         mUiccApplications = null;
     }
 
-    public void update(Context c, CommandsInterface ci, IccCardStatus ics, int slotId) {
+    public void update(Context c, CommandsInterface ci, IccCardStatus ics) {
         if (mDestroyed) {
             loge("Updated after destroyed! Fix me!");
             return;
@@ -130,15 +125,6 @@ public class UiccCard {
             }
         }
 
-        if (mUiccApplications.length > 0 && mUiccApplications[0] != null) {
-            if (mCatService == null) {
-                // Initialize or Reinitialize CatService
-                mCatService = new CatService( mCi, mUiccApplications[0],
-                        mContext, slotId);
-            } else {
-                mCatService.update( mCi, mUiccApplications[0], mContext, slotId);
-            }
-        }
         // The following logic does not account for Sim being powered down
         // when we go into air plane mode. Commenting it out till we fix it.
         // IccCardProxy is the only registrant and it
@@ -251,10 +237,6 @@ public class UiccCard {
         return mCardState;
     }
 
-    public CatService getCatService() {
-        return mCatService;
-    }
- 
     public PinState getUniversalPinState() {
         return mUniversalPinState;
     }
