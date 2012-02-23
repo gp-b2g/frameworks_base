@@ -346,6 +346,18 @@ public class MSimTelephonyManager extends TelephonyManager {
         if ("ABSENT".equals(prop)) {
             return SIM_STATE_ABSENT;
         }
+        else if ("PIN_REQUIRED".equals(prop)) {
+            return SIM_STATE_PIN_REQUIRED;
+        }
+        else if ("PUK_REQUIRED".equals(prop)) {
+            return SIM_STATE_PUK_REQUIRED;
+        }
+        else if ("NETWORK_LOCKED".equals(prop)) {
+            return SIM_STATE_NETWORK_LOCKED;
+        }
+        else if ("READY".equals(prop)) {
+            return SIM_STATE_READY;
+        }
         else if ("CARD_IO_ERROR".equals(prop)) {
             return SIM_STATE_CARD_IO_ERROR;
         }
