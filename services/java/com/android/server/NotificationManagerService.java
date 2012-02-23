@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  * Copyright (C) 2007 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -788,7 +789,7 @@ public class NotificationManagerService extends INotificationManager.Stub
             }
 
             // If we're not supposed to beep, vibrate, etc. then don't.
-            if (((mDisabledNotifications & StatusBarManager.DISABLE_NOTIFICATION_ALERTS) == 0)
+            if (((mDisabledNotifications & StatusBarManager.DISABLE_NOTIFICATION_ALERTS) == 0 || mInCall)
                     && (!(old != null
                         && (notification.flags & Notification.FLAG_ONLY_ALERT_ONCE) != 0 ))
                     && mSystemReady) {
@@ -809,6 +810,8 @@ public class NotificationManagerService extends INotificationManager.Stub
                     int audioStreamType;
                     if (notification.audioStreamType >= 0) {
                         audioStreamType = notification.audioStreamType;
+                    } else if (mInCall){
+                        audioStreamType = AudioManager.STREAM_SYSTEM;
                     } else {
                         audioStreamType = DEFAULT_STREAM_TYPE;
                     }
