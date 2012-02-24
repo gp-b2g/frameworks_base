@@ -150,4 +150,5 @@ interface IBluetooth
     boolean startRemoteGattService(in String path, IBluetoothGattService gattCallback);
     void closeRemoteGattService(in String path);
     void disconnectSap();
+    boolean isHostPatchRequired(in BluetoothDevice btDevice, in int patch_id);
 }
