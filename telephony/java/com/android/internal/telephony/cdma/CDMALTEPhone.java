@@ -99,7 +99,8 @@ public class CDMALTEPhone extends CDMAPhone {
             // removeReferences() have already been called
 
             ret = DataState.DISCONNECTED;
-        } else if (mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE &&
+        } else if (mDataConnectionTracker.checkForConnectivity() &&
+                            mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE &&
                             mOosIsDisconnect) {
             ret = DataState.DISCONNECTED;
             log("getDataConnectionState: Data is Out of Service. ret = " + ret);
