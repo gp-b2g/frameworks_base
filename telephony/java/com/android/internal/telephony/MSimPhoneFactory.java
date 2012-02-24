@@ -264,18 +264,25 @@ public class MSimPhoneFactory extends PhoneFactory {
         Log.d(LOG_TAG, "setVoicePromptOption to " + enabled);
     }
 
-    /* Gets User preferred Data subscription setting*/
-    public static int getDataSubscription() {
-        int subscription = 0;
-
-        try {
-            subscription = Settings.System.getInt(sContext.getContentResolver(),
+    public static int getUserPreferredDDS(){
+       int userPref = 0;
+       try{
+           userPref = Settings.System.getInt(sContext.getContentResolver(),
                     Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION);
-        } catch (SettingNotFoundException snfe) {
-            Log.e(LOG_TAG, "Settings Exception Reading Dual Sim Data Call Values");
-        }
+       }catch(SettingNotFoundException snfe){
+           Log.e(LOG_TAG, "Settings Exception Reading Dual Sim Data Call Values");
+       }
+       return userPref;
+    }
 
-        return subscription;
+    /* Gets Current Data subscription setting*/
+    public static int getDataSubscription() {
+        SubscriptionManager sm = SubscriptionManager.getInstance();
+        if (sm == null){
+            return 0;
+        }else{
+            return sm.getActiveDDS();
+        }
     }
 
     /* Gets User preferred SMS subscription setting*/

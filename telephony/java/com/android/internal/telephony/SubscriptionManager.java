@@ -337,18 +337,11 @@ public class SubscriptionManager extends Handler {
         //if SUCCESS
         if (ar.exception == null) {
             // Mark this as the current dds
-            //MSimPhoneFactory.setDataSubscription(mQueuedDds);
-
-            if (mCurrentDds != mQueuedDds) {
-                // The current DDS is changed.  Call update to unregister for all the
-                // events in DCT to avoid unnecessary processings in the non-DDS.
-                MSimProxyManager.getInstance().updateDataConnectionTracker(mCurrentDds);
-            }
-
             mCurrentDds = mQueuedDds;
 
             // Update the DCT corresponds to the new DDS.
-            MSimProxyManager.getInstance().updateDataConnectionTracker(mCurrentDds);
+            MSimProxyManager.getInstance().updateDataConnectionTracker(0);
+            MSimProxyManager.getInstance().updateDataConnectionTracker(1);
 
             // Enable the data connectivity on new dds.
             logd("setDataSubscriptionSource is Successful"
@@ -415,15 +408,12 @@ public class SubscriptionManager extends Handler {
         if (actStatus == SUB_STATUS_ACTIVATED) { // Subscription Activated
             // Shall update the DDS here
             if (mSetDdsRequired) {
-                if (subId == mCurrentDds) {
-                    logd("setDataSubscription on " + mCurrentDds);
+                if (subId == mQueuedDds) {
+                    logd("setDataSubscription on " + mQueuedDds);
                     // Set mQueuedDds so that when the set data sub src is done, it will
                     // update the system property and enable the data connectivity.
-                    mQueuedDds = mCurrentDds;
-                    Message msgSetDdsDone = Message.obtain(this, EVENT_SET_DATA_SUBSCRIPTION_DONE,
-                            new Integer(mCurrentDds));
-                    // Set Data Subscription preference at RIL
-                    mCi[mCurrentDds].setDataSubscription(msgSetDdsDone);
+                    //mQueuedDds = mCurrentDds;
+                    setDataSubscription(mQueuedDds,null);
                     mSetDdsRequired = false;
                 }
             }
@@ -624,12 +614,12 @@ public class SubscriptionManager extends Handler {
                     // Set the flag and update the mCurrentDds, so that when subscription
                     // ready event receives, it will set the dds properly.
                     mSetDdsRequired = true;
-                    mCurrentDds = activeSub.subId;
+                    mQueuedDds = activeSub.subId;
                     //MSimPhoneFactory.setDataSubscription(mCurrentDds);
                 }
             }
         }else if (activeSubCount > 1){
-            int preferredDataSub = MSimPhoneFactory.getDataSubscription();
+            int preferredDataSub = MSimPhoneFactory.getUserPreferredDDS();
             logd("active sub count = "+ activeSubCount+",mCurrentDds = "+mCurrentDds+",preferredDataSub = "+preferredDataSub);
             if (mCurrentDds != preferredDataSub){
                 logd("current dds is "+mCurrentDds+",preferred one is "+preferredDataSub);
@@ -642,7 +632,7 @@ public class SubscriptionManager extends Handler {
                 }else{
                     logd("updata dds later");
                     mSetDdsRequired = true;
-                    mCurrentDds = preferredDataSub;
+                    mQueuedDds = preferredDataSub;
                 }
             }
         }
@@ -1312,6 +1302,15 @@ public class SubscriptionManager extends Handler {
         logd("setDataSubscription: mCurrentDds = "
                 + mCurrentDds + " new subscription = " + subscription);
 
+        if (mDisableDdsInProgress){
+            logd("setDataSubscription in process,"+"currentdds = "+mCurrentDds+",queued dds = "+mQueuedDds);
+            if (onCompleteMsg != null){
+                AsyncResult.forMessage(onCompleteMsg,false, null);
+                onCompleteMsg.sendToTarget();
+            }
+            return;
+        }
+
         mSetDdsCompleteMsg = onCompleteMsg;
 
         // If there is no set dds in progress disable the current
@@ -1541,6 +1540,10 @@ public class SubscriptionManager extends Handler {
             }
         }
         return false;
+    }
+
+    public int getActiveDDS(){
+        return mCurrentDds;
     }
 
 }
