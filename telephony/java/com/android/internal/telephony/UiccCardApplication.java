@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -452,6 +452,25 @@ public class UiccCardApplication {
 
     public AppType getType() {
         return mAppType;
+    }
+
+    public String getCardType() {
+        switch (getType()) {
+            case APPTYPE_UNKNOWN:
+                return "UNKNOWN";
+            case APPTYPE_SIM:
+                return "SIM";
+            case APPTYPE_USIM:
+                return "USIM";
+            case APPTYPE_RUIM:
+                return "RUIM";
+            case APPTYPE_CSIM:
+                return "CSIM";
+            case APPTYPE_ISIM:
+                return "ISIM";
+            default:
+                return "UNKNOWN";
+        }
     }
 
     public PersoSubState getPersoSubState() {

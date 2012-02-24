@@ -40,6 +40,11 @@ interface IPhoneSubInfoMSim {
     String getIccSerialNumber(int subscription);
 
     /**
+     * Retrieves the sim card type of a given subscription, e.g., IMSI for GSM phones.
+     */
+    String getCardType(int subscription);
+
+    /**
      * Retrieves the phone number string for line 1 of a subcription.
      */
     String getLine1Number(int subscription);

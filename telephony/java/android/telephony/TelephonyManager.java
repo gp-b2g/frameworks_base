@@ -759,6 +759,26 @@ public class TelephonyManager {
     }
 
     /**
+     * Returns the sim card type, for example, USIM or RUIM.
+     * Return null if it is unavailable.
+     * <p>
+     * Requires Permission:
+     *   {@link android.Manifest.permission#READ_PHONE_STATE READ_PHONE_STATE}
+     */
+
+    /** {@hide} */
+    public String getCardType() {
+        try {
+            return getSubscriberInfo().getCardType();
+        } catch (RemoteException ex) {
+            return null;
+        } catch (NullPointerException ex) {
+            // This could happen before phone restarts due to crashing
+            return null;
+        }
+    }
+
+    /**
      * Returns the phone number string for line 1, for example, the MSISDN
      * for a GSM phone. Return null if it is unavailable.
      * <p>

@@ -125,6 +125,35 @@ public class MSimPhoneSubInfoProxy extends IPhoneSubInfoMSim.Stub {
     }
 
     /**
+     * @hide
+     */
+    public String getCardType(int subscription) {
+        MSimIccCardProxy iccCard = getIccCard(subscription);
+        if (iccCard != null) {
+            return iccCard.getCardType();
+        } else {
+            Log.e(TAG,"getCardType MSimIccCardProxy is" +
+                      " null for Subscription:"+subscription);
+            return null;
+        }
+    }
+
+    private MSimIccCardProxy getIccCard(int subscription) {
+        try {
+            return (MSimIccCardProxy)((MSimPhoneProxy)mPhone[subscription]).getIccCard();
+        } catch (NullPointerException e) {
+            Log.e(TAG, "Exception is :"+e.toString()+" For subscription :"+subscription );
+            e.printStackTrace();
+            return null;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            Log.e(TAG, "Exception is :"+e.toString()+" For subscription :"+subscription );
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+    /**
      * get Phone sub info proxy object based on subscription.
      **/
     private PhoneSubInfoProxy getPhoneSubInfoProxy(int subscription) {

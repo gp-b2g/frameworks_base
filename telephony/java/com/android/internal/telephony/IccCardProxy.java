@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.IccCardStatus.CardState;
 import com.android.internal.telephony.IccCardStatus.PinState;
@@ -265,7 +266,7 @@ public class IccCardProxy extends Handler implements IccCard {
 
         updateExternalState();
     }
-    
+
     /**
      * When the radio is turned off, lower layers power down the card
      * unless persist.radio.sim_not_pwdn property is set to '1'.
@@ -643,6 +644,13 @@ public class IccCardProxy extends Handler implements IccCard {
             return mIccRecords.getRecordsLoaded();
         }
         return false;
+    }
+
+    public String getCardType() {
+        if (mUiccApplication != null) {
+            return mUiccApplication.getCardType();
+        }
+        return "UNKNOWN";
     }
 
     protected void log(String msg) {
