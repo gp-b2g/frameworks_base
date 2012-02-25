@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007, 2011 The Android Open Source Project
+ * Copyright (c) 2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +28,6 @@ import android.os.SystemProperties;
 import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccFileHandler;
-import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.UiccCard;
 import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.UiccManager;
@@ -120,8 +120,7 @@ class RilMessage {
 public class CatService extends Handler implements AppInterface {
 
     // Class members
-    private static IccRecords mIccRecords;
-    private static UiccCardApplication mUiccApplication;
+    private IccFileHandler mIccFileHandler = null;
 
     // Service members.
     // Protects singleton instance lazy initialization.
@@ -166,9 +165,7 @@ public class CatService extends Handler implements AppInterface {
 
     static final String STK_DEFAULT = "Defualt Message";
 
-    /* Intentionally private for singleton */
-    public CatService(CommandsInterface ci, UiccCardApplication ca, Context context, int slotId) {
-        IccFileHandler fh = null;
+    public CatService(CommandsInterface ci, Context context, int slotId) {
         if (ci == null || context == null) {
             throw new NullPointerException(
                     "Service: Input parameters must not be null");
@@ -176,21 +173,8 @@ public class CatService extends Handler implements AppInterface {
         mCmdIf = ci;
         mContext = context;
         mSlotId = slotId;
-        mUiccApplication = ca;
-        if (ca != null) {
-            fh = ca.getIccFileHandler();
-            mIccRecords = ca.getIccRecords();
-        }
         mHandlerThread = new HandlerThread("Cat Telephony service" + slotId);
         mHandlerThread.start();
-
-        if (fh != null) {
-            CatLog.d(this, "Initialize the Service with new IccFilehandler");
-            mIconLoader = new IconLoader(fh, mSlotId);
-            if (mIconLoader == null) {
-                CatLog.d(this, "Error in initializing IconLoader");
-            }
-        }
 
         // Get the RilMessagesDecoder for decoding the messages.
         mMsgDecoder = RilMessageDecoder.getInstance();
@@ -203,20 +187,20 @@ public class CatService extends Handler implements AppInterface {
         mCmdIf.registerForIccRefresh(this, MSG_ID_ICC_REFRESH, null);
         mCmdIf.setOnCatCcAlphaNotify(this, MSG_ID_ALPHA_NOTIFY, null);
 
-        // Register for SIM ready event.
-        mUiccApplication.registerForReady(this, MSG_ID_SIM_READY, null);
-
         mUiccManager = UiccManager.getInstance();
-        mUiccManager.registerForIccChanged(this, MSG_ID_ICC_CHANGED, null);
+        if (mUiccManager != null) {
+            mUiccManager.registerForIccChanged(this, MSG_ID_ICC_CHANGED, null);
+        } else {
+            CatLog.d(this, "UiccManager instance is null");
+        }
 
         CatLog.d(this, "CatService "+ mSlotId + "is running");
     }
 
-    public void dispose() {
+    protected void finalize() {
+        CatLog.d(this, "Service finalized");
 
-        // Clean up stk icon if dispose is called
         broadcastCardStateAndIccRefreshResp(CardState.CARDSTATE_ABSENT, null);
-
         mCmdIf.unSetOnCatSessionEnd(this);
         mCmdIf.unSetOnCatProactiveCmd(this);
         mCmdIf.unSetOnCatEvent(this);
@@ -226,42 +210,8 @@ public class CatService extends Handler implements AppInterface {
         mUiccManager.unregisterForIccChanged(this);
         mHandlerThread.quit();
         mHandlerThread = null;
-
         this.removeCallbacksAndMessages(null);
-    }
 
-    public void update(CommandsInterface ci, UiccCardApplication ca, Context context, int slotId) {
-        IccRecords ir = null;
-        IccFileHandler fh = null;
-        mCmdIf = ci;
-        mContext = context;
-        mSlotId = slotId;
-        if (mUiccApplication != null) {
-            mUiccApplication.unregisterForReady(this);
-        }
-        mUiccApplication = ca;
-        if (mUiccApplication != null) {
-            mUiccApplication.registerForReady(this, MSG_ID_SIM_READY, null);
-            fh = mUiccApplication.getIccFileHandler();
-            ir = mUiccApplication.getIccRecords();
-        }
-        if ((ir != null) && (mIccRecords != ir)) {
-            CatLog.d(this, "Reinitialize the Service with IccRecords");
-            mIccRecords = ir;
-        }
-
-        if (fh != null) {
-            CatLog.d(this, "Reinitialize the Service with new IccFilehandler");
-            if (mIconLoader != null) {
-                mIconLoader.updateIccFileHandler(fh);
-            } else {
-                mIconLoader = new IconLoader(fh, mSlotId);
-            }
-        }
-    }
-
-    protected void finalize() {
-        CatLog.d(this, "Service finalized");
     }
 
     private void handleRilMsg(RilMessage rilMsg) {
@@ -748,8 +698,7 @@ public class CatService extends Handler implements AppInterface {
             handleCmdResponse((CatResponseMessage) msg.obj);
             break;
         case MSG_ID_SIM_READY:
-            CatLog.d(this, "SIM ready. Reporting STK service running now...");
-            mCmdIf.reportStkServiceIsRunning(null);
+            CatLog.d(this, "SIM ready.");
             break;
         case MSG_ID_ALPHA_NOTIFY:
             CatLog.d(this, "Received STK CC Alpha message from card");
@@ -964,15 +913,54 @@ public class CatService extends Handler implements AppInterface {
         if(null == mUiccManager)
             return;
         UiccCard newCard = mUiccManager.getUiccCard(mSlotId);
+        UiccCardApplication newUiccApplication = null;
+        IccFileHandler fh = null;
         if (newCard != null) {
             newState = newCard.getCardState();
+            // Always get IccApplication 0.
+            newUiccApplication = newCard.getApplication(0);
+            if (newUiccApplication != null) {
+                fh = newUiccApplication.getIccFileHandler();
+            } else {
+                CatLog.d(this, "UiccApplication is null");
+            }
         }
+
+
         CardState oldState = mCardState;
         mCardState = newState;
         CatLog.d(this,"New Card State = " + newState + " " + "Old Card State = " + oldState);
+
         if (oldState == CardState.CARDSTATE_PRESENT &&
                 newState != CardState.CARDSTATE_PRESENT) {
+            // Card moved to ABSENT state.
             broadcastCardStateAndIccRefreshResp(newState, null);
+        } else if (oldState != CardState.CARDSTATE_PRESENT &&
+                newState == CardState.CARDSTATE_PRESENT) {
+            // Card moved to PRESENT STATE.
+            mCmdIf.reportStkServiceIsRunning(null);
+            mIccFileHandler = fh;
+            if (mIccFileHandler != null && mIconLoader == null) {
+                // Initialize new IconLoader
+                CatLog.d(this, "Error in initializing new IconLoader");
+                mIconLoader = new IconLoader(mIccFileHandler, mSlotId);
+                if (mIconLoader == null) {
+                    CatLog.d(this, "Error in initializing new IconLoader");
+                }
+            }
+        } else if (oldState == CardState.CARDSTATE_PRESENT &&
+                newState == CardState.CARDSTATE_PRESENT) {
+            // There is no change in CARD state.
+            // Check if there is any updated of file records.
+            if (mIccFileHandler != fh) {
+                mIccFileHandler = fh;
+                if (mIconLoader != null) {
+                    CatLog.d(this, "Update IconLoader with new IccFileHandler");
+                    mIconLoader.updateIccFileHandler(mIccFileHandler);
+                } else {
+                    mIconLoader = new IconLoader(mIccFileHandler, mSlotId);
+                }
+            }
         }
     }
 }

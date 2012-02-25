@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import android.util.Log;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.IccCardStatus.CardState;
+import com.android.internal.telephony.cat.CatService;
 
 /* This class is responsible for keeping all knowledge about
  * ICCs in the system. It is also used as API to get appropriate
@@ -46,6 +47,7 @@ public class UiccManager extends Handler {
 
     private Context mContext;
     private CommandsInterface[] mCi;
+    private CatService[] mCatService;
     private UiccCard[] mUiccCards = new UiccCard[MSimConstants.RIL_MAX_CARDS];
 
     private RegistrantList mIccChangedRegistrants = new RegistrantList();
@@ -78,12 +80,15 @@ public class UiccManager extends Handler {
         Log.d(LOG_TAG, "Creating UiccManager");
         mContext = c;
         mCi = ci;
+        mCatService = new CatService[mCi.length];
         for (int i = 0; i < mCi.length; i++) {
             Integer index = new Integer(i);
             mCi[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, index);
             mCi[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, index);
             // TODO remove this once modem correctly notifies the unsols
             mCi[i].registerForOn(this, EVENT_ICC_STATUS_CHANGED, index);
+            mCatService[i] = new CatService( mCi[i], mContext, i);
+
         }
     }
 
@@ -150,10 +155,10 @@ public class UiccManager extends Handler {
 
         if (mUiccCards[index] == null) {
             Log.d(LOG_TAG, "Creating a new card");
-            mUiccCards[index] = new UiccCard(mContext, mCi[index], status, index);
+            mUiccCards[index] = new UiccCard(mContext, mCi[index], status);
         } else {
             Log.d(LOG_TAG, "Update already existing card");
-            mUiccCards[index].update(mContext, mCi[index], status, index);
+            mUiccCards[index].update(mContext, mCi[index], status);
         }
 
         Log.d(LOG_TAG, "Notifying IccChangedRegistrants");
@@ -242,4 +247,9 @@ public class UiccManager extends Handler {
             mIccChangedRegistrants.remove(h);
         }
     }
+
+   //Gets the CatService for the SlotId specified
+   public CatService getCatService(int slotId) {
+       return mCatService[slotId];
+   }
 }
