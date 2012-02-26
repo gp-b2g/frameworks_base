@@ -721,7 +721,11 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                         break;
                     }
                 }
-                configureRetry(dcac.dataConnection, hasDefault);
+                // If we are in partial success, do not update retry logic.
+                // The retry count has to be maintained
+                if (!dcac.getPartialSuccessStatusSync()) {
+                    configureRetry(dcac.dataConnection, hasDefault);
+                }
             }
         }
 
@@ -811,7 +815,9 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                     apnContext.getDataConnectionAc().getPartialSuccessStatusSync())) &&
                 isDataAllowed(apnContext) && getAnyDataEnabled() && !isEmergency()) {
 
-            if (apnContext.getState() == State.IDLE) {
+            if (apnContext.getState() == State.IDLE ||
+                    (apnContext.getState() == State.CONNECTED &&
+                            apnContext.getDataConnectionAc().getPartialSuccessStatusSync())) {
                 ArrayList<DataProfile> waitingApns = buildWaitingApns(apnContext.getApnType());
                 if (waitingApns.isEmpty()) {
                     if (DBG) log("trySetupData: No APN found");
@@ -1121,6 +1127,7 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
             if (refCount == 0) {
                 configureRetry(dc, apn.canHandleType(Phone.APN_TYPE_DEFAULT));
             }
+
             apnContext.setDataConnectionAc(dcac);
             apnContext.setDataConnection(dc);
         }
@@ -1893,6 +1900,13 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
 
     private void notifyNoData(GsmDataConnection.FailCause lastFailCauseCode,
                               ApnContext apnContext) {
+        DataConnectionAc dcac = apnContext.getDataConnectionAc();
+        if (dcac != null && dcac.getPartialSuccessStatusSync()) {
+            if (DBG) log( "In partial success, skip notifyNoData for type=" +
+                    apnContext.getApnType());
+            return;
+        }
+
         if (DBG) log( "notifyNoData: type=" + apnContext.getApnType());
         apnContext.setState(State.FAILED);
         if (lastFailCauseCode.isPermanentFail()
@@ -2219,6 +2233,11 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                         if (DBG) log("No retry is suggested.");
                     } else {
                         startDelayedRetry(cause, apnContext, retryOverride);
+
+                        DataConnectionAc dcac = apnContext.getDataConnectionAc();
+                        if (dcac != null && dcac.getPartialSuccessStatusSync()) {
+                            schedulePartialRetryAttempt(apnContext);
+                        }
                     }
                 }
             } else {
@@ -2233,6 +2252,14 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
 
     private void schedulePartialRetryAttempt(ApnContext apnContext) {
         apnContext.setReason(Phone.REASON_DUALIP_PARTIAL_FAILURE_RETRY);
+        // If we are in partial retry, DC retry config is set
+        // to the retry config of the default connection which is
+        // assumed/expected to be slower than non default types.
+        // This config gets reset for each reconnect attempt.
+        if (apnContext.getDataConnection().getRetryCount() == 0) {
+            if (DBG) log("configureRetry: retry config set to retry of default call");
+            configureRetry(apnContext.getDataConnection(), true);
+        }
         int nextReconnectDelay = apnContext.getDataConnection().getRetryTimer();
         apnContext.getDataConnection().increaseRetryCount();
         startAlarmForReconnect(nextReconnectDelay, apnContext);
@@ -2702,6 +2729,12 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
 
     private void onRatChanged() {
         DataConnectionAc dcac = null;
+        if (mPhone.getServiceState().getRadioTechnology() ==
+                    ServiceState.RADIO_TECHNOLOGY_UNKNOWN) {
+            if (DBG) log("Rat changed to RADIO_TECHNOLOGY_UNKNOWN, ignore.");
+            return;
+        }
+
         for (DataConnection dc : mDataConnections.values()) {
             dcac = mDataConnectionAsyncChannels.get(dc.getDataConnectionId());
             if (dcac.getPartialSuccessStatusSync()) {
