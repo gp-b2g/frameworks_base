@@ -754,6 +754,13 @@ public class FmReceiver extends FmTransceiver
       {
          Log.d (TAG, "searchStations: mode " + mode + "direction:  " + direction);
          mControl.searchStations(sFd, mode, dwellPeriod, direction, 0, 0);
+
+         state = getFMState();
+         if (state == FMState_Turned_Off) {
+            Log.d(TAG, "searchStations: CURRENT-STATE : FMState_Off (unexpected)");
+            return false;
+         }
+
          if (mode == FM_RX_SRCH_MODE_SEEK)
             setSearchState(subSrchLevel_SeekInPrg);
          else if (mode == FM_RX_SRCH_MODE_SCAN)
