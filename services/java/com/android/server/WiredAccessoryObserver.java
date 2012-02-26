@@ -226,6 +226,16 @@ class WiredAccessoryObserver extends UEventObserver {
             if (mHandler.hasMessages(0)) {
                 delay = 1000;
             }
+            // Post the intent after 200ms for hdmi state change.
+            // This is required because the processing of audio and
+            // display side for hdmi connect/disconnect happens in
+            // parallel now. This results in video being stuck for
+            // 30fps clips as audio is blocked as a part of device
+            // switch. A 100ms delay works but adding 200ms to be
+            // avoid any software regression.
+            else if(hdmiStateChange) {
+                delay = 200;
+            }
         }
         mWakeLock.acquire();
         mHandler.sendMessageDelayed(mHandler.obtainMessage(0,
