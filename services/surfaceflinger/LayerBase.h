@@ -37,6 +37,7 @@
 
 #include "DisplayHardware/DisplayHardware.h"
 #include "Transform.h"
+#include "qcom_ui.h"
 
 namespace android {
 
@@ -49,7 +50,6 @@ class GraphicPlane;
 class Layer;
 class LayerBaseClient;
 class SurfaceFlinger;
-
 // ---------------------------------------------------------------------------
 
 class LayerBase : public RefBase
@@ -224,6 +224,7 @@ public:
 
     int32_t  getOrientation() const { return mOrientation; }
     int32_t  getPlaneOrientation() const { return mPlaneOrientation; }
+    QCBaseLayer * mQCLayer;
     
 protected:
     const GraphicPlane& graphicPlane(int dpy) const;
@@ -233,6 +234,7 @@ protected:
                                GLclampf b, GLclampf alpha) const;
           void clearWithOpenGL(const Region& clip) const;
           void drawWithOpenGL(const Region& clip) const;
+          void drawS3DUIWithOpenGL(const Region& clip) const;
 
           void setFiltering(bool filtering);
           bool getFiltering() const;

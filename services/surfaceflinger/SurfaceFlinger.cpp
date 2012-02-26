@@ -1017,6 +1017,7 @@ void SurfaceFlinger::setupHardwareComposer(Region& dirtyInOut)
                     dirtyInOut.orSelf(layer->visibleRegionScreen);
                 }
                 layer->setOverlay(isOverlay);
+                layer->mQCLayer->setS3DComposeFormat(cur[i].hints);
             }
             // don't erase stuff outside the dirty region
             transparent.andSelf(dirtyInOut);
