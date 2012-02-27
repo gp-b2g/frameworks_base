@@ -111,6 +111,9 @@ public class GSMPhone extends PhoneBase {
     SimPhoneBookInterfaceManager mSimPhoneBookIntManager;
     PhoneSubInfo mSubInfo;
     UiccCard mSimCard = null;
+    /** EONS enabled flag. */
+    private boolean mEonsEnabled =
+            SystemProperties.getBoolean(TelephonyProperties.PROPERTY_EONS_ENABLED, true);
 
 
     Registrant mPostDialHandler;
@@ -1034,7 +1037,11 @@ public class GSMPhone extends PhoneBase {
     public void
     getAvailableNetworks(Message response) {
         Message msg;
-        msg = obtainMessage(EVENT_GET_NETWORKS_DONE,response);
+        if (mEonsEnabled) {
+            msg = obtainMessage(EVENT_GET_NETWORKS_DONE,response);
+        } else {
+            msg = response;
+        }
         mCM.getAvailableNetworks(msg);
     }
 
@@ -1557,7 +1564,9 @@ public class GSMPhone extends PhoneBase {
                 mSST.updateSpnDisplay();
                 break;
             case SIMRecords.EVENT_EONS:
-                mSST.updateEons();
+                if (mEonsEnabled) {
+                    mSST.updateEons();
+                }
                 break;
         }
     }

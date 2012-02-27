@@ -19,6 +19,7 @@ package com.android.internal.telephony.gsm;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_EONS_ENABLED;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -67,6 +68,10 @@ public class SIMRecords extends IccRecords {
     SpnOverride mSpnOverride;
 
     Eons mEons;
+
+    /** EONS enabled flag. */
+    private boolean mEonsEnabled =
+            SystemProperties.getBoolean(PROPERTY_EONS_ENABLED, true);
 
     // ***** Cached SIM State; cleared on channel close
 
@@ -1194,15 +1199,21 @@ public class SIMRecords extends IccRecords {
                 break;
             case EF_OPL:
                 if (DBG) log("[EONS] SIM Refresh for EF_OPL");
-                recordsToLoad++;
-                mFh.loadEFLinearFixedAll(EF_OPL,
-                      obtainMessage(EVENT_GET_ALL_OPL_RECORDS_DONE));
+                if (mEonsEnabled) {
+                    if (DBG) log("[EONS] Update EF_OPL Records");
+                    recordsToLoad++;
+                    mFh.loadEFLinearFixedAll(EF_OPL,
+                          obtainMessage(EVENT_GET_ALL_OPL_RECORDS_DONE));
+                }
                 break;
             case EF_PNN:
                 if (DBG) log("[EONS] SIM Refresh for EF_PNN");
-                recordsToLoad++;
-                mFh.loadEFLinearFixedAll(EF_PNN,
-                      obtainMessage(EVENT_GET_ALL_PNN_RECORDS_DONE));
+                if (mEonsEnabled) {
+                    if (DBG) log("[EONS] Update EF_PNN Records");
+                    recordsToLoad++;
+                    mFh.loadEFLinearFixedAll(EF_PNN,
+                          obtainMessage(EVENT_GET_ALL_PNN_RECORDS_DONE));
+                }
                 break;
             case EF_SPN:
                 if (DBG) log("[EONS] SIM Refresh for EF_SPN");
@@ -1379,11 +1390,13 @@ public class SIMRecords extends IccRecords {
         mFh.loadEFLinearFixed(EF_PNN, 1, obtainMessage(EVENT_GET_PNN_DONE));
         recordsToLoad++;
 
-        mFh.loadEFLinearFixedAll(EF_OPL, obtainMessage(EVENT_GET_ALL_OPL_RECORDS_DONE));
-        recordsToLoad++;
+        if (mEonsEnabled) {
+            mFh.loadEFLinearFixedAll(EF_OPL, obtainMessage(EVENT_GET_ALL_OPL_RECORDS_DONE));
+            recordsToLoad++;
 
-        mFh.loadEFLinearFixedAll(EF_PNN, obtainMessage(EVENT_GET_ALL_PNN_RECORDS_DONE));
-        recordsToLoad++;
+            mFh.loadEFLinearFixedAll(EF_PNN, obtainMessage(EVENT_GET_ALL_PNN_RECORDS_DONE));
+            recordsToLoad++;
+        }
 
         mFh.loadEFTransparent(EF_SST, obtainMessage(EVENT_GET_SST_DONE));
         recordsToLoad++;
