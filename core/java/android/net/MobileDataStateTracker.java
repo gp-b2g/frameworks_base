@@ -250,7 +250,7 @@ public class MobileDataStateTracker implements NetworkStateTracker {
                     }
                 } else {
                     // There was no state change. Check if LinkProperties has been updated.
-                    if (TextUtils.equals(reason, Phone.REASON_LINK_PROPERTIES_CHANGED)) {
+                    if (checkLinkPropertyChange(reason)) {
                         mLinkProperties = intent.getParcelableExtra(Phone.DATA_LINK_PROPERTIES_KEY);
                         if (mLinkProperties == null) {
                             loge("No link property in LINK_PROPERTIES change event.");
@@ -291,6 +291,12 @@ public class MobileDataStateTracker implements NetworkStateTracker {
             } else {
                 if (DBG) log("Broadcast received: ignore " + intent.getAction());
             }
+        }
+
+        private boolean checkLinkPropertyChange(String reason) {
+            return (TextUtils.equals(reason, Phone.REASON_LINK_PROPERTIES_CHANGED) ||
+                    TextUtils.equals(reason, Phone.REASON_DUALIP_PARTIAL_FAILURE_RETRY) ||
+                    TextUtils.equals(reason, Phone.REASON_RAT_CHANGED));
         }
     }
 
