@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -3151,9 +3151,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                         interceptScreenshotChord();
                     }
 
-                    ITelephony telephonyService = getTelephonyService();
                     boolean hungUp = false;
-                    if (telephonyService != null) {
+
+                    if (!TelephonyManager.getDefault().isMultiSimEnabled()) {
+                        ITelephony telephonyService = getTelephonyService();
+                        if (telephonyService != null) {
                         try {
                             if (telephonyService.isRinging()) {
                                 // Pressing Power while there's a ringing incoming
@@ -3168,6 +3170,27 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                             }
                         } catch (RemoteException ex) {
                             Log.w(TAG, "ITelephony threw RemoteException", ex);
+                        }
+                        }
+                    } else {
+                        ITelephonyMSim msimtelephony = getMSimTelephonyService();
+                        if (msimtelephony != null) {
+                            try {
+                                boolean flag = (mIncallPowerBehavior &
+                                    Settings.Secure.INCALL_POWER_BUTTON_BEHAVIOR_HANGUP)!= 0;
+
+                                for (int i=0; i<TelephonyManager.getDefault().getPhoneCount(); i++) {
+                                    if (msimtelephony.isRinging(i)) {
+                                        msimtelephony.silenceRinger();
+                                    } else if (flag) {
+                                        if (msimtelephony.isOffhook(i)) {
+                                            hungUp |= msimtelephony.endCall(i);
+                                        }
+                                    }
+                                }
+                            } catch (RemoteException ex2) {
+                                Log.w(TAG, "ITelephony threw RemoteException", ex2);
+                            }
                         }
                     }
                     interceptPowerKeyDown(!isScreenOn || hungUp
