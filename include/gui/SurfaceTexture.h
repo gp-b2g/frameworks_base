@@ -516,6 +516,9 @@ private:
     // with the surface Texture.
     uint64_t mFrameCounter;
 
+    // s3dFormat is the S3D format specified by the client.
+    int mS3DFormat;
+
     struct BufferInfo {
         int width;
         int height;
