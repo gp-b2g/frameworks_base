@@ -326,7 +326,7 @@ public class MediaRecorder
              profile.quality <= CamcorderProfile.QUALITY_TIME_LAPSE_QVGA) {
             // Enable time lapse. Also don't set audio for time lapse.
             setParameter(String.format("time-lapse-enable=1"));
-        } else {
+        } else if( profile.audioCodec >= 0){
             setAudioEncodingBitRate(profile.audioBitRate);
             setAudioChannels(profile.audioChannels);
             setAudioSamplingRate(profile.audioSampleRate);
