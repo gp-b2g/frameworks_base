@@ -1947,8 +1947,14 @@ public class Resources {
 						
 						if (((id >>> 24) != 0x1) && (!currentTheme.equals("default"))) {
 							String packageDirInTheme = getResourcePackageName(id);
-							if (null != packageDirInTheme) {				
-								ZipFile themeSrc = new ZipFile("/system/qrd_theme/" + currentTheme + ".zip");
+							if (null != packageDirInTheme) {
+								String themeBasePath;
+								if (!currentTheme.startsWith("0x"))
+									themeBasePath = "/system/qrd_theme/";
+								else
+									themeBasePath = "/data/qrd_theme/";
+								
+								ZipFile themeSrc = new ZipFile(themeBasePath + currentTheme + ".zip");
 								InputStream stream = null;
 								String filePathInTheme = packageDirInTheme + "/" + file;
 								android.util.Log.e("filePathInTheme", filePathInTheme);									
