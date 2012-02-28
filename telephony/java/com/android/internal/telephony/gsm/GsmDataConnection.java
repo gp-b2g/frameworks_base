@@ -87,12 +87,6 @@ public class GsmDataConnection extends DataConnection {
         Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
         msg.obj = cp;
 
-        int authType = mApn.authType;
-        if (authType == -1) {
-            authType = (mApn.user != null) ? RILConstants.SETUP_DATA_AUTH_PAP_CHAP :
-                RILConstants.SETUP_DATA_AUTH_NONE;
-        }
-
         String protocol = getDataCallProtocol();
 
         String radioTech = Integer.toString(getRadioTechnology(RILConstants.SETUP_DATA_TECH_GSM));
@@ -104,7 +98,7 @@ public class GsmDataConnection extends DataConnection {
                 radioTech,
                 Integer.toString(mProfileId),
                 mApn.apn, mApn.user, mApn.password,
-                Integer.toString(authType),
+                Integer.toString(mApn.authType),
                 protocol, msg);
     }
 

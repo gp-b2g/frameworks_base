@@ -70,10 +70,15 @@ public abstract class DataProfile {
         this.types = types;
         this.user = user;
         this.password = password;
-        this.authType = authType;
         this.protocol = protocol;
         this.roamingProtocol = roamingProtocol;
         this.bearer = bearer;
+
+        if (authType == -1) {
+            authType = (user != null) ? RILConstants.SETUP_DATA_AUTH_PAP_CHAP :
+                RILConstants.SETUP_DATA_AUTH_NONE;
+        }
+        this.authType = authType;
     }
 
     /* package */ boolean isActive() {
@@ -86,10 +91,6 @@ public abstract class DataProfile {
 
     /* package */void setAsInactive() {
         mDc = null;
-    }
-
-    public int getAuthType() {
-        return authType;
     }
 
     public String[] getServiceTypes() {
