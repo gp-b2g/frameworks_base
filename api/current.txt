@@ -19229,6 +19229,7 @@ package android.telephony {
     method public static int getNetworkType(int);
     method public int getPreferredDataSubscription();
     method public int getPreferredVoiceSubscription();
+    method public java.lang.String getSimSerialNumber(int);
     method public int getSimState(int);
     method public java.lang.String getSubscriberId(int);
     method public java.lang.String getVoiceMailAlphaTag(int);

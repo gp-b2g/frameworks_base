@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,11 @@ interface IPhoneSubInfoMSim {
      * Retrieves the unique subscriber ID of a given subscription, e.g., IMSI for GSM phones.
      */
     String getSubscriberId(int subscription);
+
+    /**
+     * Retrieves the serial number of a given subscription.
+     */
+    String getIccSerialNumber(int subscription);
 
     /**
      * Retrieves the phone number string for line 1 of a subcription.
