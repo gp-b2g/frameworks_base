@@ -265,6 +265,15 @@ public class CDMAPhone extends PhoneBase {
     }
 
     public ServiceState getServiceState() {
+        if (!mDataConnectionTracker.checkForConnectivity()
+                && mSST.ss.getRadioTechnology() == ServiceState.RADIO_TECHNOLOGY_UNKNOWN) {
+            // Workarround to choose a technology for SETUP_DATA_CALL when
+            // check for connectivity is set to false. We need a technology
+            // for SETUP_DATA_CALL.
+            ServiceState newSS = new ServiceState(mSST.ss);
+            newSS.setRadioTechnology(ServiceState.RADIO_TECHNOLOGY_1xRTT);
+            return newSS;
+        }
         return mSST.ss;
     }
 
@@ -613,7 +622,8 @@ public class CDMAPhone extends PhoneBase {
              // already been called
 
              ret = DataState.DISCONNECTED;
-        } else if (mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE
+        } else if (mDataConnectionTracker.checkForConnectivity()
+                && mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE
                 && mOosIsDisconnect) {
             // If we're out of service, open TCP sockets may still work
             // but no data will flow
