@@ -535,10 +535,10 @@ bool BootAnimation::movie()
 
 char *BootAnimation::getAnimationFileName(ImageID image)
 {
-    char *fileName[2][3] = { { "/data/local/bootanimation.zip",
+    char *fileName[2][3] = { { "/data/qrd_theme/boot/bootanimation.zip",
 			"/system/media/bootanimation.zip",
 			"/system/media/bootanimation-encrypted.zip" }, {
-			"/data/local/shutdownanimation.zip",
+			"/data/qrd_theme/boot/shutdownanimation.zip",
 			"/system/media/shutdownanimation.zip",
 			"/system/media/shutdownanimation-encrypted.zip" } };
     int state;
@@ -548,8 +548,24 @@ char *BootAnimation::getAnimationFileName(ImageID image)
     return fileName[state][image];
 }
 
+char *BootAnimation::getBootRingtoneFileName(ImageID image)
+{
+    char *fileName[2][2] = { { "/data/qrd_theme/boot/boot.wav",			
+			"/system/media/boot.wav" }, {
+			"/data/qrd_theme/boot/shutdown.wav",			
+			"/system/media/shutdown.wav" } };
+    int state;
+
+    state = checkBootState() ? 0 : 1;
+
+    return fileName[state][image];
+}
+
+
 void BootAnimation::playBackgroundMusic(void)
 {
+
+    /*
     char bootAudioFile[] = "/system/media/boot.wav";
     char shutdownAudioFile[] = "/system/media/shutdown.wav";
     char *fileName;
@@ -565,10 +581,15 @@ void BootAnimation::playBackgroundMusic(void)
 
     if (access(fileName, F_OK) != 0)
         return;
-
-    if (fork() == 0) {
-        execlp("sound", "sound", fileName, (char *)0);
-    }
+    */
+    
+    char *fileName;
+    if (((fileName = getBootRingtoneFileName(IMG_DATA)) != NULL && access(fileName, R_OK) == 0) ||
+            ((fileName = getBootRingtoneFileName(IMG_SYS)) != NULL && access(fileName, R_OK) == 0)) {
+        if (fork() == 0) {
+            execlp("sound", "sound", fileName, (char *)0);
+        }
+    }   
 }
 
 bool BootAnimation::checkBootState(void)

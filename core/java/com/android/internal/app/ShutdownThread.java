@@ -180,6 +180,24 @@ public final class ShutdownThread extends Thread {
         shutdown(context, confirm);
     }
 
+    
+    private static String getShutdownMusicFilePath() {    
+        final String[] fileName = {"/data/qrd_theme/boot/shutdown.wav",			
+                "/system/media/shutdown.wav"};    
+        File checkFile = null;  
+        int i = 0;
+        for( ; i < fileName.length; i ++) {
+            checkFile = new File(fileName[i]);
+            if (checkFile.exists())
+                break;           
+        }
+        if (i >= fileName.length)
+            return null;
+        return fileName[i];   
+    }
+    
+    
+    
     private static void beginShutdownSequence(Context context) {
         synchronized (sIsStartedGuard) {
             if (sIsStarted) {
@@ -189,9 +207,12 @@ public final class ShutdownThread extends Thread {
             sIsStarted = true;
         }
 
-        if (FeatureQuery.FEATURE_BOOT_ANIMATION && checkAnimationFileExist()){
+        if (FeatureQuery.FEATURE_BOOT_ANIMATION){
             showShutdownAnimation();
-            playShutdownMusic(MUSIC_SHUTDOWN_FILE);
+            //playShutdownMusic(MUSIC_SHUTDOWN_FILE);
+            String shutDownFile = getShutdownMusicFilePath();
+            if (shutDownFile != null)
+                playShutdownMusic(shutDownFile);            
         }
 
         // throw up an indeterminate system dialog to indicate radio is

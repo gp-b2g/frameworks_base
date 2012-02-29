@@ -86,6 +86,7 @@ private:
 
     enum ImageID { IMG_DATA = 0, IMG_SYS = 1, IMG_ENC = 2 };
     char *getAnimationFileName(ImageID image);
+    char *getBootRingtoneFileName(ImageID image);
     void playBackgroundMusic();
     bool checkBootState();
 
