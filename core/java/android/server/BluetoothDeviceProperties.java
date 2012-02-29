@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +36,8 @@ class BluetoothDeviceProperties {
         mService = service;
     }
 
-    Map<String, String> addProperties(String address, String[] properties) {
+    Map<String, String> addProperties(String address,
+                         String[] properties, boolean isNewDevice) {
         /*
          * We get a DeviceFound signal every time RSSI changes or name changes.
          * Don't create a new Map object every time.
@@ -74,10 +76,11 @@ class BluetoothDeviceProperties {
             }
             mPropertiesMap.put(address, propertyValues);
         }
-
         // We have added a new remote device or updated its properties.
-        // Also update the serviceChannel cache.
-        mService.updateDeviceServiceChannelCache(address);
+        // Also update the serviceChannel cache in case of update only.
+        if (!isNewDevice) {
+            mService.updateDeviceServiceChannelCache(address);
+        }
         return propertyValues;
     }
 
@@ -133,7 +136,7 @@ class BluetoothDeviceProperties {
     Map<String, String> updateCache(String address) {
         String[] propValues = mService.getRemoteDeviceProperties(address);
         if (propValues != null) {
-            return addProperties(address, propValues);
+            return addProperties(address, propValues, false);
         }
         return null;
     }

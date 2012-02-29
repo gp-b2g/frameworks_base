@@ -212,7 +212,7 @@ class BluetoothEventLoop {
     private void addDevice(String address, String[] properties) {
         BluetoothDeviceProperties deviceProperties =
                 mBluetoothService.getDeviceProperties();
-        deviceProperties.addProperties(address, properties);
+        deviceProperties.addProperties(address, properties, true);
         String rssi = deviceProperties.getProperty(address, "RSSI");
         String broadcaster = deviceProperties.getProperty(address, "Broadcaster");
         String classValue = deviceProperties.getProperty(address, "Class");

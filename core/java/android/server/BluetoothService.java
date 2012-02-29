@@ -1775,7 +1775,7 @@ public class BluetoothService extends IBluetooth.Stub {
         String objectPath = getObjectPathFromAddress(address);
         String[] propValues =  (String [])getDevicePropertiesNative(objectPath);
         if (propValues != null) {
-            mDeviceProperties.addProperties(address, propValues);
+            mDeviceProperties.addProperties(address, propValues, false);
             return mDeviceProperties.getProperty(address, property);
         }
         Log.e(TAG, "getProperty: " + property + "not present:" + address);
