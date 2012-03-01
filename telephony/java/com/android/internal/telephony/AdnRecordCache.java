@@ -226,13 +226,12 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
         if (efid == EF_PBR) {
             AdnRecord foundAdn = oldAdnList.get(index-1);
-            efid = foundAdn.efid;
-            extensionEF = foundAdn.extRecord;
-            index = foundAdn.recordNumber;
 
-            newAdn.efid = efid;
-            newAdn.extRecord = extensionEF;
+            newAdn.efid = foundAdn.efid;
+            newAdn.extRecord = foundAdn.extRecord;
             newAdn.recordNumber = index;
+
+
         }
 
         Message pendingResponse = userWriteResponse.get(efid);
@@ -245,7 +244,6 @@ public final class AdnRecordCache extends Handler implements IccConstants {
         if (efid == EF_PBR) {
             updateEmailAndAnr(efid, oldAdn, newAdn, index, pin2, response);
         } else {
-
             userWriteResponse.put(efid, response);
             new AdnRecordLoader(mFh).updateEF(newAdn, efid, extensionEF,
                     index, pin2,
@@ -362,8 +360,12 @@ public final class AdnRecordCache extends Handler implements IccConstants {
                 AdnRecord adn = (AdnRecord) (ar.userObj);
 
                 if (ar.exception == null) {
-                    adnLikeFiles.get(efid).set(index - 1, adn);
-                    mUsimPhoneBookManager.invalidateCache();
+                    if (adnLikeFiles.get(efid) != null) {
+                        adnLikeFiles.get(efid).set(index - 1, adn);
+                    }
+                    if (efid == EF_PBR) {
+                        mUsimPhoneBookManager.loadEfFilesFromUsim().set(index - 1, adn);
+                    }
                 }
 
                 Message response = userWriteResponse.get(efid);
@@ -381,7 +383,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
     private void updateEmailAndAnr(int efid,AdnRecord oldAdn, AdnRecord newAdn, int index, String pin2, Message response) {
         int extensionEF;
-        extensionEF = extensionEfForEf(efid);
+        extensionEF = extensionEfForEf(newAdn.efid);
         boolean success = false;
         success = updateUsimRecord(oldAdn,newAdn,index,USIM_EFEMAIL_TAG);
 
@@ -393,7 +395,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
         }
         if (success) {
             userWriteResponse.put(efid, response);
-            new AdnRecordLoader(mFh).updateEF(newAdn, efid, extensionEF,
+            new AdnRecordLoader(mFh).updateEF(newAdn, newAdn.efid, extensionEF,
                 index, pin2,
                 obtainMessage(EVENT_UPDATE_ADN_DONE, efid, index, newAdn));
         } else {
