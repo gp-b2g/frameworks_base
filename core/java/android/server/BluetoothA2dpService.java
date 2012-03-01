@@ -326,6 +326,14 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
                     long mediaNumber = mCursor.getLong(
                         mCursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID));
                     mMediaNumber = String.valueOf(mediaNumber);
+                    if (mTrackName == null)
+                        mTrackName = DEFAULT_METADATA_STRING;
+                    if (mArtistName == null)
+                        mArtistName = DEFAULT_METADATA_STRING;
+                    if (mAlbumName == null)
+                        mAlbumName = DEFAULT_METADATA_STRING;
+                    if (mMediaNumber == null)
+                        mMediaNumber= DEFAULT_METADATA_NUMBER;
                     log("Title is " + mTrackName);
                     log("Artist is " + mArtistName);
                     log("Album is " + mAlbumName);
