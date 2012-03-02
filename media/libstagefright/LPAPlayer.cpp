@@ -40,10 +40,6 @@
 
 #include "include/AwesomePlayer.h"
 
-#define PMEM_BUFFER_SIZE 524288
-//#define PMEM_BUFFER_SIZE (4800 * 4)
-#define PMEM_BUFFER_COUNT 4
-
 namespace android {
 int LPAPlayer::objectsAlive = 0;
 
@@ -67,6 +63,8 @@ mFirstBufferResult(OK),
 mFirstBuffer(NULL),
 mAudioSink(audioSink),
 mObserver(observer),
+mBuffNumber(0),
+mBuffSize(0),
 AudioPlayer(audioSink,observer) {
     LOGV("LPAPlayer::LPAPlayer() ctor");
     a2dpDisconnectPause = false;
@@ -737,9 +735,17 @@ void LPAPlayer::decoderThreadEntry() {
 
     void *pmem_buf; int32_t pmem_fd;
     struct msm_audio_pmem_info pmem_info;
+    struct msm_audio_config config;
 
-    for (int i = 0; i < PMEM_BUFFER_COUNT; i++) {
-        pmem_buf = pmemBufferAlloc(PMEM_BUFFER_SIZE, &pmem_fd);
+    if ( ioctl(afd, AUDIO_GET_CONFIG, &config) < 0 ) {
+        LOGE("Get Pmem Config Failed.");
+    }
+    mBuffNumber = config.buffer_count;
+    mBuffSize= config.buffer_size;
+    LOGV("Allocating %d PMEM buffers of size %d", mBuffNumber, mBuffSize);
+
+    for (int i = 0; i < mBuffNumber; i++) {
+        pmem_buf = pmemBufferAlloc(mBuffSize, &pmem_fd);
         memset(&pmem_info, 0, sizeof(msm_audio_pmem_info));
         LOGV("Registering PMEM with fd %d and address as %x", pmem_fd, pmem_buf);
         pmem_info.fd = pmem_fd;
@@ -789,8 +795,8 @@ void LPAPlayer::decoderThreadEntry() {
         else {
             struct msm_audio_aio_buf aio_buf_local;
 
-            LOGV("Calling fillBuffer for size %d",PMEM_BUFFER_SIZE);
-            buf.bytesToWrite = fillBuffer(buf.localBuf, PMEM_BUFFER_SIZE);
+            LOGV("Calling fillBuffer for size %d",mBuffSize);
+            buf.bytesToWrite = fillBuffer(buf.localBuf, mBuffSize);
             LOGV("fillBuffer returned size %d",buf.bytesToWrite);
 
             /* TODO: Check if we have to notify the app if an error occurs */
@@ -1281,7 +1287,7 @@ void *LPAPlayer::pmemBufferAlloc(int32_t nSize, int32_t *pmem_fd){
     local_buf = malloc(nSize);
     if (NULL == local_buf) {
         // unmap the corresponding PMEM buffer and close the fd
-        munmap(pmem_buf, PMEM_BUFFER_SIZE);
+        munmap(pmem_buf, mBuffSize);
         close(pmemfd);
         return NULL;
     }
@@ -1312,7 +1318,7 @@ void LPAPlayer::pmemBufferDeAlloc()
             LOGE("PMEM deregister failed");
         }
         LOGV("Unmapping the address %u, size %d, fd %d from Request",pmemBuffer.pmemBuf,pmemBuffer.bytesToWrite,pmemBuffer.pmemFd);
-        munmap(pmemBuffer.pmemBuf, PMEM_BUFFER_SIZE);
+        munmap(pmemBuffer.pmemBuf, mBuffSize);
         LOGV("closing the pmem fd");
         close(pmemBuffer.pmemFd);
         // free the local buffer corresponding to pmem buffer
@@ -1331,8 +1337,8 @@ void LPAPlayer::pmemBufferDeAlloc()
         if (ioctl(afd, AUDIO_DEREGISTER_PMEM, &pmem_info) < 0) {
             LOGE("PMEM deregister failed");
         }
-        LOGV("Unmapping the address %u, size %d, fd %d from Response",pmemBuffer.pmemBuf,PMEM_BUFFER_SIZE ,pmemBuffer.pmemFd);
-        munmap(pmemBuffer.pmemBuf, PMEM_BUFFER_SIZE);
+        LOGV("Unmapping the address %u, size %d, fd %d from Response",pmemBuffer.pmemBuf,mBuffSize ,pmemBuffer.pmemFd);
+        munmap(pmemBuffer.pmemBuf, mBuffSize);
         LOGV("closing the pmem fd");
         close(pmemBuffer.pmemFd);
         // free the local buffer corresponding to pmem buffer
@@ -1561,7 +1567,7 @@ int64_t LPAPlayer::getRealTimeUsLocked(){
          LOGE("AUDIO_GET_STATUS failed");
      }
 
-     //mNumFramesDspPlayed = mNumFramesPlayed - ((PMEM_BUFFER_SIZE - stats.byte_count)/mFrameSize);
+     //mNumFramesDspPlayed = mNumFramesPlayed - ((mBuffSize - stats.byte_count)/mFrameSize);
      LOGE("AUDIO_GET_STATUS bytes %u, mNumFramesPlayed %u", stats.byte_count/mFrameSize,mNumFramesPlayed);
      //mNumFramesDspPlayed = mNumFramesPlayed + stats.byte_count/mFrameSize;
 
