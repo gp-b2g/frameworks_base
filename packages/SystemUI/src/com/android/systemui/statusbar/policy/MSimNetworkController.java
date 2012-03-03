@@ -595,7 +595,9 @@ public class MSimNetworkController extends NetworkController {
     }
 
     boolean isCdmaEri(int subscription) {
-        if (mMSimServiceState[subscription] != null) {
+        if ((mMSimServiceState[subscription] != null)
+                && (hasService(subscription) ||
+                        mDataServiceState[subscription] == ServiceState.STATE_IN_SERVICE)) {
             final int iconIndex = mMSimServiceState[subscription].getCdmaEriIconIndex();
             if (iconIndex != EriInfo.ROAMING_INDICATOR_OFF) {
                 final int iconMode = mMSimServiceState[subscription].getCdmaEriIconMode();

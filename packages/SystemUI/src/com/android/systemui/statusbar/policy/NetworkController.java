@@ -630,7 +630,8 @@ public class NetworkController extends BroadcastReceiver {
     }
 
     boolean isCdmaEri() {
-        if (mServiceState != null) {
+        if ((mServiceState != null)
+                && (hasService() || (mDataServiceState == ServiceState.STATE_IN_SERVICE))) {
             final int iconIndex = mServiceState.getCdmaEriIconIndex();
             if (iconIndex != EriInfo.ROAMING_INDICATOR_OFF) {
                 final int iconMode = mServiceState.getCdmaEriIconMode();
