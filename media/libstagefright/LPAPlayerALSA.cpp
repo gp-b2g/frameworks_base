@@ -967,7 +967,7 @@ void LPAPlayer::eventThreadEntry() {
         if (killEventThread) {
             break;
         }
-        if (isPaused || memBuffersResponseQueue.empty())
+        if (memBuffersResponseQueue.empty())
             continue;
 
         //exit on abrupt event
