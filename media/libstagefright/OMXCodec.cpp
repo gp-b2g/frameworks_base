@@ -1778,6 +1778,7 @@ status_t OMXCodec::setupMPEG4EncoderParameters(const sp<MetaData>& meta) {
     if (mpeg4type.eProfile > OMX_VIDEO_MPEG4ProfileSimple) {
         mpeg4type.nAllowedPictureTypes |= OMX_VIDEO_PictureTypeB;
         mpeg4type.nBFrames = 1;
+        mNumBFrames = 1;
     }
 
     err = mOMX->setParameter(
@@ -1847,9 +1848,11 @@ status_t OMXCodec::setupAVCEncoderParameters(const sp<MetaData>& meta) {
         h264type.nCabacInitIdc = 0;
     }
 
+
     if (h264type.eProfile > OMX_VIDEO_AVCProfileBaseline) {
         h264type.nPFrames = setPFramesSpacing(iFramesInterval, frameRate);
         h264type.nBFrames = 1;
+        mNumBFrames = 1;
     }
 
     if (h264type.nBFrames != 0) {
@@ -2070,7 +2073,8 @@ OMXCodec::OMXCodec(
       mNativeWindow(
               (!strncmp(componentName, "OMX.google.", 11)
               || !strcmp(componentName, "OMX.Nvidia.mpeg2v.decode"))
-                        ? NULL : nativeWindow) {
+                        ? NULL : nativeWindow),
+      mNumBFrames(0) {
     parseFlags();
     mPortStatus[kPortIndexInput] = ENABLED;
     mPortStatus[kPortIndexOutput] = ENABLED;
@@ -3802,6 +3806,7 @@ void OMXCodec::drainInputBuffers() {
             }
 
             if (mFlags & kOnlySubmitOneInputBufferAtOneTime) {
+                if (i == mNumBFrames)
                 break;
             }
         }
