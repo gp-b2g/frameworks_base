@@ -384,6 +384,10 @@ public class UsbDeviceManager {
         }
 
         private void setEnabledFunctions(String functions, boolean makeDefault) {
+	    String mExtraFunctions = SystemProperties.get("sys.usb.config.extra");
+	    if (!mExtraFunctions.equals("") && (functions != null)) {
+	        functions = addFunction(functions, mExtraFunctions);
+	    }
             if (functions != null && makeDefault) {
                 if (mAdbEnabled) {
                     functions = addFunction(functions, UsbManager.USB_FUNCTION_ADB);
