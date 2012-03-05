@@ -85,20 +85,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GsmDataConnectionTracker extends DataConnectionTracker {
     protected final String LOG_TAG = "GSM";
 
-    /**
-     * Handles changes to the APN db.
-     */
-    private class ApnChangeObserver extends ContentObserver {
-        public ApnChangeObserver () {
-            super(mDataConnectionTracker);
-        }
-
-        @Override
-        public void onChange(boolean selfChange) {
-            sendMessage(obtainMessage(EVENT_APN_CHANGED));
-        }
-    }
-
     //***** Instance Variables
 
     private boolean mReregisterOnReconnectFailure = false;
@@ -188,9 +174,6 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         }
     }
 
-    /** Watches for changes to the APN db. */
-    private ApnChangeObserver mApnObserver;
-
     private CdmaSubscriptionSourceManager mCdmaSSM;
 
     //***** Constructor
@@ -223,12 +206,7 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance (p.getContext(), p.mCM, this,
                 EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
 
-        mDataConnectionTracker = this;
         mResolver = mPhone.getContext().getContentResolver();
-
-        mApnObserver = new ApnChangeObserver();
-        p.getContext().getContentResolver().registerContentObserver(
-                Telephony.Carriers.CONTENT_URI, true, mApnObserver);
 
         mApnContexts = new ConcurrentHashMap<String, ApnContext>();
         initApnContextsAndDataConnection();
@@ -268,7 +246,6 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         mPhone.getServiceStateTracker().unregisterForPsRestrictedEnabled(this);
         mPhone.getServiceStateTracker().unregisterForPsRestrictedDisabled(this);
 
-        mPhone.getContext().getContentResolver().unregisterContentObserver(this.mApnObserver);
         mApnContexts.clear();
 
         destroyDataConnections();
@@ -1161,7 +1138,8 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
     /**
      * Handles changes to the APN database.
      */
-    private void onApnChanged() {
+    @Override
+    protected void onApnChanged() {
         State overallState = getOverallState();
         boolean isDisconnected = (overallState == State.IDLE || overallState == State.FAILED);
 
@@ -1747,7 +1725,7 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
             }
 
             if (mNetStatPollEnabled) {
-                mDataConnectionTracker.postDelayed(this, mNetStatPollPeriod);
+                postDelayed(this, mNetStatPollPeriod);
             }
         }
     };
@@ -2666,10 +2644,6 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
 
             case EVENT_DO_RECOVERY:
                 doRecovery();
-                break;
-
-            case EVENT_APN_CHANGED:
-                onApnChanged();
                 break;
 
             case EVENT_PS_RESTRICT_ENABLED:

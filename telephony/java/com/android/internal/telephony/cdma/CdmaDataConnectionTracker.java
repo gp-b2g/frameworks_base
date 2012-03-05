@@ -103,8 +103,6 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance (p.getContext(), p.mCM, this,
                 EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
 
-        mDataConnectionTracker = this;
-
         mDpt = new CdmaDataProfileTracker(p);
         mDpt.registerForModemProfileReady(this, EVENT_MODEM_DATA_PROFILE_READY, null);
 
@@ -475,7 +473,7 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
             }
 
             if (mNetStatPollEnabled) {
-                mDataConnectionTracker.postDelayed(this, mNetStatPollPeriod);
+                postDelayed(this, mNetStatPollPeriod);
             }
         }
     };
@@ -557,6 +555,22 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
     }
 
     protected void onRecordsLoaded() {
+        triggerDataSetup(Phone.REASON_SIM_LOADED);
+    }
+
+    protected void onNVReady() {
+        triggerDataSetup(Phone.REASON_NV_READY);
+    }
+
+    /**
+     * Handles changes to the Data profiles database.
+     */
+    @Override
+    protected void onApnChanged() {
+        triggerDataSetup(Phone.REASON_APN_CHANGED);
+    }
+
+    private void triggerDataSetup(String reason) {
         log("onRecordsLoaded(): calling readDataProfilesFromModem()");
         /* query for data profiles stored in the modem */
         mDpt.loadProfiles();
@@ -567,16 +581,9 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
 
         if (!mDpt.isOmhEnabled()) {
             log("onRecordsLoaded(): Profiles are ready - trigger setup_data with reason: " +
-                    Phone.REASON_SIM_LOADED);
-            sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, Phone.REASON_SIM_LOADED));
+                    reason);
+            sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, reason));
         }
-    }
-
-    protected void onNVReady() {
-        if (mState == State.FAILED) {
-            cleanUpAllConnections(null);
-        }
-        sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA));
     }
 
     /**

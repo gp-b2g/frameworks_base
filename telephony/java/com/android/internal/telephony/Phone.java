@@ -199,6 +199,7 @@ public interface Phone {
     static final String REASON_DATA_READINESS_CHECKS_MODIFIED = "dataReadinessChecksModified";
     static final String REASON_DUALIP_PARTIAL_FAILURE_RETRY = "DualIpPartialFailureRetry";
     static final String REASON_RAT_CHANGED = "RatChanged";
+    static final String REASON_NV_READY = "NvReady";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
