@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,7 +93,7 @@ public class GSMPhone extends PhoneBase {
     // from this file will go into the radio log rather than the main
     // log.  (Use "adb logcat -b radio" to see them.)
     static final String LOG_TAG = "GSM";
-    private static final boolean LOCAL_DEBUG = true;
+    protected static final boolean LOCAL_DEBUG = true;
 
     // Key used to read/write current ciphering state
     public static final String CIPHERING_KEY = "ciphering_key";
@@ -860,7 +861,7 @@ public class GSMPhone extends PhoneBase {
         return number;
     }
 
-    private String getVmSimImsi() {
+    protected String getVmSimImsi() {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
         return sp.getString(VM_SIM_IMSI, null);
     }
@@ -1165,7 +1166,7 @@ public class GSMPhone extends PhoneBase {
         setVmSimImsi(getSubscriberId());
     }
 
-    private boolean getCallForwardingPreference() {
+    protected boolean getCallForwardingPreference() {
         if (LOCAL_DEBUG) Log.d(LOG_TAG, "Get callforwarding info from perferences");
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
@@ -1184,6 +1185,7 @@ public class GSMPhone extends PhoneBase {
             if (mIccRecords != null && mIccRecords.isCallForwardStatusStored()) {
                 // The Sim card has the CF info
                 if (LOCAL_DEBUG) Log.d(LOG_TAG, "Callforwarding info is present on sim");
+                notifyCallForwardingIndicator();
             } else {
                 Message msg = obtainMessage(CHECK_CALLFORWARDING_STATUS);
                 sendMessage(msg);
