@@ -491,6 +491,11 @@ public class SubscriptionManager extends Handler {
                 currentSub = mDeactivatePending.get(SubscriptionId.values()[setSubParam.subId]);
                 // Clear the deactivate pending entry
                 mDeactivatePending.put(SubscriptionId.values()[setSubParam.subId], null);
+
+                if (mCurrentDds == setSubParam.subId) {
+                    // Deactivating the current DDS is failed. Try bring up data again.
+                    MSimProxyManager.getInstance().enableDataConnectivity(mCurrentDds);
+                }
             }else {
                 logd("UNKOWN: SHOULD NOT HIT HERE");
             }
@@ -603,6 +608,7 @@ public class SubscriptionManager extends Handler {
                             Integer.toString(activeSub.subId));
                     logd("update setDataSubscription to " + activeSub.subId);
                     mCi[activeSub.subId].setDataSubscription(callback);
+                    mSetDdsRequired = false;
                 } else {
                     // Set the flag and update the mCurrentDds, so that when subscription
                     // ready event receives, it will set the dds properly.
@@ -861,6 +867,7 @@ public class SubscriptionManager extends Handler {
                     Message allDataCleanedUpMsg = Message.obtain(this,
                             EVENT_CLEANUP_DATA_CONNECTION_DONE, mCurrentDds);
                     MSimProxyManager.getInstance().disableDataConnectivity(mCurrentDds, allDataCleanedUpMsg);
+                    mSetDdsRequired = true;
                 } else {
                     logd("startNextPendingDeactivateRequests: Deactivating now");
                     SetUiccSubsParams setSubParam = new SetUiccSubsParams(newSub.subId, newSub.subStatus);
