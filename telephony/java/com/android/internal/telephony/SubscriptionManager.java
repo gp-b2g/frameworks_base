@@ -366,6 +366,10 @@ public class SubscriptionManager extends Handler {
             logd("Enable Data Connectivity Done!! Sending the cnf back!");
             mSetDdsCompleteMsg.sendToTarget();
             mSetDdsCompleteMsg = null;
+        } else {
+            logd("set data call subscription="+mCurrentDds);
+            Settings.System.putInt(mContext.getContentResolver(),
+                Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION, mCurrentDds);
         }
     }
 
