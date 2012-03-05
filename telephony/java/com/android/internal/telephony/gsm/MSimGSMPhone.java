@@ -40,6 +40,7 @@ import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.SubscriptionManager;
 import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.UiccManager.AppFamily;
+import com.android.internal.telephony.MSimPhoneFactory;
 
 import static com.android.internal.telephony.MSimConstants.EVENT_SUBSCRIPTION_ACTIVATED;
 import static com.android.internal.telephony.MSimConstants.EVENT_SUBSCRIPTION_DEACTIVATED;
@@ -240,14 +241,7 @@ public class MSimGSMPhone extends GSMPhone {
     public boolean updateCurrentCarrierInProvider() {
         int currentDds = 0;
         String operatorNumeric = getOperatorNumeric();
-
-        try {
-            currentDds = Settings.System.getInt(mContext.getContentResolver(),
-                    Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION);
-        } catch (Settings.SettingNotFoundException snfe) {
-            Log.e(LOG_TAG, "Exception Reading Dual Sim Data Subscription Value.", snfe);
-        }
-
+        currentDds = MSimPhoneFactory.getDataSubscription();
         Log.d(LOG_TAG, "updateCurrentCarrierInProvider: mSubscription = " + getSubscription()
                 + " currentDds = " + currentDds + " operatorNumeric = " + operatorNumeric);
 

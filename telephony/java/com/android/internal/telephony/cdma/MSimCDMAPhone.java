@@ -48,6 +48,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.UiccManager;
 import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.UiccCardApplication;
+import com.android.internal.telephony.MSimPhoneFactory;
 
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
@@ -297,13 +298,7 @@ public class MSimCDMAPhone extends CDMAPhone {
     public boolean updateCurrentCarrierInProvider() {
         int currentDds = 0;
         String operatorNumeric = getOperatorNumeric();
-
-        try {
-            currentDds = Settings.System.getInt(mContext.getContentResolver(),
-                    Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION);
-        } catch (Settings.SettingNotFoundException snfe) {
-            Log.e(LOG_TAG, "Exception Reading Dual Sim Data Subscription Value.", snfe);
-        }
+        currentDds = MSimPhoneFactory.getDataSubscription();
 
         Log.d(LOG_TAG, "updateCurrentCarrierInProvider: mSubscription = " + getSubscription()
                 + " currentDds = " + currentDds + " operatorNumeric = " + operatorNumeric);
