@@ -443,17 +443,26 @@ class BluetoothEventLoop {
      *  values.
      */
     private void onDevicePropertyChanged(String deviceObjectPath, String[] propValues) {
-        if (!mBluetoothService.isEnabled()) {
-            Log.e(TAG, "Bluetooth is not enabled");
-            return;
-        }
-
         String name = propValues[0];
         String address = mBluetoothService.getAddressFromObjectPath(deviceObjectPath);
         if (address == null) {
             Log.e(TAG, "onDevicePropertyChanged: Address of the remote device in null");
             return;
         }
+
+        if (!mBluetoothService.isEnabled()) {
+            Log.e(TAG, "Bluetooth is not enabled");
+
+            if (name.equals("Connected") && propValues[1].equals("false")) {
+                Intent intent = new Intent(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+                BluetoothDevice device = mAdapter.getRemoteDevice(address);
+                intent.putExtra(BluetoothDevice.EXTRA_DEVICE, device);
+                intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
+                mContext.sendBroadcast(intent, BLUETOOTH_PERM);
+            }
+            return;
+        }
+
         log("Device property changed: " + address + " property: "
             + name + " value: " + propValues[1]);
 

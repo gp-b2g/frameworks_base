@@ -397,6 +397,7 @@ public class BluetoothService extends IBluetooth.Stub {
 
         filter.addAction(Intent.ACTION_DOCK_EVENT);
         filter.addAction(BluetoothDevice.ACTION_CONNECTION_ACCESS_REPLY);
+        filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
         mContext.registerReceiver(mReceiver, filter);
         mBluetoothInputProfileHandler = BluetoothInputProfileHandler.getInstance(mContext, this);
         mBluetoothPanProfileHandler = BluetoothPanProfileHandler.getInstance(mContext, this);
@@ -604,6 +605,12 @@ public class BluetoothService extends IBluetooth.Stub {
 
         for (BluetoothDevice device: getConnectedPanDevices()) {
             disconnectPanDevice(device);
+        }
+
+        // for no profile connection usecase this will be true
+        if (getAdapterConnectionState() ==
+                 BluetoothAdapter.STATE_DISCONNECTED) {
+            disconnectAllConnectionsNative();
         }
     }
 
@@ -2543,6 +2550,13 @@ public class BluetoothService extends IBluetooth.Stub {
                 int playingState = intent.getIntExtra(BluetoothA2dp.EXTRA_STATE,
                         BluetoothA2dp.STATE_PLAYING);
                 mConnectionManager.setA2dpAudioActive(playingState == BluetoothA2dp.STATE_PLAYING);
+            } else if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)) {
+                if ((listConnectionNative() == 0) &&
+                    (getBluetoothStateInternal() == BluetoothAdapter.STATE_TURNING_OFF)) {
+                    Log.i(TAG, "All connections disconnected");
+                    mBluetoothState.sendMessage(
+                        BluetoothAdapterStateMachine.ALL_DEVICES_DISCONNECTED);
+                }
             }
         }
     };
@@ -3417,6 +3431,11 @@ public class BluetoothService extends IBluetooth.Stub {
         return mAdapterConnectionState;
     }
 
+    public int getAdapterConnectionCount() {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
+        return listConnectionNative();
+    }
+
     public int getProfileConnectionState(int profile) {
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
 
@@ -3499,7 +3518,13 @@ public class BluetoothService extends IBluetooth.Stub {
             mAdapterConnectionState = state;
 
             if (state == BluetoothProfile.STATE_DISCONNECTED) {
-                mBluetoothState.sendMessage(BluetoothAdapterStateMachine.ALL_DEVICES_DISCONNECTED);
+                if ((getBluetoothStateInternal() == BluetoothAdapter.STATE_TURNING_OFF) &&
+                    (listConnectionNative() > 0)) {
+                    disconnectAllConnectionsNative();
+                } else {
+                    mBluetoothState.sendMessage(
+                        BluetoothAdapterStateMachine.ALL_DEVICES_DISCONNECTED);
+                }
             }
 
             Intent intent = new Intent(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
@@ -4447,4 +4472,6 @@ public class BluetoothService extends IBluetooth.Stub {
     private native boolean deregisterCharacteristicsWatcherNative(String path);
     private native boolean disconnectGattNative(String path);
     private native int disConnectSapNative();
+    private native int listConnectionNative();
+    private native boolean disconnectAllConnectionsNative();
 }
