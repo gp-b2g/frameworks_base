@@ -33,6 +33,7 @@
 #include <linux/unistd.h>
 
 #include <utils/Log.h>
+#include <cutils/properties.h>
 
 #include "DisplayHardware/DisplayHardwareBase.h"
 #include "SurfaceFlinger.h"
@@ -57,8 +58,16 @@ DisplayHardwareBase::DisplayEventThreadBase::~DisplayEventThreadBase() {
 
 DisplayHardwareBase::DisplayEventThread::DisplayEventThread(
         const sp<SurfaceFlinger>& flinger)
-    : DisplayEventThreadBase(flinger)
+    : DisplayEventThreadBase(flinger), always_on(0)
 {
+    char value[PROPERTY_VALUE_MAX];
+    int val;
+
+    if (property_get("debug.sf.fb_always_on", value, "0") > 0) {
+        val = atoi(value);
+        if (val > 0)
+            always_on = 1;
+    }
 }
 
 DisplayHardwareBase::DisplayEventThread::~DisplayEventThread()
@@ -71,33 +80,56 @@ bool DisplayHardwareBase::DisplayEventThread::threadLoop()
     char buf;
     int fd;
 
-    fd = open(kSleepFileName, O_RDONLY, 0);
-    do {
-      err = read(fd, &buf, 1);
-    } while (err < 0 && errno == EINTR);
-    close(fd);
-    LOGW_IF(err<0, "ANDROID_WAIT_FOR_FB_SLEEP failed (%s)", strerror(errno));
-    if (err >= 0) {
-        sp<SurfaceFlinger> flinger = mFlinger.promote();
-        LOGD("About to give-up screen, flinger = %p", flinger.get());
-        if (flinger != 0) {
-            mBarrier.close();
-            flinger->screenReleased(0);
-            mBarrier.wait();
-        }
-    }
-    fd = open(kWakeFileName, O_RDONLY, 0);
-    do {
-      err = read(fd, &buf, 1);
-    } while (err < 0 && errno == EINTR);
-    close(fd);
-    LOGW_IF(err<0, "ANDROID_WAIT_FOR_FB_WAKE failed (%s)", strerror(errno));
-    if (err >= 0) {
+    if (always_on) {
+        LOGW("Force fb always_on");
         sp<SurfaceFlinger> flinger = mFlinger.promote();
         LOGD("Screen about to return, flinger = %p", flinger.get());
         if (flinger != 0)
             flinger->screenAcquired(0);
+        do {
+            sleep(600);
+        } while (1);
     }
+
+    fd = open(kSleepFileName, O_RDONLY, 0);
+    if (fd >= 0) {
+        do {
+            err = read(fd, &buf, 1);
+        } while (err < 0 && errno == EINTR);
+        close(fd);
+        LOGW_IF(err<0, "ANDROID_WAIT_FOR_FB_SLEEP failed (%s)", strerror(errno));
+        if (err >= 0) {
+            sp<SurfaceFlinger> flinger = mFlinger.promote();
+            LOGD("About to give-up screen, flinger = %p", flinger.get());
+            if (flinger != 0) {
+                mBarrier.close();
+                flinger->screenReleased(0);
+                mBarrier.wait();
+            }
+        }
+    }
+    else {
+        LOGW("Read %s failed (%s)", kSleepFileName, strerror(errno));
+    }
+
+    fd = open(kWakeFileName, O_RDONLY, 0);
+    if (fd >= 0) {
+        do {
+            err = read(fd, &buf, 1);
+        } while (err < 0 && errno == EINTR);
+        close(fd);
+        LOGW_IF(err<0, "ANDROID_WAIT_FOR_FB_WAKE failed (%s)", strerror(errno));
+        if (err >= 0) {
+            sp<SurfaceFlinger> flinger = mFlinger.promote();
+            LOGD("Screen about to return, flinger = %p", flinger.get());
+            if (flinger != 0)
+                flinger->screenAcquired(0);
+        }
+    }
+    else {
+        LOGW("Read %s failed (%s)", kWakeFileName, strerror(errno));
+    }
+
     return true;
 }
 
@@ -114,6 +146,9 @@ status_t DisplayHardwareBase::DisplayEventThread::readyToRun()
 
 status_t DisplayHardwareBase::DisplayEventThread::initCheck() const
 {
+    if (always_on)
+        return NO_ERROR;
+
     return ((access(kSleepFileName, R_OK) == 0 &&
             access(kWakeFileName, R_OK) == 0)) ? NO_ERROR : NO_INIT;
 }
