@@ -28,6 +28,7 @@ import android.server.BluetoothA2dpService;
 import android.server.BluetoothService;
 import android.util.Log;
 import android.util.Pair;
+import android.os.ParcelUuid;
 
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -1253,6 +1254,7 @@ public final class BluetoothDeviceProfileState extends StateMachine {
 
     synchronized boolean processCommand(int command) {
         log("Processing command:" + command);
+        ParcelUuid[] uuids = null;
         switch(command) {
             case  CONNECT_HFP_OUTGOING:
                 if (mHeadsetService == null) {
@@ -1265,6 +1267,11 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                 if (mHeadsetService == null) {
                     deferProfileServiceMessage(command);
                 } else {
+                    uuids = mDevice.getUuids();
+                    if (!BluetoothUuid.isUuidPresent(uuids, BluetoothUuid.HSP) &&
+                        !BluetoothUuid.isUuidPresent(uuids, BluetoothUuid.Handsfree)) {
+                        mDevice.fetchUuidsWithSdp();
+                    }
                     processIncomingConnectCommand(command);
                     return true;
                 }
@@ -1275,11 +1282,19 @@ public final class BluetoothDeviceProfileState extends StateMachine {
                 }
                 break;
             case CONNECT_A2DP_INCOMING:
+                uuids = mDevice.getUuids();
+                if (!BluetoothUuid.isUuidPresent(uuids,  BluetoothUuid.AudioSink)) {
+                    mDevice.fetchUuidsWithSdp();
+                }
                 processIncomingConnectCommand(command);
                 return true;
             case CONNECT_HID_OUTGOING:
                 return mService.connectInputDeviceInternal(mDevice);
             case CONNECT_HID_INCOMING:
+                uuids = mDevice.getUuids();
+                if (!BluetoothUuid.isUuidPresent(uuids, BluetoothUuid.Hid)) {
+                    mDevice.fetchUuidsWithSdp();
+                }
                 processIncomingConnectCommand(command);
                 return true;
             case DISCONNECT_HFP_OUTGOING:
