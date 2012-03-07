@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@
 #include <utils/Log.h>
 #include <utils/threads.h>
 
-#include <fcntl.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 
@@ -36,7 +35,6 @@
 #include <media/stagefright/MediaErrors.h>
 
 #include <linux/unistd.h>
-#include <include/linux/msm_audio.h>
 
 #include "include/AwesomePlayer.h"
 
@@ -73,6 +71,7 @@ AudioPlayer(audioSink,observer) {
     timeStarted = 0;
     numChannels =0;
     afd = -1;
+    ionfd = -1;
     timePlayed = 0;
     isPaused = false;
     bIsA2DPEnabled = false;
@@ -635,7 +634,7 @@ void LPAPlayer::reset() {
     }
 
     LOGV("reset() requestQueue.size() = %d, responseQueue.size() = %d effectsQueue.size() = %d",
-         pmemBuffersRequestQueue.size(), pmemBuffersResponseQueue.size(), effectsQueue.size());
+         memBuffersRequestQueue.size(), memBuffersResponseQueue.size(), effectsQueue.size());
 
     // make sure the Effects thread has exited
     requestAndWaitForEffectsThreadExit();
@@ -682,12 +681,12 @@ void LPAPlayer::reset() {
     }
 
     if ( afd >= 0 ) {
-        pmemBufferDeAlloc();
+        memBufferDeAlloc();
         close(afd);
         afd = -1;
     }
 
-    LOGV("reset() after pmemBuffersRequestQueue.size() = %d, pmemBuffersResponseQueue.size() = %d ",pmemBuffersRequestQueue.size(),pmemBuffersResponseQueue.size());
+    LOGV("reset() after memBuffersRequestQueue.size() = %d, memBuffersResponseQueue.size() = %d ",memBuffersRequestQueue.size(),memBuffersResponseQueue.size());
 
     mNumFramesPlayed = 0;
     mPositionTimeMediaUs = -1;
@@ -733,63 +732,49 @@ void LPAPlayer::decoderThreadEntry() {
     LOGV("decoderThreadEntry ready to work \n");
     pthread_mutex_unlock(&decoder_mutex);
 
-    void *pmem_buf; int32_t pmem_fd;
-    struct msm_audio_pmem_info pmem_info;
     struct msm_audio_config config;
-
     if ( ioctl(afd, AUDIO_GET_CONFIG, &config) < 0 ) {
-        LOGE("Get Pmem Config Failed.");
+        LOGE("Get mem Config Failed.");
     }
     mBuffNumber = config.buffer_count;
     mBuffSize= config.buffer_size;
-    LOGV("Allocating %d PMEM buffers of size %d", mBuffNumber, mBuffSize);
+    LOGV("Allocating %d MEM buffers of size %d", mBuffNumber, mBuffSize);
 
-    for (int i = 0; i < mBuffNumber; i++) {
-        pmem_buf = pmemBufferAlloc(mBuffSize, &pmem_fd);
-        memset(&pmem_info, 0, sizeof(msm_audio_pmem_info));
-        LOGV("Registering PMEM with fd %d and address as %x", pmem_fd, pmem_buf);
-        pmem_info.fd = pmem_fd;
-        pmem_info.vaddr = pmem_buf;
-        if ( ioctl(afd, AUDIO_REGISTER_PMEM, &pmem_info) < 0 ) {
-            LOGE("Registration of PMEM with the Driver failed with fd %d and memory %x",
-                 pmem_info.fd, (unsigned int)pmem_info.vaddr);
-        }
-    }
-
+    audio_register_memory();
     while (1) {
-        pthread_mutex_lock(&pmem_request_mutex);
+        pthread_mutex_lock(&mem_request_mutex);
 
         if (killDecoderThread) {
-            pthread_mutex_unlock(&pmem_request_mutex);
+            pthread_mutex_unlock(&mem_request_mutex);
             break;
         }
 
-        LOGV("decoder pmemBuffersRequestQueue.size() = %d, pmemBuffersResponseQueue.size() = %d ",
-             pmemBuffersRequestQueue.size(),pmemBuffersResponseQueue.size());
+        LOGV("decoder memBuffersRequestQueue.size() = %d, memBuffersResponseQueue.size() = %d ",
+             memBuffersRequestQueue.size(),memBuffersResponseQueue.size());
 
-        if (pmemBuffersRequestQueue.empty() || a2dpDisconnectPause || mReachedEOS ||
+        if (memBuffersRequestQueue.empty() || a2dpDisconnectPause || mReachedEOS ||
             (bIsA2DPEnabled && !mAudioSinkOpen) || asyncReset || (!bIsA2DPEnabled && !mIsDriverStarted)) {
             LOGV("decoderThreadEntry: a2dpDisconnectPause %d  mReachedEOS %d bIsA2DPEnabled %d "
                  "mAudioSinkOpen %d asyncReset %d mIsDriverStarted %d", a2dpDisconnectPause,
                  mReachedEOS, bIsA2DPEnabled, mAudioSinkOpen, asyncReset, mIsDriverStarted);
             LOGV("decoderThreadEntry: waiting on decoder_cv");
-            pthread_cond_wait(&decoder_cv, &pmem_request_mutex);
-            pthread_mutex_unlock(&pmem_request_mutex);
+            pthread_cond_wait(&decoder_cv, &mem_request_mutex);
+            pthread_mutex_unlock(&mem_request_mutex);
             LOGV("decoderThreadEntry: received a signal to wake up");
             continue;
         }
 
-        List<BuffersAllocated>::iterator it = pmemBuffersRequestQueue.begin();
+        List<BuffersAllocated>::iterator it = memBuffersRequestQueue.begin();
         BuffersAllocated buf = *it;
-        pmemBuffersRequestQueue.erase(it);
-        pthread_mutex_unlock(&pmem_request_mutex);
+        memBuffersRequestQueue.erase(it);
+        pthread_mutex_unlock(&mem_request_mutex);
 
         //Queue the buffers back to Request queue
         if (mReachedEOS || (bIsA2DPEnabled && !mAudioSinkOpen) || asyncReset || a2dpDisconnectPause) {
             LOGV("%s: mReachedEOS %d bIsA2DPEnabled %d ", __func__, mReachedEOS, bIsA2DPEnabled);
-            pthread_mutex_lock(&pmem_request_mutex);
-            pmemBuffersRequestQueue.push_back(buf);
-            pthread_mutex_unlock(&pmem_request_mutex);
+            pthread_mutex_lock(&mem_request_mutex);
+            memBuffersRequestQueue.push_back(buf);
+            pthread_mutex_unlock(&mem_request_mutex);
         }
         //Queue up the buffers for writing either for A2DP or LPA Driver
         else {
@@ -803,10 +788,10 @@ void LPAPlayer::decoderThreadEntry() {
             if (!bIsA2DPEnabled) {
                 if ( buf.bytesToWrite > 0) {
                     memset(&aio_buf_local, 0, sizeof(msm_audio_aio_buf));
-                    aio_buf_local.buf_addr = buf.pmemBuf;
+                    aio_buf_local.buf_addr = buf.memBuf;
                     aio_buf_local.buf_len = buf.bytesToWrite;
                     aio_buf_local.data_len = buf.bytesToWrite;
-                    aio_buf_local.private_data = (void*) buf.pmemFd;
+                    aio_buf_local.private_data = (void*) buf.memFd;
 
                     if ( (buf.bytesToWrite % 2) != 0 ) {
                         LOGV("Increment for even bytes");
@@ -818,20 +803,20 @@ void LPAPlayer::decoderThreadEntry() {
                     }
                 } else {
                     /* Put the buffer back into requestQ */
-                    pthread_mutex_lock(&pmem_request_mutex);
-                    pmemBuffersRequestQueue.push_back(buf);
-                    pthread_mutex_unlock(&pmem_request_mutex);
+                    pthread_mutex_lock(&mem_request_mutex);
+                    memBuffersRequestQueue.push_back(buf);
+                    pthread_mutex_unlock(&mem_request_mutex);
                     /* This is zero byte buffer - no need to put in response Q*/
-                    if (mObserver && mReachedEOS && pmemBuffersResponseQueue.empty()) {
+                    if (mObserver && mReachedEOS && memBuffersResponseQueue.empty()) {
                         LOGV("Posting EOS event to AwesomePlayer");
                         mObserver->postAudioEOS();
                     }
                     continue;
                 }
             }
-            pthread_mutex_lock(&pmem_response_mutex);
-            pmemBuffersResponseQueue.push_back(buf);
-            pthread_mutex_unlock(&pmem_response_mutex);
+            pthread_mutex_lock(&mem_response_mutex);
+            memBuffersResponseQueue.push_back(buf);
+            pthread_mutex_unlock(&mem_response_mutex);
 
             if (bIsA2DPEnabled && !mAudioSinkOpen) {
                 LOGV("Close Session");
@@ -864,14 +849,14 @@ void LPAPlayer::decoderThreadEntry() {
                 // it will be re applied as the buffer already present in responseQ
                 if (!asyncReset) {
                     pthread_mutex_lock(&apply_effect_mutex);
-                    LOGV("decoderThread: applying effects on pmem buf with fd %d", buf.pmemFd);
+                    LOGV("decoderThread: applying effects on mem buf with fd %d", buf.memFd);
                     mAudioFlinger->applyEffectsOn((int16_t*)buf.localBuf,
-                                                  (int16_t*)buf.pmemBuf,
+                                                  (int16_t*)buf.memBuf,
                                                   (int)buf.bytesToWrite);
 
                     pthread_mutex_unlock(&apply_effect_mutex);
 
-                    LOGV("decoderThread: Writing buffer to driver with pmem fd %d", buf.pmemFd);
+                    LOGV("decoderThread: Writing buffer to driver with mem fd %d", buf.memFd);
                     if ( ioctl(afd, AUDIO_ASYNC_WRITE, &aio_buf_local) < 0 ) {
                         LOGE("error on async write\n");
                     }
@@ -930,23 +915,23 @@ void LPAPlayer::eventThreadEntry() {
                      (int32_t) cur_pcmdec_event.event_payload.aio_buf.private_data);
                 Mutex::Autolock autoLock(mLock);
                 mNumFramesPlayed += cur_pcmdec_event.event_payload.aio_buf.buf_len/ mFrameSize;
-                pthread_mutex_lock(&pmem_response_mutex);
-                BuffersAllocated buf = *(pmemBuffersResponseQueue.begin());
-                for (List<BuffersAllocated>::iterator it = pmemBuffersResponseQueue.begin();
-                    it != pmemBuffersResponseQueue.end(); ++it) {
-                    if (it->pmemBuf == cur_pcmdec_event.event_payload.aio_buf.buf_addr) {
+                pthread_mutex_lock(&mem_response_mutex);
+                BuffersAllocated buf = *(memBuffersResponseQueue.begin());
+                for (List<BuffersAllocated>::iterator it = memBuffersResponseQueue.begin();
+                    it != memBuffersResponseQueue.end(); ++it) {
+                    if (it->memBuf == cur_pcmdec_event.event_payload.aio_buf.buf_addr) {
                         buf = *it;
-                        pmemBuffersResponseQueue.erase(it);
+                        memBuffersResponseQueue.erase(it);
                         break;
                     }
                 }
 
                 /* If the rendering is complete report EOS to the AwesomePlayer */
-                if (mObserver && !asyncReset && mReachedEOS && pmemBuffersResponseQueue.empty()) {
+                if (mObserver && !asyncReset && mReachedEOS && memBuffersResponseQueue.empty()) {
                     LOGV("Posting EOS event to AwesomePlayer");
                     mObserver->postAudioEOS();
                 }
-                if (pmemBuffersResponseQueue.empty() && bIsA2DPEnabled && !mAudioSinkOpen) {
+                if (memBuffersResponseQueue.empty() && bIsA2DPEnabled && !mAudioSinkOpen) {
                     LOGV("Close Session");
                     if (mAudioSink.get() != NULL) {
                         mAudioSink->closeSession();
@@ -973,12 +958,12 @@ void LPAPlayer::eventThreadEntry() {
                     mAudioSinkOpen = true;
                 }
 
-                pthread_mutex_unlock(&pmem_response_mutex);
+                pthread_mutex_unlock(&mem_response_mutex);
 
                 // Post buffer to request Q
-                pthread_mutex_lock(&pmem_request_mutex);
-                pmemBuffersRequestQueue.push_back(buf);
-                pthread_mutex_unlock(&pmem_request_mutex);
+                pthread_mutex_lock(&mem_request_mutex);
+                memBuffersRequestQueue.push_back(buf);
+                pthread_mutex_unlock(&mem_request_mutex);
 
                 pthread_cond_signal(&decoder_cv);
             }
@@ -1078,33 +1063,33 @@ void LPAPlayer::A2DPThreadEntry() {
             break;
         }
 
-        pthread_mutex_lock(&pmem_response_mutex);
-        if (pmemBuffersResponseQueue.empty() || !mAudioSinkOpen || isPaused || !bIsA2DPEnabled) {
+        pthread_mutex_lock(&mem_response_mutex);
+        if (memBuffersResponseQueue.empty() || !mAudioSinkOpen || isPaused || !bIsA2DPEnabled) {
             LOGV("A2DPThreadEntry:: responseQ empty %d mAudioSinkOpen %d isPaused %d bIsA2DPEnabled %d",
-                 pmemBuffersResponseQueue.empty(), mAudioSinkOpen, isPaused, bIsA2DPEnabled);
+                 memBuffersResponseQueue.empty(), mAudioSinkOpen, isPaused, bIsA2DPEnabled);
             LOGV("A2DPThreadEntry:: Waiting on a2dp_cv");
-            pthread_cond_wait(&a2dp_cv, &pmem_response_mutex);
+            pthread_cond_wait(&a2dp_cv, &mem_response_mutex);
             LOGV("A2DPThreadEntry:: received signal to wake up");
             // A2DP got disabled -- Queue up everything back to Request Queue
             if (!bIsA2DPEnabled) {
-                pthread_mutex_lock(&pmem_request_mutex);
-                while (!pmemBuffersResponseQueue.empty()) {
+                pthread_mutex_lock(&mem_request_mutex);
+                while (!memBuffersResponseQueue.empty()) {
                     LOGV("BUF transfer");
-                    List<BuffersAllocated>::iterator it = pmemBuffersResponseQueue.begin();
+                    List<BuffersAllocated>::iterator it = memBuffersResponseQueue.begin();
                     BuffersAllocated buf = *it;
-                    pmemBuffersRequestQueue.push_back(buf);
-                    pmemBuffersResponseQueue.erase(it);
+                    memBuffersRequestQueue.push_back(buf);
+                    memBuffersResponseQueue.erase(it);
                 }
-                pthread_mutex_unlock(&pmem_request_mutex);
+                pthread_mutex_unlock(&mem_request_mutex);
             }
-            pthread_mutex_unlock(&pmem_response_mutex);
+            pthread_mutex_unlock(&mem_response_mutex);
         }
         //A2DP is enabled -- Continue normal Playback
         else {
-            List<BuffersAllocated>::iterator it = pmemBuffersResponseQueue.begin();
+            List<BuffersAllocated>::iterator it = memBuffersResponseQueue.begin();
             BuffersAllocated buf = *it;
-            pmemBuffersResponseQueue.erase(it);
-            pthread_mutex_unlock(&pmem_response_mutex);
+            memBuffersResponseQueue.erase(it);
+            pthread_mutex_unlock(&mem_response_mutex);
             bytesToWrite = buf.bytesToWrite;
             LOGV("bytes To write:%d",bytesToWrite);
             if (timeStarted == 0) {
@@ -1162,30 +1147,30 @@ void LPAPlayer::A2DPThreadEntry() {
                 bytesToWrite -= bytesWritten;
                 LOGV("@_@bytes To write2:%d",bytesToWrite);
             }
-            if (mObserver && !asyncReset && mReachedEOS && pmemBuffersResponseQueue.empty()) {
+            if (mObserver && !asyncReset && mReachedEOS && memBuffersResponseQueue.empty()) {
                 LOGV("Posting EOS event to AwesomePlayer");
                 mObserver->postAudioEOS();
             }
-            pthread_mutex_lock(&pmem_request_mutex);
-            pmemBuffersRequestQueue.push_back(buf);
+            pthread_mutex_lock(&mem_request_mutex);
+            memBuffersRequestQueue.push_back(buf);
             if (killA2DPThread) {
-                pthread_mutex_unlock(&pmem_request_mutex);
+                pthread_mutex_unlock(&mem_request_mutex);
                 break;
             }
             //flush out old buffer
             if (mSeeked || !bIsA2DPEnabled) {
                 mSeeked = false;
                 LOGV("A2DPThread: Putting buffers back to requestQ from responseQ");
-                pthread_mutex_lock(&pmem_response_mutex);
-                while (!pmemBuffersResponseQueue.empty()) {
-                    List<BuffersAllocated>::iterator it = pmemBuffersResponseQueue.begin();
+                pthread_mutex_lock(&mem_response_mutex);
+                while (!memBuffersResponseQueue.empty()) {
+                    List<BuffersAllocated>::iterator it = memBuffersResponseQueue.begin();
                     BuffersAllocated buf = *it;
-                    pmemBuffersRequestQueue.push_back(buf);
-                    pmemBuffersResponseQueue.erase(it);
+                    memBuffersRequestQueue.push_back(buf);
+                    memBuffersResponseQueue.erase(it);
                 }
-                pthread_mutex_unlock(&pmem_response_mutex);
+                pthread_mutex_unlock(&mem_response_mutex);
             }
-            pthread_mutex_unlock(&pmem_request_mutex);
+            pthread_mutex_unlock(&mem_request_mutex);
             // Signal decoder thread when a buffer is put back to request Q
             pthread_cond_signal(&decoder_cv);
         }
@@ -1224,18 +1209,18 @@ void LPAPlayer::EffectsThreadEntry() {
             }
 
             // 2. Lock the responseQ mutex
-            pthread_mutex_lock(&pmem_response_mutex);
+            pthread_mutex_lock(&mem_response_mutex);
 
             // 3. Copy responseQ to effectQ
-            LOGV("Copying responseQ to effectQ: responseQ size %d", pmemBuffersResponseQueue.size());
-            for (List<BuffersAllocated>::iterator it = pmemBuffersResponseQueue.begin();
-                it != pmemBuffersResponseQueue.end(); ++it) {
+            LOGV("Copying responseQ to effectQ: responseQ size %d", memBuffersResponseQueue.size());
+            for (List<BuffersAllocated>::iterator it = memBuffersResponseQueue.begin();
+                it != memBuffersResponseQueue.end(); ++it) {
                 BuffersAllocated buf = *it;
                 effectsQueue.push_back(buf);
             }
 
             // 4. Unlock the responseQ mutex
-            pthread_mutex_unlock(&pmem_response_mutex);
+            pthread_mutex_unlock(&mem_response_mutex);
         }
         // If effectQ is empty just wait for a signal
         // Else dequeue a buffer, apply effects and delete it from effectQ
@@ -1251,9 +1236,9 @@ void LPAPlayer::EffectsThreadEntry() {
             BuffersAllocated buf = *it;
 
             pthread_mutex_lock(&apply_effect_mutex);
-            LOGV("effectsThread: applying effects on %p fd %d", buf.pmemBuf, (int)buf.pmemFd);
+            LOGV("effectsThread: applying effects on %p fd %d", buf.memBuf, (int)buf.memFd);
             mAudioFlinger->applyEffectsOn((int16_t*)buf.localBuf,
-                                          (int16_t*)buf.pmemBuf,
+                                          (int16_t*)buf.memBuf,
                                           (int)buf.bytesToWrite);
             pthread_mutex_unlock(&apply_effect_mutex);
             effectsQueue.erase(it);
@@ -1263,96 +1248,11 @@ void LPAPlayer::EffectsThreadEntry() {
     effectsThreadAlive = false;
 }
 
-void *LPAPlayer::pmemBufferAlloc(int32_t nSize, int32_t *pmem_fd){
-    int32_t pmemfd = -1;
-    void  *pmem_buf = NULL;
-    void  *local_buf = NULL;
-
-    // 1. Open the pmem_audio
-    pmemfd = open("/dev/pmem_audio", O_RDWR);
-    if (pmemfd < 0) {
-        LOGE("pmemBufferAlloc failed to open pmem_audio");
-        *pmem_fd = -1;
-        return pmem_buf;
-    }
-
-    // 2. MMAP to get the virtual address
-    pmem_buf = mmap(0, nSize, PROT_READ | PROT_WRITE, MAP_SHARED, pmemfd, 0);
-    if ( NULL == pmem_buf) {
-        LOGE("pmemBufferAlloc failed to mmap");
-        *pmem_fd = -1;
-        return NULL;
-    }
-
-    local_buf = malloc(nSize);
-    if (NULL == local_buf) {
-        // unmap the corresponding PMEM buffer and close the fd
-        munmap(pmem_buf, mBuffSize);
-        close(pmemfd);
-        return NULL;
-    }
-
-    // 3. Store this information for internal mapping / maintanence
-    BuffersAllocated buf(local_buf, pmem_buf, nSize, pmemfd);
-    pmemBuffersRequestQueue.push_back(buf);
-
-    // 4. Send the pmem fd information
-    *pmem_fd = pmemfd;
-    LOGV("pmemBufferAlloc calling with required size %d", nSize);
-    LOGV("The PMEM that is allocated is %d and buffer is %x", pmemfd, (unsigned int)pmem_buf);
-
-    // 5. Return the virtual address
-    return pmem_buf;
-}
-
-void LPAPlayer::pmemBufferDeAlloc()
-{
-    //Remove all the buffers from request queue
-    while (!pmemBuffersRequestQueue.empty())  {
-        List<BuffersAllocated>::iterator it = pmemBuffersRequestQueue.begin();
-        BuffersAllocated &pmemBuffer = *it;
-        struct msm_audio_pmem_info pmem_info;
-        pmem_info.vaddr = (*it).pmemBuf;
-        pmem_info.fd = (*it).pmemFd;
-        if (ioctl(afd, AUDIO_DEREGISTER_PMEM, &pmem_info) < 0) {
-            LOGE("PMEM deregister failed");
-        }
-        LOGV("Unmapping the address %u, size %d, fd %d from Request",pmemBuffer.pmemBuf,pmemBuffer.bytesToWrite,pmemBuffer.pmemFd);
-        munmap(pmemBuffer.pmemBuf, mBuffSize);
-        LOGV("closing the pmem fd");
-        close(pmemBuffer.pmemFd);
-        // free the local buffer corresponding to pmem buffer
-        free(pmemBuffer.localBuf);
-        LOGV("Removing from request Q");
-        pmemBuffersRequestQueue.erase(it);
-    }
-
-    //Remove all the buffers from response queue
-    while(!pmemBuffersResponseQueue.empty()){
-        List<BuffersAllocated>::iterator it = pmemBuffersResponseQueue.begin();
-        BuffersAllocated &pmemBuffer = *it;
-        struct msm_audio_pmem_info pmem_info;
-        pmem_info.vaddr = (*it).pmemBuf;
-        pmem_info.fd = (*it).pmemFd;
-        if (ioctl(afd, AUDIO_DEREGISTER_PMEM, &pmem_info) < 0) {
-            LOGE("PMEM deregister failed");
-        }
-        LOGV("Unmapping the address %u, size %d, fd %d from Response",pmemBuffer.pmemBuf,mBuffSize ,pmemBuffer.pmemFd);
-        munmap(pmemBuffer.pmemBuf, mBuffSize);
-        LOGV("closing the pmem fd");
-        close(pmemBuffer.pmemFd);
-        // free the local buffer corresponding to pmem buffer
-        free(pmemBuffer.localBuf);
-        LOGV("Removing from response Q");
-        pmemBuffersResponseQueue.erase(it);
-    }
-}
-
 void LPAPlayer::createThreads() {
 
     //Initialize all the Mutexes and Condition Variables
-    pthread_mutex_init(&pmem_request_mutex, NULL);
-    pthread_mutex_init(&pmem_response_mutex, NULL);
+    pthread_mutex_init(&mem_request_mutex, NULL);
+    pthread_mutex_init(&mem_response_mutex, NULL);
     pthread_mutex_init(&decoder_mutex, NULL);
     pthread_mutex_init(&event_mutex, NULL);
     pthread_mutex_init(&a2dp_mutex, NULL);
@@ -1623,10 +1523,10 @@ void LPAPlayer::requestAndWaitForDecoderThreadExit() {
     if (!decoderThreadAlive)
         return;
 
-    pthread_mutex_lock(&pmem_request_mutex);
+    pthread_mutex_lock(&mem_request_mutex);
     killDecoderThread = true;
     pthread_cond_signal(&decoder_cv);
-    pthread_mutex_unlock(&pmem_request_mutex);
+    pthread_mutex_unlock(&mem_request_mutex);
     pthread_join(decoderThread,NULL);
     LOGV("decoder thread killed");
 
@@ -1706,4 +1606,4 @@ void LPAPlayer::onPauseTimeOut() {
     }
 }
 
-} //namespace android
+}//namespace android
