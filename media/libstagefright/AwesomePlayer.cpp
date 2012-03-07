@@ -1734,13 +1734,11 @@ void AwesomePlayer::onVideoEvent() {
         Mutex::Autolock autoLock(mStatsLock);
         int64_t now = getTimeOfDayUs(),
                 diff = now - mStats.mLastFrameUs;
-        if (diff > 50000) {
-             float fps =((mStats.mTotalFrames - mStats.mLastFrame) * 1E6)/diff;
-             LOGW("Frames per second: %.4f", fps);
-             if(mStats.mLastFrameUs != 0){
-                 ++mStats.mStatisticsFrames;
-                 mStats.mTotalTime+=diff;
-             }
+        if (diff > 250000 && !mStats.mVeryFirstFrame) {
+             double fps =((mStats.mTotalFrames - mStats.mLastFrame) * 1E6)/diff;
+             LOGW("Frames per second: %.4f, Duration of measurement: %lld", fps,diff);
+             ++mStats.mStatisticsFrames;
+             mStats.mTotalTime+=diff;
              mStats.mFPSSumUs += fps;
              mStats.mLastFrameUs = now;
              mStats.mLastFrame = mStats.mTotalFrames;
@@ -1904,6 +1902,8 @@ void AwesomePlayer::onVideoEvent() {
             Mutex::Autolock autoLock(mStatsLock);
             if(mStats.mVeryFirstFrame)
                 logFirstFrame();
+                LOGW("setting first frame time");
+                mStats.mLastFrameUs = getTimeOfDayUs();
         }
     }
 
