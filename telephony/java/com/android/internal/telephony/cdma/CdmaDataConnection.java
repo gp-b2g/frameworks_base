@@ -92,8 +92,8 @@ public class CdmaDataConnection extends DataConnection {
         phone.mCM.setupDataCall(
                 Integer.toString(getRadioTechnology(RILConstants.SETUP_DATA_TECH_CDMA)),
                 Integer.toString(mApn.getProfileId()),
-                null, mApn.user, mApn.password,
-                Integer.toString(mApn.getAuthType()),
+                mApn.apn, mApn.user, mApn.password,
+                Integer.toString(mApn.authType),
                 mApn.protocol, msg);
     }
 

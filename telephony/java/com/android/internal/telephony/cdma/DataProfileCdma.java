@@ -24,13 +24,11 @@ import java.util.Arrays;
 public class DataProfileCdma extends DataProfile {
 
     /* ID of the profile in the modem */
-    private static String PROFILE_TYPE = "CdmaNai";
-
     private int mProfileId = 0;
 
     public DataProfileCdma(int id, String numeric, String name, String user, String password,
             int authType, String[] types, String protocol, String roamingProtocol, int bearer) {
-        super(id, numeric, name == null ? PROFILE_TYPE : name, user, password,
+        super(id, numeric, name, user, password,
                 authType, types, protocol, roamingProtocol, bearer);
     }
 

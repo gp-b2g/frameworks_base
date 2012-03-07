@@ -244,7 +244,7 @@ public final class CdmaDataProfileTracker extends Handler {
                 DataProfileCdma nai = new DataProfileCdma(
                         cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers._ID)),
                         cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.NUMERIC)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.NAME)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.APN)),
                         cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.USER)),
                         cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.PASSWORD)),
                         cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.AUTH_TYPE)),
