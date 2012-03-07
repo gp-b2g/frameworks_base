@@ -101,10 +101,10 @@ SurfaceFlinger::SurfaceFlinger()
         mDebugInTransaction(0),
         mLastTransactionTime(0),
         mBootFinished(false),
-        mConsoleSignals(0),
+        mHDMIOutput(EXT_DISPLAY_OFF),
         mCanSkipComposition(false),
-        mSecureFrameBuffer(0),
-        mHDMIOutput(EXT_DISPLAY_OFF)
+        mConsoleSignals(0),
+        mSecureFrameBuffer(0)
 {
     init();
 }
@@ -2718,7 +2718,12 @@ sp<GraphicBuffer> GraphicBufferAlloc::createGraphicBuffer(uint32_t w, uint32_t h
                 w, h, strerror(-err), graphicBuffer->handle);
         return 0;
     }
-    checkBuffer((native_handle_t *)graphicBuffer->handle, mSize, usage);
+
+    err = checkBuffer((native_handle_t *)graphicBuffer->handle, mSize, usage);
+    if (err) {
+        LOGE("%s: checkBuffer failed",__FUNCTION__);
+        return 0;
+    }
     Mutex::Autolock _l(mLock);
     if (-1 != mFreedIndex) {
         mBuffers.insertAt(graphicBuffer, mFreedIndex);
@@ -2731,7 +2736,7 @@ sp<GraphicBuffer> GraphicBufferAlloc::createGraphicBuffer(uint32_t w, uint32_t h
 
 void GraphicBufferAlloc::freeAllGraphicBuffersExcept(int bufIdx) {
     Mutex::Autolock _l(mLock);
-    if (0 <= bufIdx && bufIdx < mBuffers.size()) {
+    if (bufIdx >= 0 && bufIdx < (int)mBuffers.size()) {
         sp<GraphicBuffer> b(mBuffers[bufIdx]);
         mBuffers.clear();
         mBuffers.add(b);
@@ -2743,7 +2748,7 @@ void GraphicBufferAlloc::freeAllGraphicBuffersExcept(int bufIdx) {
 
 void GraphicBufferAlloc::freeGraphicBufferAtIndex(int bufIdx) {
      Mutex::Autolock _l(mLock);
-     if (0 <= bufIdx && bufIdx < mBuffers.size()) {
+     if (bufIdx >= 0 && bufIdx < (int)mBuffers.size()) {
         mBuffers.removeItemsAt(bufIdx);
         mFreedIndex = bufIdx;
      } else {
