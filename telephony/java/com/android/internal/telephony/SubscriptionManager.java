@@ -1043,13 +1043,14 @@ public class SubscriptionManager extends Handler {
     private boolean validateActivationRequest(Subscription sub) {
         // Check the parameters here!
         // subStatus, subId, slotId, appIndex
-        if (sub.subStatus == Subscription.SubscriptionStatus.SUB_ACTIVATE
+        SubscriptionData subData = mCardSubMgr.getCardSubscriptions(sub.slotId);
+        if (subData != null) {
+            if (sub.subStatus == Subscription.SubscriptionStatus.SUB_ACTIVATE
                 && (sub.subId >= 0 && sub.subId < NUM_SUBSCRIPTIONS)
                 && (sub.slotId >= 0 && sub.slotId < NUM_SUBSCRIPTIONS)
-                && (sub.getAppIndex() >= 0
-                        && sub.getAppIndex() <
-                        mCardSubMgr.getCardSubscriptions(sub.slotId).getLength())) {
-            return true;
+                && (sub.getAppIndex() >= 0 && sub.getAppIndex() < subData.getLength())) {
+                return true;
+            }
         }
         return false;
     }
