@@ -2795,8 +2795,8 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
     @Override
     protected void clearTetheredStateOnStatus() {
         if (DBG) log("clearTetheredStateOnStatus()");
-        for (ApnContext apnc : mApnContexts.values()) {
-            apnc.setTetheredCallOn(false);
+        for (DataProfile dp : mAllApns) {
+            dp.setTetheredCallOn(false);
         }
     }
 
