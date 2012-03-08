@@ -1945,8 +1945,13 @@ public class Resources {
 						
 						boolean bNeedFallback = true;
 						
-						if (((id >>> 24) != 0x1) && (!currentTheme.equals("default"))) {
-							String packageDirInTheme = getResourcePackageName(id);
+						if (!currentTheme.equals("default")) {
+							String packageDirInTheme = null;
+                            if ((id >>> 24) != 0x1)
+                                packageDirInTheme = getResourcePackageName(id);
+                            else
+                                packageDirInTheme = "framework_res";
+                                
 							if (null != packageDirInTheme) {
 								String themeBasePath;
 								if (!currentTheme.startsWith("0x"))
