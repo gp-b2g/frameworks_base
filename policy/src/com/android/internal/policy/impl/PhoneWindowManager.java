@@ -293,6 +293,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     WindowManagerFuncs mWindowManagerFuncs;
     LocalPowerManager mPowerManager;
     IStatusBarService mStatusBarService;
+
     Vibrator mVibrator; // Vibrator for giving feedback of orientation changes
 
     // Vibrator pattern for haptic feedback of a long press.
@@ -345,6 +346,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     boolean mSystemReady;
     boolean mSystemBooted;
     boolean mHdmiPlugged;
+    boolean mWifiDisplayConnected;
     int mUiMode = Configuration.UI_MODE_TYPE_NORMAL;
     int mDockMode = Intent.EXTRA_DOCK_STATE_UNDOCKED;
     int mLidOpenRotation;
@@ -844,6 +846,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mDockMode = intent.getIntExtra(Intent.EXTRA_DOCK_STATE,
                     Intent.EXTRA_DOCK_STATE_UNDOCKED);
         }
+        // register for WIFI Display intents
+        IntentFilter wifiDisplayFilter = new IntentFilter(
+                                                Intent.ACTION_WIFI_DISPLAY);
+        Intent wifidisplayIntent = context.registerReceiver(
+                                      mWifiDisplayReceiver, wifiDisplayFilter);
+
         mVibrator = new Vibrator();
         mLongPressVibePattern = getLongIntArray(mContext.getResources(),
                 com.android.internal.R.array.config_longPressVibePattern);
@@ -3295,6 +3303,21 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
     };
 
+    BroadcastReceiver mWifiDisplayReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+        String action = intent.getAction();
+            if (action.equals(Intent.ACTION_WIFI_DISPLAY)) {
+                int state = intent.getIntExtra("state", 0);
+                if(state == 1) {
+                    mWifiDisplayConnected = true;
+                } else {
+                    mWifiDisplayConnected = false;
+                }
+                updateRotation(true);
+            }
+        }
+    };
+
     /** {@inheritDoc} */
     public void screenTurnedOff(int why) {
         EventLog.writeEvent(70000, 0);
@@ -3461,9 +3484,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 // enable 180 degree rotation while docked.
                 preferredRotation = mDeskDockEnablesAccelerometer
                         ? sensorRotation : mDeskDockRotation;
-            } else if (mHdmiPlugged) {
+            } else if (mHdmiPlugged || mWifiDisplayConnected) {
                 // Ignore sensor when plugged into HDMI.
-                // Note that the dock orientation overrides the HDMI orientation.
+                // or Wifi display is connected
+                // Note that the dock orientation overrides the HDMI/Wifi orientation.
                 preferredRotation = mHdmiRotation;
             } else if ((mAccelerometerDefault != 0 /* implies not rotation locked */
                             && (orientation == ActivityInfo.SCREEN_ORIENTATION_USER
