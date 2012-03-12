@@ -988,7 +988,17 @@ public class TelephonyManager {
      */
     public int getCallState() {
         try {
-            return getITelephony().getCallState();
+            if (!isMultiSimEnabled) {
+                return getITelephony().getCallState();
+            } else {
+                for (int sub=0;sub<MSimConstants.MAX_PHONE_COUNT_DS;sub++) {
+                    int subState = MSimTelephonyManager.getDefault().getCallState(sub);
+                    if (subState != CALL_STATE_IDLE) {
+                        return subState;
+                    }
+                }
+                return CALL_STATE_IDLE;
+            }
         } catch (RemoteException ex) {
             // the phone process is restarting.
             return CALL_STATE_IDLE;
