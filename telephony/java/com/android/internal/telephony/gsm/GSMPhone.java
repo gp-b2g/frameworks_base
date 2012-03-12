@@ -1464,8 +1464,6 @@ public class GSMPhone extends PhoneBase {
 
                 if (mIccRecords == null && ar.exception == null) {
                     Log.w(LOG_TAG, "getEonsForAvailableNetworks() aborted. icc absent?");
-                    ar.exception = new RuntimeException("Sim card is absent.");
-
                 }
 
                 if (eonsNetworkNames != null) {
