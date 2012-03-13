@@ -1,7 +1,7 @@
 LOCAL_PATH:= $(call my-dir)
 
 QRDExt_BootAnimation:=yes
-include vendor/qcom/proprietary/qrdplus/QRDExtensions/QRDExt_target.min
+include build/buildplus/target/QRDExt_target.min
 
 include $(CLEAR_VARS)
 
