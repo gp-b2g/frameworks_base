@@ -53,6 +53,7 @@ class HDMIService extends IHDMIService.Stub {
     private HDMIListener mListener;
     private boolean mHDMIUserOption = false;
     private int mHDMIModes[];
+    private int mCurrHDMIMode = -1;
 
     final int m640x480p60_4_3         = 1;
     final int m720x480p60_4_3         = 2;
@@ -77,30 +78,39 @@ class HDMIService extends IHDMIService.Stub {
         switch (mode) {
         default:
         case m1440x480i60_4_3:
+            return 1; // 480i 4:3
         case m1440x480i60_16_9:
-            return 1; // 480i
+            return 2; // 480i 16:9
         case m1440x576i50_4_3:
+            return 3; // i576i 4:3
         case m1440x576i50_16_9:
-            return 2; // 576i
+            return 4; // 576i 16:9
         case m640x480p60_4_3:
-            return 3; // 480p x640
+            return 5; // 640x480 4:3
         case m720x480p60_4_3:
+            return 6; // 480p 4:3
         case m720x480p60_16_9:
-            return 4; // 480p x720
+            return 7; // 480p 16:9
         case m720x576p50_4_3:
+            return 8; // 576p 4:3
         case m720x576p50_16_9:
-            return 5; // 576p
+            return 9; // 576p 16:9
         case m1920x1080i60_16_9:
-            return 6; // 1080i
-        case m1280x720p60_16_9:
+            return 10; // 1080i 16:9
         case m1280x720p50_16_9:
-            return 7; // 720p
+            return 11; // 720p@50Hz
+        case m1280x720p60_16_9:
+            return 12; // 720p@60Hz
         case m1920x1080p24_16_9:
+            return 13; //1080p@24Hz
         case m1920x1080p25_16_9:
+            return 14; //108-p@25Hz
         case m1920x1080p30_16_9:
+            return 15; //1080p@30Hz
         case m1920x1080p50_16_9:
+            return 16; //1080p@50Hz
         case m1920x1080p60_16_9:
-            return 8;
+            return 17; //1080p@60Hz
         }
     }
 
@@ -193,6 +203,7 @@ class HDMIService extends IHDMIService.Stub {
     }
 
     public void setMode(int mode) {
+        mCurrHDMIMode = mode;
         mListener.changeDisplayMode(mode);
     }
 
@@ -213,7 +224,10 @@ class HDMIService extends IHDMIService.Stub {
         mHDMIModes = modes;
         if(getHDMIUserOption()) {
             synchronized(mListener) {
-                mListener.changeDisplayMode(getBestMode());
+                if(mCurrHDMIMode == -1) {
+                    mCurrHDMIMode = getBestMode();
+                }
+                mListener.changeDisplayMode(mCurrHDMIMode);
                 mListener.enableHDMIOutput(true);
             }
         }
@@ -221,6 +235,7 @@ class HDMIService extends IHDMIService.Stub {
 
     public void notifyHDMIDisconnected() {
         mHDMIModes = null;
+        mCurrHDMIMode = -1;
         if(getHDMIUserOption()) {
             synchronized(mListener) {
                 mListener.enableHDMIOutput(false);
