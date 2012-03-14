@@ -400,7 +400,7 @@ class WifiConfigStore {
      */
     static WpsResult startWpsWithPinFromAccessPoint(WpsInfo config) {
         WpsResult result = new WpsResult();
-        if (WifiNative.startWpsWithPinFromAccessPointCommand(config.BSSID, config.pin)) {
+        if (!WifiNative.startWpsWithPinFromAccessPointCommand(config.BSSID, config.pin)) {
             /* WPS leaves all networks disabled */
             markAllNetworksDisabled();
             result.status = WpsResult.Status.SUCCESS;
