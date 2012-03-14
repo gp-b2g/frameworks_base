@@ -51,6 +51,10 @@ private:
         size_t mLength;
     };
 
+    bool mIsHWAACDec;
+    int64_t mAACtimeUs;
+    int64_t mAACFrameDuration;
+
     Mode mMode;
 
     sp<ABuffer> mBuffer;
