@@ -175,8 +175,8 @@ const char CameraParameters::FLASH_MODE_RED_EYE[] = "red-eye";
 const char CameraParameters::FLASH_MODE_TORCH[] = "torch";
 
 // Values for scene mode settings.
-const char CameraParameters::SCENE_MODE_OFF[] = "off";
-const char CameraParameters::SCENE_MODE_AUTO[] = "auto";
+const char CameraParameters::SCENE_MODE_AUTO[] = "auto"; // corresponds to CAMERA_BESTSHOT_OFF in HAL
+const char CameraParameters::SCENE_MODE_ASD[] = "asd";   // corresponds to CAMERA_BESTSHOT_AUTO in HAL
 const char CameraParameters::SCENE_MODE_ACTION[] = "action";
 const char CameraParameters::SCENE_MODE_PORTRAIT[] = "portrait";
 const char CameraParameters::SCENE_MODE_LANDSCAPE[] = "landscape";

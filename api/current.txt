@@ -9621,6 +9621,7 @@ package android.hardware {
     field public static final java.lang.String SCENE_DETECT_OFF = "off";
     field public static final java.lang.String SCENE_DETECT_ON = "on";
     field public static final java.lang.String SCENE_MODE_ACTION = "action";
+    field public static final java.lang.String SCENE_MODE_ASD = "asd";
     field public static final java.lang.String SCENE_MODE_AUTO = "auto";
     field public static final java.lang.String SCENE_MODE_BACKLIGHT = "backlight";
     field public static final java.lang.String SCENE_MODE_BARCODE = "barcode";
@@ -9631,7 +9632,6 @@ package android.hardware {
     field public static final java.lang.String SCENE_MODE_LANDSCAPE = "landscape";
     field public static final java.lang.String SCENE_MODE_NIGHT = "night";
     field public static final java.lang.String SCENE_MODE_NIGHT_PORTRAIT = "night-portrait";
-    field public static final java.lang.String SCENE_MODE_OFF = "off";
     field public static final java.lang.String SCENE_MODE_PARTY = "party";
     field public static final java.lang.String SCENE_MODE_PORTRAIT = "portrait";
     field public static final java.lang.String SCENE_MODE_SNOW = "snow";
@@ -23069,7 +23069,7 @@ package android.view {
     method public android.graphics.Canvas lockCanvas(android.graphics.Rect) throws java.lang.IllegalArgumentException, android.view.Surface.OutOfResourcesException;
     method public void readFromParcel(android.os.Parcel);
     method public void release();
-    method public void setStereoscopic3DFormat(int format);
+    method public void setStereoscopic3DFormat(int);
     method public void unlockCanvas(android.graphics.Canvas);
     method public void unlockCanvasAndPost(android.graphics.Canvas);
     method public void writeToParcel(android.os.Parcel, int);
@@ -23099,14 +23099,14 @@ package android.view {
     method public abstract void setSizeFromLayout();
     method public abstract deprecated void setType(int);
     method public abstract void unlockCanvasAndPost(android.graphics.Canvas);
+    field public static final int STEREOSCOPIC_3D_FORMAT_INTERLEAVED = 262144; // 0x40000
+    field public static final int STEREOSCOPIC_3D_FORMAT_SIDE_BY_SIDE_HALF_L_R = 65536; // 0x10000
+    field public static final int STEREOSCOPIC_3D_FORMAT_SIDE_BY_SIDE_R_L = 524288; // 0x80000
+    field public static final int STEREOSCOPIC_3D_FORMAT_TOP_BOTTOM = 131072; // 0x20000
     field public static final deprecated int SURFACE_TYPE_GPU = 2; // 0x2
     field public static final deprecated int SURFACE_TYPE_HARDWARE = 1; // 0x1
     field public static final deprecated int SURFACE_TYPE_NORMAL = 0; // 0x0
     field public static final deprecated int SURFACE_TYPE_PUSH_BUFFERS = 3; // 0x3
-    field public static final int STEREOSCOPIC_3D_FORMAT_SIDE_BY_SIDE_HALF_L_R = 65536; // 0x10000
-    field public static final int STEREOSCOPIC_3D_FORMAT_TOP_BOTTOM   = 131072; // 0x20000
-    field public static final int STEREOSCOPIC_3D_FORMAT_INTERLEAVED  = 262144; // 0x40000
-    field public static final int STEREOSCOPIC_3D_FORMAT_SIDE_BY_SIDE_R_L = 524288; // 0x80000
   }
 
   public static class SurfaceHolder.BadSurfaceTypeException extends java.lang.RuntimeException {

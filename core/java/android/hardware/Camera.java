@@ -1809,7 +1809,7 @@ public class Camera {
         /**
          * Scene mode is off.
          */
-        public static final String SCENE_MODE_OFF = "off";
+        public static final String SCENE_MODE_ASD = "asd";
 
         /**
          * Scene mode is auto ASD.
