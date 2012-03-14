@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1047,6 +1048,24 @@ public class CDMAPhone extends PhoneBase {
 
             case EVENT_REGISTERED_TO_NETWORK:{
                 Log.d(LOG_TAG, "Event EVENT_REGISTERED_TO_NETWORK Received");
+                mCM.getPreferredNetworkType(obtainMessage(EVENT_PREFERRED_NETWORK_TYPE));
+            }
+            break;
+
+            case EVENT_PREFERRED_NETWORK_TYPE: {
+                Log.d(LOG_TAG, "Event EVENT_PREFERRED_NETWORK_TYPE Received");
+                ar = (AsyncResult) msg.obj;
+
+                if (ar.exception == null) {
+                    int networkType = ((int[])ar.result)[0];
+                    Log.d(LOG_TAG, "networkType is " + networkType);
+                    android.provider.Settings.Secure.putInt(
+                        getContext().getContentResolver(),
+                        android.provider.Settings.Secure.PREFERRED_NETWORK_MODE,
+                        networkType);
+                } else {
+                    Log.d(LOG_TAG, "exception here");
+                }
             }
             break;
 

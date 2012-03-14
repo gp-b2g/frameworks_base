@@ -1287,7 +1287,24 @@ public class GSMPhone extends PhoneBase {
 
             case EVENT_REGISTERED_TO_NETWORK:
                 syncClirSetting();
+                mCM.getPreferredNetworkType(obtainMessage(EVENT_PREFERRED_NETWORK_TYPE));
                 break;
+
+            case EVENT_PREFERRED_NETWORK_TYPE:
+                Log.d(LOG_TAG, "Event EVENT_PREFERRED_NETWORK_TYPE Received");
+                ar = (AsyncResult) msg.obj;
+
+                if (ar.exception == null) {
+                    int networkType = ((int[])ar.result)[0];
+                    Log.d(LOG_TAG, "networkType is " + networkType);
+                    android.provider.Settings.Secure.putInt(
+                        getContext().getContentResolver(),
+                        android.provider.Settings.Secure.PREFERRED_NETWORK_MODE,
+                        networkType);
+                } else {
+                    Log.d(LOG_TAG, "exception here");
+                }
+            break;
 
             case EVENT_SIM_RECORDS_LOADED:
                 updateCurrentCarrierInProvider();

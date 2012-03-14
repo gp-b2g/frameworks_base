@@ -31,6 +31,7 @@ import android.telephony.MSimTelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.net.Uri;
+import android.os.AsyncResult;
 
 import com.android.internal.telephony.Subscription;
 import com.android.internal.telephony.CommandsInterface;
@@ -111,6 +112,22 @@ public class MSimGSMPhone extends GSMPhone {
                 log("EVENT_SUBSCRIPTION_DEACTIVATED");
                 onSubscriptionDeactivated();
                 break;
+
+            case EVENT_PREFERRED_NETWORK_TYPE:
+                Log.d(LOG_TAG, "Event EVENT_PREFERRED_NETWORK_TYPE Received");
+                AsyncResult ar = (AsyncResult) msg.obj;
+
+                if (ar.exception == null) {
+                    int networkType = ((int[])ar.result)[0];
+                    Log.d(LOG_TAG, "networkType is(MSim) " + networkType);
+                    android.provider.Settings.Secure.putIntAtIndex(
+                        getContext().getContentResolver(),
+                        android.provider.Settings.Secure.PREFERRED_NETWORK_MODE,
+                        mSubscription, networkType);
+                } else {
+                    Log.d(LOG_TAG, "exception here");
+                }
+            break;
 
             default:
                 super.handleMessage(msg);

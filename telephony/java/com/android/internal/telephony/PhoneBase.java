@@ -90,6 +90,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_CALL_RING                   = 14;
     protected static final int EVENT_CALL_RING_CONTINUE          = 15;
     protected static final int EVENT_SS                          = 34;
+    protected static final int EVENT_PREFERRED_NETWORK_TYPE      = 36;
 
     // Used to intercept the carrier selection calls so that
     // we can save the values.
