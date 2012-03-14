@@ -231,8 +231,8 @@ public class MSimIccCardProxy extends IccCardProxy {
     }
 
     @Override
-    protected void setExternalState(State newState, boolean override) {
-        if (!override && newState == mExternalState) {
+    protected void setExternalState(State newState) {
+        if (newState == mExternalState) {
             return;
         }
         mExternalState = newState;
@@ -243,11 +243,10 @@ public class MSimIccCardProxy extends IccCardProxy {
             MSimTelephonyManager.setTelephonyProperty
                     (PROPERTY_SIM_STATE, mCardIndex, getState().toString());
         }
-        broadcastIccStateChangedIntent(mExternalState.getIntentString(),
-                mExternalState.getReason());
-        // TODO: Need to notify registrants for other states as well.
-        if (State.ABSENT == mExternalState) {
-            mAbsentRegistrants.notifyRegistrants();
+        // If Quiet mode has not been evaluated yet
+        // don't broadcast anything
+        if (mInitialized) {
+            broadcastCurrentState();
         }
     }
 

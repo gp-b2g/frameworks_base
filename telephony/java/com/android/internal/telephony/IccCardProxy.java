@@ -83,7 +83,7 @@ public class IccCardProxy extends Handler implements IccCard {
             SystemProperties.getBoolean("ro.config.multimode_cdma", false);
     protected boolean mQuietMode = false; // when set to true IccCardProxy will not broadcast
                                         // ACTION_SIM_STATE_CHANGED intents
-    private boolean mInitialized = false;
+    protected boolean mInitialized = false;
     protected IccCard.State mExternalState = State.UNKNOWN;
     private PersoSubState mPersoSubState = PersoSubState.PERSOSUBSTATE_UNKNOWN;
 
@@ -121,7 +121,17 @@ public class IccCardProxy extends Handler implements IccCard {
         } else if (phoneType == Phone.PHONE_TYPE_CDMA) {
             mCurrentAppType = AppFamily.APP_FAM_3GPP2;
         }
+        updateCardState();
+        updateActiveRecord();
+    }
+
+    /**
+     * Trigger to go sync our card related state based on the current
+     * card state
+     */
+    private void updateCardState () {
         updateQuietMode();
+        sendMessage(obtainMessage(EVENT_ICC_CHANGED));
     }
 
     /**
@@ -149,8 +159,9 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
-    /** This function does not necessarily update mQuietMode right away
-     * In case of 3GPP2 subscription it needs more information (subscription source)
+    /**
+     * Updates the flag which determines when sim states are to
+     * to be broadcasted
      */
     private void updateQuietMode() {
         log("Updating quiet mode");
@@ -163,8 +174,6 @@ public class IccCardProxy extends Handler implements IccCard {
             //In case of 3gpp2 we need to find out if subscription used is coming from
             //NV in which case we shouldn't broadcast any sim states changes if at the
             //same time ro.config.multimode_cdma property set to false.
-            //mInitialized = false;
-            //handleCdmaSubscriptionSource();
             int newSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
             mCdmaSubscriptionFromNv =
                 newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV;
@@ -185,12 +194,11 @@ public class IccCardProxy extends Handler implements IccCard {
         } else if (mQuietMode == true && newQuietMode == false) {
             log("Switching out from QuietMode. Force broadcast of current state:" + mExternalState);
             mQuietMode = newQuietMode;
-            setExternalState(mExternalState, true);
+            broadcastCurrentState();
         }
         log("QuietMode is " + mQuietMode + " (app_type: " + mCurrentAppType + " nv: "
                 + mCdmaSubscriptionFromNv + " multimode: " + mIsMultimodeCdmaPhone + ")");
         mInitialized = true;
-        sendMessage(obtainMessage(EVENT_ICC_CHANGED));
     }
 
     public void handleMessage(Message msg) {
@@ -208,9 +216,10 @@ public class IccCardProxy extends Handler implements IccCard {
                 }
                 break;
             case EVENT_ICC_CHANGED:
-                if (mInitialized) {
-                    updateIccAvailability();
+                if (!mInitialized) {
+                    updateQuietMode();
                 }
+                updateIccAvailability();
                 break;
             case EVENT_ICC_LOCKED:
                 processLockedState();
@@ -231,6 +240,7 @@ public class IccCardProxy extends Handler implements IccCard {
                 break;
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
                 updateQuietMode();
+                updateActiveRecord();
                 break;
             default:
                 loge("Unhandled message with number: " + msg.what);
@@ -607,21 +617,27 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
-    protected void setExternalState(State newState, boolean override) {
-        if (!override && newState == mExternalState) {
-            return;
-        }
-        mExternalState = newState;
-        SystemProperties.set(PROPERTY_SIM_STATE, mExternalState.toString());
+    protected void broadcastCurrentState() {
         broadcastIccStateChangedIntent(mExternalState.getIntentString(),
-                                       mExternalState.getReason());
+                mExternalState.getReason());
         // TODO: Need to notify registrants for other states as well.
         if ( State.ABSENT == mExternalState) {
             mAbsentRegistrants.notifyRegistrants();
         }
     }
-    private void setExternalState(State newState) {
-        setExternalState(newState, false);
+
+    protected void setExternalState(State newState) {
+        if (newState == mExternalState) {
+            return;
+        }
+        mExternalState = newState;
+        SystemProperties.set(PROPERTY_SIM_STATE, mExternalState.toString());
+
+        // If Quiet mode has not been evaluated yet
+        // don't broadcast anything
+        if (mInitialized) {
+            broadcastCurrentState();
+        }
     }
 
     public State getState() {
