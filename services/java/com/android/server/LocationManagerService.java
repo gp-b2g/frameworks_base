@@ -897,16 +897,6 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
      * @return name of the provider that best matches the requirements
      */
     public String getBestProvider(Criteria criteria, boolean enabledOnly) {
-        if(criteria != null) {
-            LocationProviderInterface p = mProvidersByName.get(LocationManager.GPS_PROVIDER);
-            if(p != null) {
-                if( ((p.getCapability() & LocationProviderInterface.ULP_CAPABILITY)
-                                          == LocationProviderInterface.ULP_CAPABILITY)){
-                    //ULP present so pass the client directly to GPS Provider
-                    return LocationManager.GPS_PROVIDER;
-                }
-            }
-        }
 
         List<String> goodProviders = getProviders(criteria, enabledOnly);
         if (!goodProviders.isEmpty()) {
@@ -1183,12 +1173,19 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
                 Slog.v(TAG, "In requestLocationUpdates. Criteria not null. Cirteria.HorizAccuracy: " + criteria.getHorizontalAccuracy()
                        + " Criteria.power "+ criteria.getPowerRequirement());
                 }
-            // FIXME - should we consider using multiple providers simultaneously
-            // rather than only the best one?
-            // Should we do anything different for single shot fixes?
-            provider = getBestProvider(criteria, true);
-            if (provider == null) {
-                throw new IllegalArgumentException("no providers found for criteria");
+            //If HAL has ULP capability then we handle Criteria based requests through GPS provider
+            LocationProviderInterface p = mProvidersByName.get(LocationManager.GPS_PROVIDER);
+            if((p != null) && ((p.getCapability() & LocationProviderInterface.ULP_CAPABILITY)
+                   == LocationProviderInterface.ULP_CAPABILITY)) {
+               provider = LocationManager.GPS_PROVIDER;
+            } else {
+                // FIXME - should we consider using multiple providers simultaneously
+                // rather than only the best one?
+                // Should we do anything different for single shot fixes?
+                provider = getBestProvider(criteria, true);
+                if (provider == null) {
+                    throw new IllegalArgumentException("no providers found for criteria");
+                }
             }
         }
         try {
@@ -1224,12 +1221,19 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             if (LOCAL_LOGV)
                 Slog.v(TAG, "In requestLocationUpdates. Criteria not null. Cirteria.accuracy: " + criteria.getAccuracy()
                        + " Criteria.power "+ criteria.getPowerRequirement());
-            // FIXME - should we consider using multiple providers simultaneously
-            // rather than only the best one?
-            // Should we do anything different for single shot fixes?
-            provider = getBestProvider(criteria, true);
-            if (provider == null) {
-                throw new IllegalArgumentException("no providers found for criteria");
+            //If HAL has ULP capability then we handle Criteria based requests through GPS provider
+            LocationProviderInterface p = mProvidersByName.get(LocationManager.GPS_PROVIDER);
+            if((p != null) && ((p.getCapability() & LocationProviderInterface.ULP_CAPABILITY)
+                   == LocationProviderInterface.ULP_CAPABILITY)) {
+               provider = LocationManager.GPS_PROVIDER;
+            } else {
+                // FIXME - should we consider using multiple providers simultaneously
+                // rather than only the best one?
+                // Should we do anything different for single shot fixes?
+                provider = getBestProvider(criteria, true);
+                if (provider == null) {
+                    throw new IllegalArgumentException("no providers found for criteria");
+                }
             }
         }
         try {
