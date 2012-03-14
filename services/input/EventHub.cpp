@@ -49,6 +49,8 @@
 #include <sys/ioctl.h>
 #include <sys/limits.h>
 
+#define TOUCH_EVENT_PATH "/sys/power/touch_event"
+
 /* this macro is used to tell if "bit" is set in "array"
  * it selects a byte from the array, and does a boolean AND
  * operation with a byte that only has the relevant bit set.
@@ -162,6 +164,14 @@ EventHub::EventHub(void) :
     mEpollFd = epoll_create(EPOLL_SIZE_HINT);
     LOG_ALWAYS_FATAL_IF(mEpollFd < 0, "Could not create epoll instance.  errno=%d", errno);
 
+    /*
+     *  open the touch event file also
+     */
+    mTcEvFd = open(TOUCH_EVENT_PATH, O_WRONLY);
+    if (mTcEvFd < 0) {
+        LOGE("could not open %s, error = \n", TOUCH_EVENT_PATH, strerror(errno));
+    }
+
     mINotifyFd = inotify_init();
     int result = inotify_add_watch(mINotifyFd, DEVICE_PATH, IN_DELETE | IN_CREATE);
     LOG_ALWAYS_FATAL_IF(result < 0, "Could not register INotify for %s.  errno=%d",
@@ -205,6 +215,7 @@ EventHub::~EventHub(void) {
     }
 
     ::close(mEpollFd);
+    ::close(mTcEvFd);
     ::close(mINotifyFd);
     ::close(mWakeReadPipeFd);
     ::close(mWakeWritePipeFd);
@@ -545,6 +556,8 @@ size_t EventHub::getEvents(int timeoutMillis, RawEvent* buffer, size_t bufferSiz
     RawEvent* event = buffer;
     size_t capacity = bufferSize;
     bool awoken = false;
+    int process_touch_event = 0;
+
     for (;;) {
         nsecs_t now = systemTime(SYSTEM_TIME_MONOTONIC);
 
@@ -708,7 +721,7 @@ size_t EventHub::getEvents(int timeoutMillis, RawEvent* buffer, size_t bufferSiz
                     LOGE("could not get event (wrong size: %d)", readSize);
                 } else {
                     int32_t deviceId = device->id == mBuiltInKeyboardId ? 0 : device->id;
-
+                    process_touch_event = 1;
                     size_t count = size_t(readSize) / sizeof(struct input_event);
                     for (size_t i = 0; i < count; i++) {
                         const struct input_event& iev = readBuffer[i];
@@ -741,6 +754,19 @@ size_t EventHub::getEvents(int timeoutMillis, RawEvent* buffer, size_t bufferSiz
                         event->value = iev.value;
                         event->keyCode = AKEYCODE_UNKNOWN;
                         event->flags = 0;
+
+                        /*
+                         * if it is a touch event, write the kernel sysfs entry
+                         */
+                        if ((process_touch_event == 1) && (mTcEvFd >= 0) &&
+                             (iev.type == EV_ABS)) {
+
+                            write(mTcEvFd, "1", sizeof("1"));
+                            LOGV("touch event occurred\n");
+
+                            process_touch_event = 0;
+                        }
+
                         if (iev.type == EV_KEY && device->keyMap.haveKeyLayout()) {
                             status_t err = device->keyMap.keyLayoutMap->mapKey(iev.code,
                                         &event->keyCode, &event->flags);

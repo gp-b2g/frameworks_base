@@ -351,6 +351,7 @@ private:
     Vector<String8> mExcludedDevices;
 
     int mEpollFd;
+    int mTcEvFd;
     int mINotifyFd;
     int mWakeReadPipeFd;
     int mWakeWritePipeFd;
