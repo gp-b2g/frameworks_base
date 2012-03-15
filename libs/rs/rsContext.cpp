@@ -262,9 +262,10 @@ void * Context::threadProc(void *vrsc) {
         mDraw |= rsc->mIO.playCoreCommands(rsc, doWait, waitTime);
         mDraw &= (rsc->mRootScript.get() != NULL);
         mDraw &= rsc->mHasSurface;
-
+        int32_t scripttime = 0;
         if (mDraw && rsc->mIsGraphicsContext) {
-            uint64_t delay = rsc->runRootScript() * 1000000;
+            scripttime = rsc->runRootScript();
+            uint64_t delay = scripttime * 1000000;
             targetTime = rsc->getTime() + delay;
             doWait = (delay == 0);
 
@@ -282,6 +283,12 @@ void * Context::threadProc(void *vrsc) {
         } else {
             doWait = true;
         }
+         if (scripttime > 1) {
+             int32_t t = (scripttime - (int32_t)(rsc->mTimeMSLastScript + rsc->mTimeMSLastSwap)) * 1000;
+             if (t > 0) {
+                 usleep(t);
+             }
+         }
     }
 
     LOGV("%p RS Thread exiting", rsc);
