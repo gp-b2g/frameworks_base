@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Copyright (C) 2010 The Android Open Source Project
+     Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -31,6 +32,13 @@
     </declare-styleable>
     <declare-styleable name="NotificationRowLayout">
         <attr name="rowHeight" format="dimension" />
+    </declare-styleable>
+        <declare-styleable name="CarrierLabel">
+        <attr name="subscription">
+            <enum name="SubOne" value="0" />
+            <!-- data -->
+            <enum name="SubTwo" value="1" />
+        </attr>
     </declare-styleable>
 </resources>
 

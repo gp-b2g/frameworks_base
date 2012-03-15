@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Copyright (C) 2008 The Android Open Source Project
+    Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -17,6 +18,7 @@
 
 <com.android.systemui.statusbar.phone.TrackingView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:systemui="http://schemas.android.com/apk/res/com.android.systemui"
     android:orientation="vertical"
     android:visibility="gone"
     android:focusable="true"
@@ -26,20 +28,40 @@
     android:paddingRight="0px"
     >
 
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:background="@drawable/notification_tracking_bg"
         >
-        <com.android.systemui.statusbar.phone.CarrierLabel
-            android:textAppearance="@style/TextAppearance.StatusBar.Clock"
+        <LinearLayout
+            android:orientation="horizontal"
             android:layout_height="wrap_content"
             android:layout_width="match_parent"
-            android:layout_gravity="bottom"
-            android:gravity="center"
-            android:paddingBottom="20dp"
-            />
+            android:layout_gravity="bottom">
+
+            <com.android.systemui.statusbar.phone.CarrierLabel
+                android:textAppearance="@style/TextAppearance.StatusBar.Clock"
+                android:layout_height="wrap_content"
+                android:layout_width="0dip"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingBottom="20dp"
+                systemui:subscription="SubOne"
+                />
+
+            <com.android.systemui.statusbar.phone.CarrierLabel
+                android:textAppearance="@style/TextAppearance.StatusBar.Clock"
+                android:layout_height="wrap_content"
+                android:layout_width="0dip"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingBottom="20dp"
+                systemui:subscription="SubTwo"
+                />
+
+        </LinearLayout>
     </FrameLayout>
 
     <com.android.systemui.statusbar.phone.CloseDragHandle android:id="@+id/close"
