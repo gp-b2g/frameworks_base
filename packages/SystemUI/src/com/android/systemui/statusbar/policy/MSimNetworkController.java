@@ -652,24 +652,22 @@ public class MSimNetworkController extends NetworkController {
     }
 
     private final void updateDataIcon(int subscription) {
-        Slog.d(TAG,"updateDataIcon subscription =" + subscription);
         int iconId = 0;
         boolean visible = true;
-        int dataSub = Settings.System.getInt(mContext.getContentResolver(),
-            Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION, 0);
-        Slog.d(TAG,"updateDataIcon dataSub =" + dataSub);
+
+        int dataSub = MSimTelephonyManager.getDefault().getPreferredDataSubscription();
+        Slog.d(TAG,"updateDataIcon " + subscription + " dataSub =" + dataSub +
+            ", SIM state " + mMSimState[subscription]);
+
         // Update icon only if DDS in properly set and "subscription" matches DDS.
         if (subscription != dataSub) {
-            Slog.d(TAG,"updateDataIcon return");
             return;
         }
 
-        Slog.d(TAG,"updateDataIcon  when SimState =" + mMSimState[subscription]);
         if (mDataNetType == TelephonyManager.NETWORK_TYPE_UNKNOWN) {
             // If data network type is unknown do not display data icon
             visible = false;
         } else if (!isCdma(subscription)) {
-             Slog.d(TAG,"updateDataIcon  when gsm mMSimState =" + mMSimState[subscription]);
             // GSM case, we have to check also the sim state
             if (mMSimState[subscription] == IccCard.State.READY ||
                 mMSimState[subscription] == IccCard.State.UNKNOWN) {
