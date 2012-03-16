@@ -393,6 +393,7 @@ public class BluetoothService extends IBluetooth.Stub {
         // Register for connection-oriented notifications
         filter.addAction(BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED);
         filter.addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
+        filter.addAction(BluetoothA2dp.ACTION_PLAYING_STATE_CHANGED);
 
         filter.addAction(Intent.ACTION_DOCK_EVENT);
         filter.addAction(BluetoothDevice.ACTION_CONNECTION_ACCESS_REPLY);
@@ -2499,6 +2500,7 @@ public class BluetoothService extends IBluetooth.Stub {
                         BluetoothHeadset.STATE_AUDIO_DISCONNECTED);
                 mConnectionManager.setScoAudioActive(audioState == BluetoothHeadset.STATE_AUDIO_CONNECTED);
             } else if (BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED.equals(action)) {
+                Log.i(TAG, "Received ACTION_CONNECTION_STATE_CHANGED");
                 if(mA2dpService != null)
                 {
                     List<BluetoothDevice> audioDevices = mA2dpService.getConnectedDevices();
@@ -2536,6 +2538,11 @@ public class BluetoothService extends IBluetooth.Stub {
                     Log.i(TAG, "User did not accept the SIM access request");
                     sapAuthorize(device.getAddress(), false);
                 }
+            } else if (BluetoothA2dp.ACTION_PLAYING_STATE_CHANGED.equals(action)) {
+                Log.i(TAG, "Received ACTION_PLAYING_STATE_CHANGED");
+                int playingState = intent.getIntExtra(BluetoothA2dp.EXTRA_STATE,
+                        BluetoothA2dp.STATE_PLAYING);
+                mConnectionManager.setA2dpAudioActive(playingState == BluetoothA2dp.STATE_PLAYING);
             }
         }
     };
