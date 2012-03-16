@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -435,11 +436,15 @@ public class DefaultContainerService extends IntentService {
                     .getContentResolver(),
                     Settings.Secure.DEFAULT_INSTALL_LOCATION,
                     PackageHelper.APP_INSTALL_AUTO);
+            
+                       
             if (installPreference == PackageHelper.APP_INSTALL_INTERNAL) {
                 prefer = PREFER_INTERNAL;
+                checkBoth = true;
                 break check_inner;
             } else if (installPreference == PackageHelper.APP_INSTALL_EXTERNAL) {
                 prefer = PREFER_EXTERNAL;
+                checkBoth = true;
                 break check_inner;
             }
 
@@ -448,8 +453,10 @@ public class DefaultContainerService extends IntentService {
              * specified.
              */
             prefer = PREFER_INTERNAL;
+            checkBoth = true;
         }
-
+        
+         
         final boolean emulated = Environment.isExternalStorageEmulated();
 
         final File apkFile = new File(archiveFilePath);
