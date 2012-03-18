@@ -45,6 +45,7 @@ import android.net.wifi.WpsInfo;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.INetworkManagementService;
+import android.os.PowerManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -163,6 +164,8 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
 
     private NetworkInfo mNetworkInfo;
 
+    private PowerManager.WakeLock mWakeLock;
+
     /* Is chosen as a unique range to avoid conflict with
        the range defined in Tethering.java */
     private static final String[] DHCP_RANGE = {"192.168.49.2", "192.168.49.254"};
@@ -176,6 +179,9 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
 
         mP2pSupported = mContext.getPackageManager().hasSystemFeature(
                 PackageManager.FEATURE_WIFI_DIRECT);
+
+        PowerManager powerManager = (PowerManager)mContext.getSystemService(Context.POWER_SERVICE);
+        mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
 
         mThisDevice.primaryDeviceType = mContext.getResources().getString(
                 com.android.internal.R.string.config_wifi_p2p_device_type);
@@ -474,9 +480,11 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                 loge("Failed to stop supplicant, issue kill");
                 WifiNative.killSupplicant();
             }
+            mWakeLock.acquire();
             if(WifiNative.unloadDriver()) {
                 Slog.e(TAG, "Unload Driver Successful");
             }
+            mWakeLock.release();
             mIsWifiP2pEnabled = false;
         }
 
@@ -612,6 +620,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                         if (DBG) Slog.w(TAG, "Unable to bring down wlan interface: " + e);
                     }
 
+                    mWakeLock.acquire();
                     if (mWifiState != WifiManager.WIFI_STATE_ENABLED){
                         WifiNative.loadDriver();
                     }
@@ -619,6 +628,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                         Slog.w(TAG, "Stopping Wifi Supplicant");
                         WifiNative.stopSupplicant();
                     }
+                    mWakeLock.release();
 
                     if (WifiNative.startP2pSupplicant()) {
                         mWifiMonitor.startMonitoring();
