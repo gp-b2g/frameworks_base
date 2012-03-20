@@ -331,6 +331,7 @@ status_t LPAPlayer::start(bool sourceAlreadyStarted) {
     // Get the session id from the LPA Driver
     // Register the session id with HAL for routing
     if (mAudioSink.get() != NULL) {
+#ifdef LPADRIVER_SUPPORTS_SESSION_ID
         unsigned short decId;
         if ( ioctl(afd, AUDIO_GET_SESSION_ID, &decId) == -1 ) {
             LOGE("AUDIO_GET_SESSION_ID FAILED\n");
@@ -339,7 +340,10 @@ status_t LPAPlayer::start(bool sourceAlreadyStarted) {
             sessionId = (int)decId;
             LOGV("AUDIO_GET_SESSION_ID success : decId = %d", decId);
         }
-
+#else
+        sessionId = (int)afd;
+        LOGV("SESSION_ID is LPA Driver fd = %d", afd);
+#endif /* LPADRIVER_SUPPORTS_SESSION_ID */
         if (!bIsA2DPEnabled) {
             LOGV("Opening a routing session for audio playback: sessionId = %d mSampleRate %d numChannels %d",
                  sessionId, mSampleRate, numChannels);

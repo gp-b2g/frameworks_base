@@ -13,12 +13,14 @@ ifeq ($(call is-board-platform,msm7627a),true)
 endif
 ifeq ($(call is-chipset-in-board-platform,msm7630),true)
     LOCAL_CFLAGS += -DTARGET7x30
+    LOCAL_CFLAGS += -DLPADRIVER_SUPPORTS_SESSION_ID
 endif
 ifeq ($(call is-board-platform-in-list,$(QSD8K_BOARD_PLATFORMS)),true)
     LOCAL_CFLAGS += -DTARGET8x50
 endif
 ifeq ($(call is-board-platform-in-list,msm8660 msm8960),true)
     LOCAL_CFLAGS += -DTARGET8x60
+    LOCAL_CFLAGS += -DLPADRIVER_SUPPORTS_SESSION_ID
 endif
 include frameworks/base/media/libstagefright/codecs/common/Config.mk
 
