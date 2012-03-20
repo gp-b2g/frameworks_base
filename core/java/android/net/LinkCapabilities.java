@@ -19,6 +19,7 @@ package android.net;
 
 import com.android.internal.net.IPVersion;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.QosSpec.QosClass;
 
 import android.os.Parcelable;
 import android.os.Parcel;
@@ -52,6 +53,17 @@ public class LinkCapabilities implements Parcelable {
     /** The Map of Keys to Values */
     protected HashMap<Integer, String> mCapabilities;
 
+    /**
+     * Defines the Traffic Class enums to be used to specify key
+     * {@code RW_FWD_TRAFFIC_CLASS} or {@code RW_REV_TRAFFIC_CLASS} for a QoS
+     * role.
+     */
+    public static final class QosTrafficClass {
+        public static final int CONVERSATIONAL = QosClass.CONVERSATIONAL;
+        public static final int STREAMING = QosClass.STREAMING;
+        public static final int INTERACTIVE = QosClass.INTERACTIVE;
+        public static final int BACKGROUND = QosClass.BACKGROUND;
+    }
 
     /**
      * The set of keys defined for a links capabilities.
@@ -281,6 +293,52 @@ public class LinkCapabilities implements Parcelable {
          * this key is ignored. LinkManager doesn't support this key.
          */
         public final static int RW_NETWORK_TYPE = 26;
+
+        /**
+         * A integer representing the profile ID (reverse link) for 3GPP2
+         * networks. This key is used only for QoS specific roles. For all other
+         * roles this key is ignored. LinkManager doesn't support this key.
+         */
+        public final static int RW_REV_3GPP2_PROFILE_ID = 27;
+
+        /**
+         * A integer representing the profile ID (forward link) for 3GPP2
+         * networks. This key is used only for QoS specific roles. For all other
+         * roles this key is ignored. LinkManager doesn't support this key.
+         */
+        public final static int RW_FWD_3GPP2_PROFILE_ID = 28;
+
+        /**
+         * A integer representing the priority (reverse link) for 3GPP2
+         * networks. This key is used only for QoS specific roles. For all other
+         * roles this key is ignored. LinkManager doesn't support this key.
+         */
+        public final static int RW_REV_3GPP2_PRIORITY = 29;
+
+        /**
+         * A integer representing the priority (forward link) for 3GPP2
+         * networks. This key is used only for QoS specific roles. For all other
+         * roles this key is ignored. LinkManager doesn't support this key.
+         */
+        public final static int RW_FWD_3GPP2_PRIORITY = 30;
+
+        /**
+         * A enum representing the traffic class (forward link) for 3GPP
+         * networks. This key is used only for QoS specific roles. For all other
+         * roles this key is ignored. LinkManager doesn't support this key.
+         * The value should be one of the QosTrafficClass values defined in
+         * {@code QosTrafficClass}.
+         */
+        public final static int RW_FWD_TRAFFIC_CLASS = 31;
+
+        /**
+         * A enum representing the traffic class (reverse link) for 3GPP
+         * networks. This key is used only for QoS specific roles. For all other
+         * roles this key is ignored. LinkManager doesn't support this key.
+         * The value should be one of the QosTrafficClass values defined in
+         * {@code QosTrafficClass}.
+         */
+        public final static int RW_REV_TRAFFIC_CLASS = 32;
     }
 
     /**
@@ -588,6 +646,7 @@ public class LinkCapabilities implements Parcelable {
      * possible
      */
     protected static boolean validRWKeyValuePair(int key, String value) {
+        int testValue;
 
         switch (key) {
             case Key.RW_ROLE:
@@ -612,7 +671,6 @@ public class LinkCapabilities implements Parcelable {
             case Key.RW_REQUIRED_REV_BW:
             case Key.RW_MAX_ALLOWED_FWD_LATENCY:
             case Key.RW_MAX_ALLOWED_REV_LATENCY:
-                int testValue;
                 try {
                     testValue = Integer.parseInt(value);
                 } catch (NumberFormatException ex) {
@@ -634,16 +692,40 @@ public class LinkCapabilities implements Parcelable {
             case Key.RW_REMOTE_DEST_PORTS:  //TODO validate arguments
             case Key.RW_REMOTE_SRC_PORTS:   //TODO validate arguments
             case Key.RW_FILTERSPEC_IP_TOS:  //TODO validate arguments
+            case Key.RW_REV_3GPP2_PROFILE_ID://TODO validate arguments
+            case Key.RW_FWD_3GPP2_PROFILE_ID://TODO validate arguments
+            case Key.RW_REV_3GPP2_PRIORITY:  //TODO validate arguments
+            case Key.RW_FWD_3GPP2_PRIORITY:  //TODO validate arguments
                 return true;
             case Key.RW_NETWORK_TYPE:
-                if (value.equals(ConnectivityManager.TYPE_MOBILE)
-                        || value.equals(ConnectivityManager.TYPE_MOBILE_CBS)
-                        || value.equals(ConnectivityManager.TYPE_MOBILE_DUN)
-                        || value.equals(ConnectivityManager.TYPE_MOBILE_FOTA)
-                        || value.equals(ConnectivityManager.TYPE_MOBILE_HIPRI)
-                        || value.equals(ConnectivityManager.TYPE_MOBILE_IMS)
-                        || value.equals(ConnectivityManager.TYPE_MOBILE_MMS)
-                        || value.equals(ConnectivityManager.TYPE_MOBILE_SUPL))
+                try {
+                    testValue = Integer.parseInt(value);
+                } catch (NumberFormatException ex) {
+                    return false; // not a valid integer
+                }
+
+                if (testValue == ConnectivityManager.TYPE_MOBILE
+                        || testValue == ConnectivityManager.TYPE_MOBILE_CBS
+                        || testValue == ConnectivityManager.TYPE_MOBILE_DUN
+                        || testValue == ConnectivityManager.TYPE_MOBILE_FOTA
+                        || testValue == ConnectivityManager.TYPE_MOBILE_HIPRI
+                        || testValue == ConnectivityManager.TYPE_MOBILE_IMS
+                        || testValue == ConnectivityManager.TYPE_MOBILE_MMS
+                        || testValue == ConnectivityManager.TYPE_MOBILE_SUPL)
+                    return true;
+                return false;
+            case Key.RW_FWD_TRAFFIC_CLASS:
+            case Key.RW_REV_TRAFFIC_CLASS:
+                try {
+                    testValue = Integer.parseInt(value);
+                } catch (NumberFormatException ex) {
+                    return false; // not a valid integer
+                }
+
+                if (testValue == QosTrafficClass.CONVERSATIONAL
+                        || testValue == QosTrafficClass.STREAMING
+                        || testValue == QosTrafficClass.INTERACTIVE
+                        || testValue == QosTrafficClass.BACKGROUND)
                     return true;
                 return false;
         }

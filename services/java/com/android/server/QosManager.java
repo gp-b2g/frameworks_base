@@ -544,10 +544,6 @@ public class QosManager {
                 Integer.toString(QosSpec.QosDirection.QOS_TX));
         rxPipe.put(QosSpec.QosSpecKey.FLOW_DIRECTION,
                 Integer.toString(QosSpec.QosDirection.QOS_RX));
-        txPipe.put(QosSpec.QosSpecKey.FLOW_TRAFFIC_CLASS,
-                Integer.toString(QosSpec.QosClass.STREAMING));
-        rxPipe.put(QosSpec.QosSpecKey.FLOW_TRAFFIC_CLASS,
-                Integer.toString(QosSpec.QosClass.STREAMING));
 
         /*
          * lookup needs and translate to QosSpec
@@ -600,6 +596,18 @@ public class QosManager {
             txPipe.put(QosSpec.QosSpecKey.FLOW_LATENCY, value);
         }
 
+        if ((value = myCap.get(LinkCapabilities.Key.RW_REV_TRAFFIC_CLASS)) != null) {
+            txPipe.put(QosSpec.QosSpecKey.FLOW_TRAFFIC_CLASS, value);
+        }
+
+        if ((value = myCap.get(LinkCapabilities.Key.RW_REV_3GPP2_PROFILE_ID)) != null) {
+            txPipe.put(QosSpec.QosSpecKey.FLOW_3GPP2_PROFILE_ID, value);
+        }
+
+        if ((value = myCap.get(LinkCapabilities.Key.RW_REV_3GPP2_PRIORITY)) != null) {
+            txPipe.put(QosSpec.QosSpecKey.FLOW_3GPP2_PRIORITY, value);
+        }
+
         if ((value = myCap.get(LinkCapabilities.Key.RW_DESIRED_FWD_BW)) != null) {
             rxPipe.put(QosSpec.QosSpecKey.FLOW_DATA_RATE_MAX, value);
         }
@@ -610,6 +618,18 @@ public class QosManager {
 
         if ((value = myCap.get(LinkCapabilities.Key.RW_MAX_ALLOWED_FWD_LATENCY)) != null) {
             rxPipe.put(QosSpec.QosSpecKey.FLOW_LATENCY, value);
+        }
+
+        if ((value = myCap.get(LinkCapabilities.Key.RW_FWD_3GPP2_PROFILE_ID)) != null) {
+            rxPipe.put(QosSpec.QosSpecKey.FLOW_3GPP2_PROFILE_ID, value);
+        }
+
+        if ((value = myCap.get(LinkCapabilities.Key.RW_FWD_3GPP2_PRIORITY)) != null) {
+            rxPipe.put(QosSpec.QosSpecKey.FLOW_3GPP2_PRIORITY, value);
+        }
+
+        if ((value = myCap.get(LinkCapabilities.Key.RW_FWD_TRAFFIC_CLASS)) != null) {
+            rxPipe.put(QosSpec.QosSpecKey.FLOW_TRAFFIC_CLASS, value);
         }
 
         // Set filter spec
