@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -298,6 +299,8 @@ setup_failure:
     env->SetIntField(thiz, fields.fidNativeVisualizer, 0);
 
     if (lpJniStorage) {
+        env->DeleteGlobalRef(lpJniStorage->mCallbackData.visualizer_class);
+        env->DeleteGlobalRef(lpJniStorage->mCallbackData.visualizer_ref);
         delete lpJniStorage;
     }
     env->SetIntField(thiz, fields.fidJniData, 0);
@@ -322,6 +325,9 @@ static void android_media_visualizer_native_finalize(JNIEnv *env,  jobject thiz)
         thiz, fields.fidJniData);
     if (lpJniStorage) {
         LOGV("deleting pJniStorage: %x\n", (int)lpJniStorage);
+        // delete global refs created in native_setup
+        env->DeleteGlobalRef(lpJniStorage->mCallbackData.visualizer_class);
+        env->DeleteGlobalRef(lpJniStorage->mCallbackData.visualizer_ref);
         delete lpJniStorage;
     }
 }
