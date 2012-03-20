@@ -140,12 +140,7 @@ public:
     // This call may only be made while the OpenGL ES context to which the
     // target texture belongs is bound to the calling thread.
     //
-    // In certain cases, we might not want to bind the texture because it
-    // is not going to be used later (surface flinger not using
-    // GPU for composition). During these times "avoidBindTexture" can be
-    // set to true. This will avoid binding textures for formats that are
-    // not directly supported in hardware.
-    status_t updateTexImage(bool avoidBindTexture = false, bool isComposition  = false);
+    status_t updateTexImage(bool isComposition  = false);
 
     // setBufferCountServer set the buffer count. If the client has requested
     // a buffer count using setBufferCount, the server-buffer count will
