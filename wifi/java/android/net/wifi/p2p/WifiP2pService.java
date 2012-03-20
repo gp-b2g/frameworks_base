@@ -763,6 +763,8 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                     break;
                 case WifiP2pManager.DISCOVER_PEERS:
                     int timeout = message.arg1;
+                    if ( mWifiP2pInfo.groupFormed == false )
+                        if (mPeers.clear()) sendP2pPeersChangedBroadcast();
                     if (WifiNative.p2pFind(timeout)) {
                         replyToMessage(message, WifiP2pManager.DISCOVER_PEERS_SUCCEEDED);
                     } else {
