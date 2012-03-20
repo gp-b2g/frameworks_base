@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +56,7 @@ import android.net.LinkProperties;
 import android.net.NetworkInfo;
 import android.net.NetworkInfo.DetailedState;
 import android.net.NetworkUtils;
+import android.net.RouteInfo;
 import android.net.wifi.WpsResult.Status;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pService;
@@ -83,7 +85,11 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
 import java.net.InetAddress;
+import java.net.Inet6Address;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -107,7 +113,7 @@ public class WifiStateMachine extends StateMachine {
 
     private static final String TAG = "WifiStateMachine";
     private static final String NETWORKTYPE = "WIFI";
-    private static final boolean DBG = false;
+    private static final boolean DBG = true;
 
     /* TODO: This is no more used with the hostapd code. Clean up */
     private static final String SOFTAP_IFACE = "wlan0";
@@ -1508,6 +1514,11 @@ public class WifiStateMachine extends StateMachine {
             mLinkProperties.setHttpProxy(WifiConfigStore.getProxyProperties(mLastNetworkId));
         }
         mLinkProperties.setInterfaceName(mInterfaceName);
+
+        log("persist.wifi.v6:" + SystemProperties.getBoolean("persist.wifi.v6", false));
+        if (SystemProperties.getBoolean("persist.wifi.v6", false)) {
+            updateV6Addresses(mLinkProperties);
+        }
         if (DBG) {
             log("netId=" + mLastNetworkId  + " Link configured: " +
                     mLinkProperties.toString());
@@ -1732,6 +1743,68 @@ public class WifiStateMachine extends StateMachine {
             setNetworkDetailedState(DetailedState.CONNECTED);
             sendNetworkStateChangeBroadcast(mLastBssid);
         }
+    }
+
+    private void updateV6Addresses(LinkProperties linkProperties) {
+        try {
+            NetworkInterface wlanIf =
+                NetworkInterface.getByName(mInterfaceName);
+            if (wlanIf != null) {
+                Collection<InterfaceAddress>interfaceAddresses =
+                    wlanIf.getInterfaceAddresses();
+                if (DBG) log("interfaceAddresses:" + interfaceAddresses.toString());
+
+                for (InterfaceAddress ia : interfaceAddresses) {
+                    InetAddress addr = NetworkUtils.getNetworkPart(ia.getAddress(),
+                            ia.getNetworkPrefixLength());
+                    if (!addr.isLinkLocalAddress() &&
+                                !linkProperties.getAddresses().contains(addr)) {
+                        linkProperties.addLinkAddress(new LinkAddress(ia));
+                    }
+                }
+
+                log("updateV6Addresses(): linkProperties=" + linkProperties.toString());
+                if (DBG) log("retrieving gateway for :" + mInterfaceName);
+
+                String gatewayInfo = null;
+                String gateway = null;
+                int lease = 0;
+                try {
+                        gatewayInfo = mNwService.getIpv6Gateway(mInterfaceName);
+                } catch (Exception e) {
+                    loge("Error in requestRtSol for interface " + mInterfaceName + ", :" + e);
+                    return;
+                }
+
+                InetAddress ia = null;
+                try {
+                    String[] gatewayInfoTokens = gatewayInfo.trim().split(" ");
+                    gateway = gatewayInfoTokens[1];
+                    lease = Integer.parseInt(gatewayInfoTokens[2]);
+
+                    ia = NetworkUtils.numericToInetAddress(gateway);
+                } catch (NullPointerException e) {
+                    loge("Null gateway info");
+                    return;
+                } catch (NumberFormatException e) {
+                    loge("Invalid lease info");
+                    return;
+                } catch (IllegalArgumentException e) {
+                    loge("Non-numeric gateway addr=" + gatewayInfo.trim());
+                    return;
+                }
+
+                if (DBG) log("adding gateway :" + ia.toString() +
+                                 " lease time in seconds:" + lease);
+                if (!ia.isAnyLocalAddress()) {
+                    linkProperties.addRoute(new RouteInfo(ia));
+                }
+            }
+        } catch (Exception e) {
+            if (DBG) log("Exception caught: " + e.toString());
+        }
+
+        if (DBG) log("updateV6Addresses(): linkProperties=" + linkProperties.toString());
     }
 
     private void handleFailedIpConfiguration() {

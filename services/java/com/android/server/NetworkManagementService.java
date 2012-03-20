@@ -1687,6 +1687,25 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         }
     }
 
+    public String getIpv6Gateway(String interfaceName) {
+        String cmd = "rtsol " + interfaceName;
+        if (DBG) Log.d(TAG, "getIpv6Gateway(" + interfaceName + ")");
+
+        ArrayList<String> rsp = null;
+
+        try {
+            rsp = mConnector.doCommand(cmd.toString());
+        } catch (NativeDaemonConnectorException e) {
+            throw new IllegalStateException(
+                    "Unable to communicate with native dameon to request RS - " + e);
+        }
+
+        if (DBG) Log.v(TAG, "getIpv6Gateway() cmd:" + cmd + " response is " + rsp.toString());
+
+        // return the first gateway
+        return rsp != null ? rsp.get(0) : null;
+    }
+
     /** {@inheritDoc} */
     public void monitor() {
         if (mConnector != null) {

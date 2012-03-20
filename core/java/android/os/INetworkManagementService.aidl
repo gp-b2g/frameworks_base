@@ -394,4 +394,9 @@ interface INetworkManagementService
     void flushInterfaceDnsCache(String iface);
 
     boolean replaceV4DefaultRoute(String iface, String gatewayAddr);
+
+    /**
+     * Request router solicitation for the interface
+     */
+    String getIpv6Gateway(String iface);
 }
