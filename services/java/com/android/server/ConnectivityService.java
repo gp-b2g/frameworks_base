@@ -3343,8 +3343,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
     public int getFmcStatus(IBinder listener) {
         if(mFmcSM != null) {
             return mFmcSM.getStatus();
-        }
-        else {
+        } else {
             Slog.d(TAG, "mFmcSM is null while calling startFmc");
             return -1;
         }

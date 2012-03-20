@@ -1,4 +1,4 @@
-/* Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -76,6 +76,7 @@ public class FmcStateMachine extends StateMachine {
     private static ConnectivityManager mConnManager = null;
 
     private static boolean mUserShutDown = true;
+    private static boolean mAsyncBearerDown = true;
 
     private FmcState mFmcStateInactive   = null;
     private FmcState mFmcStateStart      = null;
@@ -97,6 +98,8 @@ public class FmcStateMachine extends StateMachine {
     protected static FmcStateMachine instance = null;
 
     protected static final int FMC_DEFAULT_TIMEOUT = 20000;
+    protected static final int FMC_BEARER_ENABLE_TIMEOUT = 120000;
+    protected static final int FMC_DATA_ENABLE_TIMEOUT = 45000;
 
     protected static RouteInfo wlanDefault = null;
 
@@ -333,7 +336,7 @@ public class FmcStateMachine extends StateMachine {
             if (DBG) Log.d(this.getName(), "constructor");
         }
 
-        protected  final void startStateTimer(String prop) {
+        protected  final void startStateTimer(String prop, int defaultTimeout) {
             if (DBG) Log.d(this.getName(), "startStateTimer prop=" + prop);
 
             String sTimeout = System.getProperty(prop);
@@ -342,11 +345,11 @@ public class FmcStateMachine extends StateMachine {
                     timeout = Integer.parseInt(sTimeout);
                 } catch (NumberFormatException e) {
                     if (DBG) Log.d(TAG, "startStateTimer NumberFormatException=" + e.getMessage());
-                    timeout = FMC_DEFAULT_TIMEOUT;
+                    timeout = defaultTimeout;
                 }
             } else {
                 if (DBG) Log.d(this.getName(), "startStateTimer default timeout");
-                timeout = FMC_DEFAULT_TIMEOUT;
+                timeout = defaultTimeout;
             }
             if (DBG) Log.d(this.getName(), "startStateTimer timeout=" + timeout);
             fmcTimer.startTimer(new FmcTimerCallback(), timeout);
@@ -634,7 +637,7 @@ public class FmcStateMachine extends StateMachine {
             if (DBG) Log.d(this.getName(), "enter");
 
             setStatus(FMC_STATUS_INITIALIZED);
-            startStateTimer("fmc.bearer.enable.timeout");
+            startStateTimer("fmc.bearer.enable.timeout", FMC_BEARER_ENABLE_TIMEOUT);
             sendDisableData();
             sendEnableFmc();
         }
@@ -651,12 +654,16 @@ public class FmcStateMachine extends StateMachine {
                     transitionToState(mFmcStateBearerUp);
                     break;
                 case FMC_MSG_BEARER_DOWN:
+                    mAsyncBearerDown = true;
                     transitionToState(mFmcStateDSNotAvail);
                     break;
                 case FMC_MSG_TIMEOUT:
-                    transitionToState(mFmcStateShutDown);
+                    mUserShutDown = false;
+                    setStatus(FMC_STATUS_FAILURE);
+                    transitionToState(mFmcStateInactive);
                     break;
                 case FMC_MSG_FAILURE:
+                    mUserShutDown = false;
                     transitionToState(mFmcStateFailure);
                     break;
                 default:
@@ -679,7 +686,7 @@ public class FmcStateMachine extends StateMachine {
             if (DBG) Log.d(this.getName(), "enter");
 
             setStatus(FMC_STATUS_REGISTRATION_SUCCESS);
-            startStateTimer("fmc.data.enable.timeout");
+            startStateTimer("fmc.data.enable.timeout", FMC_DATA_ENABLE_TIMEOUT);
             sendEnableData();
         }
 
@@ -692,6 +699,7 @@ public class FmcStateMachine extends StateMachine {
                     transitionToState(mFmcStateShutDown);
                     break;
                 case FMC_MSG_BEARER_DOWN:
+                    mAsyncBearerDown = true;
                     transitionToState(mFmcStateDSNotAvail);
                     break;
                 case FMC_MSG_DATA_ENABLED:
@@ -700,13 +708,12 @@ public class FmcStateMachine extends StateMachine {
                 case FMC_MSG_DATA_DISABLED:
                     transitionToState(mFmcStateRegistered);
                     break;
-                case FMC_MSG_TIMEOUT:
-                    transitionToState(mFmcStateShutDown);
-                    break;
                 case FMC_MSG_WIFI_DOWN:
                     transitionToState(mFmcStateBearerDown);
                     break;
+                case FMC_MSG_TIMEOUT:
                 case FMC_MSG_FAILURE:
+                    mUserShutDown = false;
                     transitionToState(mFmcStateFailure);
                     break;
                 default:
@@ -740,6 +747,7 @@ public class FmcStateMachine extends StateMachine {
                     transitionToState(mFmcStateShutDown);
                     break;
                 case FMC_MSG_BEARER_DOWN:
+                    mAsyncBearerDown = true;
                     transitionToState(mFmcStateDSNotAvail);
                     break;
                 case FMC_MSG_DATA_ENABLED:
@@ -749,6 +757,7 @@ public class FmcStateMachine extends StateMachine {
                     transitionToState(mFmcStateDSNotAvail);
                     break;
                 case FMC_MSG_FAILURE:
+                    mUserShutDown = false;
                     transitionToState(mFmcStateFailure);
                     break;
                 default:
@@ -784,6 +793,7 @@ public class FmcStateMachine extends StateMachine {
                     transitionToState(mFmcStateShutDown);
                     break;
                 case FMC_MSG_BEARER_DOWN:
+                    mAsyncBearerDown = true;
                     transitionToState(mFmcStateDSNotAvail);
                     break;
                 case FMC_MSG_DATA_ENABLED:
@@ -797,6 +807,7 @@ public class FmcStateMachine extends StateMachine {
                     transitionToState(mFmcStateDSNotAvail);
                     break;
                 case FMC_MSG_FAILURE:
+                    mUserShutDown = false;
                     transitionToState(mFmcStateFailure);
                     break;
                 default:
@@ -819,7 +830,7 @@ public class FmcStateMachine extends StateMachine {
             if (DBG) Log.d(this.getName(), "enter");
 
             setStatus(FMC_STATUS_SHUTTING_DOWN);
-            startStateTimer("fmc.shut.down.timeout");
+            startStateTimer("fmc.shut.down.timeout", FMC_DEFAULT_TIMEOUT);
             mConnSvc.setFmcDisabled();
             sendDisableFmc();
             sendDisableData();
@@ -861,7 +872,7 @@ public class FmcStateMachine extends StateMachine {
         public void enter() {
             if (DBG) Log.d(this.getName(), "enter");
 
-            startStateTimer("fmc.data.disable.timeout");
+            startStateTimer("fmc.data.disable.timeout", FMC_DEFAULT_TIMEOUT);
         }
 
         @Override
@@ -893,7 +904,7 @@ public class FmcStateMachine extends StateMachine {
         public void enter() {
             if (DBG) Log.d(this.getName(), "enter");
 
-            startStateTimer("fmc.bearer.disable.timeout");
+            startStateTimer("fmc.bearer.disable.timeout", FMC_DEFAULT_TIMEOUT);
         }
 
         @Override
@@ -915,7 +926,7 @@ public class FmcStateMachine extends StateMachine {
         }
     }
 
-    class FmcStateDSNotAvail extends FmcStateShutDown {
+    class FmcStateDSNotAvail extends FmcStateBearerDown {
 
         protected FmcStateDSNotAvail() {
             super();
@@ -928,7 +939,12 @@ public class FmcStateMachine extends StateMachine {
             mConnSvc.setFmcDisabled();
             setStatus(FMC_STATUS_DS_NOT_AVAIL);
             mUserShutDown = false;
-            sendDisableFmc();
+            /* Do not send disable fmc if already received asynchronous bearer down indication */
+            if (!mAsyncBearerDown) {
+                sendDisableFmc();
+            } else {
+                mAsyncBearerDown = false;
+            }
             sendDisableData();
         }
     }
