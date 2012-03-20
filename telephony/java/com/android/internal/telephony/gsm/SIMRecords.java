@@ -229,7 +229,7 @@ public class SIMRecords extends IccRecords {
     }
 
     protected void resetRecords() {
-        imsi = null;
+        mImsi = null;
         msisdn = null;
         voiceMailNum = null;
         mncLength = UNINITIALIZED;
@@ -258,14 +258,6 @@ public class SIMRecords extends IccRecords {
 
 
     //***** Public Methods
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getIMSI() {
-        return imsi;
-    }
 
     public String getMsisdnNumber() {
         return msisdn;
@@ -538,7 +530,7 @@ public class SIMRecords extends IccRecords {
      */
     @Override
     public String getOperatorNumeric() {
-        if (imsi == null) {
+        if (mImsi == null) {
             Log.d(LOG_TAG, "getOperatorNumeric: IMSI == null");
             return null;
         }
@@ -549,17 +541,17 @@ public class SIMRecords extends IccRecords {
 
         // Length = length of MCC + length of MNC
         // length of mcc = 3 (TS 23.003 Section 2.2)
-        return imsi.substring(0, 3 + mncLength);
+        return mImsi.substring(0, 3 + mncLength);
     }
 
     /** Returns the country code associated with the SIM
      * i.e the first 3 digits of IMSI.
      */
     public String getCountryCode() {
-         if (imsi == null) {
+         if (mImsi == null) {
              return null;
          }
-         return (imsi.substring(0,3));
+         return (mImsi.substring(0,3));
      }
 
 
@@ -594,20 +586,20 @@ public class SIMRecords extends IccRecords {
                     break;
                 }
 
-                imsi = (String) ar.result;
+                mImsi = (String) ar.result;
 
                 // IMSI (MCC+MNC+MSIN) is at least 6 digits, but not more
                 // than 15 (and usually 15).
-                if (imsi != null && (imsi.length() < 6 || imsi.length() > 15)) {
-                    Log.e(LOG_TAG, "invalid IMSI " + imsi);
-                    imsi = null;
+                if (mImsi != null && (mImsi.length() < 6 || mImsi.length() > 15)) {
+                    Log.e(LOG_TAG, "invalid IMSI " + mImsi);
+                    mImsi = null;
                 }
 
                 Log.d(LOG_TAG, "IMSI: " + /* imsi.substring(0, 6) +*/ "xxxxxxx");
 
                 if (((mncLength == UNKNOWN) || (mncLength == 2)) &&
-                        ((imsi != null) && (imsi.length() >= 6))) {
-                    String mccmncCode = imsi.substring(0, 6);
+                        ((mImsi != null) && (mImsi.length() >= 6))) {
+                    String mccmncCode = mImsi.substring(0, 6);
                     for (String mccmnc : MCCMNC_CODES_HAVING_3DIGITS_MNC) {
                         if (mccmnc.equals(mccmncCode)) {
                             mncLength = 3;
@@ -620,7 +612,7 @@ public class SIMRecords extends IccRecords {
                     // the SIM has told us all it knows, but it didn't know the mnc length.
                     // guess using the mcc
                     try {
-                        int mcc = Integer.parseInt(imsi.substring(0,3));
+                        int mcc = Integer.parseInt(mImsi.substring(0,3));
                         mncLength = MccTable.smallestDigitsMccForMnc(mcc);
                     } catch (NumberFormatException e) {
                         mncLength = UNKNOWN;
@@ -630,7 +622,7 @@ public class SIMRecords extends IccRecords {
 
                 if (mncLength != UNKNOWN && mncLength != UNINITIALIZED) {
                     // finally have both the imsi and the mncLength and can parse the imsi properly
-                    MccTable.updateMccMncConfiguration(mContext, imsi.substring(0, 3 + mncLength));
+                    MccTable.updateMccMncConfiguration(mContext, mImsi.substring(0, 3 + mncLength));
                 }
                 mImsiReadyRegistrants.notifyRegistrants();
             break;
@@ -860,8 +852,8 @@ public class SIMRecords extends IccRecords {
                     }
                 } finally {
                     if (((mncLength == UNINITIALIZED) || (mncLength == UNKNOWN) ||
-                            (mncLength == 2)) && ((imsi != null) && (imsi.length() >= 6))) {
-                        String mccmncCode = imsi.substring(0, 6);
+                            (mncLength == 2)) && ((mImsi != null) && (mImsi.length() >= 6))) {
+                        String mccmncCode = mImsi.substring(0, 6);
                         for (String mccmnc : MCCMNC_CODES_HAVING_3DIGITS_MNC) {
                             if (mccmnc.equals(mccmncCode)) {
                                 mncLength = 3;
@@ -871,9 +863,9 @@ public class SIMRecords extends IccRecords {
                     }
 
                     if (mncLength == UNKNOWN || mncLength == UNINITIALIZED) {
-                        if (imsi != null) {
+                        if (mImsi != null) {
                             try {
-                                int mcc = Integer.parseInt(imsi.substring(0,3));
+                                int mcc = Integer.parseInt(mImsi.substring(0,3));
 
                                 mncLength = MccTable.smallestDigitsMccForMnc(mcc);
                             } catch (NumberFormatException e) {
@@ -887,10 +879,10 @@ public class SIMRecords extends IccRecords {
                             Log.d(LOG_TAG, "SIMRecords: MNC length not present in EF_AD");
                         }
                     }
-                    if (imsi != null && mncLength != UNKNOWN) {
+                    if (mImsi != null && mncLength != UNKNOWN) {
                         // finally have both imsi and the length of the mnc and can parse
                         // the imsi properly
-                        MccTable.updateMccMncConfiguration(mContext, imsi.substring(0, 3 + mncLength));
+                        MccTable.updateMccMncConfiguration(mContext, mImsi.substring(0, 3 + mncLength));
                     }
                 }
             break;
@@ -1299,9 +1291,9 @@ public class SIMRecords extends IccRecords {
 
         setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
 
-        if (imsi != null) {
+        if (mImsi != null) {
             setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
-                    MccTable.countryCodeForMcc(Integer.parseInt(imsi.substring(0,3))));
+                    MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
         }
         else {
             Log.e("SIM", "[SIMRecords] onAllRecordsLoaded: imsi is NULL!");

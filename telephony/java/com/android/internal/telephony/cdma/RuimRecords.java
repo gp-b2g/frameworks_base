@@ -67,7 +67,6 @@ public final class RuimRecords extends IccRecords {
 
     // ***** Instance Variables
 
-    private String mImsi;
     private String mMyMobileNumber;
     private String mMin2Min1;
 
@@ -185,15 +184,6 @@ public final class RuimRecords extends IccRecords {
             // just re-fetch all RUIM records that we cache.
             fetchRuimRecords();
         }
-    }
-
-    private int adjstMinDigits (int digits) {
-        // Per C.S0005 section 2.3.1.
-        digits += 111;
-        digits = (digits % 10 == 0)?(digits - 10):digits;
-        digits = ((digits / 10) % 10 == 0)?(digits - 100):digits;
-        digits = ((digits / 100) % 10 == 0)?(digits - 1000):digits;
-        return digits;
     }
 
     /**
@@ -326,41 +316,6 @@ public final class RuimRecords extends IccRecords {
         }
     }
 
-    private class EfCsimImsimLoaded implements IccRecordLoaded {
-        public String getEfName() {
-            return "EF_CSIM_IMSIM";
-        }
-
-        public void onRecordLoaded(AsyncResult ar) {
-            byte[] data = (byte[]) ar.result;
-            if (DBG) log("CSIM_IMSIM=" + IccUtils.bytesToHexString(data));
-            // C.S0065 section 5.2.2 for IMSI_M encoding
-            // C.S0005 section 2.3.1 for MIN encoding in IMSI_M.
-            boolean provisioned = ((data[7] & 0x80) == 0x80);
-
-            if (provisioned) {
-                int first3digits = ((0x03 & data[2]) << 8) + (0xFF & data[1]);
-                int second3digits = (((0xFF & data[5]) << 8) | (0xFF & data[4])) >> 6;
-                int digit7 = 0x0F & (data[4] >> 2);
-                if (digit7 > 0x09) digit7 = 0;
-                int last3digits = ((0x03 & data[4]) << 8) | (0xFF & data[3]);
-                first3digits = adjstMinDigits(first3digits);
-                second3digits = adjstMinDigits(second3digits);
-                last3digits = adjstMinDigits(last3digits);
-
-                StringBuilder builder = new StringBuilder();
-                builder.append(String.format(Locale.US, "%03d", first3digits));
-                builder.append(String.format(Locale.US, "%03d", second3digits));
-                builder.append(String.format(Locale.US, "%d", digit7));
-                builder.append(String.format(Locale.US, "%03d", last3digits));
-                mMin = builder.toString();
-                if (DBG) log("min present=" + mMin);
-            } else {
-                if (DBG) log("min not present");
-            }
-        }
-    }
-
     private class EfCsimCdmaHomeLoaded implements IccRecordLoaded {
         public String getEfName() {
             return "EF_CSIM_CDMAHOME";
@@ -450,15 +405,27 @@ public final class RuimRecords extends IccRecords {
                 }
 
                 mImsi = (String) ar.result;
-
                 // IMSI (MCC+MNC+MSIN) is at least 6 digits, but not more
                 // than 15 (and usually 15).
-                if (mImsi != null && (mImsi.length() < 6 || mImsi.length() > 15)) {
-                    Log.e(LOG_TAG, "invalid IMSI " + mImsi);
-                    mImsi = null;
-                }
+                if (mImsi != null) {
+                    if (mImsi.length() < 6 || mImsi.length() > 15) {
+                        Log.e(LOG_TAG, "invalid IMSI " + mImsi);
+                        mImsi = null;
+                    } else {
+                        Log.d(LOG_TAG, "IMSI: " + mImsi.substring(0, 6) + "xxxxxxxxx");
 
-                Log.d(LOG_TAG, "IMSI: " + mImsi.substring(0, 6) + "xxxxxxxxx");
+                        int length = mImsi.length();
+                        // As per C.S0005 section 2.3.1
+                        // IMSI with MIN is class 0 IMSI i.e. 15 digits
+                        // MIN is 10 digits
+                        if (length == 15) {
+                            mMin = mImsi.substring(5, 15);
+                        } else {
+                            Log.e(LOG_TAG, "MIN not provisioned. IMSI length = " + length);
+                            mMin = null;
+                        }
+                    }
+                }
 
                 String operatorNumeric = getOperatorNumeric();
                 if (operatorNumeric != null) {
@@ -466,6 +433,7 @@ public final class RuimRecords extends IccRecords {
                         MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
                     }
                 }
+                mImsiReadyRegistrants.notifyRegistrants();
             break;
 
             case EVENT_GET_CDMA_SUBSCRIPTION_DONE:
@@ -614,7 +582,6 @@ public final class RuimRecords extends IccRecords {
         if (operator != null) {
             SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
         }
-
         if (mImsi != null) {
             SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
                     MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
@@ -687,10 +654,6 @@ public final class RuimRecords extends IccRecords {
 
         mFh.loadEFLinearFixed(EF_CSIM_MDN, 1,
                 obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimMdnLoaded()));
-        recordsToLoad++;
-
-        mFh.loadEFTransparent(EF_CSIM_IMSIM,
-                obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimImsimLoaded()));
         recordsToLoad++;
 
         mFh.loadEFLinearFixedAll(EF_CSIM_CDMAHOME,

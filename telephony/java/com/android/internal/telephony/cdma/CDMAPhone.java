@@ -480,7 +480,14 @@ public class CDMAPhone extends PhoneBase {
     }
 
     public String getSubscriberId() {
-        return mSST.getImsi();
+        if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
+            return mSST.getNVImsi();
+        } else {
+            if (mIccRecords != null) {
+                return mIccRecords.getIMSI();
+            }
+        }
+        return null;
     }
 
     public String getImei() {
@@ -1483,7 +1490,7 @@ public class CDMAPhone extends PhoneBase {
     public boolean isEriFileLoaded() {
         return mEriManager.isEriFileLoaded();
     }
-    
+
     private void registerForRuimRecordEvents() {
         if (mIccRecords == null) {
             return;
