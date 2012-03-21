@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -439,9 +439,11 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
                 // clear the PIN/PUK entry fields if the user cancels
                 mPinText.setText("");
                 mPukText.setText("");
-                if (TelephonyManager.getDefault().isMultiSimEnabled()) {
-                        mCallback.updatePukUnlockCancel(mSubscription);
-                }
+                //here we don't want to skip pin lock or puk lock screen, so
+                //don't call the update unlock cancel
+                //if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                //        mCallback.updatePukUnlockCancel(mSubscription);
+                //}
                 mCallback.goToLockScreen();
                 return;
             }

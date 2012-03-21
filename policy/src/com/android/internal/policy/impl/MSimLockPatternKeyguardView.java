@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2012 Code Aurora Forum. All rights reserved
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -495,24 +495,28 @@ public class MSimLockPatternKeyguardView extends LockPatternKeyguardView impleme
      */
      @Override
      protected UnlockMode getUnlockMode() {
-        boolean isPinLocked = false, isPukLocked = false;
-        boolean isPinRequired = false, isPukRequired = false;
+        boolean[] isPinLocked = {false, false};
+        boolean[] isPukLocked = {false, false};
+        boolean[] isPinRequired = {false, false};
+        boolean[] isPukRequired = {false, false};
         // In case of multi SIM mode,
         // Set the unlock mode to "SimPin" if any of the sub is PIN-Locked.
         // Set the unlock mode to "SimPuk" if any of the sub is PUK-Locked.
         for (int i = 0; i < TelephonyManager.getDefault().getPhoneCount(); i++) {
-            isPinLocked = isPinLocked || ((isSimPinLocked(i) && !mIsPinUnlockCancelled[i]));
-            isPukLocked = isPukLocked || ((isSimPukLocked(i) && !mIsPukUnlockCancelled[i]));
-            isPinRequired = isPinRequired || (isSimPinLocked(i));
-            isPukRequired = isPukRequired || (isSimPukLocked(i));
+            isPinLocked[i] = (isSimPinLocked(i) && !mIsPinUnlockCancelled[i]);
+            isPukLocked[i] = (isSimPukLocked(i) && !mIsPukUnlockCancelled[i]);
+            isPinRequired[i] = isSimPinLocked(i);
+            isPukRequired[i] = isSimPukLocked(i);
         }
         UnlockMode currentMode;
-        if (isPinLocked) {
-             currentMode = UnlockMode.SimPin;
-        } else if (isPukLocked) {
-            currentMode = UnlockMode.SimPuk;
-        } else if (isPinRequired && isPukRequired) {
+        if (isPinLocked[0] || isPinRequired[0]) {
             currentMode = UnlockMode.SimPin;
+        } else if (isPukLocked[0] || isPukRequired[0]) {
+            currentMode = UnlockMode.SimPuk;
+        } else if (isPinLocked[1] || isPinRequired[1]) {
+            currentMode = UnlockMode.SimPin;
+        } else if(isPukLocked[1] || isPukRequired[1]) {
+            currentMode = UnlockMode.SimPuk;
         } else {
             final int mode = mLockPatternUtils.getKeyguardStoredPasswordQuality();
             switch (mode) {
