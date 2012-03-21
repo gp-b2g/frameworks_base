@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  * Copyright (C) 2007 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -900,6 +901,7 @@ public class MediaScanner
                 if (TextUtils.isEmpty(mDefaultRingtoneFilename) ||
                         doesPathHaveFilename(entry.mPath, mDefaultRingtoneFilename)) {
                     setSettingIfNotSet(Settings.System.RINGTONE, tableUri, rowId);
+                    setSettingIfNotSet(Settings.System.RINGTONE_2, tableUri, rowId);
                     mDefaultRingtoneSet = true;
                 }
             } else if (alarms && mWasEmptyPriorToScan && !mDefaultAlarmSet) {
