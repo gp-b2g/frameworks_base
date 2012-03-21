@@ -115,6 +115,7 @@ class BatteryService extends Binder {
 
     private int mLowBatteryWarningLevel;
     private int mLowBatteryCloseWarningLevel;
+    private int mFullBatteryLevel;
 
     private int mPlugType;
     private int mLastPlugType = -1; // Extra state so we can detect first run
@@ -137,6 +138,8 @@ class BatteryService extends Binder {
                 com.android.internal.R.integer.config_lowBatteryWarningLevel);
         mLowBatteryCloseWarningLevel = mContext.getResources().getInteger(
                 com.android.internal.R.integer.config_lowBatteryCloseWarningLevel);
+        mFullBatteryLevel = mContext.getResources().getInteger(
+                com.android.internal.R.integer.config_fullBatteryLevel);
 
         mPowerSupplyObserver.startObserving("SUBSYSTEM=power_supply");
 
@@ -552,9 +555,11 @@ class BatteryService extends Binder {
         private LightsService mLightsService;
         private LightsService.Light mBatteryLight;
 
-        private int mBatteryLowARGB;
-        private int mBatteryMediumARGB;
-        private int mBatteryFullARGB;
+        private int mBatteryDischaringLowARGB;
+        private int mBatteryChargingLowARGB;
+        /* NOT used now */
+        // private int mBatteryMediumARGB;
+        private int mBatteryChargingFullARGB;
         private int mBatteryLedOn;
         private int mBatteryLedOff;
 
@@ -566,11 +571,14 @@ class BatteryService extends Binder {
             mLightsService = lights;
             mBatteryLight = lights.getLight(LightsService.LIGHT_ID_BATTERY);
 
-            mBatteryLowARGB = mContext.getResources().getInteger(
+            mBatteryDischaringLowARGB = mContext.getResources().getInteger(
+                    com.android.internal.R.integer.config_notificationsDischargingLowARGB);
+            mBatteryChargingLowARGB = mContext.getResources().getInteger(
                     com.android.internal.R.integer.config_notificationsBatteryLowARGB);
-            mBatteryMediumARGB = mContext.getResources().getInteger(
-                    com.android.internal.R.integer.config_notificationsBatteryMediumARGB);
-            mBatteryFullARGB = mContext.getResources().getInteger(
+            /* NOT used now */
+            // mBatteryMediumARGB = mContext.getResources().getInteger(
+            //        com.android.internal.R.integer.config_notificationsBatteryMediumARGB);
+            mBatteryChargingFullARGB = mContext.getResources().getInteger(
                     com.android.internal.R.integer.config_notificationsBatteryFullARGB);
             mBatteryLedOn = mContext.getResources().getInteger(
                     com.android.internal.R.integer.config_notificationsBatteryLedOn);
@@ -584,27 +592,39 @@ class BatteryService extends Binder {
         void updateLightsLocked() {
             final int level = mBatteryLevel;
             final int status = mBatteryStatus;
-            if (level < mLowBatteryWarningLevel) {
-                if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
-                    // Solid red when battery is charging
-                    mBatteryLight.setColor(mBatteryLowARGB);
-                } else {
+            switch(status) {
+            case BatteryManager.BATTERY_STATUS_UNKNOWN:
+                Slog.e(TAG, "battery status unknown!");
+            case BatteryManager.BATTERY_STATUS_NOT_CHARGING:
+            case BatteryManager.BATTERY_STATUS_DISCHARGING:
+                if(level < mLowBatteryWarningLevel) {
+                    // battery low on discharging
                     // Flash red when battery is low and not charging
-                    mBatteryLight.setFlashing(mBatteryLowARGB, LightsService.LIGHT_FLASH_TIMED,
-                            mBatteryLedOn, mBatteryLedOff);
-                }
-            } else if (status == BatteryManager.BATTERY_STATUS_CHARGING
-                    || status == BatteryManager.BATTERY_STATUS_FULL) {
-                if (status == BatteryManager.BATTERY_STATUS_FULL || level >= 90) {
-                    // Solid green when full or charging and nearly full
-                    mBatteryLight.setColor(mBatteryFullARGB);
+                    mBatteryLight.setFlashing(mBatteryDischaringLowARGB,
+                            LightsService.LIGHT_FLASH_TIMED,
+                            mBatteryLedOn,
+                            mBatteryLedOff);
                 } else {
-                    // Solid orange when charging and halfway full
-                    mBatteryLight.setColor(mBatteryMediumARGB);
+                    mBatteryLight.turnOff();
                 }
-            } else {
-                // No lights if not charging and not low
+                break;
+            case BatteryManager.BATTERY_STATUS_CHARGING:
+                if(level < mFullBatteryLevel) {
+                    // Solid red when charging and halfway full
+                    mBatteryLight.setColor(mBatteryChargingLowARGB);
+                } else {
+                    // battery is charged to full.
+                    mBatteryLight.setColor(mBatteryChargingFullARGB);
+                }
+                break;
+            case BatteryManager.BATTERY_STATUS_FULL:
+                // battery is charged to full.
+                mBatteryLight.setColor(mBatteryChargingFullARGB);
+                break;
+            default:
+                Slog.e(TAG, "unknown battery status: " + status);
                 mBatteryLight.turnOff();
+                break;
             }
         }
     }

@@ -2,6 +2,7 @@
 <!--
 /* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 ** Copyright 2009, The Android Open Source Project
+** Copyright (C) 2011-2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -427,6 +428,9 @@
     <!-- Display low battery warning when battery level dips to this value -->
     <integer name="config_lowBatteryWarningLevel">15</integer>
 
+    <!-- change led indicator when battery level is full on charge -->
+    <integer name="config_fullBatteryLevel">100</integer>
+
     <!-- Close low battery warning when battery level reaches this value -->
     <integer name="config_lowBatteryCloseWarningLevel">20</integer>
 
@@ -441,6 +445,9 @@
 
     <!-- Default value for led color when battery is low on charge -->
     <integer name="config_notificationsBatteryLowARGB">0xFFFF0000</integer>
+
+    <!-- DEfault value for led color when battery is low on discharge -->
+    <integer name="config_notificationsDischargingLowARGB">0xFFFF0000</integer>
 
     <!-- Default value for led color when battery is medium charged -->
     <integer name="config_notificationsBatteryMediumARGB">0xFFFFFF00</integer>
