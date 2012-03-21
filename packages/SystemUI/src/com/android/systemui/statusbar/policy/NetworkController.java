@@ -236,7 +236,7 @@ public class NetworkController extends BroadcastReceiver {
         context.registerReceiver(this, filter);
 
         // AIRPLANE_MODE_CHANGED is sent at boot; we've probably already missed it
-        updateAirplaneMode();
+        updateAirplaneModeFromDB();
 
         // yuck
         mBatteryStats = BatteryStatsService.getService();
@@ -376,7 +376,7 @@ public class NetworkController extends BroadcastReceiver {
         } else if (action.equals(Intent.ACTION_CONFIGURATION_CHANGED)) {
             refreshViews();
         } else if (action.equals(Intent.ACTION_AIRPLANE_MODE_CHANGED)) {
-            updateAirplaneMode();
+            updateAirplaneModeFromIntent(intent);
             refreshViews();
         } else if (action.equals(WimaxManagerConstants.NET_4G_STATE_CHANGED_ACTION) ||
                 action.equals(WimaxManagerConstants.SIGNAL_LEVEL_CHANGED_ACTION) ||
@@ -508,9 +508,15 @@ public class NetworkController extends BroadcastReceiver {
         }
     }
 
-    protected void updateAirplaneMode() {
+    protected void updateAirplaneModeFromDB() {
         mAirplaneMode = (Settings.System.getInt(mContext.getContentResolver(),
             Settings.System.AIRPLANE_MODE_ON, 0) == 1);
+    }
+
+    protected void updateAirplaneModeFromIntent(Intent intent) {
+        if (intent != null) {
+            mAirplaneMode = intent.getBooleanExtra("state", false);
+        }
     }
 
     private final void updateTelephonySignalStrength() {
