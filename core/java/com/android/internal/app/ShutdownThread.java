@@ -218,7 +218,7 @@ public final class ShutdownThread extends Thread {
             showShutdownAnimation();
             //playShutdownMusic(MUSIC_SHUTDOWN_FILE);
             String shutDownFile = getShutdownMusicFilePath();
-            if (shutDownFile != null)
+            if (shutDownFile != null && !isSilentMode())
                 playShutdownMusic(shutDownFile);            
         }
 
@@ -543,6 +543,11 @@ public final class ShutdownThread extends Thread {
             return true;
         else
             return false;
+    }
+    
+    private static boolean isSilentMode() {
+        String mode = SystemProperties.get("persist.sys.silent");
+        return mode != null && mode.equals("1");
     }
 
     private static void showShutdownAnimation() {

@@ -471,7 +471,11 @@ bool BootAnimation::movie()
     Region clearReg(Rect(mWidth, mHeight));
     clearReg.subtractSelf(Rect(xc, yc, xc+animation.width, yc+animation.height));
 
-    playBackgroundMusic();
+    char value[PROPERTY_VALUE_MAX];
+	property_get("persist.sys.silent", value, "null");
+	if (strcmp(value, "1") != 0) {
+		playBackgroundMusic();
+	}
 
     for (int i=0 ; i<pcount && !exitPending() ; i++) {
         const Animation::Part& part(animation.parts[i]);

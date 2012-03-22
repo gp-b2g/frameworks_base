@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteQueryBuilder;
+import android.media.AudioManager;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -566,6 +568,10 @@ public class SettingsProvider extends ContentProvider {
 
         SettingsCache.populate(cache, initialValues);  // before we notify
 
+        if ("system".equals(args.table)
+                && Settings.System.MODE_RINGER.equals(initialValues.get("name")))
+            writeModeRinger(db);
+
         if (LOCAL_LOGV) Log.v(TAG, args.table + " <- " + initialValues);
         url = getUriFor(url, initialValues, rowId);
         sendNotify(url);
@@ -610,10 +616,41 @@ public class SettingsProvider extends ContentProvider {
         if (count > 0) {
             SettingsCache.invalidate(args.table);  // before we notify
             sendNotify(url);
+            if ("system".equals(args.table)
+                    && Settings.System.MODE_RINGER.equals(initialValues.get("name")))
+                writeModeRinger(db);
         }
         startAsyncCachePopulation();
         if (LOCAL_LOGV) Log.v(TAG, args.table + ": " + count + " row(s) <- " + initialValues);
         return count;
+    }
+
+    private static final String KEY_SILENT_MODE = "persist.sys.silent";
+
+    private void writeModeRinger(SQLiteDatabase db) {
+        Cursor c = null;
+        try {
+            c = db.query("system", new String[] {
+                    "value"
+            }, "name=?", new String[] {
+                    Settings.System.MODE_RINGER
+            }, null, null, null, null);
+            if (c != null && c.moveToNext()) {
+                String value = c.getString(0);
+                if (value == null
+                        || String.valueOf(AudioManager.RINGER_MODE_NORMAL).equals(value)) {
+                    SystemProperties.set(KEY_SILENT_MODE, "0");
+                } else {
+                    SystemProperties.set(KEY_SILENT_MODE, "1");
+                }
+            } else {
+                SystemProperties.set(KEY_SILENT_MODE, "0");
+            }
+        } finally {
+            if (c != null) {
+                c.close();
+            }
+        }
     }
 
     @Override

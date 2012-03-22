@@ -629,6 +629,12 @@ public class AudioManager {
             return;
         }
         IAudioService service = getService();
+        /**
+        if(ringerMode==RINGER_MODE_SILENT)
+            SystemProperties.set(SILENT_BOOT_KEY, "1");
+        else
+            SystemProperties.set(SILENT_BOOT_KEY, "0");
+            **/
         try {
             service.setRingerMode(ringerMode);
         } catch (RemoteException e) {
