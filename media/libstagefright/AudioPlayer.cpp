@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,6 +89,7 @@ status_t AudioPlayer::start(bool sourceAlreadyStarted) {
     CHECK(mFirstBuffer == NULL);
 
     MediaSource::ReadOptions options;
+    bool wasSeeking = mSeeking;
     if (mSeeking) {
         options.setSeekTo(mSeekTimeUs);
         mSeeking = false;
@@ -100,7 +102,7 @@ status_t AudioPlayer::start(bool sourceAlreadyStarted) {
         CHECK(mFirstBuffer == NULL);
         mFirstBufferResult = OK;
         mIsFirstBuffer = false;
-    } else if(mFirstBufferResult != OK) {
+    } else if(mFirstBufferResult != OK && !wasSeeking) {
         mReachedEOS = true;
         mFinalStatus = mFirstBufferResult;
         return mFirstBufferResult;
