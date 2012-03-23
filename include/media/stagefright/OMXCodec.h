@@ -381,6 +381,7 @@ private:
     int32_t mInterlaceFrame;
 
     int32_t mNumBFrames;
+    bool mUseArbitraryMode;
 };
 
 struct CodecCapabilities {
