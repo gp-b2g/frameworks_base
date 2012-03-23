@@ -475,6 +475,12 @@ class BluetoothEventLoop {
                     new BluetoothClass(Integer.valueOf(propValues[1])));
             intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
             mContext.sendBroadcast(intent, BLUETOOTH_PERM);
+        } else if (name.equals("RSSI")) {
+            mBluetoothService.setRemoteDeviceProperty(address, name, propValues[1]);
+            Intent intent = new Intent(BluetoothDevice.ACTION_RSSI_UPDATE);
+            intent.putExtra(BluetoothDevice.EXTRA_DEVICE, device);
+            intent.putExtra(BluetoothDevice.EXTRA_RSSI, propValues[1]);
+            mContext.sendBroadcast(intent, BLUETOOTH_PERM);
         } else if (name.equals("Connected")) {
             Log.d(TAG, "Device property Connected: " + propValues[1]);
 

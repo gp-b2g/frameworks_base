@@ -1042,6 +1042,95 @@ static jboolean setConnectionParametersNative(JNIEnv *env, jobject object,
     return JNI_FALSE;
 }
 
+static jboolean registerRssiUpdateWatcherNative(JNIEnv *env, jobject object,
+                                              jstring path,
+                                              jint rssiThreshold,
+                                              jint interval,
+                                              jboolean updateOnThreshExceed) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s", __FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        DBusMessage *reply, *msg;
+        DBusMessageIter iter;
+        DBusError err;
+
+        const char *c_path = env->GetStringUTFChars(path, NULL);
+
+        dbus_error_init(&err);
+        msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC,
+                                           c_path, DBUS_DEVICE_IFACE,
+                                           "RegisterRssiUpdateWatcher");
+        if (!msg) {
+            LOGE("%s: Can't allocate new method call", __FUNCTION__);
+            env->ReleaseStringUTFChars(path, c_path);
+            return JNI_FALSE;
+        }
+
+        dbus_message_append_args(msg, DBUS_TYPE_INT16, (int16_t *)&rssiThreshold,
+                                 DBUS_TYPE_UINT16, (uint16_t *)&interval,
+                                 DBUS_TYPE_BOOLEAN, &updateOnThreshExceed,
+                                 DBUS_TYPE_INVALID);
+        dbus_message_iter_init_append(msg, &iter);
+
+        reply = dbus_connection_send_with_reply_and_block(nat->conn, msg, -1, &err);
+        dbus_message_unref(msg);
+
+        env->ReleaseStringUTFChars(path, c_path);
+        if (!reply) {
+            if (dbus_error_is_set(&err)) {
+                LOG_AND_FREE_DBUS_ERROR(&err);
+            } else
+            LOGE("DBus reply is NULL in function %s", __FUNCTION__);
+            return JNI_FALSE;
+        }
+        return JNI_TRUE;
+    }
+#endif
+    return JNI_FALSE;
+}
+
+static jboolean unregisterRssiUpdateWatcherNative(JNIEnv *env, jobject object,
+                                              jstring path) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s", __FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        DBusMessage *reply, *msg;
+        DBusMessageIter iter;
+        DBusError err;
+
+        const char *c_path = env->GetStringUTFChars(path, NULL);
+
+        dbus_error_init(&err);
+        msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC,
+                                          c_path, DBUS_DEVICE_IFACE,
+                                          "UnregisterRssiUpdateWatcher");
+        if (!msg) {
+            LOGE("%s: Can't allocate new method call", __FUNCTION__);
+            env->ReleaseStringUTFChars(path, c_path);
+            return JNI_FALSE;
+        }
+
+        dbus_message_iter_init_append(msg, &iter);
+
+        reply = dbus_connection_send_with_reply_and_block(nat->conn, msg, -1, &err);
+        dbus_message_unref(msg);
+
+        env->ReleaseStringUTFChars(path, c_path);
+        if (!reply) {
+            if (dbus_error_is_set(&err)) {
+                LOG_AND_FREE_DBUS_ERROR(&err);
+            } else
+            LOGE("DBus reply is NULL in function %s", __FUNCTION__);
+            return JNI_FALSE;
+        }
+        return JNI_TRUE;
+    }
+#endif
+    return JNI_FALSE;
+}
+
 static jboolean createDeviceNative(JNIEnv *env, jobject object,
                                                 jstring address) {
     LOGV("%s", __FUNCTION__);
@@ -2234,6 +2323,10 @@ static JNINativeMethod sMethods[] = {
              (void *)setDevicePropertyIntegerNative},
     {"setConnectionParametersNative", "(Ljava/lang/String;IIII)Z",
              (void *)setConnectionParametersNative},
+    {"registerRssiUpdateWatcherNative", "(Ljava/lang/String;IIZ)Z",
+             (void *)registerRssiUpdateWatcherNative},
+    {"unregisterRssiUpdateWatcherNative", "(Ljava/lang/String;)Z",
+             (void *)unregisterRssiUpdateWatcherNative},
     {"createDeviceNative", "(Ljava/lang/String;)Z", (void *)createDeviceNative},
     {"discoverServicesNative", "(Ljava/lang/String;Ljava/lang/String;)Z", (void *)discoverServicesNative},
     {"addRfcommServiceRecordNative", "(Ljava/lang/String;JJS)I", (void *)addRfcommServiceRecordNative},

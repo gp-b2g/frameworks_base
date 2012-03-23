@@ -72,6 +72,9 @@ interface IBluetooth
     int getBondState(in String address);
     boolean setDeviceOutOfBandData(in String address, in byte[] hash, in byte[] randomizer);
     boolean setBluetoothClass(String address, int classOfDevice);
+    boolean registerRssiUpdateWatcher(in String address, in int rssiThreshold, in int interval,
+                                      in boolean updateOnThreshExceed);
+    boolean unregisterRssiUpdateWatcher(in String address);
     boolean setLEConnectionParams(String address, int intervalMin, int intervalMax, int slaveLatency, int supervisionTimeout);
     String getRemoteName(in String address);
     String getRemoteAlias(in String address);
