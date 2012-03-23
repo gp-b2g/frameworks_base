@@ -229,12 +229,15 @@ public class MSimPhoneFactory extends PhoneFactory {
     /* Gets User preferred Voice subscription setting*/
     public static int getVoiceSubscription() {
         int subscription = 0;
-
-        try {
-            subscription = Settings.System.getInt(sContext.getContentResolver(),
-                    Settings.System.MULTI_SIM_VOICE_CALL_SUBSCRIPTION);
-        } catch (SettingNotFoundException snfe) {
-            Log.e(LOG_TAG, "Settings Exception Reading Dual Sim Voice Call Values");
+        if (isMultiSimAvailable()) {
+            try {
+                subscription = Settings.System.getInt(sContext.getContentResolver(),
+                        Settings.System.MULTI_SIM_VOICE_CALL_SUBSCRIPTION);
+            } catch (SettingNotFoundException snfe) {
+                Log.e(LOG_TAG, "Settings Exception Reading Dual Sim Voice Call Values");
+            }
+        } else {
+            subscription = getDefaultSubscription();
         }
 
         return subscription;
@@ -277,22 +280,31 @@ public class MSimPhoneFactory extends PhoneFactory {
 
     /* Gets Current Data subscription setting*/
     public static int getDataSubscription() {
-        SubscriptionManager sm = SubscriptionManager.getInstance();
-        if (sm == null){
-            return 0;
-        }else{
-            return sm.getActiveDDS();
+        if (isMultiSimAvailable()) {
+            return getUserPreferredDDS();
+        } else {
+            SubscriptionManager sm = SubscriptionManager.getInstance();
+            Log.d(LOG_TAG,"sm="+sm);
+            if (sm == null){
+                return 0;
+            }else{
+                return sm.getActiveDDS();
+            }
         }
     }
 
     /* Gets User preferred SMS subscription setting*/
     public static int getSMSSubscription() {
         int subscription = 0;
-        try {
-            subscription = Settings.System.getInt(sContext.getContentResolver(),
-                    Settings.System.MULTI_SIM_SMS_SUBSCRIPTION);
-        } catch (SettingNotFoundException snfe) {
-            Log.e(LOG_TAG, "Settings Exception Reading Dual Sim SMS Values");
+        if (isMultiSimAvailable()) {
+            try {
+                subscription = Settings.System.getInt(sContext.getContentResolver(),
+                        Settings.System.MULTI_SIM_SMS_SUBSCRIPTION);
+            } catch (SettingNotFoundException snfe) {
+                Log.e(LOG_TAG, "Settings Exception Reading Dual Sim SMS Values");
+            }
+        } else {
+           subscription = getDefaultSubscription();
         }
 
         return subscription;
@@ -305,9 +317,11 @@ public class MSimPhoneFactory extends PhoneFactory {
     }
 
     static public void setDataSubscription(int subscription) {
-        Settings.System.putInt(sContext.getContentResolver(),
-                Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subscription);
-        Log.d(LOG_TAG, "setDataSubscription: " + subscription);
+        if (isMultiSimAvailable()) {
+            Settings.System.putInt(sContext.getContentResolver(),
+                    Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subscription);
+            Log.d(LOG_TAG, "setDataSubscription: " + subscription);
+        }
     }
 
     static public void setSMSSubscription(int subscription) {
@@ -317,5 +331,13 @@ public class MSimPhoneFactory extends PhoneFactory {
         Intent intent = new Intent("com.android.mms.transaction.SEND_MESSAGE");
         sContext.sendBroadcast(intent);
         Log.d(LOG_TAG, "setSMSSubscription : " + subscription);
+    }
+
+    static private boolean isMultiSimAvailable() {
+        SubscriptionManager sm = SubscriptionManager.getInstance();
+        if (sm != null) {
+            return sm.getActiveSubscriptionsCount() > 1;
+        }
+        return false;
     }
 }

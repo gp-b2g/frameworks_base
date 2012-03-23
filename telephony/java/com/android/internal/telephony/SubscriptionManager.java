@@ -337,6 +337,8 @@ public class SubscriptionManager extends Handler {
         //if SUCCESS
         if (ar.exception == null) {
             // Mark this as the current dds
+            MSimPhoneFactory.setDataSubscription(mQueuedDds);
+
             mCurrentDds = mQueuedDds;
 
             // Update the DCT corresponds to the new DDS.
@@ -366,10 +368,6 @@ public class SubscriptionManager extends Handler {
             logd("Enable Data Connectivity Done!! Sending the cnf back!");
             mSetDdsCompleteMsg.sendToTarget();
             mSetDdsCompleteMsg = null;
-        } else {
-            logd("set data call subscription="+mCurrentDds);
-            Settings.System.putInt(mContext.getContentResolver(),
-                Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION, mCurrentDds);
         }
     }
 
@@ -412,12 +410,12 @@ public class SubscriptionManager extends Handler {
         if (actStatus == SUB_STATUS_ACTIVATED) { // Subscription Activated
             // Shall update the DDS here
             if (mSetDdsRequired) {
-                if (subId == mQueuedDds) {
-                    logd("setDataSubscription on " + mQueuedDds);
+                if (subId == mCurrentDds) {
+                    logd("setDataSubscription on " + mCurrentDds);
                     // Set mQueuedDds so that when the set data sub src is done, it will
                     // update the system property and enable the data connectivity.
                     //mQueuedDds = mCurrentDds;
-                    setDataSubscription(mQueuedDds,null);
+                    setDataSubscription(mCurrentDds,null);
                     mSetDdsRequired = false;
                 }
             }
@@ -589,9 +587,9 @@ public class SubscriptionManager extends Handler {
         if (activeSubCount == 1) {
             logd("updateSubPreferences: only SUB:" + activeSub.subId
                     + " is Active.  Update the default/voice/sms and data subscriptions");
-            MSimPhoneFactory.setVoiceSubscription(activeSub.subId);
-            MSimPhoneFactory.setSMSSubscription(activeSub.subId);
-            MSimPhoneFactory.setPromptEnabled(false);
+            //MSimPhoneFactory.setVoiceSubscription(activeSub.subId);
+            //MSimPhoneFactory.setSMSSubscription(activeSub.subId);
+            //MSimPhoneFactory.setPromptEnabled(false);
 
             logd("updateSubPreferences: current defaultSub = "
                     + MSimPhoneFactory.getDefaultSubscription());
@@ -618,12 +616,12 @@ public class SubscriptionManager extends Handler {
                     // Set the flag and update the mCurrentDds, so that when subscription
                     // ready event receives, it will set the dds properly.
                     mSetDdsRequired = true;
-                    mQueuedDds = activeSub.subId;
+                    mCurrentDds = activeSub.subId;
                     //MSimPhoneFactory.setDataSubscription(mCurrentDds);
                 }
             }
         }else if (activeSubCount > 1){
-            int preferredDataSub = MSimPhoneFactory.getUserPreferredDDS();
+            int preferredDataSub = MSimPhoneFactory.getDataSubscription();
             logd("active sub count = "+ activeSubCount+",mCurrentDds = "+mCurrentDds+",preferredDataSub = "+preferredDataSub);
             if (mCurrentDds != preferredDataSub){
                 logd("current dds is "+mCurrentDds+",preferred one is "+preferredDataSub);
@@ -636,7 +634,7 @@ public class SubscriptionManager extends Handler {
                 }else{
                     logd("updata dds later");
                     mSetDdsRequired = true;
-                    mQueuedDds = preferredDataSub;
+                    mCurrentDds = preferredDataSub;
                 }
             }
         }
