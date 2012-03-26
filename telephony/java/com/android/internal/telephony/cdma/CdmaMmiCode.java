@@ -303,6 +303,11 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
                         sb.append(context.getText(
                                 com.android.internal.R.string.passwordIncorrect));
                     }
+                } else if (err == CommandException.Error.REQUEST_NOT_SUPPORTED) {
+                    if (sc.equals(SC_PIN)) {
+                        sb.append(context.getText(
+                            com.android.internal.R.string.enablePin));
+                    }
                 } else {
                     sb.append(context.getText(
                             com.android.internal.R.string.mmiError));
