@@ -54,6 +54,7 @@
 #define V4L2_CID_PRIVATE_TAVARUA_ON_CHANNEL_THRESHOLD   (V4L2_CTRL_CLASS_USER + 0x92B)
 #define V4L2_CID_PRIVATE_TAVARUA_OFF_CHANNEL_THRESHOLD  (V4L2_CTRL_CLASS_USER + 0x92C)
 #define TX_RT_LENGTH       63
+#define WAIT_TIMEOUT 200000 /* 200*1000us */
 enum search_dir_t {
     SEEK_UP,
     SEEK_DN,
@@ -70,8 +71,8 @@ static jint android_hardware_fmradio_FmReceiverJNI_acquireFdNative
 {
     int fd;
     int i, retval=0, err;
-    char value = 0;
-    char versionStr[40];
+    char value[PROPERTY_VALUE_MAX] = {'\0'};
+    char versionStr[40] = {'\0'};
     int init_success = 0;
     jboolean isCopy;
     v4l2_capability cap;
@@ -102,19 +103,20 @@ static jint android_hardware_fmradio_FmReceiverJNI_acquireFdNative
     }
     /*Set the mode for soc downloader*/
     property_set("hw.fm.mode", "normal");
-
+    /* Need to clear the hw.fm.init firstly */
+    property_set("hw.fm.init", "0");
     property_set("ctl.start", "fm_dl");
-    sleep(1);
-    for(i=0;i<9;i++) {
-        property_get("hw.fm.init", &value, NULL);
-       if(value == '1') {
+    sched_yield();
+    for(i=0; i<45; i++) {
+        property_get("hw.fm.init", value, NULL);
+        if (strcmp(value, "1") == 0) {
             init_success = 1;
             break;
         } else {
-            sleep(1);
+            usleep(WAIT_TIMEOUT);
         }
     }
-    LOGE("init_success:%d after %d seconds \n", init_success, i);
+    LOGE("init_success:%d after %f seconds \n", init_success, 0.2*i);
     if(!init_success) {
         property_set("ctl.stop", "fm_dl");
        // close the fd(power down)
@@ -122,7 +124,6 @@ static jint android_hardware_fmradio_FmReceiverJNI_acquireFdNative
        close(fd);
         return FM_JNI_FAILURE;
     }
-    property_set("ctl.stop", "fm_dl");
     return fd;
 }
 
@@ -410,38 +411,42 @@ static jint android_hardware_fmradio_FmReceiverJNI_getRawRdsNative
 /* native interface */
 static jint android_hardware_fmradio_FmReceiverJNI_setNotchFilterNative(JNIEnv * env, jobject thiz,jint fd, jint id, jboolean aValue)
 {
-    int i = 0;
-    char value = 0;
-    int init_success = 0;
+    char value[PROPERTY_VALUE_MAX] = {'\0'};
+    int init_success = 0,i;
     char notch[20] = {0x00};
     struct v4l2_control control;
     int err;
     /*Enable/Disable the WAN avoidance*/
+    property_set("hw.fm.init", "0");
     if (aValue)
        property_set("hw.fm.mode", "wa_enable");
     else
        property_set("hw.fm.mode", "wa_disable");
 
     property_set("ctl.start", "fm_dl");
-    sleep(1);
-    property_get("hw.fm.init", &value, NULL);
-    if(value == '1') {
-       init_success = 1;
+    sched_yield();
+    for(i=0; i<10; i++) {
+       property_get("hw.fm.init", value, NULL);
+       if (strcmp(value, "1") == 0) {
+          init_success = 1;
+          break;
+       } else {
+          usleep(WAIT_TIMEOUT);
+       }
     }
-    LOGE("init_success:%d after %d seconds \n", init_success, i);
+    LOGE("init_success:%d after %f seconds \n", init_success, 0.2*i);
 
     property_get("notch.value", notch, NULL);
     LOGE("Notch = %s",notch);
-    if(!strncmp("HIGH",notch,strlen("HIGH")))
-      value = HIGH_BAND;
+    if (!strncmp("HIGH",notch,strlen("HIGH")))
+        control.value = HIGH_BAND;
     else if(!strncmp("LOW",notch,strlen("LOW")))
-      value = LOW_BAND;
+        control.value = LOW_BAND;
     else
-      value = 0;
+        control.value = 0;
 
-    LOGE("Notch value : %d", value);
+    LOGE("Notch value : %d", control.value);
     control.id = id;
-    control.value = value;
     err = ioctl(fd, VIDIOC_S_CTRL,&control );
     if(err < 0){
           return FM_JNI_FAILURE;
@@ -454,10 +459,11 @@ static jint android_hardware_fmradio_FmReceiverJNI_setNotchFilterNative(JNIEnv *
 static jint android_hardware_fmradio_FmReceiverJNI_setAnalogModeNative(JNIEnv * env, jobject thiz, jboolean aValue)
 {
     int i=0;
-    char value = 0;
+    char value[PROPERTY_VALUE_MAX] = {'\0'};
     char firmwareVersion[80];
 
     /*Enable/Disable Analog Mode FM*/
+    property_set("hw.fm.init", "0");
     if (aValue) {
         property_set("hw.fm.isAnalog", "true");
     } else {
@@ -465,15 +471,14 @@ static jint android_hardware_fmradio_FmReceiverJNI_setAnalogModeNative(JNIEnv * 
     }
     property_set("hw.fm.mode","config_dac");
     property_set("ctl.start", "fm_dl");
-    sleep(1);
-    property_get("hw.fm.init", &value, NULL);
-    if(value == '1') {
-            return 1;
-    }
-    sleep(1);
-    property_get("hw.fm.init", &value, NULL);
-    if(value == '1') {
-            return 1;
+    sched_yield();
+    for(i=0; i<10; i++) {
+       property_get("hw.fm.init", value, NULL);
+       if (strcmp(value, "1") == 0) {
+          return 1;
+       } else {
+          usleep(WAIT_TIMEOUT);
+       }
     }
 
     return 0;
