@@ -277,10 +277,11 @@ class FmRxControls
    /*
     * Tune FM core to specified freq.
     */
-   public void setStation(int fd) {
+   public int setStation(int fd) {
       Log.d(TAG, "** Tune Using: "+fd);
       int ret = FmReceiverJNI.setFreqNative(fd, mFreq);
       Log.d(TAG, "** Returned: "+ret);
+      return ret;
    }
 
   /*
