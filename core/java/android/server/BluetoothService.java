@@ -1475,6 +1475,36 @@ public class BluetoothService extends IBluetooth.Stub {
                                              supervisionTimeout);
     }
 
+    public synchronized boolean registerRssiUpdateWatcher(String address,
+                                              int rssiThreshold,
+                                              int interval,
+                                              boolean updateOnThreshExceed) {
+        if (!BluetoothAdapter.checkBluetoothAddress(address)) {
+            mContext.enforceCallingOrSelfPermission(BLUETOOTH_ADMIN_PERM,
+                    "Need BLUETOOTH_ADMIN permission");
+            return false;
+        }
+
+        if (!isEnabledInternal()) return false;
+
+        return registerRssiUpdateWatcherNative(getObjectPathFromAddress(address),
+                                               rssiThreshold,
+                                               interval,
+                                               updateOnThreshExceed);
+    }
+
+    public synchronized boolean unregisterRssiUpdateWatcher(String address) {
+        if (!BluetoothAdapter.checkBluetoothAddress(address)) {
+            mContext.enforceCallingOrSelfPermission(BLUETOOTH_ADMIN_PERM,
+                    "Need BLUETOOTH_ADMIN permission");
+            return false;
+        }
+
+        if (!isEnabledInternal()) return false;
+
+        return unregisterRssiUpdateWatcherNative(getObjectPathFromAddress(address));
+    }
+
     /**
      * Returns the user-friendly name of a remote device.  This value is
      * returned from our local cache, which is updated when onPropertyChange
@@ -4364,6 +4394,9 @@ public class BluetoothService extends IBluetooth.Stub {
             int value);
     private native boolean setConnectionParametersNative(String objectPath, int intervalMin,
             int intervalMax, int slaveLatency, int supervisionTimeout);
+    private native boolean registerRssiUpdateWatcherNative(String objectPath,
+            int rssiThreshold, int interval, boolean updateOnThreshExceed);
+    private native boolean unregisterRssiUpdateWatcherNative(String objectPath);
     private native boolean createDeviceNative(String address);
     /*package*/ native boolean discoverServicesNative(String objectPath, String pattern);
 

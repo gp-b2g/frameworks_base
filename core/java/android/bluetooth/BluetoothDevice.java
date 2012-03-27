@@ -107,6 +107,16 @@ public final class BluetoothDevice implements Parcelable {
     public static final String ACTION_CLASS_CHANGED =
             "android.bluetooth.device.action.CLASS_CHANGED";
 
+     /**
+     * Broadcast Action: RSSI update from the remote device
+     * <p>Always contains the extra fields {@link #EXTRA_DEVICE} and {@link
+     * #EXTRA_RSSI}.
+     * <p>Requires {@link android.Manifest.permission#BLUETOOTH} to receive.
+     * @hide
+     */
+    @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+    public static final String ACTION_RSSI_UPDATE =
+            "android.bluetooth.device.action.RSSI_UPDATE";
     /**
      * Broadcast Action: Indicates a low level (ACL) connection has been
      * established with a remote device.
@@ -679,6 +689,40 @@ public final class BluetoothDevice implements Parcelable {
     public boolean createBond() {
         try {
             return sService.createBond(mAddress);
+        } catch (RemoteException e) {Log.e(TAG, "", e);}
+        return false;
+    }
+
+     /**
+     * Register the watcher for monitoring RSSI of the remote device.
+     * <p>Requires {@link android.Manifest.permission#BLUETOOTH}.
+     *
+     * @param rssiThreshold
+     * @param interval
+     * @param updateOnThreshExceed
+     * @hide
+     */
+   public boolean registerRssiUpdateWatcher(int rssiThreshold, int interval,
+                                             boolean updateOnThreshExceed) {
+        try {
+            return sService.registerRssiUpdateWatcher(mAddress,
+                                                      rssiThreshold,
+                                                      interval,
+                                                      updateOnThreshExceed);
+        } catch (RemoteException e) {Log.e(TAG, "", e);}
+        return false;
+    }
+
+     /**
+     * Unregister the watcher for monitoring RSSI of the remote
+     * device.
+     * <p>Requires {@link android.Manifest.permission#BLUETOOTH}.
+     *
+     * @hide
+     */
+    public boolean unregisterRssiUpdateWatcher() {
+        try {
+            return sService.unregisterRssiUpdateWatcher(mAddress);
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return false;
     }
