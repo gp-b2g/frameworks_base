@@ -47,7 +47,7 @@ public class IccProvider extends ContentProvider {
         "name",
         "number",
         "emails",
-		"anrs",
+        "anrs",
         "_id"
     };
 
@@ -343,11 +343,47 @@ public class IccProvider extends ContentProvider {
         }
     }
 
+    private boolean
+    addIccRecordToEf(int efType, String name, String number, String[] emails, String pin2) {
+        if (DBG) log("addIccRecordToEf: efType=" + efType + ", name=" + name +
+            ", number=" + number + ", emails=" + emails);
+        boolean success = false;
+
+        // TODO: do we need to call getAdnRecordsInEf() before calling
+        // updateAdnRecordsInEfBySearch()? In any case, we will leave
+        // the UI level logic to fill that prereq if necessary. But
+        // hopefully, we can remove this requirement.
+        ContentValues values = new ContentValues();
+        values.put(STR_TAG,"");
+        values.put(STR_NUMBER,"");
+        values.put(STR_NEW_TAG,name);
+        values.put(STR_NEW_NUMBER,number);
+        success = updateIccRecordInEf(efType, values, pin2);
+        if (DBG) log("addIccRecordToEf: " + success);
+        return success;
+    }
+
+    private boolean
+    updateIccRecordInEf(int efType, String oldName, String oldNumber,
+            String newName, String newNumber, String pin2) {
+        if (DBG) log("updateIccRecordInEf: efType=" + efType + ", oldname=" + oldName + ", oldnumber=" + oldNumber +
+            ", newname=" + newName + ", newnumber=" + newNumber );
+        boolean success = false;
+        ContentValues values = new ContentValues();
+        values.put(STR_TAG,oldName);
+        values.put(STR_NUMBER,oldNumber);
+        values.put(STR_NEW_TAG,newName);
+        values.put(STR_NEW_NUMBER,newNumber);
+        success = updateIccRecordInEf(efType, values, pin2);
+
+        if (DBG) log("updateIccRecordInEf: " + success);
+        return success;
+    }
+
 
     private boolean
     updateIccRecordInEf(int efType, ContentValues values, String pin2) {
-        if (DBG) log("updateIccRecordInEf: efType=" + efType + ", values: "+ values
-           );
+        if (DBG) log("updateIccRecordInEf: efType=" + efType + ", values: "+ values);
         boolean success = false;
 
         try {
@@ -363,6 +399,23 @@ public class IccProvider extends ContentProvider {
             if (DBG) log(ex.toString());
         }
         if (DBG) log("updateIccRecordInEf: " + success);
+        return success;
+    }
+
+    private boolean deleteIccRecordFromEf(int efType, String name, String number, String[] emails,
+        String pin2) {
+        if (DBG) log("deleteIccRecordFromEf: efType=" + efType +
+                ", name=" + name + ", number=" + number + ", emails=" + emails + ", pin2=" + pin2);
+
+        boolean success = false;
+
+        ContentValues values = new ContentValues();
+        values.put(STR_TAG,name);
+        values.put(STR_NUMBER,number);
+        values.put(STR_NEW_TAG,"");
+        values.put(STR_NEW_NUMBER,"");
+        success = updateIccRecordInEf(efType, values, pin2);
+        if (DBG) log("deleteIccRecordFromEf: " + success);
         return success;
     }
 

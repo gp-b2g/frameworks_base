@@ -27,6 +27,10 @@ import java.lang.ArrayIndexOutOfBoundsException;
 
 public class MSimIccPhoneBookInterfaceManagerProxy extends IIccPhoneBookMSim.Stub {
     private static final String TAG = "MSimIccPbkIntMngProxy";
+    private static final String STR_TAG = "tag";
+    private static final String STR_NUMBER = "number";
+    private static final String STR_NEW_TAG = "newTag";
+    private static final String STR_NEW_NUMBER = "newNumber";
     private Phone[] mPhone;
 
     /* only one MSimIccPhonBookInterfaceManagerProxy exists */
@@ -38,9 +42,33 @@ public class MSimIccPhoneBookInterfaceManagerProxy extends IIccPhoneBookMSim.Stu
     }
 
     public boolean
+    updateAdnRecordsInEfBySearch(int efid, String oldTag, String oldPhoneNumber,
+            String newTag, String newPhoneNumber,
+            String pin2) throws android.os.RemoteException {
+        return updateAdnRecordsInEfBySearchOnSubscription(efid, oldTag, oldPhoneNumber,
+            newTag, newPhoneNumber, pin2, getDefaultSubscription());
+    }
+
+    public boolean
     updateAdnRecordsInEfBySearch(int efid, ContentValues values,
             String pin2) throws android.os.RemoteException {
         return updateAdnRecordsInEfBySearchOnSubscription(efid, values, pin2, getDefaultSubscription());
+    }
+
+    public boolean
+    updateAdnRecordsInEfBySearchOnSubscription(int efid, String oldTag, String oldPhoneNumber,
+            String newTag, String newPhoneNumber,
+            String pin2, int subscription) throws android.os.RemoteException {
+        IccPhoneBookInterfaceManagerProxy iccPbkIntMgrProxy =
+                             getIccPhoneBookInterfaceManagerProxy(subscription);
+        if (iccPbkIntMgrProxy != null) {
+            return iccPbkIntMgrProxy.updateAdnRecordsInEfBySearch(efid, oldTag, oldPhoneNumber,
+                newTag, newPhoneNumber, pin2);
+        } else {
+            Log.e(TAG,"updateAdnRecordsInEfBySearchOnSubscription iccPbkIntMgrProxy is" +
+                      " null for Subscription:"+subscription);
+            return false;
+        }
     }
 
     public boolean
