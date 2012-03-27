@@ -1194,12 +1194,7 @@ status_t AwesomePlayer::pause_l(bool at_eos) {
     if (!(mFlags & PLAYING)) {
         return OK;
     }
-    // handle any EOS condition checks first in case
-    // resume takes place at the same spot
-    while(mAudioStatusEventPending){
-        LOGV("waiting on pending audio status event to finish");
-        mAudioStatusCondition.wait(mLock);
-    }
+
     cancelPlayerEvents(true /* keepNotifications */);
 
     if (mAudioPlayer != NULL && (mFlags & AUDIO_RUNNING)) {
@@ -2101,7 +2096,6 @@ void AwesomePlayer::onCheckAudioStatus() {
         modifyFlags(AUDIO_AT_EOS, SET);
         postStreamDoneEvent_l(finalStatus);
     }
-    mAudioStatusCondition.signal();
 }
 
 status_t AwesomePlayer::prepare() {
