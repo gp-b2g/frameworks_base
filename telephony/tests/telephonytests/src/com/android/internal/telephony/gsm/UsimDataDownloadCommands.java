@@ -23,6 +23,7 @@ import android.os.SystemClock;
 import android.util.Log;
 
 import com.android.internal.telephony.BaseCommands;
+import com.android.internal.telephony.CallDetails;
 import com.android.internal.telephony.IccIoResult;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -619,7 +620,7 @@ class UsimDataDownloadCommands extends BaseCommands {
     public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
             Message result) {
     }
-    
+
     @Override
     public void setTransmitPower(int powerLevel, Message result) {
     }
@@ -636,7 +637,7 @@ class UsimDataDownloadCommands extends BaseCommands {
     public void iccIOForApp (int command, int fileid, String path, int p1, int p2, int p3,
             String data, String pin2, String aid, Message response) {
     }
-   
+
     @Override
     public void sendImsCdmaSms(byte[] pdu, int retry, int messageRef, Message response) {
     }
@@ -678,5 +679,12 @@ class UsimDataDownloadCommands extends BaseCommands {
     }
 
     public void getQosStatus (int qosId, Message result) {
+    }
+
+    public void acceptCall(Message result, int callType) {
+    }
+
+    public void dial(String address, int clirMode, UUSInfo uusInfo, CallDetails callDetails,
+            Message result) {
     }
 }

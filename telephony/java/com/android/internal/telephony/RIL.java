@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -943,29 +944,47 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         send(rr);
     }
 
-    public void
-    dial (String address, int clirMode, Message result) {
-        dial(address, clirMode, null, result);
+    public void dial(String address, int clirMode, Message result) {
+        dial(address, clirMode, null, null, result);
+    }
+
+    public void dial(String address, int clirMode, UUSInfo uusInfo, Message result) {
+
+        dial(address, clirMode, uusInfo, null, result);
     }
 
     public void
-    dial(String address, int clirMode, UUSInfo uusInfo, Message result) {
+    dial(String address, int clirMode, UUSInfo uusInfo, CallDetails callDetails,
+            Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_DIAL, result);
 
         rr.mp.writeString(address);
         rr.mp.writeInt(clirMode);
-        rr.mp.writeInt(0); // UUS information is absent
 
         if (uusInfo == null) {
+            if (RILJ_LOGD) riljLog("uusInfo = null");
             rr.mp.writeInt(0); // UUS information is absent
         } else {
+            if (RILJ_LOGD) riljLog("uusInfo = present");
             rr.mp.writeInt(1); // UUS information is present
             rr.mp.writeInt(uusInfo.getType());
             rr.mp.writeInt(uusInfo.getDcs());
             rr.mp.writeByteArray(uusInfo.getUserData());
         }
 
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        if (callDetails == null) {
+            if (RILJ_LOGD) riljLog("dial callDetails = null");
+            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        } else {
+            rr.mp.writeInt(1); // Call Details is present
+            rr.mp.writeInt(callDetails.call_type);
+            rr.mp.writeInt(callDetails.call_domain);
+            rr.mp.writeStringArray(callDetails.extras);
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + callDetails);
+            }
+        }
 
         send(rr);
     }
@@ -1096,13 +1115,52 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         send(rr);
     }
 
+
     public void
-    acceptCall (Message result) {
-        RILRequest rr
-                = RILRequest.obtain(RIL_REQUEST_ANSWER, result);
+    acceptCall(Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_ANSWER, result);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
+        send(rr);
+    }
+
+    public void
+    acceptCall(Message result, int callType) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_ANSWER, result);
+
+        rr.mp.writeInt(1); // one integer element in the array
+        rr.mp.writeInt(callType);
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + callType);
+        }
+
+        send(rr);
+    }
+
+    private void setCallModify(RILRequest rr, CallModify callModify) {
+        rr.mp.writeInt(callModify.call_index);
+        rr.mp.writeInt(callModify.call_details.call_type);
+        rr.mp.writeInt(callModify.call_details.call_domain);
+        rr.mp.writeStringArray(callModify.call_details.extras);
+    }
+
+    public void modifyCallInitiate(Message result, CallModify callModify) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_MODIFY_CALL_INITIATE, result);
+        setCallModify(rr, callModify);
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + callModify);
+        }
+        send(rr);
+    }
+
+    public void modifyCallConfirm(Message result, CallModify callModify) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_MODIFY_CALL_CONFIRM, result);
+        setCallModify(rr, callModify);
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + callModify);
+        }
         send(rr);
     }
 
@@ -2563,6 +2621,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_SET_SUBSCRIPTION_MODE: ret = responseVoid(p); break;
             case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU: ret = responseVoid(p); break;
             case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS: ret = responseICC_IO(p); break;
+            case RIL_REQUEST_MODIFY_CALL_INITIATE: ret = responseVoid(p); break;
+            case RIL_REQUEST_MODIFY_CALL_CONFIRM: ret = responseVoid(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -2719,6 +2779,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: ret =  responseString(p); break;
             case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED: ret =  responseInts(p); break;
             case RIL_UNSOL_QOS_STATE_CHANGED_IND: ret = responseStrings(p); break;
+            case RIL_UNSOL_MODIFY_CALL: ret = responseModifyCall(p); break;
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -3096,6 +3157,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 }
                 break;
 
+            case RIL_UNSOL_MODIFY_CALL:
+                if (RILJ_LOGD) unsljLog(response);
+                mModifyCallRegistrants
+                    .notifyRegistrants(new AsyncResult(null, ret, null));
+                break;
+
             case RIL_UNSOL_RIL_CONNECTED: {
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
@@ -3470,6 +3537,22 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 riljLogv("Incoming UUS : NOT present!");
             }
 
+            int CallDetailsPresent = p.readInt();
+            if (CallDetailsPresent != 0) {
+                dc.callDetails = new CallDetails();
+                dc.callDetails.call_type = p.readInt();
+                dc.callDetails.call_domain = p.readInt();
+                dc.callDetails.extras = p.createStringArray();
+                riljLogv(String.format("Call Details : type=%d, domain=%d",
+                        dc.callDetails.call_type, dc.callDetails.call_domain));
+                for (i = 0; i < dc.callDetails.extras.length; i++)
+                {
+                    riljLogv("Call Details : extras" + new String(dc.callDetails.extras[i]));
+                }
+            } else {
+                riljLogv("Call Details : NOT present!");
+            }
+
             // Make sure there's a leading + on addresses with a TOA of 145
             dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number, dc.TOA);
 
@@ -3486,6 +3569,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         Collections.sort(response);
 
+        return response;
+    }
+
+    private Object responseModifyCall(Parcel p) {
+        CallModify response = new CallModify();
+        response.call_index = p.readInt();
+        response.call_details.call_type = p.readInt();
+        response.call_details.call_domain = p.readInt();
+        response.call_details.extras = p.createStringArray();
+        if (RILJ_LOGV) riljLog("responseModifyCall CallModify=" + response);
         return response;
     }
 
@@ -3995,6 +4088,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_SET_SUBSCRIPTION_MODE: return "RIL_REQUEST_SET_SUBSCRIPTION_MODE";
             case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU: return "RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU";
             case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS: return "RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS";
+            case RIL_REQUEST_MODIFY_CALL_INITIATE: return "RIL_REQUEST_MODIFY_CALL_INITIATE";
+            case RIL_REQUEST_MODIFY_CALL_CONFIRM: return "RIL_REQUEST_MODIFY_CALL_CONFIRM";
             default: return "<unknown request>";
         }
     }
@@ -4042,6 +4137,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED: return "CDMA_SUBSCRIPTION_SOURCE_CHANGED";
             case RIL_UNSOl_CDMA_PRL_CHANGED: return "UNSOL_CDMA_PRL_CHANGED";
             case RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE: return "UNSOL_EXIT_EMERGENCY_CALLBACK_MODE";
+            case RIL_UNSOL_MODIFY_CALL: return "UNSOL_MODIFY_CALL";
             case RIL_UNSOL_RIL_CONNECTED: return "UNSOL_RIL_CONNECTED";
             case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: return "UNSOL_VOICE_RADIO_TECH_CHANGED";
             case RIL_UNSOL_DATA_NETWORK_STATE_CHANGED: return "RIL_UNSOL_DATA_NETWORK_STATE_CHANGED";

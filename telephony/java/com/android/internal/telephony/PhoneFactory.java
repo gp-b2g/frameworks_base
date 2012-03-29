@@ -1,5 +1,7 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +22,17 @@ import android.content.Context;
 import android.net.LocalServerSocket;
 import android.os.Looper;
 import android.provider.Settings;
+import android.telephony.ServiceState;
 import android.util.Log;
 import android.os.SystemProperties;
 
+import com.android.internal.telephony.cdma.CDMALTEImsPhone;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CDMALTEPhone;
+import com.android.internal.telephony.cdma.CdmaImsCallTracker;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.ims.RilImsPhone;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
 
@@ -51,6 +57,9 @@ public class PhoneFactory {
 
     static final int preferredCdmaSubscription =
                          CdmaSubscriptionSourceManager.PREFERRED_CDMA_SUBSCRIPTION;
+
+    // Specify if Android supports VoLTE/VT calls on IMS
+    public static final String CALLS_ON_IMS_ENABLED_PROPERTY = "persist.radio.calls.on.ims";
 
     //***** Class Methods
 
@@ -148,9 +157,15 @@ public class PhoneFactory {
                 } else if (phoneType == Phone.PHONE_TYPE_CDMA) {
                     switch (BaseCommands.getLteOnCdmaModeStatic()) {
                         case Phone.LTE_ON_CDMA_TRUE:
-                            Log.i(LOG_TAG, "Creating CDMALTEPhone");
-                            sProxyPhone = new PhoneProxy(new CDMALTEPhone(context,
-                                sCommandsInterface, sPhoneNotifier));
+                            if (!PhoneFactory.isCallOnImsEnabled()) {
+                                Log.i(LOG_TAG, "Creating CDMALTEPhone");
+                                sProxyPhone = new PhoneProxy(new CDMALTEPhone(sContext,
+                                        sCommandsInterface, sPhoneNotifier));
+                            } else {
+                                Log.i(LOG_TAG, "Creating CDMALTEImsPhone");
+                                sProxyPhone = new PhoneProxy(new CDMALTEImsPhone(sContext,
+                                        sCommandsInterface, sPhoneNotifier));
+                            }
                             break;
                         case Phone.LTE_ON_CDMA_FALSE:
                         default:
@@ -217,11 +232,17 @@ public class PhoneFactory {
     }
 
     public static Phone getCdmaPhone() {
-        Phone phone;
+        PhoneBase phone;
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
             switch (BaseCommands.getLteOnCdmaModeStatic()) {
                 case Phone.LTE_ON_CDMA_TRUE: {
-                    phone = new CDMALTEPhone(sContext, sCommandsInterface, sPhoneNotifier);
+                    if (!PhoneFactory.isCallOnImsEnabled()) {
+                        Log.i(LOG_TAG, "Creating CDMALTEPhone");
+                        phone = new CDMALTEPhone(sContext, sCommandsInterface, sPhoneNotifier);
+                    } else {
+                        Log.i(LOG_TAG, "Creating CDMALTEImsPhone");
+                        phone = new CDMALTEImsPhone(sContext, sCommandsInterface, sPhoneNotifier);
+                    }
                     break;
                 }
                 case Phone.LTE_ON_CDMA_FALSE:
@@ -249,5 +270,12 @@ public class PhoneFactory {
      */
     public static SipPhone makeSipPhone(String sipUri) {
         return SipPhoneFactory.makePhone(sipUri, sContext, sPhoneNotifier);
+    }
+
+    /**
+     * Returns true if Android supports VoLTE/VT calls on IMS
+     */
+    public static boolean isCallOnImsEnabled() {
+        return SystemProperties.getBoolean(CALLS_ON_IMS_ENABLED_PROPERTY, false);
     }
 }

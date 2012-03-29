@@ -1,5 +1,7 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +16,9 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.gsm;
+package com.android.internal.telephony;
+
+import com.android.internal.telephony.*;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -23,38 +27,44 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
+import android.os.SystemProperties;
 import android.util.Log;
+import android.text.TextUtils;
+
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
-
-import com.android.internal.telephony.*;
+import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
+import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 
 /**
  * {@hide}
  */
-public class GsmConnection extends Connection {
-    static final String LOG_TAG = "GSM";
+public class ConnectionBase extends Connection {
+    static final String LOG_TAG = "RILCONNECTION";
 
     //***** Instance Variables
 
-    GsmCallTracker owner;
-    GsmCall parent;
+    public CallTracker owner;
+    Call parent;
 
-    String address;     // MAY BE NULL!!!
+
+    public String address;             // MAY BE NULL!!!
     String dialString;          // outgoing calls only
     String postDialString;      // outgoing calls only
-    boolean isIncoming;
+    public boolean isIncoming;
     boolean disconnected;
-
-    int index;          // index in GsmCallTracker.connections[], -1 if unassigned
-                        // The GSM index is 1 + this
+    String cnapName;
+    public int index;          // index in CallTracker.connections[], -1 if unassigned
+    // The GSM index is 1 + this
 
     /*
      * These time/timespan values are based on System.currentTimeMillis(),
      * i.e., "wall clock" time.
      */
     long createTime;
-    long connectTime;
+    public long connectTime;
     long disconnectTime;
 
     /*
@@ -69,10 +79,13 @@ public class GsmConnection extends Connection {
 
     int nextPostDialChar;       // index into postDialString
 
-    DisconnectCause cause = DisconnectCause.NOT_DISCONNECTED;
+    public DisconnectCause cause = DisconnectCause.NOT_DISCONNECTED;
     PostDialState postDialState = PostDialState.NOT_STARTED;
     int numberPresentation = Connection.PRESENTATION_ALLOWED;
-    UUSInfo uusInfo;
+    int cnapNamePresentation  = Connection.PRESENTATION_ALLOWED;//only used for cdma
+    UUSInfo uusInfo = null; // only used for GSM , move it to constructor
+    public CallDetails callDetails = null;
+
 
     Handler h;
 
@@ -85,9 +98,9 @@ public class GsmConnection extends Connection {
     static final int EVENT_WAKE_LOCK_TIMEOUT = 4;
 
     //***** Constants
-    static final int PAUSE_DELAY_FIRST_MILLIS = 100;
-    static final int PAUSE_DELAY_MILLIS = 3 * 1000;
     static final int WAKE_LOCK_TIMEOUT_MILLIS = 60*1000;
+    static final int PAUSE_DELAY_MILLIS = 2 * 1000;//cdma
+    //static final int PAUSE_DELAY_MILLIS = 3 * 1000;//gsm, check specs for diffference between gsm n cdma
 
     //***** Inner Classes
 
@@ -114,7 +127,7 @@ public class GsmConnection extends Connection {
 
     /** This is probably an MT call that we first saw in a CLCC response */
     /*package*/
-    GsmConnection (Context context, DriverCall dc, GsmCallTracker ct, int index) {
+    public ConnectionBase (Context context, DriverCall dc, CallTracker ct, int index) {
         createWakeLock(context);
         acquireWakeLock();
 
@@ -125,18 +138,30 @@ public class GsmConnection extends Connection {
 
         isIncoming = dc.isMT;
         createTime = System.currentTimeMillis();
+        cnapName = dc.name; //TBD if present check
+        cnapNamePresentation = dc.namePresentation;
         numberPresentation = dc.numberPresentation;
-        uusInfo = dc.uusInfo;
 
+        if (dc.uusInfo!= null ) // only for Gsm
+            uusInfo = dc.uusInfo;
+        if (dc.callDetails != null)
+            callDetails = dc.callDetails;
+
+        if ((callDetails != null) && (callDetails.call_domain == CallDetails.RIL_CALL_DOMAIN_PS)) {
+            parent = imsParentFromDCState(dc.state); //parent = call from ImsPhone
+        }else {
+            parent = parentFromDCState(dc.state); // parent = call from CdmaPhone
+        }
         this.index = index;
-
-        parent = parentFromDCState (dc.state);
-        parent.attach(this, dc);
+        if (parent != null ) parent.attach(this, dc);
+        else {
+            Log.e(LOG_TAG, "This ConnectionBase does not have a parent call");
+        }
     }
 
-    /** This is an MO call, created when dialing */
+    /** This is an MO call/three way call, created when dialing */
     /*package*/
-    GsmConnection (Context context, String dialString, GsmCallTracker ct, GsmCall parent) {
+    public ConnectionBase(Context context, String dialString, CallTracker ct, Call parent) {
         createWakeLock(context);
         acquireWakeLock();
 
@@ -144,17 +169,109 @@ public class GsmConnection extends Connection {
         h = new MyHandler(owner.getLooper());
 
         this.dialString = dialString;
-
         this.address = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
         this.postDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
 
         index = -1;
 
         isIncoming = false;
+        cnapName = null;
         createTime = System.currentTimeMillis();
 
+        if (parent != null) {
+            this.parent = parent;
+
+            //for the cdma three way call case, do not change parent state
+            // pass remote caller id in cdma 3 way call only
+            if (parent.state == Call.State.ACTIVE) {
+                cnapNamePresentation = Connection.PRESENTATION_ALLOWED;
+                numberPresentation = Connection.PRESENTATION_ALLOWED;
+                parent.attachFake(this, Call.State.ACTIVE);
+            } else {//MO call for Gsm & Cdma, set state to dialing
+                parent.attachFake(this, Call.State.DIALING);
+            }
+        }
+    }
+
+    /** This is an MO call/three way call, created when dialing */
+    /*package*/
+    public ConnectionBase(Context context, String dialString, CallTracker ct, Call parent,
+            CallDetails moCallDetails) {
+        createWakeLock(context);
+        acquireWakeLock();
+
+        owner = ct;
+        h = new MyHandler(owner.getLooper());
+
+        this.dialString = dialString;
+        if ((moCallDetails != null)
+                && (moCallDetails.call_domain == CallDetails.RIL_CALL_DOMAIN_PS))
+            this.address = dialString;
+        else
+            this.address = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
+        this.postDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
+
+        index = -1;
+
+        isIncoming = false;
+        cnapName = null;
+        createTime = System.currentTimeMillis();
+        callDetails = moCallDetails;
+
+        if (parent != null) {
+            this.parent = parent;
+
+            //for the cdma three way call case, do not change parent state
+            // pass remote caller id in cdma 3 way call only
+            if (parent.state == Call.State.ACTIVE) {
+                cnapNamePresentation = Connection.PRESENTATION_ALLOWED;
+                numberPresentation = Connection.PRESENTATION_ALLOWED;
+                parent.attachFake(this, Call.State.ACTIVE);
+            } else {//MO call for Gsm & Cdma, set state to dialing
+                parent.attachFake(this, Call.State.DIALING);
+            }
+        }
+    }
+
+    /** This is a Call waiting call for cdma*/
+    public ConnectionBase(Context context, CdmaCallWaitingNotification cw, CallTracker ct,
+            Call parent) {
+        createWakeLock(context);
+        acquireWakeLock();
+
+        owner = ct;
+        h = new MyHandler(owner.getLooper());
+        address = cw.number;
+        numberPresentation = cw.numberPresentation;
+        cnapName = cw.name;
+        cnapNamePresentation = cw.namePresentation;
+        index = -1;
+        isIncoming = true;
+        createTime = System.currentTimeMillis();
+        connectTime = 0;
         this.parent = parent;
-        parent.attachFake(this, GsmCall.State.DIALING);
+        parent.attachFake(this, Call.State.WAITING);
+    }
+
+    /** This is a Call waiting call for cdma*/
+    public ConnectionBase(Context context, CdmaCallWaitingNotification cw, CallTracker ct,
+            Call parent, CallDetails moCallDetails ) {
+        createWakeLock(context);
+        acquireWakeLock();
+
+        owner = ct;
+        h = new MyHandler(owner.getLooper());
+        address = cw.number;
+        numberPresentation = cw.numberPresentation;
+        cnapName = cw.name;
+        cnapNamePresentation = cw.namePresentation;
+        index = -1;
+        isIncoming = true;
+        createTime = System.currentTimeMillis();
+        connectTime = 0;
+        callDetails = moCallDetails;
+        this.parent = parent;
+        parent.attachFake(this, Call.State.WAITING);
     }
 
     public void dispose() {
@@ -165,7 +282,7 @@ public class GsmConnection extends Connection {
         return (a == null) ? (b == null) : a.equals (b);
     }
 
-    /*package*/ boolean
+    /*package*/ public boolean
     compareTo(DriverCall c) {
         // On mobile originated (MO) calls, the phone number may have changed
         // due to a SIM Toolkit call control modification.
@@ -181,11 +298,24 @@ public class GsmConnection extends Connection {
         return isIncoming == c.isMT && equalsHandlesNulls(address, cAddress);
     }
 
+
+    public String getOrigDialString(){
+        return dialString;
+    }
+
     public String getAddress() {
         return address;
     }
 
-    public GsmCall getCall() {
+    public String getCnapName() {
+        return cnapName;
+    }
+
+    public int getCnapNamePresentation() {
+        return cnapNamePresentation;
+    }
+
+    public Call getCall() {
         return parent;
     }
 
@@ -212,7 +342,7 @@ public class GsmConnection extends Connection {
     }
 
     public long getHoldDurationMillis() {
-        if (getState() != GsmCall.State.HOLDING) {
+        if (getState() != Call.State.HOLDING) {
             // If not holding, return 0
             return 0;
         } else {
@@ -228,9 +358,9 @@ public class GsmConnection extends Connection {
         return isIncoming;
     }
 
-    public GsmCall.State getState() {
+    public Call.State getState() {
         if (disconnected) {
-            return GsmCall.State.DISCONNECTED;
+            return Call.State.DISCONNECTED;
         } else {
             return super.getState();
         }
@@ -258,8 +388,8 @@ public class GsmConnection extends Connection {
 
     public void proceedAfterWaitChar() {
         if (postDialState != PostDialState.WAIT) {
-            Log.w(LOG_TAG, "GsmConnection.proceedAfterWaitChar(): Expected "
-                + "getPostDialState() to be WAIT but was " + postDialState);
+            Log.w(LOG_TAG, "ConnectionBase.proceedAfterWaitChar(): Expected "
+                    + "getPostDialState() to be WAIT but was " + postDialState);
             return;
         }
 
@@ -270,8 +400,8 @@ public class GsmConnection extends Connection {
 
     public void proceedAfterWildChar(String str) {
         if (postDialState != PostDialState.WILD) {
-            Log.w(LOG_TAG, "GsmConnection.proceedAfterWaitChar(): Expected "
-                + "getPostDialState() to be WILD but was " + postDialState);
+            Log.w(LOG_TAG, "CdmaConnection.proceedAfterWaitChar(): Expected "
+                    + "getPostDialState() to be WILD but was " + postDialState);
             return;
         }
 
@@ -324,13 +454,14 @@ public class GsmConnection extends Connection {
      * Note that at this point, the hangup request has been dispatched to the radio
      * but no response has yet been received so update() has not yet been called
      */
-    void
+    public void
     onHangupLocal() {
         cause = DisconnectCause.LOCAL;
     }
 
+    // TBD move this to phone & implement in cdma & gsmphone
     DisconnectCause
-    disconnectCauseFromCode(int causeCode) {
+    disconnectCauseFromCode(PhoneBase phone, int causeCode) {
         /**
          * See 22.001 Annex F.4 for mapping of cause codes
          * to local tones
@@ -339,7 +470,6 @@ public class GsmConnection extends Connection {
         switch (causeCode) {
             case CallFailCause.USER_BUSY:
                 return DisconnectCause.BUSY;
-
             case CallFailCause.NO_CIRCUIT_AVAIL:
             case CallFailCause.TEMPORARY_FAILURE:
             case CallFailCause.SWITCHING_CONGESTION:
@@ -347,13 +477,10 @@ public class GsmConnection extends Connection {
             case CallFailCause.QOS_NOT_AVAIL:
             case CallFailCause.BEARER_NOT_AVAIL:
                 return DisconnectCause.CONGESTION;
-
             case CallFailCause.ACM_LIMIT_EXCEEDED:
                 return DisconnectCause.LIMIT_EXCEEDED;
-
             case CallFailCause.CALL_BARRED:
                 return DisconnectCause.CALL_BARRED;
-
             case CallFailCause.FDN_BLOCKED:
                 return DisconnectCause.FDN_BLOCKED;
 
@@ -362,67 +489,68 @@ public class GsmConnection extends Connection {
 
             case CallFailCause.DIAL_MODIFIED_TO_USSD:
                 return DisconnectCause.DIAL_MODIFIED_TO_USSD;
-
             case CallFailCause.DIAL_MODIFIED_TO_SS:
                 return DisconnectCause.DIAL_MODIFIED_TO_SS;
-
             case CallFailCause.DIAL_MODIFIED_TO_DIAL:
                 return DisconnectCause.DIAL_MODIFIED_TO_DIAL;
-
+            case CallFailCause.CDMA_LOCKED_UNTIL_POWER_CYCLE:
+                return DisconnectCause.CDMA_LOCKED_UNTIL_POWER_CYCLE;
+            case CallFailCause.CDMA_DROP:
+                return DisconnectCause.CDMA_DROP;
+            case CallFailCause.CDMA_INTERCEPT:
+                return DisconnectCause.CDMA_INTERCEPT;
+            case CallFailCause.CDMA_REORDER:
+                return DisconnectCause.CDMA_REORDER;
+            case CallFailCause.CDMA_SO_REJECT:
+                return DisconnectCause.CDMA_SO_REJECT;
+            case CallFailCause.CDMA_RETRY_ORDER:
+                return DisconnectCause.CDMA_RETRY_ORDER;
+            case CallFailCause.CDMA_ACCESS_FAILURE:
+                return DisconnectCause.CDMA_ACCESS_FAILURE;
+            case CallFailCause.CDMA_PREEMPTED:
+                return DisconnectCause.CDMA_PREEMPTED;
+            case CallFailCause.CDMA_NOT_EMERGENCY:
+                return DisconnectCause.CDMA_NOT_EMERGENCY;
+            case CallFailCause.CDMA_ACCESS_BLOCKED:
+                return DisconnectCause.CDMA_ACCESS_BLOCKED;
             case CallFailCause.ERROR_UNSPECIFIED:
             case CallFailCause.NORMAL_CLEARING:
             default:
-                GSMPhone phone = owner.phone;
                 int serviceState = phone.getServiceState().getState();
                 if (serviceState == ServiceState.STATE_POWER_OFF) {
                     return DisconnectCause.POWER_OFF;
                 } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
-                        || serviceState == ServiceState.STATE_EMERGENCY_ONLY ) {
+                        || serviceState == ServiceState.STATE_EMERGENCY_ONLY) {
                     return DisconnectCause.OUT_OF_SERVICE;
-                } else if (phone.getUiccApplication() == null ||
-                        phone.getUiccApplication().getState() !=
-                            IccCardApplicationStatus.AppState.APPSTATE_READY) {
-                    return DisconnectCause.ICC_ERROR;
-                } else if (causeCode == CallFailCause.ERROR_UNSPECIFIED) {
-                    if (phone.mSST.mRestrictedState.isCsRestricted()) {
-                        return DisconnectCause.CS_RESTRICTED;
-                    } else if (phone.mSST.mRestrictedState.isCsEmergencyRestricted()) {
-                        return DisconnectCause.CS_RESTRICTED_EMERGENCY;
-                    } else if (phone.mSST.mRestrictedState.isCsNormalRestricted()) {
-                        return DisconnectCause.CS_RESTRICTED_NORMAL;
-                    } else {
-                        return DisconnectCause.ERROR_UNSPECIFIED;
-                    }
                 } else if (causeCode == CallFailCause.NORMAL_CLEARING) {
                     return DisconnectCause.NORMAL;
-                } else {
-                    // If nothing else matches, report unknown call drop reason
-                    // to app, not NORMAL call end.
+                }else {
                     return DisconnectCause.ERROR_UNSPECIFIED;
                 }
         }
     }
 
-    /*package*/ void
+
+    public void
     onRemoteDisconnect(int causeCode) {
-        onDisconnect(disconnectCauseFromCode(causeCode));
+        onDisconnect(owner.phone.disconnectCauseFromCode(causeCode));
+    }
+
+
+    public void
+    onRemoteDisconnect(PhoneBase phone, int causeCode) {
+        onDisconnect(phone.disconnectCauseFromCode(causeCode));
     }
 
     /** Called when the radio indicates the connection has been disconnected */
-    /*package*/ void
+    public void
     onDisconnect(DisconnectCause cause) {
         this.cause = cause;
 
         if (!disconnected) {
-            index = -1;
-
-            disconnectTime = System.currentTimeMillis();
-            duration = SystemClock.elapsedRealtime() - connectTimeReal;
-            disconnected = true;
-
+            doDisconnect();
             if (false) Log.d(LOG_TAG,
-                    "[GSMConn] onDisconnect: cause=" + cause);
-
+                    "[CDMAConn] onDisconnect: cause=" + cause);
             owner.phone.notifyDisconnect(this);
 
             if (parent != null) {
@@ -432,21 +560,58 @@ public class GsmConnection extends Connection {
         releaseWakeLock();
     }
 
+    /** Called when the call waiting connection has been hung up */
+   public void
+    onLocalDisconnect() {
+        if (!disconnected) {
+            doDisconnect();
+            if (false) Log.d(LOG_TAG,
+                    "[CDMAConn] onLoalDisconnect" );
+
+            if (parent != null) {
+                parent.detach(this);
+            }
+        }
+        releaseWakeLock();
+    }
+
     // Returns true if state has changed, false if nothing changed
-    /*package*/ boolean
+    public boolean
     update (DriverCall dc) {
-        GsmCall newParent;
+        Call newParent;
         boolean changed = false;
         boolean wasConnectingInOrOut = isConnectingInOrOut();
-        boolean wasHolding = (getState() == GsmCall.State.HOLDING);
+        boolean wasHolding = (getState() == Call.State.HOLDING);
 
-        newParent = parentFromDCState(dc.state);
+        if ((dc.callDetails != null) && (dc.callDetails.call_domain == CallDetails.RIL_CALL_DOMAIN_PS)) {
+            newParent = imsParentFromDCState(dc.state); //parent = ImsPhone
+        }else {
+        newParent = parentFromDCState(dc.state); // parent = CdmaPhone
+        }
+
+        if (Phone.DEBUG_PHONE) log("parent= " +parent +", newParent= " + newParent);
 
         if (!equalsHandlesNulls(address, dc.number)) {
             if (Phone.DEBUG_PHONE) log("update: phone # changed!");
             address = dc.number;
             changed = true;
         }
+
+        // A null cnapName should be the same as ""
+        //TBD ensure this is a nop for Gsm
+        if (TextUtils.isEmpty(dc.name)) {
+            if (!TextUtils.isEmpty(cnapName)) {
+                changed = true;
+                cnapName = "";
+            }
+        } else if (!dc.name.equals(cnapName)) {
+            changed = true;
+            cnapName = dc.name;
+        }
+
+        if (Phone.DEBUG_PHONE) log("--dssds----"+cnapName);
+        cnapNamePresentation = dc.namePresentation;
+        numberPresentation = dc.numberPresentation;
 
         if (newParent != parent) {
             if (parent != null) {
@@ -464,9 +629,7 @@ public class GsmConnection extends Connection {
         /** Some state-transition events */
 
         if (Phone.DEBUG_PHONE) log(
-                "update: parent=" + parent +
-                ", hasNewParent=" + (newParent != parent) +
-                ", wasConnectingInOrOut=" + wasConnectingInOrOut +
+                "Update, wasConnectingInOrOut=" + wasConnectingInOrOut +
                 ", wasHolding=" + wasHolding +
                 ", isConnectingInOrOut=" + isConnectingInOrOut() +
                 ", changed=" + changed);
@@ -476,9 +639,9 @@ public class GsmConnection extends Connection {
             onConnectedInOrOut();
         }
 
-        if (changed && !wasHolding && (getState() == GsmCall.State.HOLDING)) {
+        if (changed && !wasHolding && (getState() == Call.State.HOLDING)) {
             // We've transitioned into HOLDING
-            onStartedHolding();
+            onStartedHolding();//TBD
         }
 
         return changed;
@@ -490,22 +653,31 @@ public class GsmConnection extends Connection {
      * We know we're ACTIVE, and we know we're going to end up
      * HOLDING in the backgroundCall
      */
-    void
+    public void
     fakeHoldBeforeDial() {
         if (parent != null) {
             parent.detach(this);
         }
 
         parent = owner.backgroundCall;
-        parent.attachFake(this, GsmCall.State.HOLDING);
+        parent.attachFake(this, Call.State.HOLDING);
 
         onStartedHolding();
+    }
+
+    public int
+    getCDMAIndex() throws CallStateException {
+        if (index >= 0) {
+            return index + 1;
+        } else {
+            throw new CallStateException ("CDMA connection index not assigned");
+        }
     }
 
     /**
      * An incoming or outgoing call has connected
      */
-    void
+    public void
     onConnectedInOrOut() {
         connectTime = System.currentTimeMillis();
         connectTimeReal = SystemClock.elapsedRealtime();
@@ -520,8 +692,19 @@ public class GsmConnection extends Connection {
         if (!isIncoming) {
             // outgoing calls only
             processNextPostDialChar();
+        } else {
+            // Only release wake lock for incoming calls, for outgoing calls the wake lock
+            // will be released after any pause-dial is completed
+            releaseWakeLock();
         }
-        releaseWakeLock();
+    }
+
+    private void
+    doDisconnect() {
+       index = -1;
+       disconnectTime = System.currentTimeMillis();
+       duration = SystemClock.elapsedRealtime() - connectTimeReal;
+       disconnected = true;
     }
 
     private void
@@ -538,6 +721,7 @@ public class GsmConnection extends Connection {
         if (PhoneNumberUtils.is12Key(c)) {
             owner.cm.sendDtmf(c, h.obtainMessage(EVENT_DTMF_DONE));
         } else if (c == PhoneNumberUtils.PAUSE) {
+            setPostDialState(PostDialState.PAUSE);//TBD check why it is not in Gsm
             /*
              * From TS 22.101: It continues... Upon the called party answering
              * the UE shall send the DTMF digits automatically to the network
@@ -550,6 +734,8 @@ public class GsmConnection extends Connection {
              * separator, the UE shall pause again for 3 seconds before sending
              * any further DTMF digits.
              */
+
+            //TBD 3s for gsm n 2s for cdma check specs
             h.sendMessageDelayed(h.obtainMessage(EVENT_PAUSE_DONE),
                     PAUSE_DELAY_MILLIS);
         } else if (c == PhoneNumberUtils.WAIT) {
@@ -563,17 +749,38 @@ public class GsmConnection extends Connection {
         return true;
     }
 
-    public String
-    getRemainingPostDialString() {
+    public String getRemainingPostDialString() {
         if (postDialState == PostDialState.CANCELLED
-            || postDialState == PostDialState.COMPLETE
-            || postDialString == null
-            || postDialString.length() <= nextPostDialChar
-        ) {
+                || postDialState == PostDialState.COMPLETE
+                || postDialString == null
+                || postDialString.length() <= nextPostDialChar) {
             return "";
         }
 
-        return postDialString.substring(nextPostDialChar);
+        String subStr = postDialString.substring(nextPostDialChar);
+
+        //cdma specific - check what is done here
+        if (subStr != null) {
+            int wIndex = subStr.indexOf(PhoneNumberUtils.WAIT);
+            int pIndex = subStr.indexOf(PhoneNumberUtils.PAUSE);
+
+            if (wIndex > 0 && (wIndex < pIndex || pIndex <= 0)) {
+                subStr = subStr.substring(0, wIndex);
+            } else if (pIndex > 0) {
+                subStr = subStr.substring(0, pIndex);
+            }
+        }
+        return subStr;
+    }
+
+    public void updateParent(Call oldParent, Call newParent){
+        if (newParent != oldParent) {
+            if (oldParent != null) {
+                oldParent.detach(this);
+            }
+            newParent.attachFake(this, Call.State.ACTIVE);
+            parent = newParent;
+        }
     }
 
     @Override
@@ -586,24 +793,27 @@ public class GsmConnection extends Connection {
          * and or onConnectedInOrOut.
          */
         if (mPartialWakeLock.isHeld()) {
-            Log.e(LOG_TAG, "[GSMConn] UNEXPECTED; mPartialWakeLock is held when finalizing.");
+            Log.e(LOG_TAG, "[CdmaConn] UNEXPECTED; mPartialWakeLock is held when finalizing.");
         }
         releaseWakeLock();
     }
-
-    private void
-    processNextPostDialChar() {
+    void processNextPostDialChar() {
+        PhoneBase phone = getPhoneFromConnection();
         char c = 0;
         Registrant postDialHandler;
 
         if (postDialState == PostDialState.CANCELLED) {
-            //Log.v("GSM", "##### processNextPostDialChar: postDialState == CANCELLED, bail");
+            releaseWakeLock();
+            //Log.v("CDMA", "##### processNextPostDialChar: postDialState == CANCELLED, bail");
             return;
         }
 
         if (postDialString == null ||
                 postDialString.length() <= nextPostDialChar) {
             setPostDialState(PostDialState.COMPLETE);
+
+            // We were holding a wake lock until pause-dial was complete, so give it up now
+            releaseWakeLock();
 
             // notifyMessage.arg1 is 0 on complete
             c = 0;
@@ -620,17 +830,17 @@ public class GsmConnection extends Connection {
                 // Will call processNextPostDialChar
                 h.obtainMessage(EVENT_NEXT_POST_DIAL).sendToTarget();
                 // Don't notify application
-                Log.e("GSM", "processNextPostDialChar: c=" + c + " isn't valid!");
+                Log.e("CDMA", "processNextPostDialChar: c=" + c + " isn't valid!");
                 return;
             }
         }
 
-        postDialHandler = owner.phone.mPostDialHandler;
+        postDialHandler = phone.mPostDialHandler;
 
         Message notifyMessage;
 
-        if (postDialHandler != null
-                && (notifyMessage = postDialHandler.messageForRegistrant()) != null) {
+        if (postDialHandler != null &&
+                (notifyMessage = postDialHandler.messageForRegistrant()) != null) {
             // The AsyncResult.result is the Connection object
             PostDialState state = postDialState;
             AsyncResult ar = AsyncResult.forMessage(notifyMessage);
@@ -640,7 +850,6 @@ public class GsmConnection extends Connection {
             // arg1 is the character that was/is being processed
             notifyMessage.arg1 = c;
 
-            //Log.v("GSM", "##### processNextPostDialChar: send msg to postDialHandler, arg1=" + c);
             notifyMessage.sendToTarget();
         }
     }
@@ -651,12 +860,12 @@ public class GsmConnection extends Connection {
      */
     private boolean
     isConnectingInOrOut() {
-        return parent == null || parent == owner.ringingCall
-            || parent.state == GsmCall.State.DIALING
-            || parent.state == GsmCall.State.ALERTING;
+        return parent == null || parent == getPhoneFromConnection().getRingingCall()
+                || parent.state == Call.State.DIALING
+                || parent.state == Call.State.ALERTING;
     }
 
-    private GsmCall
+    private Call
     parentFromDCState (DriverCall.State state) {
         switch (state) {
             case ACTIVE:
@@ -679,41 +888,65 @@ public class GsmConnection extends Connection {
         }
     }
 
+    private Call
+    imsParentFromDCState (DriverCall.State state) {
+        if (owner.imsPhone != null) {
+            switch (state) {
+                case ACTIVE:
+                case DIALING:
+                case ALERTING:
+                    return owner.imsPhone.getForegroundCall();
+
+                case HOLDING:
+                    return owner.imsPhone.getBackgroundCall();
+
+                case INCOMING:
+                case WAITING:
+                    return owner.imsPhone.getRingingCall();
+
+                default:
+                    throw new RuntimeException("illegal call state: " + state);
+            }
+        } else
+            return null;
+    }
     /**
-     * Set post dial state and acquire wake lock while switching to "started"
-     * state, the wake lock will be released if state switches out of "started"
+     * Set post dial state and acquire wake lock while switching to "started" or "wait"
+     * state, the wake lock will be released if state switches out of "started" or "wait"
      * state or after WAKE_LOCK_TIMEOUT_MILLIS.
      * @param s new PostDialState
      */
     private void setPostDialState(PostDialState s) {
-        if (postDialState != PostDialState.STARTED
-                && s == PostDialState.STARTED) {
-            acquireWakeLock();
-            Message msg = h.obtainMessage(EVENT_WAKE_LOCK_TIMEOUT);
-            h.sendMessageDelayed(msg, WAKE_LOCK_TIMEOUT_MILLIS);
-        } else if (postDialState == PostDialState.STARTED
-                && s != PostDialState.STARTED) {
+        if (s == PostDialState.STARTED ||
+                s == PostDialState.PAUSE) {
+            synchronized (mPartialWakeLock) {
+                if (mPartialWakeLock.isHeld()) {
+                    h.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
+                } else {
+                    acquireWakeLock();
+                }
+                Message msg = h.obtainMessage(EVENT_WAKE_LOCK_TIMEOUT);
+                h.sendMessageDelayed(msg, WAKE_LOCK_TIMEOUT_MILLIS);
+            }
+        } else {
             h.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
             releaseWakeLock();
         }
         postDialState = s;
     }
 
-    private void
-    createWakeLock(Context context) {
-        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+    private void createWakeLock(Context context) {
+        PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
         mPartialWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
     }
 
-    private void
-    acquireWakeLock() {
+    private void acquireWakeLock() {
         log("acquireWakeLock");
         mPartialWakeLock.acquire();
     }
 
-    private void
-    releaseWakeLock() {
-        synchronized(mPartialWakeLock) {
+    private void releaseWakeLock() {
+        synchronized (mPartialWakeLock) {
             if (mPartialWakeLock.isHeld()) {
                 log("releaseWakeLock");
                 mPartialWakeLock.release();
@@ -722,7 +955,7 @@ public class GsmConnection extends Connection {
     }
 
     private void log(String msg) {
-        Log.d(LOG_TAG, "[GSMConn] " + msg);
+        Log.d(LOG_TAG, "[CDMAConn] " + msg);
     }
 
     @Override
@@ -733,5 +966,15 @@ public class GsmConnection extends Connection {
     @Override
     public UUSInfo getUUSInfo() {
         return uusInfo;
+    }
+
+    @Override
+    public CallDetails getCallDetails() {
+        return this.callDetails;
+    }
+
+    public PhoneBase getPhoneFromConnection()
+    {
+        return (PhoneBase)(parent.getPhone());
     }
 }

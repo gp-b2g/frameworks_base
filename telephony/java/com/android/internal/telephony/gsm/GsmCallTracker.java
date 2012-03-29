@@ -1,5 +1,7 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +31,7 @@ import android.telephony.gsm.GsmCellLocation;
 import android.util.EventLog;
 import android.util.Log;
 
+import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandsInterface;
@@ -38,6 +41,7 @@ import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
+import com.android.internal.telephony.cdma.CdmaCall;
 import com.android.internal.telephony.gsm.CallFailCause;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.gsm.GsmCall;
@@ -71,7 +75,7 @@ public final class GsmCallTracker extends CallTracker {
         = new ArrayList<GsmConnection>(MAX_CONNECTIONS);
 
     GsmCall ringingCall = new GsmCall(this);
-            // A call that is ringing or (call) waiting
+    // A call that is ringing or (call) waiting
     GsmCall foregroundCall = new GsmCall(this);
     GsmCall backgroundCall = new GsmCall(this);
 
@@ -84,17 +88,19 @@ public final class GsmCallTracker extends CallTracker {
 
     boolean desiredMute = false;    // false = mute off
 
-    Phone.State state = Phone.State.IDLE;
-
-
-
-    //***** Events
-
-
     //***** Constructors
 
-    GsmCallTracker (GSMPhone phone) {
-        this.phone = phone;
+    GsmCallTracker (GSMPhone gsmphone) {
+        Log.e(LOG_TAG, "GsmCallTracker setting phone object"+gsmphone);
+        phone = gsmphone;
+
+        // Calls will be owned by the base class CallTracker in the new design
+        // update calls in base class to support the new design
+        super.phone = phone;
+        super.backgroundCall = backgroundCall;
+        super.ringingCall = ringingCall;
+        super.foregroundCall = foregroundCall;
+
         cm = phone.mCM;
 
         cm.registerForCallStateChanged(this, EVENT_CALL_STATE_CHANGE, null);
@@ -179,7 +185,7 @@ public final class GsmCallTracker extends CallTracker {
     /**
      * clirMode is one of the CLIR_ constants
      */
-    Connection
+    public Connection
     dial (String dialString, int clirMode, UUSInfo uusInfo) throws CallStateException {
         // note that this triggers call state changed notif
         clearDisconnected();
@@ -244,17 +250,17 @@ public final class GsmCallTracker extends CallTracker {
         return pendingMO;
     }
 
-    Connection
+    public Connection
     dial(String dialString) throws CallStateException {
         return dial(dialString, CommandsInterface.CLIR_DEFAULT, null);
     }
 
-    Connection
+    public Connection
     dial(String dialString, UUSInfo uusInfo) throws CallStateException {
         return dial(dialString, CommandsInterface.CLIR_DEFAULT, uusInfo);
     }
 
-    Connection
+    public Connection
     dial(String dialString, int clirMode) throws CallStateException {
         return dial(dialString, clirMode, null);
     }
@@ -280,7 +286,7 @@ public final class GsmCallTracker extends CallTracker {
         phone.notifyPreciseCallStateChanged();
     }
 
-    void
+    public void
     acceptCall () throws CallStateException {
         // FIXME if SWITCH fails, should retry with ANSWER
         // in case the active/holding call disappeared and this
@@ -299,7 +305,7 @@ public final class GsmCallTracker extends CallTracker {
         }
     }
 
-    void
+    public void
     rejectCall () throws CallStateException {
         // AT+CHLD=0 means "release held or UDUB"
         // so if the phone isn't ringing, this could hang up held
@@ -310,7 +316,7 @@ public final class GsmCallTracker extends CallTracker {
         }
     }
 
-    void
+    public void
     switchWaitingOrHoldingAndActive() throws CallStateException {
         // Should we bother with this check?
         if (ringingCall.getState() == GsmCall.State.INCOMING) {
@@ -335,17 +341,17 @@ public final class GsmCallTracker extends CallTracker {
         }
     }
 
-    void
+    public void
     conference() throws CallStateException {
         cm.conference(obtainCompleteMessage(EVENT_CONFERENCE_RESULT));
     }
 
-    void
+    public void
     explicitCallTransfer() throws CallStateException {
         cm.explicitCallTransfer(obtainCompleteMessage(EVENT_ECT_RESULT));
     }
 
-    void
+    public void
     clearDisconnected() {
         internalClearDisconnected();
 
@@ -353,7 +359,7 @@ public final class GsmCallTracker extends CallTracker {
         phone.notifyPreciseCallStateChanged();
     }
 
-    boolean
+    public boolean
     canConference() {
         return foregroundCall.getState() == GsmCall.State.ACTIVE
                 && backgroundCall.getState() == GsmCall.State.HOLDING
@@ -361,7 +367,7 @@ public final class GsmCallTracker extends CallTracker {
                 && !foregroundCall.isFull();
     }
 
-    boolean
+    public boolean
     canDial() {
         boolean ret;
         int serviceState = phone.getServiceState().getState();
@@ -378,7 +384,7 @@ public final class GsmCallTracker extends CallTracker {
         return ret;
     }
 
-    boolean
+    public boolean
     canTransfer() {
         return foregroundCall.getState() == GsmCall.State.ACTIVE
                 && backgroundCall.getState() == GsmCall.State.HOLDING;
@@ -748,7 +754,7 @@ public final class GsmCallTracker extends CallTracker {
             hangupPendingMO = true;
         } else {
             try {
-                cm.hangupConnection (conn.getGSMIndex(), obtainCompleteMessage());
+                cm.hangupConnection (conn.getIndex(), obtainCompleteMessage());
             } catch (CallStateException ex) {
                 // Ignore "connection not found"
                 // Call may have hung up already
@@ -767,7 +773,7 @@ public final class GsmCallTracker extends CallTracker {
                                     + "does not belong to GsmCallTracker " + this);
         }
         try {
-            cm.separateConnection (conn.getGSMIndex(),
+            cm.separateConnection (conn.getIndex(),
                 obtainCompleteMessage(EVENT_SEPARATE_RESULT));
         } catch (CallStateException ex) {
             // Ignore "connection not found"
@@ -779,13 +785,13 @@ public final class GsmCallTracker extends CallTracker {
 
     //***** Called from GSMPhone
 
-    /*package*/ void
+    public void
     setMute(boolean mute) {
         desiredMute = mute;
         cm.setMute(desiredMute, null);
     }
 
-    /*package*/ boolean
+    public boolean
     getMute() {
         return desiredMute;
     }
@@ -793,8 +799,8 @@ public final class GsmCallTracker extends CallTracker {
 
     //***** Called from GsmCall
 
-    /* package */ void
-    hangup (GsmCall call) throws CallStateException {
+    public void
+    hangup (Call call) throws CallStateException {
         if (call.getConnections().size() == 0) {
             throw new CallStateException("no connections in call");
         }
@@ -860,7 +866,7 @@ public final class GsmCallTracker extends CallTracker {
         }
     }
 
-    /* package */
+    public
     void hangupWaitingOrBackground() {
         if (Phone.DEBUG_PHONE) log("hangupWaitingOrBackground");
         cm.hangupWaitingOrBackground(obtainCompleteMessage());
@@ -872,12 +878,12 @@ public final class GsmCallTracker extends CallTracker {
         cm.hangupForegroundResumeBackground(obtainCompleteMessage());
     }
 
-    void hangupConnectionByIndex(GsmCall call, int index)
+    public void hangupConnectionByIndex(Call call, int index)
             throws CallStateException {
         int count = call.connections.size();
         for (int i = 0; i < count; i++) {
             GsmConnection cn = (GsmConnection)call.connections.get(i);
-            if (cn.getGSMIndex() == index) {
+            if (cn.getIndex() == index) {
                 cm.hangupConnection(index, obtainCompleteMessage());
                 return;
             }
@@ -886,12 +892,12 @@ public final class GsmCallTracker extends CallTracker {
         throw new CallStateException("no gsm index found");
     }
 
-    void hangupAllConnections(GsmCall call) throws CallStateException{
+    void hangupAllConnections(Call call) throws CallStateException{
         try {
             int count = call.connections.size();
             for (int i = 0; i < count; i++) {
-                GsmConnection cn = (GsmConnection)call.connections.get(i);
-                cm.hangupConnection(cn.getGSMIndex(), obtainCompleteMessage());
+                Connection cn = call.connections.get(i);
+                cm.hangupConnection(cn.getIndex(), obtainCompleteMessage());
             }
         } catch (CallStateException ex) {
             Log.e(LOG_TAG, "hangupConnectionByIndex caught " + ex);
@@ -904,7 +910,7 @@ public final class GsmCallTracker extends CallTracker {
         int count = call.connections.size();
         for (int i = 0; i < count; i++) {
             GsmConnection cn = (GsmConnection)call.connections.get(i);
-            if (cn.getGSMIndex() == index) {
+            if (cn.getIndex() == index) {
                 return cn;
             }
         }

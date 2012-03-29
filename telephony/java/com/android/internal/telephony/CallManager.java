@@ -1,5 +1,7 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +18,7 @@
 
 package com.android.internal.telephony;
 
+import com.android.internal.telephony.CallDetails;
 import com.android.internal.telephony.sip.SipPhone;
 
 import android.content.Context;
@@ -543,6 +546,56 @@ public final class CallManager {
     }
 
     /**
+     * Answers a ringing or waiting call, with an option to downgrade a Video
+     * call Active call, if any, go on hold. If active call can't be held, i.e.,
+     * a background call of the same channel exists, the active call will be
+     * hang up. Answering occurs asynchronously, and final notification occurs
+     * via
+     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int, java.lang.Object)
+     * registerForPreciseCallStateChanged()}.
+     *
+     * @param ringingCall The call to answer
+     * @param callType The call type to use to answer the call. Values from
+     *            CallDetails.RIL_CALL_TYPE
+     * @exception CallStateException when call is not ringing or waiting
+     */
+    public void acceptCall(Call ringingCall, int callType) throws CallStateException {
+        Phone ringingPhone = ringingCall.getPhone();
+
+        if (VDBG) {
+            Log.d(LOG_TAG, "acceptCall api with calltype " + callType);
+            Log.d(LOG_TAG, "acceptCall(" +ringingCall + " from " + ringingCall.getPhone() + ")");
+            Log.d(LOG_TAG, this.toString());
+        }
+
+        if ( hasActiveFgCall() ) {
+            Phone activePhone = getActiveFgCall().getPhone();
+            boolean hasBgCall = ! (activePhone.getBackgroundCall().isIdle());
+            boolean sameChannel = (activePhone == ringingPhone);
+
+            if (VDBG) {
+                Log.d(LOG_TAG, "hasBgCall: "+ hasBgCall + "sameChannel:" + sameChannel);
+            }
+
+            if (sameChannel && hasBgCall) {
+                getActiveFgCall().hangup();
+            } else if (!sameChannel && !hasBgCall) {
+                activePhone.switchHoldingAndActive();
+            } else if (!sameChannel && hasBgCall) {
+                getActiveFgCall().hangup();
+            }
+        }
+
+        ringingPhone.acceptCall(callType);
+
+        if (VDBG) {
+            Log.d(LOG_TAG, "Call type in acceptCall " +callType);
+            Log.d(LOG_TAG, "End acceptCall(" +ringingCall + ")");
+            Log.d(LOG_TAG, this.toString());
+        }
+    }
+
+    /**
      * Reject (ignore) a ringing call. In GSM, this means UDUB
      * (User Determined User Busy). Reject occurs asynchronously,
      * and final notification occurs via
@@ -755,16 +808,36 @@ public final class CallManager {
     }
 
     /**
+     * Initiate a new connection. This happens asynchronously, so you cannot
+     * assume the audio path is connected (or a call index has been assigned)
+     * until PhoneStateChanged notification has occurred.
+     *
+     * @exception CallStateException if a new outgoing call is not currently
+     *                possible because no more call slots exist or a call exists
+     *                that is dialing, alerting, ringing, or waiting. Other
+     *                errors are handled asynchronously.
+     * @param phone The phone to use to place the call
+     * @param dialString The phone number or URI that identifies the remote
+     *            party
+     * @param calldetails
+     */
+    public Connection dial(Phone phone, String dialString, CallDetails callDetails)
+            throws CallStateException {
+        return phone.dial(dialString, callDetails);
+    }
+
+    /**
      * Initiate a new voice connection. This happens asynchronously, so you
      * cannot assume the audio path is connected (or a call index has been
      * assigned) until PhoneStateChanged notification has occurred.
      *
      * @exception CallStateException if a new outgoing call is not currently
-     * possible because no more call slots exist or a call exists that is
-     * dialing, alerting, ringing, or waiting.  Other errors are
-     * handled asynchronously.
+     *                possible because no more call slots exist or a call exists
+     *                that is dialing, alerting, ringing, or waiting. Other
+     *                errors are handled asynchronously.
      */
-    public Connection dial(Phone phone, String dialString, UUSInfo uusInfo) throws CallStateException {
+    public Connection dial(Phone phone, String dialString, UUSInfo uusInfo)
+            throws CallStateException {
         return phone.dial(dialString, uusInfo);
     }
 
@@ -1493,6 +1566,47 @@ public final class CallManager {
 
     public void unregisterForPostDialCharacter(Handler h){
         mPostDialCharacterRegistrants.remove(h);
+    }
+
+    /**
+     * When the remote party in an IMS Call wants to upgrade or downgrade a
+     * call, a CallModifyRequest message is received. This function registers
+     * for that indication and sends a message to the handler when such an
+     * indication occurs. A response to the request can be send with
+     * {@link callModifyConfirm}. In order to confirm
+     *
+     * @param h The handler that will receive the message
+     * @param what The message to send
+     * @param obj User object to send with the message
+     */
+    public void registerForCallModifyRequest(Handler h, int what, Object obj) {
+    }
+
+    /**
+     * Request a modification to a current connection This will send an
+     * indication to the remote party with new call details, which the remote
+     * party can agree to or reject. To agree, they will return the same call
+     * details as proposed. To reject, they will return the current call details
+     * in the Connection ({@link Connection#getCallDetails()}) Used to convert a
+     * voice call into a Video telephony call.
+     *
+     * @param conn The connection to modify
+     * @param modifyInitiate The new call details to request and the call index
+     */
+    public void callModifyInitiate(Connection conn, CallModify modifyInitiate) {
+    }
+
+    /**
+     * Confirm a previosuly received CallModifyRequest. If the request is to be
+     * approved, the same parameters contained in the message (see
+     * {@link registerForCallModifyRequest}) will be passed in details.
+     * Otherwise, the old call details will be passed (e.g. from
+     * conn.getDetails()
+     *
+     * @param conn The connection to confirm
+     * @param modifyConfirm The call details to use and the call index
+     */
+    public void callModifyConfirm(Connection conn, CallModify modifyConfirm) {
     }
 
     /* APIs to access foregroudCalls, backgroudCalls, and ringingCalls

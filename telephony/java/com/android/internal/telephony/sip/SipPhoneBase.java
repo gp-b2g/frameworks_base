@@ -162,7 +162,7 @@ abstract class SipPhoneBase extends PhoneBase {
     /**
      * Notify any interested party of a Phone state change {@link Phone.State}
      */
-    void notifyPhoneStateChanged() {
+    public void notifyPhoneStateChanged() {
         mNotifier.notifyPhoneState(this);
     }
 
@@ -170,20 +170,20 @@ abstract class SipPhoneBase extends PhoneBase {
      * Notify registrants of a change in the call state. This notifies changes in {@link Call.State}
      * Use this when changes in the precise call state are needed, else use notifyPhoneStateChanged.
      */
-    void notifyPreciseCallStateChanged() {
+    public void notifyPreciseCallStateChanged() {
         /* we'd love it if this was package-scoped*/
         super.notifyPreciseCallStateChangedP();
     }
 
-    void notifyNewRingingConnection(Connection c) {
+    public void notifyNewRingingConnection(Connection c) {
         super.notifyNewRingingConnectionP(c);
     }
 
-    void notifyDisconnect(Connection cn) {
+    public void notifyDisconnect(Connection cn) {
         mDisconnectRegistrants.notifyResult(cn);
     }
 
-    void notifyUnknownConnection() {
+    public void notifyUnknownConnection() {
         mUnknownConnectionRegistrants.notifyResult(this);
     }
 

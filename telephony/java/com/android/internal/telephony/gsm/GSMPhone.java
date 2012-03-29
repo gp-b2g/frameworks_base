@@ -56,6 +56,7 @@ import static com.android.internal.telephony.TelephonyProperties.PROPERTY_BASEBA
 import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.cat.CatService;
 import com.android.internal.telephony.Call;
+import com.android.internal.telephony.CallDetails;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
@@ -106,7 +107,6 @@ public class GSMPhone extends PhoneBase {
     private static final int CHECK_CALLFORWARDING_STATUS = 75;
 
     // Instance Variables
-    GsmCallTracker mCT;
     GsmServiceStateTracker mSST;
     ArrayList <GsmMmiCode> mPendingMMIs = new ArrayList<GsmMmiCode>();
     SimPhoneBookInterfaceManager mSimPhoneBookIntManager;
@@ -405,7 +405,7 @@ public class GSMPhone extends PhoneBase {
     /**
      * Notify any interested party of a Phone state change {@link Phone.State}
      */
-    /*package*/ void notifyPhoneStateChanged() {
+    public void notifyPhoneStateChanged() {
         mNotifier.notifyPhoneState(this);
     }
 
@@ -413,23 +413,23 @@ public class GSMPhone extends PhoneBase {
      * Notify registrants of a change in the call state. This notifies changes in {@link Call.State}
      * Use this when changes in the precise call state are needed, else use notifyPhoneStateChanged.
      */
-    /*package*/ void notifyPreciseCallStateChanged() {
+    public void notifyPreciseCallStateChanged() {
         /* we'd love it if this was package-scoped*/
         super.notifyPreciseCallStateChangedP();
     }
 
-    /*package*/ void
+    public void
     notifyNewRingingConnection(Connection c) {
         /* we'd love it if this was package-scoped*/
         super.notifyNewRingingConnectionP(c);
     }
 
-    /*package*/ void
+    public void
     notifyDisconnect(Connection cn) {
         mDisconnectRegistrants.notifyResult(cn);
     }
 
-    void notifyUnknownConnection() {
+    public void notifyUnknownConnection() {
         mUnknownConnectionRegistrants.notifyResult(this);
     }
 
@@ -437,12 +437,11 @@ public class GSMPhone extends PhoneBase {
         mSuppServiceFailedRegistrants.notifyResult(code);
     }
 
-    /*package*/ void
+    void
     notifyServiceStateChanged(ServiceState ss) {
         super.notifyServiceStateChangedP(ss);
     }
 
-    /*package*/
     void notifyLocationChanged() {
         mNotifier.notifyCellLocation(this);
     }
@@ -516,17 +515,17 @@ public class GSMPhone extends PhoneBase {
         mCT.explicitCallTransfer();
     }
 
-    public GsmCall
+    public Call
     getForegroundCall() {
         return mCT.foregroundCall;
     }
 
-    public GsmCall
+    public Call
     getBackgroundCall() {
         return mCT.backgroundCall;
     }
 
-    public GsmCall
+    public Call
     getRingingCall() {
         return mCT.ringingCall;
     }
@@ -563,7 +562,7 @@ public class GSMPhone extends PhoneBase {
             return false;
         }
 
-        GsmCall call = (GsmCall) getForegroundCall();
+        Call call =  getForegroundCall();
 
         try {
             if (len > 1) {
@@ -605,13 +604,13 @@ public class GSMPhone extends PhoneBase {
             return false;
         }
 
-        GsmCall call = (GsmCall) getForegroundCall();
+        Call call = getForegroundCall();
 
         if (len > 1) {
             try {
                 char ch = dialString.charAt(1);
                 int callIndex = ch - '0';
-                GsmConnection conn = mCT.getConnectionByIndex(call, callIndex);
+                Connection conn = mCT.getConnectionByIndex(call, callIndex);
 
                 // gsm index starts at 1, up to 5 connections in a call,
                 if (conn != null && callIndex >= 1 && callIndex <= GsmCallTracker.MAX_CONNECTIONS) {
@@ -750,11 +749,11 @@ public class GSMPhone extends PhoneBase {
 
     public Connection
     dial(String dialString) throws CallStateException {
-        return dial(dialString, null);
+        return dial(dialString, null, null);
     }
 
     public Connection
-    dial (String dialString, UUSInfo uusInfo) throws CallStateException {
+    dial (String dialString, UUSInfo uusInfo, CallDetails calldetails) throws CallStateException {
         // Need to make sure dialString gets parsed properly
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
 

@@ -38,7 +38,7 @@ public final class CdmaCall extends Call {
 
     /***************************** Class Methods *****************************/
 
-    static State
+    public static State
     stateFromDCState (DriverCall.State dcState) {
         switch (dcState) {
             case ACTIVE:        return State.ACTIVE;
@@ -171,8 +171,7 @@ public final class CdmaCall extends Call {
      * @return true if there's no space in this call for additional
      * connections to be added via "conference"
      */
-    /*package*/ boolean
-    isFull() {
+    public boolean isFull() {
         return connections.size() == CdmaCallTracker.MAX_CONNECTIONS_PER_CALL;
     }
 
@@ -184,7 +183,7 @@ public final class CdmaCall extends Call {
      * Note that at this point, the hangup request has been dispatched to the radio
      * but no response has yet been received so update() has not yet been called
      */
-    void
+    public void
     onHangupLocal() {
         for (int i = 0, s = connections.size(); i < s; i++) {
             CdmaConnection cn = (CdmaConnection)connections.get(i);
@@ -197,7 +196,7 @@ public final class CdmaCall extends Call {
     /**
      * Called when it's time to clean up disconnected Connection objects
      */
-   void clearDisconnected() {
+    public void clearDisconnected() {
         for (int i = connections.size() - 1 ; i >= 0 ; i--) {
         CdmaConnection cn = (CdmaConnection)connections.get(i);
 
