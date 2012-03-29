@@ -1338,6 +1338,9 @@ public final class BluetoothAdapter {
         } else if (profile == BluetoothProfile.HEALTH) {
             BluetoothHealth health = new BluetoothHealth(context, listener);
             return true;
+        } else if (profile == BluetoothProfile.GATT) {
+            BluetoothGatt gatt = new BluetoothGatt(context, listener);
+            return true;
         } else {
             return false;
         }
@@ -1377,6 +1380,10 @@ public final class BluetoothAdapter {
             case BluetoothProfile.HEALTH:
                 BluetoothHealth health = (BluetoothHealth)proxy;
                 health.close();
+                break;
+           case BluetoothProfile.GATT:
+                BluetoothGatt gatt = (BluetoothGatt)proxy;
+                gatt.close();
                 break;
         }
     }
