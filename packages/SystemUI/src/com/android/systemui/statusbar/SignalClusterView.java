@@ -157,7 +157,8 @@ public class SignalClusterView
             mMobileGroup.setVisibility(View.GONE);
         }
 
-        if (mMobileVisible && mWifiVisible && mIsAirplaneMode) {
+        if (mMobileVisible && mWifiVisible &&
+                ((mIsAirplaneMode) || (mNoSimIconId != 0))) {
             mSpacer.setVisibility(View.INVISIBLE);
         } else {
             mSpacer.setVisibility(View.GONE);
