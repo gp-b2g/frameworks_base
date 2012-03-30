@@ -474,6 +474,14 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.unregisterForResendIncallMute(h);
     }
 
+    public void registerForSimRecordsLoaded(Handler h, int what, Object obj) {
+        mActivePhone.registerForSimRecordsLoaded(h,what,obj);
+    }
+
+    public void unregisterForSimRecordsLoaded(Handler h) {
+        mActivePhone.unregisterForSimRecordsLoaded(h);
+    }
+
     public boolean getIccRecordsLoaded() {
         return mIccCardProxy.getIccRecordsLoaded();
     }

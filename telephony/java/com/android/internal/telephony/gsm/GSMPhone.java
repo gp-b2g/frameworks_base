@@ -476,6 +476,16 @@ public class GSMPhone extends PhoneBase {
         if (mSsnRegistrants.size() == 0) mCM.setSuppServiceNotifications(false, null);
     }
 
+    @Override
+    public void registerForSimRecordsLoaded(Handler h, int what, Object obj) {
+        mSimRecordsLoadedRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForSimRecordsLoaded(Handler h) {
+        mSimRecordsLoadedRegistrants.remove(h);
+    }
+
     public void
     acceptCall() throws CallStateException {
         mCT.acceptCall();
@@ -1319,6 +1329,7 @@ public class GSMPhone extends PhoneBase {
                 }
                 updateVoiceMail();
                 updateCallForwardStatus(EVENT_SIM_RECORDS_LOADED);
+                mSimRecordsLoadedRegistrants.notifyRegistrants();
                 break;
 
             case EVENT_GET_BASEBAND_VERSION_DONE:
