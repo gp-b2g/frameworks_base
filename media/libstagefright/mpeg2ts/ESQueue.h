@@ -55,6 +55,8 @@ private:
     int64_t mAACtimeUs;
     int64_t mAACFrameDuration;
 
+    bool mPrevPESPartial;
+    bool mCurPESPartial;
     Mode mMode;
 
     sp<ABuffer> mBuffer;
