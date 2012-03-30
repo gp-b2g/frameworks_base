@@ -18,6 +18,7 @@
 #undef DEBUG_HDCP
 
 //#define LOG_NDEBUG 0
+//#define LOG_NDDEBUG 0
 #define LOG_TAG "AwesomePlayer"
 #include <utils/Log.h>
 
@@ -42,8 +43,10 @@
 
 #ifndef NON_QCOM_TARGET
 #include <media/stagefright/LPAPlayer.h>
+#ifdef USE_TUNNEL_MODE
+#include <media/stagefright/TunnelPlayer.h>
 #endif
-
+#endif
 #include <media/stagefright/DataSource.h>
 #include <media/stagefright/FileSource.h>
 #include <media/stagefright/MediaBuffer.h>
@@ -554,6 +557,7 @@ void AwesomePlayer::reset_l() {
 
     mWVMExtractor.clear();
     mCachedSource.clear();
+
     mAudioTrack.clear();
     mVideoTrack.clear();
 
@@ -620,6 +624,9 @@ void AwesomePlayer::reset_l() {
 
     mWatchForAudioSeekComplete = false;
     mWatchForAudioEOS = false;
+
+    // Disable Tunnel Mode Audio
+    mIsTunnelAudio = false;
 }
 
 void AwesomePlayer::notifyListener_l(int msg, int ext1, int ext2) {
@@ -897,6 +904,7 @@ status_t AwesomePlayer::play() {
 }
 
 status_t AwesomePlayer::play_l() {
+    int tunnelObjectsAlive = 0;
     modifyFlags(SEEK_PREVIEW, CLEAR);
 
     if (mFlags & PLAYING) {
@@ -940,13 +948,37 @@ status_t AwesomePlayer::play_l() {
                 int32_t isFormatAdif = 0;
                 format->findInt32(kkeyAacFormatAdif, &isFormatAdif);
 #ifndef NON_QCOM_TARGET
+#ifdef USE_TUNNEL_MODE
+                // Create tunnel player if tunnel mode is enabled
+                if(mIsTunnelAudio) {
+                    LOGD("Tunnel player created for  mime %s duration %d\n",\
+                            mime, durationUs);
+                    bool initCheck =  false;
+                    if(mVideoSource != NULL) {
+                        // The parameter true is to inform tunnel player that
+                        // clip is audio video
+                        mAudioPlayer = new TunnelPlayer(mAudioSink, initCheck,
+                                this, true);
+                    }
+                    else {
+                        mAudioPlayer = new TunnelPlayer(mAudioSink, initCheck,
+                                this);
+                    }
+                    if(!initCheck) {
+                       LOGE("deleting Tunnel Player - initCheck failed");
+                       delete mAudioPlayer;
+                       mAudioPlayer = NULL;
+                    }
+                }
+                tunnelObjectsAlive = (TunnelPlayer::mTunnelObjectsAlive);
+#endif
                 char lpaDecode[128];
                 property_get("lpa.decode",lpaDecode,"0");
-                if(strcmp("true",lpaDecode) == 0)
+                if((strcmp("true",lpaDecode) == 0) && (mAudioPlayer == NULL) && (tunnelObjectsAlive == 0))
                 {
                     LOGV("LPAPlayer::getObjectsAlive() %d",LPAPlayer::objectsAlive);
                     if ( durationUs > 60000000 && !isFormatAdif
-                         &&(!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG) || !strcasecmp(mime,MEDIA_MIMETYPE_AUDIO_AAC))
+                         && (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG) || !strcasecmp(mime,MEDIA_MIMETYPE_AUDIO_AAC))
                          && LPAPlayer::objectsAlive == 0 && mVideoSource == NULL) {
                         LOGE("LPAPlayer created, LPA MODE detected mime %s duration %d\n", mime, durationUs);
                         bool initCheck =  false;
@@ -963,7 +995,6 @@ status_t AwesomePlayer::play_l() {
                     mAudioPlayer = new AudioPlayer(mAudioSink, this);
                 }
 
-                LOGV("Setting Audio source");
                 mAudioPlayer->setSource(mAudioSource);
 
                 mTimeSource = mAudioPlayer;
@@ -981,11 +1012,15 @@ status_t AwesomePlayer::play_l() {
         if (mVideoSource == NULL) {
             // We don't want to post an error notification at this point,
             // the error returned from MediaPlayer::start() will suffice.
-
-            status_t err = startAudioPlayer_l(
-                    false /* sendErrorNotification */);
+            bool sendErrorNotification = false;
+            if(mIsTunnelAudio) {
+                // For tunnel Audio error has to be posted to the client
+                sendErrorNotification = true;
+            }
+            status_t err = startAudioPlayer_l(sendErrorNotification);
 
             if (err != OK) {
+                LOGE("deleting Audio Player - start failed");
                 delete mAudioPlayer;
                 mAudioPlayer = NULL;
 
@@ -1489,7 +1524,29 @@ status_t AwesomePlayer::initAudioDecoder() {
     const char *mime;
     CHECK(meta->findCString(kKeyMIMEType, &mime));
 
-    if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW)) {
+    int32_t isFormatAdif = 0;
+    meta->findInt32(kkeyAacFormatAdif, &isFormatAdif);
+#ifndef NON_QCOM_TARGET
+#ifdef USE_TUNNEL_MODE
+
+    char tunnelDecode[128];
+    property_get("tunnel.decode",tunnelDecode,"0");
+    // Enable tunnel mode for mp3 and aac and if the clip is not aac adif
+    // and if no other tunnel mode instances aare running.
+    LOGD("Mime Type: %s,isFormatAdif = %d object alive = %d",\
+            mime, isFormatAdif, (TunnelPlayer::mTunnelObjectsAlive == 0));
+    if(((strcmp("true",tunnelDecode) == 0)||(atoi(tunnelDecode))) &&
+            (!isFormatAdif) &&
+            ((!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG)) ||
+            (!strcasecmp(mime,MEDIA_MIMETYPE_AUDIO_AAC))) &&
+            (TunnelPlayer::mTunnelObjectsAlive == 0)) {
+        LOGI("Tunnel Mode Audio Enabled");
+        mIsTunnelAudio = true;
+    }
+#endif
+#endif
+    if ((!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW)) || mIsTunnelAudio) {
+        LOGD("Set Audio Track as Audio Source");
         mAudioSource = mAudioTrack;
     } else {
         // For LPA Playback use the decoder without OMX layer

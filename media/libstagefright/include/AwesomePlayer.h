@@ -347,6 +347,9 @@ private:
 
     } mStats;
 
+    //Flag to check if tunnel mode audio is enabled
+    bool mIsTunnelAudio;
+
     AwesomePlayer(const AwesomePlayer &);
     AwesomePlayer &operator=(const AwesomePlayer &);
 };

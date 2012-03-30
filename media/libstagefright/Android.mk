@@ -22,6 +22,14 @@ ifeq ($(call is-board-platform-in-list,msm8660 msm8960),true)
     LOCAL_CFLAGS += -DTARGET8x60
     LOCAL_CFLAGS += -DLPADRIVER_SUPPORTS_SESSION_ID
 endif
+
+ifeq ($(BOARD_USES_ALSA_AUDIO),true)
+    ifeq ($(call is-chipset-in-board-platform,msm8960),true)
+        LOCAL_CFLAGS += -DUSE_TUNNEL_MODE
+    endif
+endif
+
+
 include frameworks/base/media/libstagefright/codecs/common/Config.mk
 
 LOCAL_SRC_FILES:=                         \
@@ -133,6 +141,9 @@ LOCAL_STATIC_LIBRARIES := \
 ifeq ($(call is-vendor-board-platform,QCOM),true)
     ifeq ($(BOARD_USES_ALSA_AUDIO),true)
         LOCAL_SRC_FILES += LPAPlayerALSA.cpp
+        ifeq ($(call is-chipset-in-board-platform,msm8960),true)
+            LOCAL_SRC_FILES += TunnelPlayer.cpp
+        endif
         LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-audio/libalsa-intf
         LOCAL_C_INCLUDES += $(TOP)/kernel/include/sound
         LOCAL_SHARED_LIBRARIES += libalsa-intf
