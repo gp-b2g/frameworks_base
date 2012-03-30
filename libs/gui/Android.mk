@@ -18,10 +18,7 @@ LOCAL_SRC_FILES:= \
 	LayerState.cpp \
 	Surface.cpp \
 	SurfaceComposerClient.cpp \
-	IMplSysConnection.cpp \
-	IMplSysPedConnection.cpp \
-	IMplConnection.cpp
-	
+
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
 	libutils \
