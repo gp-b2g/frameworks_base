@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- *
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -709,8 +709,13 @@ public final class ActivityThread {
         }
 
         public void scheduleConfigurationChanged(Configuration config) {
+            if (config.uiMode == 0xffffffff) { //fake uimode, actually it is theme switch
+                applyConfigurationToResources(config);
+            }
+            else {
             updatePendingConfiguration(config);
             queueOrSendMessage(H.CONFIGURATION_CHANGED, config);
+            }
         }
 
         public void updateTimeZone() {
@@ -3474,10 +3479,31 @@ public final class ActivityThread {
 
     public final void applyConfigurationToResources(Configuration config) {
         synchronized (mPackages) {
-            applyConfigurationToResourcesLocked(config, null);
+            if (config.uiMode != 0xffffffff)  //fake uimode, 0xffffffff is theme switching
+                applyConfigurationToResourcesLocked(config, null);
+            else 
+                applyResourceFlush();
         }
     }
 
+    private void applyResourceFlush() {
+        ApplicationPackageManager.configurationChanged();
+        Iterator<WeakReference<Resources>> it = mActiveResources.values().iterator();
+
+        while (it.hasNext()) {
+            WeakReference<Resources> v = it.next();
+            Resources r = v.get();
+            if (r != null) {
+                Slog.e(TAG, "Fulsh res due to theme change");
+                r.flushResCache();
+            } 
+        }
+    
+    
+    
+    }
+    
+    
     final boolean applyConfigurationToResourcesLocked(Configuration config,
             CompatibilityInfo compat) {
         if (mResConfiguration == null) {

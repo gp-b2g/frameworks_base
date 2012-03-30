@@ -76,8 +76,7 @@ import java.util.zip.ZipEntry;
  */
 public class Resources {
     static final String TAG = "Resources";
-	private static String currentTheme = null;
-    private static final boolean DEBUG_LOAD = false;
+	private static final boolean DEBUG_LOAD = false;
     private static final boolean DEBUG_CONFIG = false;
     private static final boolean DEBUG_ATTRIBUTES_CACHE = false;
     private static final boolean TRACE_FOR_PRELOAD = false;
@@ -177,6 +176,14 @@ public class Resources {
         }
     }
 
+    	/** @hide */
+
+    public void flushResCache() {
+		clearDrawableCacheExt(mDrawableCache);
+		if (mSystem != null)
+			mSystem.clearDrawableCacheExtSys(Resources.sPreloadedDrawables);
+    }
+    
     /**
      * Create a new Resources object on top of an existing set of assets in an
      * AssetManager.
@@ -1545,6 +1552,33 @@ public class Resources {
             }
         }
     }
+    
+    private void clearDrawableCacheExt(
+            LongSparseArray<WeakReference<ConstantState>> cache) {
+        int N = cache.size();
+        for (int i=0; i<N; i++) {
+            WeakReference<Drawable.ConstantState> ref = cache.valueAt(i);
+            if (ref != null) {
+                Drawable.ConstantState cs = ref.get();
+                if (cs != null) {                       
+                        cache.setValueAt(i, null);
+                }
+            }
+        }
+    }
+
+	private void clearDrawableCacheExtSys(
+            LongSparseArray<ConstantState> cache) {
+        int N = cache.size();
+        for (int i=0; i<N; i++) {
+            Drawable.ConstantState ref = cache.valueAt(i);
+            if (ref != null) {                   
+              cache.setValueAt(i, null);
+            }
+        }
+    }
+    
+    
 
     /**
      * Update the system resources configuration if they have previously
@@ -1937,9 +1971,7 @@ public class Resources {
                 } else {
                     try {
 						//try first from theme package in SD card.
-
-						if (currentTheme == null)
-							currentTheme = SystemProperties.get("persist.sys.qrd_theme.current", "default");
+                        String currentTheme = SystemProperties.get("persist.sys.qrd_theme.current", "default");
 						
 						boolean bNeedFallback = true;
 						

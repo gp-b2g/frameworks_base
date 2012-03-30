@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006-2008 The Android Open Source Project
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13502,10 +13502,14 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
 
             final long origId = Binder.clearCallingIdentity();
-            if (values != null) {
+            if (values != null && (values.uiMode != 0xffffffff)) {
                 Settings.System.clearConfiguration(values);
             }
-            updateConfigurationLocked(values, null, false, false);
+            if (values != null && (values.uiMode == 0xffffffff))  //fake uimode, 0xffffffff is theme switch
+                updateThemeConfiguration(values);
+            else
+                updateConfigurationLocked(values, null, false, false);
+
             Binder.restoreCallingIdentity(origId);
         }
     }
@@ -13518,6 +13522,43 @@ public final class ActivityManagerService extends ActivityManagerNative
      * configuration.
      * @param persistent TODO
      */
+     
+    private void updateThemeConfiguration(Configuration values) {
+        mSystemThread.applyConfigurationToResources(values);
+        for (int i=mLruProcesses.size()-1; i>=0; i--) {
+            ProcessRecord app = mLruProcesses.get(i);
+            try {
+                if (app.thread != null) {
+                    Slog.e(TAG, "Sending to proc "
+                            + app.processName + "Theme changed");
+                    app.thread.scheduleConfigurationChanged(values);
+                }
+            } catch (Exception e) {
+            }
+        }       
+
+        Intent intent = new Intent(Intent.ACTION_CONFIGURATION_CHANGED);
+                intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY
+                        | Intent.FLAG_RECEIVER_REPLACE_PENDING);
+                broadcastIntentLocked(null, null, intent, null, null, 0, null, null,
+                        null, false, false, MY_PID, Process.SYSTEM_UID);  
+                        
+        ActivityRecord starting = mMainStack.topRunningActivityLocked(null);
+
+        for (int i=mMainStack.mHistory.size()-1; i>=0; i--) {
+            ActivityRecord a = (ActivityRecord)mMainStack.mHistory.get(i);
+            a.forceNewConfig = true;
+        }
+        
+        if (starting != null) {
+            mMainStack.ensureActivityConfigurationLocked(starting, 0);
+            // And we need to make sure at this point that all other activities
+            // are made visible with the correct configuration.
+            mMainStack.ensureActivitiesVisibleLocked(starting, 0);
+        }    
+    }
+    
+    
     public boolean updateConfigurationLocked(Configuration values,
             ActivityRecord starting, boolean persistent, boolean initLocale) {
         int changes = 0;
