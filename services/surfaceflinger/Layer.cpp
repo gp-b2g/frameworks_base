@@ -298,28 +298,26 @@ void Layer::onDraw(const Region& clip) const
         return;
     }
 
-    GLuint currentTextureTarget = mSurfaceTexture->getCurrentTextureTarget();
-
     if (!isProtected()) {
-        glBindTexture(currentTextureTarget, mTextureName);
+        glBindTexture(GL_TEXTURE_EXTERNAL_OES, mTextureName);
         GLenum filter = GL_NEAREST;
         if (getFiltering() || needsFiltering() || isFixedSize() || isCropped()) {
             // TODO: we could be more subtle with isFixedSize()
             filter = GL_LINEAR;
         }
-        glTexParameterx(currentTextureTarget, GL_TEXTURE_MAG_FILTER, filter);
-        glTexParameterx(currentTextureTarget, GL_TEXTURE_MIN_FILTER, filter);
+        glTexParameterx(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, filter);
+        glTexParameterx(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, filter);
         glMatrixMode(GL_TEXTURE);
         glLoadMatrixf(mTextureMatrix);
         glMatrixMode(GL_MODELVIEW);
         glDisable(GL_TEXTURE_2D);
-        glEnable(currentTextureTarget);
+        glEnable(GL_TEXTURE_EXTERNAL_OES);
     } else {
-        glBindTexture(currentTextureTarget, mFlinger->getProtectedTexName());
+        glBindTexture(GL_TEXTURE_EXTERNAL_OES, mFlinger->getProtectedTexName());
         glMatrixMode(GL_TEXTURE);
         glLoadIdentity();
         glMatrixMode(GL_MODELVIEW);
-        glEnable(currentTextureTarget);
+        glEnable(GL_TEXTURE_EXTERNAL_OES);
     }
 
     int composeS3DFormat = mQCLayer->needsS3DCompose();
@@ -435,13 +433,7 @@ void Layer::lockPageFlip(bool& recomputeVisibleRegions)
             mFlinger->signalEvent();
         }
 
-        // While calling updateTexImage() from SurfaceFlinger, let it know
-        // by passing an extra parameter
-        // This will be true always.
-
-        bool isComposition = true;
-
-        if (mSurfaceTexture->updateTexImage(isComposition) < NO_ERROR) {
+        if (mSurfaceTexture->updateTexImage() < NO_ERROR) {
             // something happened!
             recomputeVisibleRegions = true;
             return;
