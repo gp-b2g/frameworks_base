@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2006 The Android Open Source Project
- *
+ * Copyright (C) 2006-2012 The Android Open Source Project
+ * Copyright (c) 2012 Code Aurora Forum. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,12 +19,15 @@ package com.android.server;
 import android.app.Activity;
 import android.app.ActivityManagerNative;
 import android.app.AlarmManager;
+import android.app.AlertDialog;
 import android.app.IAlarmManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Binder;
@@ -32,13 +35,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.RemoteException;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.text.TextUtils;
 import android.text.format.Time;
 import android.util.EventLog;
+import android.util.Log;
 import android.util.Slog;
 import android.util.TimeUtils;
+import android.view.WindowManager;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -113,6 +119,55 @@ class AlarmManagerService extends IAlarmManager.Stub {
     private final HashMap<String, BroadcastStats> mBroadcastStats
             = new HashMap<String, BroadcastStats>();
     
+    private static final int RTC_DEVICEUP = 6;
+    private final String CLOCK_NAME = "clock";
+    private final String SELF_CLOCK = "com.android.deskclock";
+    private final String POWEROFF_CLOCK_INTENT_EXTRA = "packageName";
+    private final String POWEROFF_CLOCK_SHARED_PREFERENCE = "power_off_clock";
+    private final String REGISTER_POWEROFF_CLOCK = "action.poweroffclock.register";
+    private final String UNREGISTER_POWEROFF_CLOCK = "action.poweroffclock.unregister";
+    BroadcastReceiver registerReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String callingPackage = mContext.getPackageManager().getNameForUid(
+                    Binder.getCallingUid());
+            if (REGISTER_POWEROFF_CLOCK.equals(intent.getAction())) {
+                if (!intent.hasExtra(POWEROFF_CLOCK_INTENT_EXTRA))
+                    return;
+                Bundle extras = intent.getExtras();
+                final String packageName = (String) extras.get(POWEROFF_CLOCK_INTENT_EXTRA);
+                AlertDialog registerDialog = new AlertDialog.Builder(mContext).setIcon(
+                        android.R.drawable.ic_dialog_alert).setTitle(
+                        "Allow application to register PowerOff Clock?").setPositiveButton("Yes",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int whichButton) {
+                                try {
+                                    registerPowerOffClock(packageName);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }).setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                    }
+                }).create();
+                registerDialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_DIALOG);
+                registerDialog.getWindow().setFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND,
+                        WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
+                registerDialog.show();
+            } else if (UNREGISTER_POWEROFF_CLOCK.equals(intent.getAction())) {
+                if (!intent.hasExtra(POWEROFF_CLOCK_INTENT_EXTRA))
+                    return;
+                Bundle extras = intent.getExtras();
+                final String packageName = (String) extras.get(POWEROFF_CLOCK_INTENT_EXTRA);
+                try {
+                    unregisterPowerOffClock(packageName);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    };
     public AlarmManagerService(Context context) {
         mContext = context;
         mDescriptor = init();
@@ -140,6 +195,11 @@ class AlarmManagerService extends IAlarmManager.Stub {
         mClockReceiver.scheduleDateChangedEvent();
         mUninstallReceiver = new UninstallReceiver();
         
+        // receiver for registering POWEROFF_CLOCK
+        IntentFilter mIntentFilter = new IntentFilter();
+        mIntentFilter.addAction(UNREGISTER_POWEROFF_CLOCK);
+        mIntentFilter.addAction(REGISTER_POWEROFF_CLOCK);
+        mContext.registerReceiver(registerReceiver, mIntentFilter);
         if (mDescriptor != -1) {
             mWaitThread.start();
         } else {
@@ -178,7 +238,17 @@ class AlarmManagerService extends IAlarmManager.Stub {
             if (localLOGV) Slog.v(TAG, "set: " + alarm);
 
             int index = addAlarmLocked(alarm);
-            if (index == 0) {
+            int newType = alarm.type;
+            String callingPackage = mContext.getPackageManager().getNameForUid(Binder.getCallingUid());
+            // self clock is always set to RTC_DEVICEUP
+            if (SELF_CLOCK.equals(callingPackage) && alarm.type == AlarmManager.RTC_WAKEUP) {
+                newType = RTC_DEVICEUP;
+            }
+            SharedPreferences mSharedPref = mContext.getSharedPreferences("power_off_clock", 0);
+            if (mSharedPref.contains(callingPackage) && alarm.type == AlarmManager.RTC_WAKEUP) {
+                newType = RTC_DEVICEUP;
+            }
+            if (index == 0 || newType == RTC_DEVICEUP) {
                 setLocked(alarm);
             }
         }
@@ -397,8 +467,36 @@ class AlarmManagerService extends IAlarmManager.Stub {
         return nextAlarm;
     }
     
+    public boolean registerPowerOffClock(String packageName) throws RemoteException {
+        SharedPreferences mSharedPref = mContext.getSharedPreferences("power_off_clock", 0);
+        SharedPreferences.Editor editor = mSharedPref.edit();
+        editor.putString(packageName, packageName);
+        editor.commit();
+        Log.d(TAG,"registerPowerOffClock" + mSharedPref.getAll().size());
+        return true;
+    }
+    public boolean unregisterPowerOffClock(String packageName) throws RemoteException {
+        SharedPreferences mSharedPref = mContext.getSharedPreferences("power_off_clock", 0);
+        SharedPreferences.Editor editor = mSharedPref.edit();
+        editor.remove(packageName);
+        editor.commit();
+        Log.d(TAG,"unregisterPowerOffClock");
+        return true;
+    }
     private void setLocked(Alarm alarm)
     {
+        int type=alarm.type;
+        String callingPackage = mContext.getPackageManager().getNameForUid(Binder.getCallingUid());
+        // self clock is always set to RTC_DEVICEUP
+        if (SELF_CLOCK.equals(callingPackage) && alarm.type == AlarmManager.RTC_WAKEUP) {
+            type = RTC_DEVICEUP;
+            Log.d(TAG,"Modify type to " + type);
+        }
+        SharedPreferences mSharedPref = mContext.getSharedPreferences("power_off_clock", 0);
+        if (mSharedPref.contains(callingPackage) && alarm.type == AlarmManager.RTC_WAKEUP) {
+            type = RTC_DEVICEUP;
+            Log.d(TAG,"Modify type to " + type);
+        }
         if (mDescriptor != -1)
         {
             // The kernel never triggers alarms with negative wakeup times
@@ -412,7 +510,7 @@ class AlarmManagerService extends IAlarmManager.Stub {
                 alarmNanoseconds = (alarm.when % 1000) * 1000 * 1000;
             }
             
-            set(mDescriptor, alarm.type, alarmSeconds, alarmNanoseconds);
+            set(mDescriptor, type, alarmSeconds, alarmNanoseconds);
         }
         else
         {
