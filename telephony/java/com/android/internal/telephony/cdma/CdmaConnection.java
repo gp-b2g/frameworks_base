@@ -207,17 +207,26 @@ public class CdmaConnection extends Connection {
 
     /*package*/ boolean
     compareTo(DriverCall c) {
-        // On mobile originated (MO) calls, the phone number may have changed
-        // due to a SIM Toolkit call control modification.
-        //
-        // We assume we know when MO calls are created (since we created them)
-        // and therefore don't need to compare the phone number anyway.
-        if (! (isIncoming || c.isMT)) return true;
 
-        // ... but we can compare phone numbers on MT calls, and we have
-        // no control over when they begin, so we might as well
+        Log.d(LOG_TAG, "Comparing new connection " + c + "with base connection " +
+                this);
 
         String cAddress = PhoneNumberUtils.stringFromStringAndTOA(c.number, c.TOA);
+
+        if (!(isIncoming || c.isMT)) {
+            /*
+             * On mobile originated (MO) calls, the phone number may have
+             * changed due to a SIM Toolkit call control modification. We assume
+             * we know when MO calls are created (since we created them). We
+             * still need to compare the phone number anyway because modem could
+             * have dropped the active call and replaced it with the pendingMO
+             */
+            return equalsHandlesNulls(address, cAddress);
+        }
+
+        // we can compare phone numbers on MT calls, and we have
+        // no control over when they begin, so we might as well
+
         return isIncoming == c.isMT && equalsHandlesNulls(address, cAddress);
     }
 
