@@ -313,11 +313,12 @@ void Layer::onDraw(const Region& clip) const
         glDisable(GL_TEXTURE_2D);
         glEnable(GL_TEXTURE_EXTERNAL_OES);
     } else {
-        glBindTexture(GL_TEXTURE_EXTERNAL_OES, mFlinger->getProtectedTexName());
+        glBindTexture(GL_TEXTURE_2D, mFlinger->getProtectedTexName());
         glMatrixMode(GL_TEXTURE);
         glLoadIdentity();
         glMatrixMode(GL_MODELVIEW);
-        glEnable(GL_TEXTURE_EXTERNAL_OES);
+        glDisable(GL_TEXTURE_EXTERNAL_OES);
+        glEnable(GL_TEXTURE_2D);
     }
 
     int composeS3DFormat = mQCLayer->needsS3DCompose();
