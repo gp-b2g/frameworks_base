@@ -552,12 +552,17 @@ void LPAPlayer::resume() {
                     mPlaybackSuspended = false;
 
                     CHECK(afd != -1);
+#ifdef LPADRIVER_SUPPORTS_SESSION_ID
                     if ( ioctl(afd, AUDIO_GET_SESSION_ID, &decId) == -1 ) {
                         LOGE("AUDIO_GET_SESSION_ID FAILED\n");
                     } else {
                         sessionId = (int)decId;
                         LOGV("AUDIO_GET_SESSION_ID success : decId = %d", decId);
                     }
+#else
+        sessionId = (int)afd;
+        LOGV("SESSION_ID is LPA Driver fd = %d", afd);
+#endif /* LPADRIVER_SUPPORTS_SESSION_ID */
 
                     LOGV("Resume:: Opening a session for playback: sessionId = %d", sessionId);
                     status_t err = mAudioSink->openSession(AUDIO_FORMAT_PCM_16_BIT, sessionId);
