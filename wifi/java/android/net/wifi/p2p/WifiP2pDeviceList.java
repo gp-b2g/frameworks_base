@@ -76,6 +76,9 @@ public class WifiP2pDeviceList implements Parcelable {
                 {
                     d.status = WifiP2pDevice.AVAILABLE;
                 }
+                if(device.wfdInfo != null) {
+                    d.wfdInfo = device.wfdInfo;
+                }
 
                 return;
             }

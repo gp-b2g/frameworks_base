@@ -390,14 +390,67 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                 case WifiP2pManager.REQUEST_PEERS:
                     replyToMessage(message, WifiP2pManager.RESPONSE_PEERS, mPeers);
                     break;
-                case WifiP2pManager.REQUEST_CUSTOM_STRING:
-                    WifiP2pConfig config = (WifiP2pConfig)message.obj;
-                    String cmd = config.deviceAddress;//hack
-                    loge("Custom command " + cmd );
-                    String cmdResponse = WifiNative.p2pCustomCommand(cmd);
-                    loge("Custom command response " + cmdResponse );
-                    config.deviceAddress = cmdResponse;
-                    replyToMessage(message, WifiP2pManager.RESPONSE_CUSTOM_STRING, config);
+                case WifiP2pManager.UPDATE_WFD_SETTINGS:
+                    WfdInfo wfdInfo = (WfdInfo)message.obj;
+
+                    String strCmd = "WFD_SET";
+                    String[] cmdArray = {
+                        (strCmd + " device_type " +
+                         ((wfdInfo.deviceType == WfdInfo.DEVICETYPE_SOURCE)? "source":
+                         (wfdInfo.deviceType == WfdInfo.DEVICETYPE_PRIMARYSINK)? "primary_sink":
+                         (wfdInfo.deviceType == WfdInfo.DEVICETYPE_SECONDARYSINK) ? "secondary_sink":
+                         (wfdInfo.deviceType == WfdInfo.DEVICETYPE_SOURCE_PRIMARYSINK) ?
+                          "source_primary_sink" : "invalid")),
+                        (strCmd + " coupled_sink_supported_by_source " +
+                           ((wfdInfo.isCoupledSinkSupportedBySource == true) ? "y" : "n")),
+                        (strCmd + " coupled_sink_supported_by_sink " +
+                           ((wfdInfo.isCoupledSinkSupportedBySink == true) ? "y" : "n")),
+                        (strCmd + " available_for_session " +
+                           ((wfdInfo.isAvailableForSession == true) ? "y" : "n")),
+                        (strCmd + " service_discovery_supported " +
+                           ((wfdInfo.isServiceDiscoverySupported == true) ? "y" : "n")),
+                        (strCmd + " preferred_connectivity " +
+                           ((wfdInfo.preferredConnectivity == WfdInfo.PC_TDLS) ? "tdls" : "p2p")),
+                        (strCmd + " content_protection_supported " +
+                           ((wfdInfo.isContentProtectionSupported == true) ? "y" : "n")),
+                        (strCmd + " time_sync_supported " +
+                           ((wfdInfo.isTimeSynchronizationSupported == true) ? "y" : "n")),
+                        (strCmd + " primarysink_audio_notsupported " +
+                           ((wfdInfo.isAudioUnspportedAtPrimarySink == true) ? "y" : "n")),
+                        (strCmd + " source_audio_only_supported " +
+                           ((wfdInfo.isAudioOnlySupportedAtSource == true) ? "y" : "n")),
+                        (strCmd + " tdls_persistent_group_intended " +
+                           ((wfdInfo.isTDLSPersistentGroupIntended == true) ? "y" : "n")),
+                        (strCmd + " tdls_persistent_group_reinvoke " +
+                           ((wfdInfo.isTDLSReInvokePersistentGroupReq == true) ? "y" : "n")),
+                        (strCmd + " session_mgmt_ctrl_port " +
+                           (wfdInfo.sessionMgmtCtrlPort)),
+                        (strCmd + " enable " +
+                           ((wfdInfo.deviceType == WfdInfo.DEVICETYPE_INVALID? "n":"y")))
+                    };
+                    String ret = "FAIL";
+                    for (int i=0;i<cmdArray.length;i++) {
+                        ret = WifiNative.p2pCustomCommand(cmdArray[i]);
+                        loge( cmdArray[i] + "\t" + ((ret != null && ret.compareToIgnoreCase("OK") == 0)?
+                                                                     "DONE.":"FAIL."));
+                        if(ret == null || ret.compareToIgnoreCase("OK") != 0)
+                        {
+                            WifiNative.p2pCustomCommand(strCmd + " enable n");
+                            break;
+                        }
+                    }
+
+                    if(ret != null && ret.compareToIgnoreCase("OK")==0) {
+                        mThisDevice.wfdInfo = new WfdInfo(wfdInfo);
+                        replyToMessage(message, WifiP2pManager.UPDATE_WFD_SETTINGS_SUCCEEDED,0);
+                        sendThisDeviceChangedBroadcast();
+                    }
+                    else
+                    {
+                        replyToMessage(message, WifiP2pManager.UPDATE_WFD_SETTINGS_FAILED,0);
+                    }
+
+
                     break;
                 case WifiP2pManager.REQUEST_CONNECTION_INFO:
                     replyToMessage(message, WifiP2pManager.RESPONSE_CONNECTION_INFO, mWifiP2pInfo);

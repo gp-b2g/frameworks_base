@@ -12673,6 +12673,42 @@ package android.net.wifi {
 
 package android.net.wifi.p2p {
 
+  public class WfdInfo implements android.os.Parcelable {
+    ctor public WfdInfo();
+    ctor public WfdInfo(android.net.wifi.p2p.WfdInfo);
+    method public int describeContents();
+    method public boolean isWFDDevice();
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final int COUPLED = 1; // 0x1
+    field public static final android.os.Parcelable.Creator CREATOR;
+    field public static final int DEFAULT_SESSION_MGMT_CTRL_PORT = 554; // 0x22a
+    field public static final int DEVICETYPE_INVALID = 4; // 0x4
+    field public static final int DEVICETYPE_PRIMARYSINK = 1; // 0x1
+    field public static final int DEVICETYPE_SECONDARYSINK = 2; // 0x2
+    field public static final int DEVICETYPE_SOURCE = 0; // 0x0
+    field public static final int DEVICETYPE_SOURCE_PRIMARYSINK = 3; // 0x3
+    field public static final int NOT_COUPLED_AVAILABLE = 0; // 0x0
+    field public static final int PC_P2P = 0; // 0x0
+    field public static final int PC_TDLS = 1; // 0x1
+    field public static final int TEARDOWN_COUPLING = 2; // 0x2
+    field public java.lang.String coupledDeviceAdress;
+    field public int coupledSinkStatus;
+    field public int deviceType;
+    field public boolean isAudioOnlySupportedAtSource;
+    field public boolean isAudioUnspportedAtPrimarySink;
+    field public boolean isAvailableForSession;
+    field public boolean isContentProtectionSupported;
+    field public boolean isCoupledSinkSupportedBySink;
+    field public boolean isCoupledSinkSupportedBySource;
+    field public boolean isServiceDiscoverySupported;
+    field public boolean isTDLSPersistentGroupIntended;
+    field public boolean isTDLSReInvokePersistentGroupReq;
+    field public boolean isTimeSynchronizationSupported;
+    field public int maxThroughput;
+    field public int preferredConnectivity;
+    field public int sessionMgmtCtrlPort;
+  }
+
   public class WifiP2pConfig implements android.os.Parcelable {
     ctor public WifiP2pConfig();
     ctor public WifiP2pConfig(android.net.wifi.p2p.WifiP2pConfig);
@@ -12705,6 +12741,7 @@ package android.net.wifi.p2p {
     field public java.lang.String primaryDeviceType;
     field public java.lang.String secondaryDeviceType;
     field public int status;
+    field public android.net.wifi.p2p.WfdInfo wfdInfo;
   }
 
   public class WifiP2pDeviceList implements android.os.Parcelable {
@@ -12751,7 +12788,7 @@ package android.net.wifi.p2p {
     method public void requestConnectionInfo(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.ConnectionInfoListener);
     method public void requestGroupInfo(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.GroupInfoListener);
     method public void requestPeers(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.PeerListListener);
-    method public void sendCustomStringCommand(android.net.wifi.p2p.WifiP2pManager.Channel, java.lang.String, android.net.wifi.p2p.WifiP2pManager.StringResponseListener);
+    method public void updateWFDInfo(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WfdInfo, android.net.wifi.p2p.WifiP2pManager.ActionListener);
     field public static final int BUSY = 2; // 0x2
     field public static final int ERROR = 0; // 0x0
     field public static final java.lang.String EXTRA_NETWORK_INFO = "networkInfo";
