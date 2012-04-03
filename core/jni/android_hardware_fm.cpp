@@ -191,7 +191,7 @@ static jint android_hardware_fmradio_FmReceiverJNI_setControlNative
             return FM_JNI_SUCCESS;
         }
     }
-
+    LOGE("setControl native returned with err %d", err);
     return FM_JNI_FAILURE;
 }
 
@@ -255,7 +255,7 @@ static jint android_hardware_fmradio_FmReceiverJNI_startSearchNative
     hw_seek.type = V4L2_TUNER_RADIO;
     err = ioctl(fd,VIDIOC_S_HW_FREQ_SEEK,&hw_seek);
     if(err < 0){
-        LOGE("startSearchNative: ioctl failed!!!");
+        LOGE("startSearchNative: ioctl failed!!! with error %d\n", err);
         return FM_JNI_FAILURE;
     } else
         LOGE("startSearchNative: ioctl succedded!!!");

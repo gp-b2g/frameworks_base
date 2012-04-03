@@ -40,7 +40,7 @@ class FmTxEventListner {
     private final int TXRDSDAT_EVENT = 16;               /*RDS Group available event*/
     private final int TXRDSDONE_EVENT = 17;              /*RDS group complete event */
     private final int RADIO_DISABLED = 18;
-
+    private final int READY_EVENT = 0;
 
     private Thread mThread;
     private static final String TAG = "FMTxEventListner";
@@ -73,11 +73,15 @@ class FmTxEventListner {
                             break;
                          case TXRDSDONE_EVENT:
                             Log.d(TAG, "Got TXRDSDONE_EVENT");
-                                cb.onContRDSGroupsComplete();
+                            cb.onContRDSGroupsComplete();
                             break;
                          case RADIO_DISABLED:
                             Log.d(TAG, "Got RADIO_DISABLED");
-                                cb.onRadioDisabled();
+                            FmTransceiver.release("/dev/radio0");
+                            Thread.currentThread().interrupt();
+                            break;
+                         case READY_EVENT:
+                            Log.d(TAG, "Got RADIO_ENABLED");
                             break;
                          default:
                             Log.d(TAG, "Unknown event");
@@ -96,8 +100,6 @@ class FmTxEventListner {
     }
 
     public void stopListener(){
-        FmTransceiver.release("/dev/radio0");
-        //
         Log.d(TAG, "Thread Stopped\n");
         //Thread stop is deprecate API
         //Interrupt the thread and check for the thread status
