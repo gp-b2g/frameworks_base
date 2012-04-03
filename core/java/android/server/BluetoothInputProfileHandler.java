@@ -192,8 +192,6 @@ final class BluetoothInputProfileHandler {
         mContext.sendBroadcast(intent, BluetoothService.BLUETOOTH_PERM);
 
         debugLog("InputDevice state : device: " + device + " State:" + prevState + "->" + state);
-        mBluetoothService.sendConnectionStateChange(device, BluetoothProfile.INPUT_DEVICE, state,
-                                                    prevState);
     }
 
     void handleInputDevicePropertyChange(String address, boolean connected) {
