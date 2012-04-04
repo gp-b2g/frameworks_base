@@ -6650,6 +6650,7 @@ package android.content.res {
     method public int getDimensionPixelSize(int) throws android.content.res.Resources.NotFoundException;
     method public android.util.DisplayMetrics getDisplayMetrics();
     method public android.graphics.drawable.Drawable getDrawable(int) throws android.content.res.Resources.NotFoundException;
+    method public android.graphics.drawable.Drawable getDrawableForDensity(int, int) throws android.content.res.Resources.NotFoundException;
     method public float getFraction(int, int, int);
     method public int getIdentifier(java.lang.String, java.lang.String, java.lang.String);
     method public int[] getIntArray(int) throws android.content.res.Resources.NotFoundException;
@@ -6672,6 +6673,7 @@ package android.content.res {
     method public java.lang.CharSequence[] getTextArray(int) throws android.content.res.Resources.NotFoundException;
     method public void getValue(int, android.util.TypedValue, boolean) throws android.content.res.Resources.NotFoundException;
     method public void getValue(java.lang.String, android.util.TypedValue, boolean) throws android.content.res.Resources.NotFoundException;
+    method public void getValueForDensity(int, int, android.util.TypedValue, boolean) throws android.content.res.Resources.NotFoundException;
     method public android.content.res.XmlResourceParser getXml(int) throws android.content.res.Resources.NotFoundException;
     method public final android.content.res.Resources.Theme newTheme();
     method public android.content.res.TypedArray obtainAttributes(android.util.AttributeSet, int[]);
@@ -10740,6 +10742,7 @@ package android.media {
     field public static final int QUALITY_HIGH = 1; // 0x1
     field public static final int QUALITY_LOW = 0; // 0x0
     field public static final int QUALITY_QCIF = 2; // 0x2
+    field public static final int QUALITY_QVGA = 7; // 0x7
     field public static final int QUALITY_TIME_LAPSE_1080P = 1006; // 0x3ee
     field public static final int QUALITY_TIME_LAPSE_480P = 1004; // 0x3ec
     field public static final int QUALITY_TIME_LAPSE_720P = 1005; // 0x3ed

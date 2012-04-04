@@ -119,8 +119,7 @@ public final class MSimCdmaDataConnectionTracker extends CdmaDataConnectionTrack
      * @param tearDown true if the underlying DataConnection should be disconnected.
      * @param reason for the clean up.
      */
-    @Override
-    protected void cleanUpConnection(boolean tearDown, String reason) {
+    private void cleanUpConnection(boolean tearDown, String reason, boolean doAll) {
         if (DBG) log("cleanUpConnection: reason: " + reason);
 
         // Clear the reconnect alarm, if set.
@@ -140,11 +139,16 @@ public final class MSimCdmaDataConnectionTracker extends CdmaDataConnectionTrack
                 DataConnectionAc dcac =
                     mDataConnectionAsyncChannels.get(conn.getDataConnectionId());
                 if (tearDown) {
-                    if (DBG) log("cleanUpConnection: teardown, call conn.disconnect");
-                    conn.tearDown(reason, obtainMessage(EVENT_DISCONNECT_DONE,
-                            conn.getDataConnectionId(), 0, reason));
+                    if (doAll) {
+                        if (DBG) log("cleanUpConnection: teardown, conn.tearDownAll");
+                        conn.tearDownAll(reason, obtainMessage(EVENT_DISCONNECT_DONE,
+                                    conn.getDataConnectionId(), 0, reason));
+                    } else {
+                        if (DBG) log("cleanUpConnection: teardown, conn.tearDown");
+                        conn.tearDown(reason, obtainMessage(EVENT_DISCONNECT_DONE,
+                                    conn.getDataConnectionId(), 0, reason));
+                    }
                     notificationDeferred = true;
-                    mDisconnectPendingCount++;
                 } else {
                     if (DBG) log("cleanUpConnection: !tearDown, call conn.resetSynchronously");
                     if (dcac != null) {
@@ -160,11 +164,6 @@ public final class MSimCdmaDataConnectionTracker extends CdmaDataConnectionTrack
         if (!notificationDeferred) {
             if (DBG) log("cleanupConnection: !notificationDeferred");
             gotoIdleAndNotifyDataConnection(reason);
-        }
-
-        if (tearDown && mDisconnectPendingCount == 0) {
-            notifyDataDisconnectComplete();
-            notifyAllDataDisconnected();
         }
     }
 

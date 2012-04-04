@@ -224,13 +224,7 @@ public class TabletStatusBar extends StatusBar implements
 
         // network icons: either a combo icon that switches between mobile and data, or distinct
         // mobile and data icons
-        final ImageView comboRSSI = 
-                (ImageView)mNotificationPanel.findViewById(R.id.network_signal);
-
         if (TelephonyManager.getDefault().isMultiSimEnabled()) {
-            if (comboRSSI != null) {
-                mMSimNetworkController.addCombinedSignalIconView(comboRSSI);
-            }
             final ImageView mobileRSSI =
                     (ImageView)mNotificationPanel.findViewById(R.id.mobile_signal);
             if (mobileRSSI != null) {
@@ -241,19 +235,15 @@ public class TabletStatusBar extends StatusBar implements
             if (wifiRSSI != null) {
                 mMSimNetworkController.addWifiIconView(wifiRSSI);
             }
-
+            mMSimNetworkController.addWifiLabelView(
+                    (TextView)mNotificationPanel.findViewById(R.id.wifi_text));
             mMSimNetworkController.addDataTypeIconView(
-                    (ImageView)mNotificationPanel.findViewById(R.id.network_type));
-            mMSimNetworkController.addDataDirectionOverlayIconView(
-                    (ImageView)mNotificationPanel.findViewById(R.id.network_direction));
-            mMSimNetworkController.addLabelView(
-                    (TextView)mNotificationPanel.findViewById(R.id.network_text));
-            mMSimNetworkController.addLabelView(
+                    (ImageView)mNotificationPanel.findViewById(R.id.mobile_type));
+            mMSimNetworkController.addMobileLabelView(
+                    (TextView)mNotificationPanel.findViewById(R.id.mobile_text));
+            mMSimNetworkController.addCombinedLabelView(
                     (TextView)mBarContents.findViewById(R.id.network_text));
         } else {
-            if (comboRSSI != null) {
-                mNetworkController.addCombinedSignalIconView(comboRSSI);
-            }
             final ImageView mobileRSSI =
                     (ImageView)mNotificationPanel.findViewById(R.id.mobile_signal);
             if (mobileRSSI != null) {
@@ -264,15 +254,14 @@ public class TabletStatusBar extends StatusBar implements
             if (wifiRSSI != null) {
                 mNetworkController.addWifiIconView(wifiRSSI);
             }
-
+            mNetworkController.addWifiLabelView(
+                (TextView)mNotificationPanel.findViewById(R.id.wifi_text));
             mNetworkController.addDataTypeIconView(
-                    (ImageView)mNotificationPanel.findViewById(R.id.network_type));
-            mNetworkController.addDataDirectionOverlayIconView(
-                    (ImageView)mNotificationPanel.findViewById(R.id.network_direction));
-            mNetworkController.addLabelView(
-                    (TextView)mNotificationPanel.findViewById(R.id.network_text));
-            mNetworkController.addLabelView(
-                    (TextView)mBarContents.findViewById(R.id.network_text));
+                (ImageView)mNotificationPanel.findViewById(R.id.mobile_type));
+            mNetworkController.addMobileLabelView(
+                (TextView)mNotificationPanel.findViewById(R.id.mobile_text));
+            mNetworkController.addCombinedLabelView(
+                (TextView)mBarContents.findViewById(R.id.network_text));
         }
         mStatusBarView.setIgnoreChildren(0, mNotificationTrigger, mNotificationPanel);
 

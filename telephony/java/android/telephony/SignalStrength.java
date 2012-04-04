@@ -47,6 +47,9 @@ public class SignalStrength implements Parcelable {
         "none", "poor", "moderate", "good", "great"
     };
 
+    /** @hide */
+    public static final int INVALID_SNR = 0x7FFFFFFF;
+
     private int mGsmSignalStrength; // Valid values are (0-31, 99) as defined in TS 27.007 8.5
     private int mGsmBitErrorRate;   // bit error rate (0-7, 99) as defined in TS 27.007 8.5
     private int mCdmaDbm;   // This value is the RSSI value
@@ -618,11 +621,10 @@ public class SignalStrength implements Parcelable {
 
         if (mLteRsrp > -44) rsrpIconLevel = -1;
         else if (mLteRsrp >= -85) rsrpIconLevel = SIGNAL_STRENGTH_GREAT;
-        else if (mLteRsrp >= -95) rsrpIconLevel = SIGNAL_STRENGTH_GOOD;
-        else if (mLteRsrp >= -105) rsrpIconLevel = SIGNAL_STRENGTH_MODERATE;
-        else if (mLteRsrp >= -115) rsrpIconLevel = SIGNAL_STRENGTH_POOR;
+        else if (mLteRsrp >= -95) rsrpIconLevel = SIGNAL_STRENGTH_GOOD; //Great signal in aosp
+        else if (mLteRsrp >= -105) rsrpIconLevel = SIGNAL_STRENGTH_MODERATE; //Good signal in aosp
+        else if (mLteRsrp >= -115) rsrpIconLevel = SIGNAL_STRENGTH_POOR; //Moderate signal in aosp
         else if (mLteRsrp >= -140) rsrpIconLevel = SIGNAL_STRENGTH_NONE_OR_UNKNOWN;
-
         /*
          * Values are -200 dB to +300 (SNR*10dB) RS_SNR >= 13.0 dB =>4 bars 4.5
          * dB <= RS_SNR < 13.0 dB => 3 bars 1.0 dB <= RS_SNR < 4.5 dB => 2 bars
@@ -631,9 +633,9 @@ public class SignalStrength implements Parcelable {
          */
         if (mLteRssnr > 300) snrIconLevel = -1;
         else if (mLteRssnr >= 130) snrIconLevel = SIGNAL_STRENGTH_GREAT;
-        else if (mLteRssnr >= 45) snrIconLevel = SIGNAL_STRENGTH_GOOD;
-        else if (mLteRssnr >= 10) snrIconLevel = SIGNAL_STRENGTH_MODERATE;
-        else if (mLteRssnr >= -30) snrIconLevel = SIGNAL_STRENGTH_POOR;
+        else if (mLteRssnr >= 45) snrIconLevel = SIGNAL_STRENGTH_GOOD; //Great signal in aosp
+        else if (mLteRssnr >= 10) snrIconLevel = SIGNAL_STRENGTH_MODERATE; //Good signal in aosp
+        else if (mLteRssnr >= -30) snrIconLevel = SIGNAL_STRENGTH_POOR; //Moderate signal in aosp
         else if (mLteRssnr >= -200)
             snrIconLevel = SIGNAL_STRENGTH_NONE_OR_UNKNOWN;
 

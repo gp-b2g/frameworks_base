@@ -67,6 +67,7 @@ public interface AppInterface {
      * Enumeration for representing "Type of Command" of proactive commands.
      * Those are the only commands which are supported by the Telephony. Any app
      * implementation should support those.
+     * Refer to ETSI TS 102.223 section 9.4
      */
     public static enum CommandType {
         DISPLAY_TEXT(0x21),

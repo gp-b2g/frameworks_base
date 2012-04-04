@@ -769,6 +769,8 @@ public class MSimNetworkController extends NetworkController {
     // ===== Update the views =======================================================
 
     protected void refreshViews(int subscription) {
+        super.refreshViews();
+        /*
         Context context = mContext;
 
         String label = "";
@@ -1030,6 +1032,7 @@ public class MSimNetworkController extends NetworkController {
                 v.setText(label);
             }
         }
+        */
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args, int subscription) {
@@ -1132,8 +1135,8 @@ public class MSimNetworkController extends NetworkController {
         pw.print(Integer.toHexString(mMSimLastDataTypeIconId[subscription]));
         pw.print("/");
         pw.println(getResourceName(mMSimLastCombinedSignalIconId[subscription]));
-        pw.print("  mLastLabel=");
-        pw.print(mLastLabel);
+        pw.print("  mLamLastCombinedLabel=");
+        pw.print(mLastCombinedLabel);
         pw.println("");
     }
 }

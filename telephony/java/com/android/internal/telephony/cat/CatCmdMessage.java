@@ -101,13 +101,9 @@ public class CatCmdMessage implements Parcelable {
             mToneSettings = params.settings;
             mTextMsg = params.textMsg;
             break;
-        case CLOSE_CHANNEL:
-        case RECEIVE_DATA:
-        case SEND_DATA:
         case GET_CHANNEL_STATUS:
             mTextMsg = ((CallSetupParams) cmdParams).confirmMsg;
             break;
-        case OPEN_CHANNEL:
         case SET_UP_CALL:
             mCallSettings = new CallSettings();
             mCallSettings.confirmMsg = ((CallSetupParams) cmdParams).confirmMsg;
@@ -116,6 +112,13 @@ public class CatCmdMessage implements Parcelable {
         case SET_UP_EVENT_LIST:
             mSetupEventListSettings = new SetupEventListSettings();
             mSetupEventListSettings.eventList = ((SetEventListParams) cmdParams).eventInfo;
+            break;
+        case OPEN_CHANNEL:
+        case CLOSE_CHANNEL:
+        case RECEIVE_DATA:
+        case SEND_DATA:
+            BIPClientParams param = (BIPClientParams) cmdParams;
+            mTextMsg = param.textMsg;
             break;
         }
     }

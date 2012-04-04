@@ -119,7 +119,6 @@ class MediaPlayerService : public BnMediaPlayerService
         float                   mLeftVolume;
         float                   mRightVolume;
         float                   mMsecsPerFrame;
-        uint32_t                mLatency;
         int                     mSessionId;
         float                   mSendLevel;
         int                     mAuxEffectId;
