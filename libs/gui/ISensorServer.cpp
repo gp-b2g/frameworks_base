@@ -28,6 +28,9 @@
 #include <gui/Sensor.h>
 #include <gui/ISensorServer.h>
 #include <gui/ISensorEventConnection.h>
+#include <gui/IMplSysConnection.h>
+#include <gui/IMplSysPedConnection.h>
+#include <gui/IMplConnection.h>
 
 namespace android {
 // ----------------------------------------------------------------------------
@@ -35,6 +38,9 @@ namespace android {
 enum {
     GET_SENSOR_LIST = IBinder::FIRST_CALL_TRANSACTION,
     CREATE_SENSOR_EVENT_CONNECTION,
+    CREATE_MPL_SYS_CONNECTION,
+    CREATE_MPL_SYS_PED_CONNECTION,
+    CREATE_MPL_CONNECTION
 };
 
 class BpSensorServer : public BpInterface<ISensorServer>
@@ -68,6 +74,27 @@ public:
         remote()->transact(CREATE_SENSOR_EVENT_CONNECTION, data, &reply);
         return interface_cast<ISensorEventConnection>(reply.readStrongBinder());
     }
+
+    virtual sp<IMplSysConnection> createMplSysConnection() {
+        Parcel data, reply;
+        data.writeInterfaceToken(ISensorServer::getInterfaceDescriptor());
+        remote()->transact(CREATE_MPL_SYS_CONNECTION, data, &reply);
+        return interface_cast<IMplSysConnection>(reply.readStrongBinder());
+    }
+
+    virtual sp<IMplSysPedConnection> createMplSysPedConnection() {
+        Parcel data, reply;
+        data.writeInterfaceToken(ISensorServer::getInterfaceDescriptor());
+        remote()->transact(CREATE_MPL_SYS_PED_CONNECTION, data, &reply);
+        return interface_cast<IMplSysPedConnection>(reply.readStrongBinder());
+    }
+
+    virtual sp<IMplConnection> createMplConnection() {
+        Parcel data, reply;
+        data.writeInterfaceToken(ISensorServer::getInterfaceDescriptor());
+        remote()->transact(CREATE_MPL_CONNECTION, data, &reply);
+        return interface_cast<IMplConnection>(reply.readStrongBinder());
+    }
 };
 
 IMPLEMENT_META_INTERFACE(SensorServer, "android.gui.SensorServer");
@@ -91,6 +118,24 @@ status_t BnSensorServer::onTransact(
         case CREATE_SENSOR_EVENT_CONNECTION: {
             CHECK_INTERFACE(ISensorServer, data, reply);
             sp<ISensorEventConnection> connection(createSensorEventConnection());
+            reply->writeStrongBinder(connection->asBinder());
+            return NO_ERROR;
+        } break;
+        case CREATE_MPL_SYS_CONNECTION: {
+            CHECK_INTERFACE(ISensorServer, data, reply);
+            sp<IMplSysConnection> connection(createMplSysConnection());
+            reply->writeStrongBinder(connection->asBinder());
+            return NO_ERROR;
+        } break;
+        case CREATE_MPL_SYS_PED_CONNECTION: {
+            CHECK_INTERFACE(ISensorServer, data, reply);
+            sp<IMplSysPedConnection> connection(createMplSysPedConnection());
+            reply->writeStrongBinder(connection->asBinder());
+            return NO_ERROR;
+        } break;
+        case CREATE_MPL_CONNECTION: {
+            CHECK_INTERFACE(ISensorServer, data, reply);
+            sp<IMplConnection> connection(createMplConnection());
             reply->writeStrongBinder(connection->asBinder());
             return NO_ERROR;
         } break;

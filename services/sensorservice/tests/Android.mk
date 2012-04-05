@@ -5,7 +5,7 @@ LOCAL_SRC_FILES:= \
 	sensorservicetest.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-	libcutils libutils libui libgui
+	libcutils libutils libui libgui libbinder
 
 LOCAL_MODULE:= test-sensorservice
 

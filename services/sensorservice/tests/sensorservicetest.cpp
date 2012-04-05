@@ -20,6 +20,14 @@
 #include <gui/SensorEventQueue.h>
 #include <utils/Looper.h>
 
+#include <binder/IServiceManager.h>
+#include <gui/ISensorServer.h>
+#include <gui/ISensorEventConnection.h>
+#include <gui/Sensor.h>
+#include <gui/SensorManager.h>
+#include <gui/SensorEventQueue.h>
+#include <gui/IMplSysConnection.h>
+
 using namespace android;
 
 static nsecs_t sStartTime = 0;
@@ -58,6 +66,46 @@ int receiver(int fd, int events, void* data)
     return 1;
 }
 
+void test_mpl_additions()
+{
+    int i;
+    long s;
+    sp<ISensorServer> mSensorServer;
+    const String16 name("sensorservice");
+    while (getService(name, &mSensorServer) != NO_ERROR) {
+        usleep(250000);
+    }
+
+    sp<IMplSysConnection> mplcon = mSensorServer->createMplSysConnection();
+    if (mplcon == NULL) {
+        printf("failed to create MplSysConnection\n");
+        exit(0);
+    }
+    status_t r = mplcon->test();
+    printf("got %d\n", (int) r);
+    if (r == 4242) {
+        printf("sysapi test success\n");
+    } else
+        printf("sysapi test failure\n");
+
+    float f[9];
+    r = mplcon->getBiases(f);
+    if (r == 0) {
+        printf("biases:");
+        for (i = 0; i < 9; i++)
+            printf("%f ", f[i]);
+        printf(" : test success\n");
+    } else
+        printf("sysapi getBiases failure\n");
+
+    r = mplcon->getSensors(&s);
+    if (r == 0) {
+        printf("Sensors: %lx : success\n", s);
+    } else
+        printf("sysapi getSensors failure\n");
+
+    exit(0);
+}
 
 int main(int argc, char** argv)
 {
@@ -67,6 +115,7 @@ int main(int argc, char** argv)
     ssize_t count = mgr.getSensorList(&list);
     printf("numSensors=%d\n", int(count));
 
+    test_mpl_additions();
     sp<SensorEventQueue> q = mgr.createEventQueue();
     printf("queue=%p\n", q.get());
 

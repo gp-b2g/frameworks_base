@@ -22,8 +22,8 @@ LOCAL_SHARED_LIBRARIES := \
 	libutils \
 	libbinder \
 	libui \
-	libgui
-
+	libgui \
+	libdl
 
 
 LOCAL_MODULE:= libsensorservice

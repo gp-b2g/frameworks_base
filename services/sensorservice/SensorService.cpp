@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <sys/types.h>
+#include <dlfcn.h>
 
 #include <cutils/properties.h>
 
@@ -277,6 +278,10 @@ bool SensorService::threadLoop()
         const SortedVector< wp<SensorEventConnection> > activeConnections(
                 getActiveConnections());
         size_t numConnections = activeConnections.size();
+        if(numConnections == 0) {
+            //why are we still getting events?
+            LOGE("unexpected event returned from HAL -- no active connections +++++++++++++++++++++");
+        }
         for (size_t i=0 ; i<numConnections ; i++) {
             sp<SensorEventConnection> connection(
                     activeConnections[i].promote());
@@ -628,5 +633,242 @@ status_t SensorService::SensorEventConnection::setEventRate(
 }
 
 // ---------------------------------------------------------------------------
+extern "C" {
+
+//This struct *must* match the one defined in MPLSensor.cpp
+typedef struct {
+ int (*fpAddGlyph)(unsigned short GlyphID);
+ int (*fpBestGlyph)(unsigned short *finalGesture);
+ int (*fpSetGlyphSpeedThresh)(unsigned short speed);
+ int (*fpStartGlyph)(void);
+ int (*fpStopGlyph)(void);
+ int (*fpGetGlyph)(int index, int *x, int *y);
+ int (*fpGetGlyphLength)(unsigned short *length);
+ int (*fpClearGlyph)(void);
+ int (*fpLoadGlyphs)(unsigned char *libraryData);
+ int (*fpStoreGlyphs)(unsigned char *libraryData, unsigned short *length);
+ int (*fpSetGlyphProbThresh)(unsigned short prob);
+ int (*fpGetLibraryLength)(unsigned short *length);
+} tMplGlyphApi;
+
+
+
+tMplGlyphApi* mplGlyphApi_l;
+
+}
+
+/* MPLSysConnection ***************************************************** */
+
+sp<IMplSysConnection> SensorService::createMplSysConnection()
+{
+    sp<MplSysConnection> result(new MplSysConnection(this));
+    return result;
+}
+
+SensorService::MplSysConnection::MplSysConnection(
+        const sp<SensorService>& service)
+        : mService(service)
+{
+    ;
+}
+
+void SensorService::MplSysConnection::onFirstRef()
+{
+    MplSys_Interface* (*pgsiof)() = (MplSys_Interface*(*)())dlsym(RTLD_DEFAULT, "getSysInterfaceObject");
+    if(pgsiof == NULL) {
+        LOGE("could not find symbol for getSysInterfaceObject");
+    }
+
+    sys_iface = pgsiof();
+    if(sys_iface != NULL) {
+        LOGV("getSysInterfaceObject found at %p", &sys_iface);
+    }
+}
+
+SensorService::MplSysConnection::~MplSysConnection()
+{
+    ;
+}
+
+status_t SensorService::MplSysConnection::test()
+{
+    LOGV("Test MPL Sys Connection");
+    return 4242;
+}
+
+status_t SensorService::MplSysConnection::getBiases(float *f)
+{
+    LOGV("server side getBiases %p %p %p", mplSysApi_l, sys_iface->getBiases, f);
+    return (status_t)(sys_iface->getBiases(f));
+}
+
+status_t SensorService::MplSysConnection::setBiases(float *f)
+{
+    return (status_t)(sys_iface->setBiases(f));
+}
+
+status_t SensorService::MplSysConnection::setBiasUpdateFunc(long f)
+{
+    return (status_t)(sys_iface->setBiasUpdateFunc(f));
+}
+
+status_t SensorService::MplSysConnection::setSensors(long s)
+{
+    return (status_t)(sys_iface->setSensors(s));
+}
+
+status_t SensorService::MplSysConnection::getSensors(long* s)
+{
+    return (status_t)(sys_iface->getSensors(s));
+}
+
+status_t SensorService::MplSysConnection::resetCal()
+{
+    return (status_t)(sys_iface->resetCal());
+}
+
+status_t SensorService::MplSysConnection::selfTest()
+{
+    return (status_t)(sys_iface->selfTest());
+}
+
+status_t SensorService::MplSysConnection::rpcSetLocalMagField(float x, float y, float z) {
+    return (status_t)(sys_iface->setLocalMagField(x, y, z));
+}
+
+
+/* MPLSysPedConnection ***************************************************** */
+
+sp<IMplSysPedConnection> SensorService::createMplSysPedConnection()
+{
+    sp<MplSysPedConnection> result(new MplSysPedConnection(this));
+    return result;
+}
+
+SensorService::MplSysPedConnection::MplSysPedConnection(
+        const sp<SensorService>& service)
+    : mService(service)
+{
+}
+
+void SensorService::MplSysPedConnection::onFirstRef()
+{
+    MplSysPed_Interface* (*pgsiof)() = (MplSysPed_Interface*(*)())dlsym(RTLD_DEFAULT, "getSysPedInterfaceObject");
+    if(pgsiof == NULL) {
+        LOGE("could not find symbol for getSysPedInterfaceObject");
+    } else {
+        LOGV("getSysPedInterfaceObject found at %p", mplSysApi_l);
+    }
+
+    sysped_iface = pgsiof();
+}
+
+SensorService::MplSysPedConnection::~MplSysPedConnection()
+{
+}
+
+status_t SensorService::MplSysPedConnection::rpcStartPed(void) {
+    return sysped_iface->rpcStartPed();
+}
+
+status_t SensorService::MplSysPedConnection::rpcStopPed(void) {
+    return sysped_iface->rpcStopPed();
+}
+
+status_t SensorService::MplSysPedConnection::rpcGetSteps(void) {
+    return sysped_iface->rpcGetSteps();
+}
+
+double SensorService::MplSysPedConnection::rpcGetWalkTime(void) {
+    return sysped_iface->rpcGetWalkTime();
+}
+
+status_t SensorService::MplSysPedConnection::rpcClearPedData(void) {
+    return sysped_iface->rpcClearPedData();
+}
+
+/* ** MPLConnection ********************************************************* */
+sp<IMplConnection> SensorService::createMplConnection()
+{
+    sp<MplConnection> result(new MplConnection(this));
+    return result;
+}
+
+SensorService::MplConnection::MplConnection(
+        const sp<SensorService>& service)
+    : mService(service)
+{
+}
+
+void SensorService::MplConnection::onFirstRef()
+{
+    mplGlyphApi_l = (tMplGlyphApi*)dlsym(RTLD_DEFAULT, "mplGlyphApi");
+    if(mplGlyphApi_l == NULL) {
+        LOGE("could not find symbol for mplGlyphApi");
+    } else {
+        LOGV("mplGlyphApi found at %p", mplGlyphApi_l);
+    }
+}
+
+SensorService::MplConnection::~MplConnection()
+{
+}
+
+/* Glyph apis */
+int SensorService::MplConnection::rpcAddGlyph(unsigned short GlyphID)
+{
+    return mplGlyphApi_l->fpAddGlyph(GlyphID);
+}
+
+int SensorService::MplConnection::rpcBestGlyph(unsigned short *finalGesture)
+{
+    return mplGlyphApi_l->fpBestGlyph(finalGesture);
+}
+int SensorService::MplConnection::rpcSetGlyphSpeedThresh(unsigned short speed)
+{
+    return mplGlyphApi_l->fpSetGlyphSpeedThresh(speed);
+}
+int SensorService::MplConnection::rpcStartGlyph(void)
+{
+    return mplGlyphApi_l->fpStartGlyph();
+}
+int SensorService::MplConnection::rpcStopGlyph(void)
+{
+    return mplGlyphApi_l->fpStopGlyph();
+}
+int SensorService::MplConnection::rpcGetGlyph(int index, int *x, int *y)
+{
+    return mplGlyphApi_l->fpGetGlyph(index, x, y);
+}
+int SensorService::MplConnection::rpcGetGlyphLength(unsigned short *length)
+{
+    return mplGlyphApi_l->fpGetGlyphLength(length);
+}
+
+int SensorService::MplConnection::rpcClearGlyph(void)
+{
+    return mplGlyphApi_l->fpClearGlyph();
+}
+
+int SensorService::MplConnection::rpcLoadGlyphs(unsigned char *libraryData)
+{
+    return mplGlyphApi_l->fpLoadGlyphs(libraryData);
+}
+
+int SensorService::MplConnection::rpcStoreGlyphs(unsigned char *libraryData, unsigned short *length)
+{
+    return mplGlyphApi_l->fpStoreGlyphs(libraryData, length);
+}
+
+int SensorService::MplConnection::rpcSetGlyphProbThresh(unsigned short prob)
+{
+    return mplGlyphApi_l->fpSetGlyphProbThresh(prob);
+}
+
+int SensorService::MplConnection::rpcGetLibraryLength(unsigned short *length)
+{
+    return mplGlyphApi_l->fpGetLibraryLength(length);
+}
+
 }; // namespace android
 

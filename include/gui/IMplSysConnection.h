@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_GUI_ISENSORSERVER_H
-#define ANDROID_GUI_ISENSORSERVER_H
+#ifndef ANDROID_GUI_IMPL_SYS_CONNECTION_H
+#define ANDROID_GUI_IMPL_SYS_CONNECTION_H
 
-#include <stdint.h>
+#include <stdint.h> 
 #include <sys/types.h>
 
 #include <utils/Errors.h>
@@ -28,36 +28,36 @@
 namespace android {
 // ----------------------------------------------------------------------------
 
-class Sensor;
-class ISensorEventConnection;
-class IMplSysConnection;
-class IMplConnection;
-class IMplSysPedConnection;
+class SensorChannel;
 
-class ISensorServer : public IInterface
+class IMplSysConnection : public IInterface
 {
 public:
-    DECLARE_META_INTERFACE(SensorServer);
+    DECLARE_META_INTERFACE(MplSysConnection);
 
-    virtual Vector<Sensor> getSensorList() = 0;
-    virtual sp<ISensorEventConnection> createSensorEventConnection() = 0;
-    virtual sp<IMplSysConnection> createMplSysConnection() = 0;
-    virtual sp<IMplSysPedConnection> createMplSysPedConnection() = 0;
-    virtual sp<IMplConnection> createMplConnection() = 0;
+    virtual status_t getBiases(float*) = 0;
+    virtual status_t setBiases(float*) = 0;
+    virtual status_t setSensors(long) = 0;
+    virtual status_t getSensors(long*) = 0;
+    virtual status_t setBiasUpdateFunc(long) = 0;
+    virtual status_t resetCal() = 0;
+    virtual status_t selfTest() = 0;
+    virtual status_t rpcSetLocalMagField(float, float, float) = 0;
+    virtual status_t test() = 0;
 };
 
 // ----------------------------------------------------------------------------
 
-class BnSensorServer : public BnInterface<ISensorServer>
+class BnMplSysConnection : public BnInterface<IMplSysConnection>
 {
 public:
-    virtual status_t    onTransact( uint32_t code,
-                                    const Parcel& data,
-                                    Parcel* reply,
-                                    uint32_t flags = 0);
+    virtual status_t onTransact(uint32_t code,
+                                const Parcel& data,
+                                Parcel* reply,
+                                uint32_t flags = 0);
 };
 
 // ----------------------------------------------------------------------------
 }; // namespace android
 
-#endif // ANDROID_GUI_ISENSORSERVER_H
+#endif // ANDROID_GUI_IMPL_SYS_CONNECTION_H

@@ -32,6 +32,10 @@
 #include <gui/SensorChannel.h>
 #include <gui/ISensorServer.h>
 #include <gui/ISensorEventConnection.h>
+#include <gui/IMplSysConnection.h>
+#include <gui/IMplConnection.h>
+#include <gui/IMplSysPedConnection.h>
+#include <gui/MplInterfaces.h>
 
 #include "SensorInterface.h"
 
@@ -66,7 +70,9 @@ class SensorService :
     virtual Vector<Sensor> getSensorList();
     virtual sp<ISensorEventConnection> createSensorEventConnection();
     virtual status_t dump(int fd, const Vector<String16>& args);
-
+    virtual sp<IMplSysConnection> createMplSysConnection();
+    virtual sp<IMplSysPedConnection> createMplSysPedConnection();
+    virtual sp<IMplConnection> createMplConnection();
 
     class SensorEventConnection : public BnSensorEventConnection {
         virtual ~SensorEventConnection();
@@ -100,6 +106,62 @@ class SensorService :
         bool addConnection(const sp<SensorEventConnection>& connection);
         bool removeConnection(const wp<SensorEventConnection>& connection);
         size_t getNumConnections() const { return mConnections.size(); }
+    };
+
+    class MplSysConnection : public BnMplSysConnection {
+        virtual ~MplSysConnection();
+        virtual void onFirstRef();
+        sp<SensorService> const mService;
+        MplSys_Interface* sys_iface;
+
+    public:
+        MplSysConnection(const sp<SensorService>& service);
+        virtual status_t getBiases(float* f);
+        virtual status_t setBiases(float* f);
+        virtual status_t setBiasUpdateFunc(long f);
+        virtual status_t setSensors(long s);
+        virtual status_t getSensors(long* s);
+        virtual status_t resetCal();
+        virtual status_t selfTest();
+        virtual status_t test();
+        virtual status_t rpcSetLocalMagField(float x, float y, float z);
+    };
+
+
+    class MplSysPedConnection : public BnMplSysPedConnection {
+        virtual ~MplSysPedConnection();
+        virtual void onFirstRef();
+        sp<SensorService> const mService;
+        MplSysPed_Interface* sysped_iface;
+
+    public:
+        MplSysPedConnection(const sp<SensorService>& service);
+        virtual status_t rpcStartPed();
+        virtual status_t rpcStopPed();
+        virtual status_t rpcGetSteps();
+        virtual double rpcGetWalkTime();
+        virtual status_t rpcClearPedData();
+    };
+
+    class MplConnection : public BnMplConnection {
+        virtual ~MplConnection();
+        virtual void onFirstRef();
+        sp<SensorService> const mService;
+    public:
+        MplConnection(const sp<SensorService>& service);
+        virtual int rpcAddGlyph(unsigned short GlyphID);
+        virtual int rpcBestGlyph(unsigned short *finalGesture);
+        virtual int rpcSetGlyphSpeedThresh(unsigned short speed);
+        virtual int rpcStartGlyph(void);
+        virtual int rpcStopGlyph(void);
+        virtual int rpcGetGlyph(int index, int *x, int *y);
+        virtual int rpcGetGlyphLength(unsigned short *length);
+        virtual int rpcClearGlyph(void);
+        virtual int rpcLoadGlyphs(unsigned char *libraryData);
+        virtual int rpcStoreGlyphs(unsigned char *libraryData, unsigned short *length);
+        virtual int rpcSetGlyphProbThresh(unsigned short prob);
+        virtual int rpcGetLibraryLength(unsigned short *length);
+ 
     };
 
     SortedVector< wp<SensorEventConnection> > getActiveConnections() const;
