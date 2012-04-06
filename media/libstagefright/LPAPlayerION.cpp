@@ -34,7 +34,7 @@ void LPAPlayer::audio_register_memory() {
     for (int i = 0; i < mBuffNumber; i++) {
         ion_buf = memBufferAlloc(mBuffSize, &ion_fd);
         memset(&ion_info, 0, sizeof(msm_audio_ion_info));
-        LOGV("Registering ION with fd %d and address as %x", ion_fd, ion_buf);
+        LOGV("Registering ION with fd %d and address as %p", ion_fd, ion_buf);
         ion_info.fd = ion_fd;
         ion_info.vaddr = ion_buf;
         if ( ioctl(afd, AUDIO_REGISTER_ION, &ion_info) < 0 ) {
@@ -120,7 +120,7 @@ void LPAPlayer::memBufferDeAlloc()
         if (ioctl(afd, AUDIO_DEREGISTER_ION, &ion_info) < 0) {
             LOGE("ION deregister failed");
         }
-        LOGV("Ion Unmapping the address %u, size %d, fd %d from Request",ionBuffer.memBuf,ionBuffer.bytesToWrite,ionBuffer.memFd);
+        LOGV("Ion Unmapping the address %p, size %d, fd %d from Request",ionBuffer.memBuf,ionBuffer.bytesToWrite,ionBuffer.memFd);
         munmap(ionBuffer.memBuf, mBuffSize);
         LOGV("closing the ion shared fd");
         close(ionBuffer.memFd);
@@ -144,7 +144,7 @@ void LPAPlayer::memBufferDeAlloc()
         if (ioctl(afd, AUDIO_DEREGISTER_ION, &ion_info) < 0) {
             LOGE("ION deregister failed");
         }
-        LOGV("Ion Unmapping the address %u, size %d, fd %d from Request",ionBuffer.memBuf,ionBuffer.bytesToWrite,ionBuffer.memFd);
+        LOGV("Ion Unmapping the address %p, size %d, fd %d from Request",ionBuffer.memBuf,ionBuffer.bytesToWrite,ionBuffer.memFd);
         munmap(ionBuffer.memBuf, mBuffSize);
         LOGV("closing the ion shared fd");
         close(ionBuffer.memFd);

@@ -35,12 +35,12 @@
 namespace android {
 
 ElementaryStreamQueue::ElementaryStreamQueue(Mode mode)
-    : mMode(mode),
+    : mIsHWAACDec(false),
       mAACtimeUs(-1),
       mAACFrameDuration(0),
-      mIsHWAACDec(false),
       mPrevPESPartial(false),
-      mCurPESPartial(false) {
+      mCurPESPartial(false),
+      mMode(mode) {
     char value[PROPERTY_VALUE_MAX] = {0};
     if (property_get("ro.product.device", value, "0"))
     {

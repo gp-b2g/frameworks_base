@@ -44,7 +44,10 @@ int LPAPlayer::objectsAlive = 0;
 LPAPlayer::LPAPlayer(
                     const sp<MediaPlayerBase::AudioSink> &audioSink, bool &initCheck,
                     AwesomePlayer *observer)
-:mInputBuffer(NULL),
+:AudioPlayer(audioSink,observer),
+mBuffSize(0),
+mBuffNumber(0),
+mInputBuffer(NULL),
 mSampleRate(0),
 mLatencyUs(0),
 mFrameSize(0),
@@ -60,10 +63,7 @@ mIsFirstBuffer(false),
 mFirstBufferResult(OK),
 mFirstBuffer(NULL),
 mAudioSink(audioSink),
-mObserver(observer),
-mBuffNumber(0),
-mBuffSize(0),
-AudioPlayer(audioSink,observer) {
+mObserver(observer) {
     LOGV("LPAPlayer::LPAPlayer() ctor");
     a2dpDisconnectPause = false;
     mSeeked = false;
@@ -402,7 +402,7 @@ status_t LPAPlayer::start(bool sourceAlreadyStarted) {
 
 status_t LPAPlayer::seekTo(int64_t time_us) {
     Mutex::Autolock autoLock(mLock);
-    LOGV("seekTo: time_us %ld", time_us);
+    LOGV("seekTo: time_us %lld", time_us);
     if ( mReachedEOS ) {
         mReachedEOS = false;
         LOGV("Signalling to Decoder Thread");
@@ -547,7 +547,7 @@ void LPAPlayer::resume() {
 
                 if(!bIsAudioRouted) {
                     unsigned short decId;
-                    int sessionId;
+                    int sessionId = 0;
 
                     mPlaybackSuspended = false;
 
@@ -1175,7 +1175,7 @@ void LPAPlayer::A2DPThreadEntry() {
                     LOGV("Seeking A2DP Playback");
                     break;
                 }
-                data += bytesWritten;
+                data = (char *) data + bytesWritten;
                 bytesToWrite -= bytesWritten;
                 LOGV("@_@bytes To write2:%d",bytesToWrite);
             }
@@ -1339,7 +1339,7 @@ size_t LPAPlayer::fillBuffer(void *data, size_t size) {
         LOGV("AudioCallback");
     }
 
-    LOGV("Number of Frames Played: %u", mNumFramesPlayed);
+    LOGV("Number of Frames Played: %lld", mNumFramesPlayed);
     if (mReachedEOS) {
         return 0;
     }
@@ -1532,11 +1532,11 @@ realTimeOffset = 0;
 
 return mPositionTimeMediaUs + realTimeOffset;
 */
-    LOGV("getMediaTimeUs() isPaused %d timeStarted %d timePlayed %d", isPaused, timeStarted, timePlayed);
+    LOGV("getMediaTimeUs() isPaused %d timeStarted %lld timePlayed %lld", isPaused, timeStarted, timePlayed);
     if (isPaused || timeStarted == 0) {
         return timePlayed;
     } else {
-        LOGV("curr_time %d", nanoseconds_to_microseconds(systemTime(SYSTEM_TIME_MONOTONIC)));
+        LOGV("curr_time %lld", nanoseconds_to_microseconds(systemTime(SYSTEM_TIME_MONOTONIC)));
         return nanoseconds_to_microseconds(systemTime(SYSTEM_TIME_MONOTONIC)) - timeStarted + timePlayed;
     }
 
@@ -1626,7 +1626,7 @@ void LPAPlayer::onPauseTimeOut() {
         mInternalSeeking = true;
         mReachedEOS = false;
         mSeekTimeUs = timePlayed;
-        LOGV("%s: mSeekTimeUs %d ", __func__, mSeekTimeUs);
+        LOGV("%s: mSeekTimeUs %lld ", __func__, mSeekTimeUs);
 
         // 1. Get the Byte count that is consumed
         if ( ioctl(afd, AUDIO_GET_STATS, &stats)  < 0 ) {

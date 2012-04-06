@@ -780,7 +780,7 @@ void  TunnelPlayer::eventThreadEntry() {
     int avail = 0;
     int i = 0;
     struct pollfd pfd[NUM_FDS];
-    struct pcm * local_handle;
+    struct pcm * local_handle = NULL;
     mEventMutex.lock();
     mTimeout = -1;
     setpriority(PRIO_PROCESS, 0, ANDROID_PRIORITY_AUDIO);
