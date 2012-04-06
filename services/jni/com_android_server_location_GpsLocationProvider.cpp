@@ -392,6 +392,14 @@ static jboolean android_location_GpsLocationProvider_is_supported(JNIEnv* env, j
     return (sGpsInterface != NULL);
 }
 
+static jint android_location_GpsLocationProvider_has_ulp_capability(JNIEnv* env, jclass clazz) {
+    //We expect JNI to return bit map for ULP capability if present in the HAL
+    if(sUlpNetworkInterface != NULL)
+        return ULP_CAPABILITY;
+    else
+        return 0;
+}
+
 static jboolean android_location_GpsLocationProvider_init(JNIEnv* env, jobject obj)
 {
     // this must be set before calling into the HAL library
@@ -770,6 +778,7 @@ static JNINativeMethod sMethods[] = {
      /* name, signature, funcPtr */
     {"class_init_native", "()V", (void *)android_location_GpsLocationProvider_class_init_native},
     {"native_is_supported", "()Z", (void*)android_location_GpsLocationProvider_is_supported},
+    {"native_has_ulp_capability", "()I", (void*)android_location_GpsLocationProvider_has_ulp_capability},
     {"native_init", "()Z", (void*)android_location_GpsLocationProvider_init},
     {"native_cleanup", "()V", (void*)android_location_GpsLocationProvider_cleanup},
     {"native_set_position_mode", "(IIIII)Z", (void*)android_location_GpsLocationProvider_set_position_mode},

@@ -632,10 +632,14 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
                  LocationProviderInterface.ULP_CAPABILITY)){
 
                 //Even if GPS is turned off the ULP/Hybrid engine is still active
-                //as long as WiFi service is available
+                //as long as GNP or WiFi service is available
                 try {
-                    providerSetting = ((Settings.Secure.isLocationProviderEnabled(resolver, provider)) ||
-                             (Settings.Secure.getInt(resolver,Settings.Secure.WIFI_ON) == 1));
+                    providerSetting =
+                             ((Settings.Secure.isLocationProviderEnabled(resolver,
+                               LocationManager.GPS_PROVIDER)) ||
+                             ((Settings.Secure.isLocationProviderEnabled(resolver,
+                               LocationManager.NETWORK_PROVIDER)) ||
+                             (Settings.Secure.getInt(resolver,Settings.Secure.WIFI_ON) == 1)));
                 }catch (Exception e) {
                     Slog.e(TAG, "isAllowedBySettingsLocked got exception:", e);
                 }

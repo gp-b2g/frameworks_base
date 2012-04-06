@@ -859,7 +859,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
         return mStatus;
     }
     public int getCapability() {
-        return mEngineCapabilities;
+        return (mEngineCapabilities | native_has_ulp_capability());
     }
 
     private void updateStatus(int status, int svCount) {
@@ -2191,6 +2191,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
     static { class_init_native(); }
     private static native void class_init_native();
     private static native boolean native_is_supported();
+    private static native int native_has_ulp_capability();
 
     private native boolean native_init();
     private native void native_cleanup();
