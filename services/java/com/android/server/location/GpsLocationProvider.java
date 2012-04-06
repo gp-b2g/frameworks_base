@@ -238,6 +238,10 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private volatile int mRequestType = 0;
     private volatile int mRequestContextType = 0;
 
+    /** For provider specific messaging */
+    private static final int GPS_PROVIDER_MESSAGE = 0x1;
+    private static final int HYBRID_PROVIDER_MESSAGE = 0x2;
+
     // current status
     private int mStatus = LocationProvider.TEMPORARILY_UNAVAILABLE;
 
@@ -251,7 +255,8 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private static final int NO_FIX_TIMEOUT = 60 * 1000;
 
     // true if we are enabled
-    private volatile boolean mEnabled;
+    private volatile boolean mGpsEnabled = false;
+    private volatile boolean mHybridEnabled = false;
 
     // true if engine has been initialized
     private volatile boolean mInitialized = false;
@@ -279,11 +284,17 @@ public class GpsLocationProvider implements LocationProviderInterface {
     // requested frequency of fixes, in milliseconds
     private int mFixInterval = 1000;
 
-    // true if we started navigation
-    private boolean mStarted;
+    // true if we started GPS navigation
+    private boolean mGpsStarted = false;
 
-    // true if single shot request is in progress
-    private boolean mSingleShot;
+    // true if we started Hybrid navigation
+    private boolean mHybridStarted = false;
+
+    // true if single shot Gps request is in progress
+    private boolean mSingleShotGps = false;
+
+    // true if single shot request Hybrid is in progress
+    private boolean mSingleShotHybrid = false;
 
     // capabilities of the GPS engine
     private int mEngineCapabilities;
@@ -789,17 +800,24 @@ public class GpsLocationProvider implements LocationProviderInterface {
      * when the provider is enabled.
      */
     public void enable() {
-        synchronized (mHandler) {
-            sendMessage(ENABLE, 1, null);
+        if (DEBUG) Log.d(TAG, "enable");
+        synchronized (mWakeLock) {
+            mWakeLock.acquire();
+            mHandler.removeMessages(ENABLE);
+            Message m = Message.obtain(mHandler, ENABLE);
+            m.arg1 = 1;
+            m.arg2 = GPS_PROVIDER_MESSAGE;
+            mHandler.sendMessage(m);
         }
     }
 
-    private void handleEnable() {
-        if (DEBUG) Log.d(TAG, "handleEnable");
-        if (mEnabled) return;
+    private void handleEnable(int provider_message_type) {
+        if (DEBUG) Log.d(TAG, "handleEnable." + "provider_message_type: "
+                         + provider_message_type);
+        if ((mGpsEnabled == true) && (mHybridEnabled == true)) return;
 
-        /* Only init when not initialized or ULP is not supported */
-        if(!mInitialized || !hasCapability(LocationProviderInterface.ULP_CAPABILITY)) {
+        /* Only init when not initialized */
+        if(!mInitialized) {
 
             mInitialized = native_init();
 
@@ -814,10 +832,17 @@ public class GpsLocationProvider implements LocationProviderInterface {
             } else {
                 Log.w(TAG, "Failed to enable location provider");
             }
-            mEnabled = mInitialized;
+            mHybridEnabled = mInitialized;
         } else {
-            mEnabled = true;
+            mHybridEnabled = true;
         }
+        //If Hybrid engine enabled implicitly means GPS enabled
+        if((mHybridEnabled == true) &&
+           (provider_message_type == GPS_PROVIDER_MESSAGE)) {
+           mGpsEnabled = true;
+        }
+        if (DEBUG) Log.d(TAG, "handleEnable.End" + "GpsProvState: "+mGpsEnabled+
+                         "HybridProvState: "+mHybridEnabled+ "HalState :"+mInitialized);
     }
 
     /**
@@ -826,16 +851,29 @@ public class GpsLocationProvider implements LocationProviderInterface {
      * down while the provider is disabled.
      */
     public void disable() {
-        synchronized (mHandler) {
-            sendMessage(ENABLE, 0, null);
+        if (DEBUG) Log.d(TAG, "disable");
+        synchronized (mWakeLock) {
+            mWakeLock.acquire();
+            mHandler.removeMessages(ENABLE);
+            Message m = Message.obtain(mHandler, ENABLE);
+            m.arg1 = 0;
+            m.arg2 = GPS_PROVIDER_MESSAGE;
+            mHandler.sendMessage(m);
         }
     }
 
-    private void handleDisable() {
-        if (DEBUG) Log.d(TAG, "handleDisable");
-        if (!mEnabled) return;
+    private void handleDisable(int provider_message_type) {
+        if (DEBUG) Log.d(TAG, "handleDisable." + "provider_message_type: "
+                         + provider_message_type);
+        if ((mGpsEnabled == false) && (mHybridEnabled == false)) return;
 
-        mEnabled = false;
+        //If Hybrid engine enabled implicitly means GPS enabled
+        if(provider_message_type == GPS_PROVIDER_MESSAGE){
+           mGpsEnabled = false;
+           return;
+        }
+        //If we came here it means GPS, GNP & WiFi turned off
+        mHybridEnabled = mGpsEnabled = false;
 
         /* Only disable when ULP is not supported */
         if(!hasCapability(LocationProviderInterface.ULP_CAPABILITY)) {
@@ -846,10 +884,12 @@ public class GpsLocationProvider implements LocationProviderInterface {
 
             mInitialized = false;
         }
+        if (DEBUG) Log.d(TAG, "handleDisable.End" + "GpsProvState: "+mGpsEnabled+
+                         "HybridProvState: "+mHybridEnabled+ "HalState :"+mInitialized);
     }
 
     public boolean isEnabled() {
-        return mEnabled;
+        return mGpsEnabled;
     }
 
     public int getStatus(Bundle extras) {
@@ -859,7 +899,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
         return mStatus;
     }
     public int getCapability() {
-        return (mEngineCapabilities | native_has_ulp_capability());
+        return (mEngineCapabilities);
     }
 
     private void updateStatus(int status, int svCount) {
@@ -877,13 +917,18 @@ public class GpsLocationProvider implements LocationProviderInterface {
 
     public void enableLocationTracking(boolean enable) {
         // FIXME - should set a flag here to avoid race conditions with single shot request
-        synchronized (mHandler) {
-            sendMessage(ENABLE_TRACKING, (enable ? 1 : 0), null);
+        synchronized (mWakeLock) {
+            mWakeLock.acquire();
+            mHandler.removeMessages(ENABLE_TRACKING);
+            Message m = Message.obtain(mHandler, ENABLE_TRACKING);
+            m.arg1 = enable ? 1 : 0;
+            m.arg2 = GPS_PROVIDER_MESSAGE;
+            mHandler.sendMessage(m);
         }
     }
 
-    private void handleEnableLocationTracking(boolean enable) {
-        Log.d(TAG, "In handleEnableLocationTracking. enable " +enable);
+    private void handleEnableLocationTrackingGps(boolean enable) {
+        Log.d(TAG, "In handleEnableLocationTrackingGps. enable " +enable);
         if (enable) {
             mTTFF = 0;
             mLastFixTime = 0;
@@ -901,24 +946,60 @@ public class GpsLocationProvider implements LocationProviderInterface {
         }
     }
 
+    private void handleEnableLocationTrackingHybrid(boolean enable) {
+
+        // The basic objective of maintaining two state flags is to ensure that
+        //we send native_start() only when the first app gets on the client queue
+        //of either Gps or Hybrid provider . We send native_stop() only when the
+        //last client app is removed from the client queue of both Gps & Hybrid providers.
+        //We want to start a Location session only if GPS & Hybrid are not started already
+        if (enable == true) {
+            if((mHybridStarted == false) && (mGpsStarted == false)) {
+                if (!native_start()) {
+                    mHybridStarted = false;
+                    Log.e(TAG, "native_start failed in handleEnableLocationTrackingHybrid()");
+                    return;
+                }
+            }
+            mHybridStarted = true;
+        } else {
+            //We want to stop only if Hybrid is started and GPS is off
+            if ((mHybridStarted == true) && (mGpsStarted == false)) {
+                mLocationFlags = LOCATION_INVALID;
+                mSingleShotHybrid =  false;
+                native_stop();
+            }
+            mHybridStarted = false;
+        }
+        Log.d(TAG, "In handleEnableLocationTrackingHybrid.End. enable " +enable +
+              " mHybridStarted: "+mHybridStarted+"mGpsStarted: "+ mGpsStarted);
+    }
+
     public boolean requestSingleShotFix() {
-        if (mStarted) {
+        if (mGpsStarted) {
             // cannot do single shot if already navigating
             return false;
         }
         synchronized (mHandler) {
             mHandler.removeMessages(REQUEST_SINGLE_SHOT);
             Message m = Message.obtain(mHandler, REQUEST_SINGLE_SHOT);
+            m.arg1 = GPS_PROVIDER_MESSAGE;
             mHandler.sendMessage(m);
         }
         return true;
     }
 
-    private void handleRequestSingleShot() {
+    private void handleRequestSingleShotGps() {
         mTTFF = 0;
         mLastFixTime = 0;
         startNavigating(true);
     }
+
+    private void handleRequestSingleShotHybrid() {
+        mSingleShotHybrid = true;
+        handleEnableLocationTrackingHybrid(true);
+    }
+
 
     public void setMinTime(long minTime, WorkSource ws) {
         if (DEBUG) Log.d(TAG, "setMinTime " + minTime);
@@ -926,7 +1007,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
         if (minTime >= 0) {
             mFixInterval = (int)minTime;
 
-            if (mStarted && hasCapability(GPS_CAPABILITY_SCHEDULING)) {
+            if (mGpsStarted && hasCapability(GPS_CAPABILITY_SCHEDULING)) {
                 if (!native_set_position_mode(mPositionMode, GPS_POSITION_RECURRENCE_PERIODIC,
                         mFixInterval, 0, 0)) {
                     Log.e(TAG, "set_position_mode failed in setMinTime()");
@@ -938,19 +1019,12 @@ public class GpsLocationProvider implements LocationProviderInterface {
     public boolean updateCriteria(int action, long minTime, float minDistance,
                                   boolean singleShot,Criteria criteria) {
         boolean return_value = false;
-        if (DEBUG) Log.d(TAG, "updateCriteria with minTime " + minTime +" minDistance "+
+        if (DEBUG) Log.d(TAG, "updateCriteria with action: "+action +"minTime " + minTime +" minDistance "+
                                minDistance + " singleShot " + singleShot + " criteria: " + criteria);
 
-        if (criteria != null) {
-            //This is a ULP client app. Transalate criteria and push it down
-            return_value = native_update_criteria(action, minTime, minDistance, singleShot,
-                                                  criteria.getHorizontalAccuracy(),
-                                                  criteria.getPowerRequirement());
-        }
-        else
-        {   //This is a GPS provider app. Send the request down to the HAL
-            return_value = native_update_criteria(action, minTime, minDistance, singleShot, 0, 0);
-        }
+        //This is a GPS provider app. Send the request down to the HAL
+        return_value = native_update_criteria(action, minTime, minDistance, singleShot, 0, 0);
+
         return return_value;
     }
 
@@ -1175,38 +1249,12 @@ public class GpsLocationProvider implements LocationProviderInterface {
     }
     public boolean updateSettings(boolean gpsSetting,boolean networkProvSetting,
                                   boolean wifiSetting,boolean agpsSetting){
-        Log.d(TAG, "updateSettings invoked from LMS and setting values. Gps:"+
-                             gpsSetting +" GNP:"+ networkProvSetting+" WiFi:"+ wifiSetting+
-                             " Agps:"+ agpsSetting);
-        synchronized (mWakeLock) {
-            mWakeLock.acquire();
-            mHandler.removeMessages(UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS);
-            Message m = Message.obtain(mHandler, UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS);
-            Bundle b = new Bundle();
-            b.putBoolean("gpsSetting", gpsSetting);
-            b.putBoolean("networkProvSetting", networkProvSetting);
-            b.putBoolean("wifiSetting", wifiSetting);
-            b.putBoolean("agpsSetting", agpsSetting);
-            m.setData(b);
-            m.arg1 = ULP_PHONE_CONTEXT_UPDATE_TYPE_ONCHANGE;
-            mHandler.sendMessage(m);
-        }
+        if (DEBUG) Log.d(TAG, "updateSettings");
         return true;
     }
 
     public boolean updateBatteryStatus(boolean isBatteryCharging){
-        Log.d(TAG, "updateBatteryStatus invoked from LMS and setting values. isBatteryCharging: " +
-                             isBatteryCharging);
-        synchronized (mWakeLock) {
-            mWakeLock.acquire();
-            mHandler.removeMessages(UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS);
-            Message m = Message.obtain(mHandler, UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS);
-            Bundle b = new Bundle();
-            b.putBoolean("batteryCharging", isBatteryCharging);
-            m.setData(b);
-            m.arg1 = ULP_PHONE_CONTEXT_UPDATE_TYPE_ONCHANGE;
-            mHandler.sendMessage(m);
-        }
+        if (DEBUG) Log.d(TAG, "updateBatteryStatus");
         return true;
     }
 
@@ -1307,12 +1355,22 @@ public class GpsLocationProvider implements LocationProviderInterface {
                 result = true;
                }
         } else {
-          if (native_inject_raw_command(command.getBytes(), command.length()) == false)
-              result = true;
+            if (native_inject_raw_command(command.getBytes(), command.length()) == false)
+                result = true;
         }
 
         Binder.restoreCallingIdentity(identity);
         return result;
+    }
+
+    public HybridLocationProvider getHybridProvider () {
+        if((native_has_ulp_capability() & LocationProviderInterface.ULP_CAPABILITY)
+           == LocationProviderInterface.ULP_CAPABILITY) {
+            //Create an instance of the inner class and return to LocationManager
+            return new HybridLocationProvider();
+        } else {
+            return null;
+        }
     }
 
     private boolean deleteAidingData(Bundle extras) {
@@ -1355,10 +1413,12 @@ public class GpsLocationProvider implements LocationProviderInterface {
     }
 
     private void startNavigating(boolean singleShot) {
-        if (!mStarted) {
-            if (DEBUG) Log.d(TAG, "startNavigating");
-            mStarted = true;
-            mSingleShot = singleShot;
+        if (!mGpsStarted) {
+            if (DEBUG) Log.d(TAG, "In startNavigating. singleShot " +singleShot +
+                  " mHybridStarted: "+mHybridStarted+"mGpsStarted: "+ mGpsStarted);
+
+            mGpsStarted = true;
+            mSingleShotGps = singleShot;
             mPositionMode = GPS_POSITION_MODE_STANDALONE;
 
              if (Settings.Secure.getInt(mContext.getContentResolver(),
@@ -1375,15 +1435,18 @@ public class GpsLocationProvider implements LocationProviderInterface {
             if(!hasCapability(LocationProviderInterface.ULP_CAPABILITY)) {
                 if (!native_set_position_mode(mPositionMode, GPS_POSITION_RECURRENCE_PERIODIC,
                         interval, 0, 0)) {
-                    mStarted = false;
+                    mGpsStarted = false;
                     Log.e(TAG, "set_position_mode failed in startNavigating()");
                     return;
                 }
             }
-            if (!native_start()) {
-                mStarted = false;
-                Log.e(TAG, "native_start failed in startNavigating()");
-                return;
+            //We want to start a session if something already not started by Hybrid
+            if(mHybridStarted == false) {
+                if (!native_start()) {
+                    mGpsStarted = false;
+                    Log.e(TAG, "native_start failed in startNavigating()");
+                    return;
+                }
             }
 
             // reset SV count to zero
@@ -1401,11 +1464,16 @@ public class GpsLocationProvider implements LocationProviderInterface {
     }
 
     private void stopNavigating() {
-        if (DEBUG) Log.d(TAG, "stopNavigating");
-        if (mStarted) {
-            mStarted = false;
-            mSingleShot = false;
-            native_stop();
+        if (DEBUG) Log.d(TAG, "In stopNavigating.beg " +
+              " mHybridStarted: "+mHybridStarted+"mGpsStarted: "+ mGpsStarted);
+
+        if (mGpsStarted) {
+            mGpsStarted = false;
+            mSingleShotGps = false;
+            //We want to stop a session only if Hybrid is also off
+            if(mHybridStarted == false) {
+                native_stop();
+            }
             mTTFF = 0;
             mLastFixTime = 0;
             mLocationFlags = LOCATION_INVALID;
@@ -1436,7 +1504,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
             float speed, float bearing, float accuracy, long timestamp, int positionSource, byte[] rawData,
             boolean isIndoor, float floorNumber, String mapUrl, String mapIndex) {
         if (VERBOSE) Log.v(TAG, "reportLocation lat: " + latitude + " long: " + longitude +
-                " timestamp: " + timestamp);
+                " timestamp: " + timestamp + " positionSource: " + positionSource);
 
         synchronized (mLocation) {
             mLocationFlags = flags;
@@ -1466,23 +1534,16 @@ public class GpsLocationProvider implements LocationProviderInterface {
                 mLocation.removeAccuracy();
             }
             Log.d(TAG, "reportLocation.flag:" +flags);
-            if((flags & LOCATION_HAS_SOURCE_INFO) == LOCATION_HAS_SOURCE_INFO)  {
-
-                if(positionSource == ULP_LOCATION_IS_FROM_HYBRID) {
+            //We mark the position report as Hybrid only if it is marked as such
+            //by the HAL. If not we assume that it is a GNSS report
+            if(((flags & LOCATION_HAS_SOURCE_INFO) == LOCATION_HAS_SOURCE_INFO) &&
+                (positionSource == ULP_LOCATION_IS_FROM_HYBRID)) {
+                    mLocation.setProvider(LocationManager.HYBRID_PROVIDER);
                     Log.d(TAG, "reportLocation. Location has source information. src -hybrid");
-                    mLocationExtras.putBoolean("ProviderSourceIsUlp",true);
-                } else {
-                    mLocationExtras.remove("ProviderSourceIsUlp");
-                }
-                if(positionSource == ULP_LOCATION_IS_FROM_GNSS ) {
+            } else
+            {
+                mLocation.setProvider(LocationManager.GPS_PROVIDER );
                     Log.d(TAG, "reportLocation. Location has source information. src -gnss");
-                    mLocationExtras.putBoolean("ProviderSourceIsGnss",true);
-                } else {
-                    mLocationExtras.remove("ProviderSourceIsGnss");
-                }
-            } else {
-                    mLocationExtras.remove("ProviderSourceIsUlp");
-                    mLocationExtras.remove("ProviderSourceIsGnss");
             }
 
             if (rawData.length > 0) {
@@ -1549,10 +1610,13 @@ public class GpsLocationProvider implements LocationProviderInterface {
             }
         }
 
-        if (mSingleShot) {
+        if (mSingleShotGps == true) {
             stopNavigating();
         }
-        if (mStarted && mStatus != LocationProvider.AVAILABLE) {
+        if(mSingleShotHybrid == true ) {
+            handleEnableLocationTrackingHybrid(false);
+        }
+        if (mGpsStarted && mStatus != LocationProvider.AVAILABLE) {
             // we want to time out if we do not receive a fix
             // within the time out and we are requesting infrequent fixes
             if (!hasCapability(GPS_CAPABILITY_SCHEDULING) && mFixInterval < NO_FIX_TIMEOUT) {
@@ -1566,7 +1630,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
             updateStatus(LocationProvider.AVAILABLE, mSvCount);
         }
 
-       if (!hasCapability(GPS_CAPABILITY_SCHEDULING) && mStarted && mFixInterval > 1000) {
+       if (!hasCapability(GPS_CAPABILITY_SCHEDULING) && mGpsStarted && mFixInterval > 1000) {
             if (DEBUG) Log.d(TAG, "got fix, hibernating");
             hibernate();
         }
@@ -2062,20 +2126,29 @@ public class GpsLocationProvider implements LocationProviderInterface {
         @Override
         public void handleMessage(Message msg) {
             int message = msg.what;
-            Log.d(TAG, "Gps MessageHandler. msg.what " + message);
+            Log.d(TAG, "Gps MessageHandler. msg.what " + message + " msg.arg1:"
+                  +msg.arg1 + " msg.arg2: " + msg.arg2);
             switch (message) {
                 case ENABLE:
                     if (msg.arg1 == 1) {
-                        handleEnable();
+                        handleEnable(msg.arg2);
                     } else {
-                        handleDisable();
+                        handleDisable(msg.arg2);
                     }
                     break;
                 case ENABLE_TRACKING:
-                    handleEnableLocationTracking(msg.arg1 == 1);
+                    if(msg.arg2 == GPS_PROVIDER_MESSAGE) {
+                        handleEnableLocationTrackingGps(msg.arg1 == 1);
+                    } else {
+                        handleEnableLocationTrackingHybrid(msg.arg1 == 1);
+                    }
                     break;
                 case REQUEST_SINGLE_SHOT:
-                    handleRequestSingleShot();
+                    if(msg.arg1 == GPS_PROVIDER_MESSAGE) {
+                        handleRequestSingleShotGps();
+                    } else {
+                        handleRequestSingleShotHybrid();
+                    }
                     break;
                 case UPDATE_NETWORK_STATE:
                     handleUpdateNetworkState(msg.arg1, (NetworkInfo)msg.obj);
@@ -2304,6 +2377,248 @@ public class GpsLocationProvider implements LocationProviderInterface {
             mIPv4Addr = null;
             mIPv6Addr = null;
             mBearerType = BEARER_INVALID;
+        }
+    }
+    public class HybridLocationProvider implements LocationProviderInterface {
+        private static final String TAG1 = "HybridProvider";
+
+        public String getName() {
+            if (DEBUG) Log.d(TAG1, "getName");
+            return LocationManager.HYBRID_PROVIDER;
+        }
+
+        public boolean requiresNetwork() {
+            if (DEBUG) Log.d(TAG1, "requiresNetwork");
+            //Since HybridProvider amalgamates all provider technologies -GPS, network, Wi-Fi, Sensors
+            return true;
+        }
+
+        public boolean requiresSatellite() {
+            if (DEBUG) Log.d(TAG1, "requiresSatellite");
+            //Since HybridProvider amalgamates all provider technologies -GPS, network, Wi-Fi, Sensors
+            return true;
+        }
+
+        public boolean requiresCell() {
+            if (DEBUG) Log.d(TAG1, "requiresCell");
+            //Since HybridProvider amalgamates all provider technologies -GPS, network, Wi-Fi, Sensors
+            return true;
+        }
+
+        public boolean hasMonetaryCost() {
+            if (DEBUG) Log.d(TAG1, "hasMonetaryCost");
+            return false;
+        }
+
+        public boolean supportsAltitude() {
+            if (DEBUG) Log.d(TAG1, "supportsAltitude");
+            //Since HybridProvider amalgamates all provider technologies -GPS, network, Wi-Fi, Sensors
+            return true;
+        }
+
+        public boolean supportsSpeed() {
+            if (DEBUG) Log.d(TAG1, "supportsSpeed");
+            //Since HybridProvider amalgamates all provider technologies -GPS, network, Wi-Fi, Sensors
+            return true;
+        }
+
+        public boolean supportsBearing() {
+            if (DEBUG) Log.d(TAG1, "supportsBearing");
+            //Since HybridProvider amalgamates all provider technologies -GPS, network, Wi-Fi, Sensors
+            return true;
+        }
+
+        public int getPowerRequirement() {
+            if (DEBUG) Log.d(TAG1, "getPowerRequirement");
+            //Since HybridProvider amalgamates all provider technologies -GPS, network, Wi-Fi, Sensors
+            return Criteria.POWER_LOW;
+        }
+
+        public boolean meetsCriteria(Criteria criteria) {
+            if (DEBUG) Log.d(TAG1, "meetsCriteria. criteria" + criteria);
+            //As long we receive a non-null value for criteria Hyrbid engine will
+            //satisfy all criteria
+            if(criteria != null) {
+                return true;
+            }
+            return false;
+        }
+
+        public int getAccuracy() {
+            if (DEBUG) Log.d(TAG1, "getAccuracy");
+            //Since HybridProvider amalgamates all provider technologies -GPS, network, Wi-Fi, Sensors
+            return Criteria.ACCURACY_FINE;
+        }
+
+        public boolean isEnabled() {
+            if (DEBUG) Log.d(TAG1, "isEnabled");
+            return mHybridEnabled;
+        }
+
+        public void enable() {
+            if (DEBUG) Log.d(TAG1, "enable");
+            synchronized (mWakeLock) {
+                mWakeLock.acquire();
+                mHandler.removeMessages(ENABLE);
+                Message m = Message.obtain(mHandler, ENABLE);
+                m.arg1 = 1;
+                m.arg2 = HYBRID_PROVIDER_MESSAGE;
+                mHandler.sendMessage(m);
+            }
+
+        }
+
+        public void disable() {
+            synchronized (mWakeLock) {
+                mWakeLock.acquire();
+                mHandler.removeMessages(ENABLE);
+                Message m = Message.obtain(mHandler, ENABLE);
+                m.arg1 = 0;
+                m.arg2 = HYBRID_PROVIDER_MESSAGE;
+                mHandler.sendMessage(m);
+            }
+        }
+
+        public int getStatus(Bundle extras) {
+            if (DEBUG) Log.d(TAG1, "getStatus");
+            return LocationProvider.TEMPORARILY_UNAVAILABLE;
+        }
+
+        public long getStatusUpdateTime() {
+            if (DEBUG) Log.d(TAG1, "getStatusUpdateTime");
+            //Status update time in not a valid value for all location technologies
+            return -1;
+        }
+
+        public String getInternalState() {
+            if (DEBUG) Log.d(TAG1, "getInternalState.Not supported");
+            return null;
+        }
+
+        public void enableLocationTracking(boolean enable) {
+            if (DEBUG) Log.d(TAG1, "enableLocationTracking");
+            synchronized (mWakeLock) {
+                mWakeLock.acquire();
+                mHandler.removeMessages(ENABLE_TRACKING);
+                Message m = Message.obtain(mHandler, ENABLE_TRACKING);
+                m.arg1 = enable ? 1 : 0;
+                m.arg2 = HYBRID_PROVIDER_MESSAGE;
+                mHandler.sendMessage(m);
+            }
+        }
+
+        public boolean requestSingleShotFix() {
+            if (DEBUG) Log.d(TAG1, "requestSingleShotFix");
+            if (mHybridStarted) {
+                // cannot do single shot if already navigating
+                return false;
+            }
+            synchronized (mHandler) {
+                mHandler.removeMessages(REQUEST_SINGLE_SHOT);
+                Message m = Message.obtain(mHandler, REQUEST_SINGLE_SHOT);
+                m.arg1 = HYBRID_PROVIDER_MESSAGE;
+                mHandler.sendMessage(m);
+            }
+            return true;
+        }
+
+        public void setMinTime(long minTime, WorkSource ws) {
+            if (DEBUG) Log.d(TAG1, "setMinTime");
+        }
+
+        public void updateNetworkState(int state, NetworkInfo info) {
+            if (DEBUG) Log.d(TAG1, "updateNetworkState.Not supported");
+        }
+
+        public void updateLocation(Location location) {
+            if (DEBUG) Log.d(TAG1, "updateLocation.Not supported");
+        }
+
+        public boolean sendExtraCommand(String command, Bundle extras) {
+            if (DEBUG) Log.d(TAG1, "sendExtraCommand.Not supported");
+            return true;
+        }
+
+        public void addListener(int uid) {
+            if (DEBUG) Log.d(TAG1, "addListener");
+            synchronized (mWakeLock) {
+            mPendingListenerMessages++;
+            mWakeLock.acquire();
+            Message m = Message.obtain(mHandler, ADD_LISTENER);
+            m.arg1 = uid;
+            mHandler.sendMessage(m);
+            }
+        }
+
+        public void removeListener(int uid) {
+            if (DEBUG) Log.d(TAG1, "removeListener");
+            synchronized (mWakeLock) {
+            mPendingListenerMessages++;
+            mWakeLock.acquire();
+            Message m = Message.obtain(mHandler, REMOVE_LISTENER);
+            m.arg1 = uid;
+            mHandler.sendMessage(m);
+            }
+        }
+
+        public boolean updateCriteria(int action, long minTime, float minDistance,
+                   boolean singleShot,Criteria criteria) {
+            boolean return_value = false;
+            if (DEBUG) Log.d(TAG1, "updateCriteria with action: "+action +"minTime " + minTime +" minDistance "+
+                                   minDistance + " singleShot " + singleShot + " criteria: " + criteria);
+            //Check if we have a Criteria. else add a default criteria
+            if (criteria == null)
+            {
+                criteria = new Criteria();
+                criteria.setHorizontalAccuracy(Criteria.ACCURACY_HIGH);
+                criteria.setPowerRequirement(Criteria.NO_REQUIREMENT);
+            }
+            //This is a ULP client app. Transalate criteria and push it down
+            return_value = native_update_criteria(action, minTime, minDistance, singleShot,
+                                                  criteria.getHorizontalAccuracy(),
+                                                  criteria.getPowerRequirement());
+
+            return return_value;
+        }
+
+        public boolean updateSettings(boolean gpsSetting,boolean networkProvSetting,
+                                      boolean wifiSetting,boolean agpsSetting){
+           Log.d(TAG1, "updateSettings invoked from LMS and setting values. Gps:"+
+                                gpsSetting +" GNP:"+ networkProvSetting+" WiFi:"+ wifiSetting+
+                                " Agps:"+ agpsSetting);
+           synchronized (mWakeLock) {
+               mWakeLock.acquire();
+               mHandler.removeMessages(UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS);
+               Message m = Message.obtain(mHandler, UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS);
+               Bundle b = new Bundle();
+               b.putBoolean("gpsSetting", gpsSetting);
+               b.putBoolean("networkProvSetting", networkProvSetting);
+               b.putBoolean("wifiSetting", wifiSetting);
+               b.putBoolean("agpsSetting", agpsSetting);
+               m.setData(b);
+               m.arg1 = ULP_PHONE_CONTEXT_UPDATE_TYPE_ONCHANGE;
+               mHandler.sendMessage(m);
+           }
+           return true;
+        }
+        public boolean updateBatteryStatus(boolean isBatteryCharging){
+            Log.d(TAG, "updateBatteryStatus invoked from LMS and setting values. isBatteryCharging: " +
+                                 isBatteryCharging);
+            synchronized (mWakeLock) {
+                mWakeLock.acquire();
+                mHandler.removeMessages(UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS);
+                Message m = Message.obtain(mHandler, UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS);
+                Bundle b = new Bundle();
+                b.putBoolean("batteryCharging", isBatteryCharging);
+                m.setData(b);
+                m.arg1 = ULP_PHONE_CONTEXT_UPDATE_TYPE_ONCHANGE;
+                mHandler.sendMessage(m);
+            }
+            return true;
+        }
+        public int getCapability(){
+            if (DEBUG) Log.d(TAG1, "getCapability");
+            return 0;
         }
     }
 }

@@ -86,6 +86,24 @@ public class LocationManager {
     public static final String GPS_PROVIDER = "gps";
 
     /**
+     * Name of the Hybrid location provider. This provider may
+     * determine location using any of the available location
+     * technologies such as satellites, WiFi, network base-station,
+     * sensors etc. Depending on conditions, this provider may be
+     * able to provide a location solution within the fastest
+     * possible time frame with least amount of resources such as
+     * power etc.
+     *
+     * Requires the permission
+     * android.permission.ACCESS_FINE_LOCATION
+     *
+     * <p> The extras Bundle for the Hybrid location provider can
+     * contain the key/value pairs relevant for indoor locations
+     * @hide
+     * */
+    public static final String HYBRID_PROVIDER = "hybrid";
+
+    /**
      * A special location provider for receiving locations without actually initiating
      * a location fix. This provider can be used to passively receive location updates
      * when other applications or services request them without actually requesting
