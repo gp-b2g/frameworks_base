@@ -1730,12 +1730,18 @@ status_t SurfaceFlinger::dump(int fd, const Vector<String16>& args)
                 "  last transaction time     : %f us\n"
                 "  refresh-rate              : %f fps\n"
                 "  x-dpi                     : %f\n"
-                "  y-dpi                     : %f\n",
+                "  y-dpi                     : %f\n"
+                "  framebuffer width         : %d\n"
+                "  framebuffer height        : %d\n"
+                "  framebuffer format        : %d\n",
                 mLastSwapBufferTime/1000.0,
                 mLastTransactionTime/1000.0,
                 hw.getRefreshRate(),
                 hw.getDpiX(),
-                hw.getDpiY());
+                hw.getDpiY(),
+                hw.getWidth(),
+                hw.getHeight(),
+                hw.getFormat());
         result.append(buffer);
 
         if (inSwapBuffersDuration || !locked) {
