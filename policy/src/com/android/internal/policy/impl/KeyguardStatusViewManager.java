@@ -556,7 +556,7 @@ class KeyguardStatusViewManager implements OnClickListener {
     /*
      * Add emergencyCallMessage to carrier string only if phone supports emergency calls.
      */
-    private CharSequence makeCarrierStringOnEmergencyCapable(
+    protected CharSequence makeCarrierStringOnEmergencyCapable(
             CharSequence simMessage, CharSequence emergencyCallMessage) {
         if (mLockPatternUtils.isEmergencyCallCapable()) {
             return makeCarierString(simMessage, emergencyCallMessage);

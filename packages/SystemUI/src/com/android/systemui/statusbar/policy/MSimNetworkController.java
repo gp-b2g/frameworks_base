@@ -252,7 +252,7 @@ public class MSimNetworkController extends NetworkController {
             // wimax is special
             cluster.setMobileDataIndicators(
                     true,
-                    mWimaxIconId,
+                    mAlwaysShowCdmaRssi ? mMSimPhoneSignalIconId[subscription] : mWimaxIconId,
                     mMSimMobileActivityIconId[subscription],
                     mMSimDataTypeIconId[subscription],
                     mContentDescriptionWimax,
@@ -473,8 +473,8 @@ public class MSimNetworkController extends NetworkController {
         if (!hasService(subscription) &&
                 mDataServiceState[subscription] != ServiceState.STATE_IN_SERVICE) {
             if (DEBUG) Slog.d(TAG, "No service ");
-            mMSimPhoneSignalIconId[subscription] = R.drawable.stat_sys_signal_0;
-            mMSimDataSignalIconId[subscription] = R.drawable.stat_sys_signal_0;
+            mMSimPhoneSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
+            mMSimDataSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
         } else {
 
             if ((mMSimSignalStrength[subscription] == null) ||
@@ -484,14 +484,23 @@ public class MSimNetworkController extends NetworkController {
                             + mMSimSignalStrength[subscription]
                                     + " mServiceState " + mMSimServiceState[subscription]);
                 }
-                mMSimPhoneSignalIconId[subscription] = R.drawable.stat_sys_signal_0;
-                mMSimDataSignalIconId[subscription] = R.drawable.stat_sys_signal_0;
+                mMSimPhoneSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
+                mMSimDataSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
                 mMSimContentDescriptionPhoneSignal[subscription] = mContext.getString(
                         AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[0]);
             } else {
                 int iconLevel;
                 int[] iconList;
-                mLastSignalLevel = iconLevel = mMSimSignalStrength[subscription].getLevel();
+
+                if (isCdma(subscription) && mAlwaysShowCdmaRssi) {
+                    mLastSignalLevel = iconLevel = mMSimSignalStrength[subscription].getCdmaLevel();
+                    if (DEBUG) Slog.d(TAG, "mAlwaysShowCdmaRssi=" + mAlwaysShowCdmaRssi
+                            + " set to cdmaLevel=" + mMSimSignalStrength[subscription].
+                            getCdmaLevel() + " instead of level=" +
+                            mMSimSignalStrength[subscription].getLevel());
+                } else {
+                    mLastSignalLevel = iconLevel = mMSimSignalStrength[subscription].getLevel();
+                }
 
                 // Though mPhone is a Manager, this call is not an IPC
                 if ((isCdma(subscription) && isCdmaEri(subscription)) ||
@@ -769,36 +778,39 @@ public class MSimNetworkController extends NetworkController {
     // ===== Update the views =======================================================
 
     protected void refreshViews(int subscription) {
-        super.refreshViews();
-        /*
         Context context = mContext;
 
-        String label = "";
+        String wifiLabel = "";
+        String combinedLabel = "";
+        String mobileLabel = "";
         int N;
+
         Slog.d(TAG,"refreshViews subscription =" + subscription + "mMSimDataConnected ="
                 + mMSimDataConnected[subscription]);
         Slog.d(TAG,"refreshViews mMSimDataActivity =" + mMSimDataActivity[subscription]);
 
-        if ((mMSimDataConnected[subscription]) ||
-                (!hasService(subscription) &&
-                        mDataServiceState[subscription] == ServiceState.STATE_IN_SERVICE)) {
+        if (!mHasMobileDataFeature) {
+            mMSimDataSignalIconId[subscription] = mMSimPhoneSignalIconId[subscription] = 0;
+            mobileLabel = "";
+        } else {
+            // We want to show the carrier name if in service and either:
+            //   - We are connected to mobile data, or
+            //   - We are not connected to mobile data, as long as the *reason* packets are not
+            //     being routed over that link is that we have better connectivity via wifi.
+            // If data is disconnected for some other reason but wifi is connected, we show nothing.
+            // Otherwise (nothing connected) we show "No internet connection".
 
-            label = mMSimNetworkName[subscription];
-            Slog.d(TAG,"refreshViews label =" + label);
-            mMSimcombinedSignalIconId[subscription] = mMSimDataSignalIconId[subscription];
-            switch (mMSimDataActivity[subscription]) {
-                case TelephonyManager.DATA_ACTIVITY_IN:
-                    mMSimMobileActivityIconId[subscription] = R.drawable.stat_sys_signal_in;
-                    break;
-                case TelephonyManager.DATA_ACTIVITY_OUT:
-                    mMSimMobileActivityIconId[subscription] = R.drawable.stat_sys_signal_out;
-                    break;
-                case TelephonyManager.DATA_ACTIVITY_INOUT:
-                    mMSimMobileActivityIconId[subscription] = R.drawable.stat_sys_signal_inout;
-                    break;
-                default:
-                    mMSimMobileActivityIconId[subscription] = 0;
-                    break;
+            if (mMSimDataConnected[subscription]) {
+                mobileLabel = mNetworkName;
+            } else if (mWifiConnected) {
+                if (hasService(subscription)) {
+                    mobileLabel = mNetworkName;
+                } else {
+                    mobileLabel = "";
+                }
+            } else {
+                mobileLabel = context
+                        .getString(R.string.status_bar_settings_signal_meter_disconnected);
             }
 
             mMSimcombinedActivityIconId[subscription] = mMSimMobileActivityIconId[subscription];
@@ -806,14 +818,42 @@ public class MSimNetworkController extends NetworkController {
             mMSimcombinedSignalIconId[subscription] = mMSimDataSignalIconId[subscription];
             mMSimContentDescriptionCombinedSignal[subscription] =
                     mMSimContentDescriptionDataType[subscription];
+            // Now for things that should only be shown when actually using mobile data.
+            if (mMSimDataConnected[subscription]) {
+                mMSimcombinedSignalIconId[subscription] = mMSimDataSignalIconId[subscription];
+                switch (mMSimDataActivity[subscription]) {
+                    case TelephonyManager.DATA_ACTIVITY_IN:
+                        mMSimMobileActivityIconId[subscription] = R.drawable.stat_sys_signal_in;
+                        break;
+                    case TelephonyManager.DATA_ACTIVITY_OUT:
+                        mMSimMobileActivityIconId[subscription] = R.drawable.stat_sys_signal_out;
+                        break;
+                    case TelephonyManager.DATA_ACTIVITY_INOUT:
+                        mMSimMobileActivityIconId[subscription] = R.drawable.stat_sys_signal_inout;
+                        break;
+                    default:
+                        mMSimMobileActivityIconId[subscription] = 0;
+                        break;
+                }
+
+                combinedLabel = mobileLabel;
+                mMSimcombinedActivityIconId[subscription] = mMSimMobileActivityIconId[subscription];
+                // set by updateDataIcon()
+                mMSimcombinedSignalIconId[subscription] = mMSimDataSignalIconId[subscription];
+                mMSimContentDescriptionCombinedSignal[subscription] =
+                        mMSimContentDescriptionDataType[subscription];
+            }
         }
 
         if (mWifiConnected) {
             if (mWifiSsid == null) {
-                label = context.getString(R.string.status_bar_settings_signal_meter_wifi_nossid);
+                wifiLabel = context.getString(R.string.status_bar_settings_signal_meter_wifi_nossid);
                 mWifiActivityIconId = 0; // no wifis, no bits
             } else {
-                label = mWifiSsid;
+                wifiLabel = mWifiSsid;
+                if (DEBUG) {
+                    wifiLabel += "xxxxXXXXxxxxXXXX";
+                }
                 switch (mWifiActivity) {
                     case WifiManager.DATA_ACTIVITY_IN:
                         mWifiActivityIconId = R.drawable.stat_sys_wifi_in;
@@ -831,12 +871,20 @@ public class MSimNetworkController extends NetworkController {
             }
 
             mMSimcombinedActivityIconId[subscription] = mWifiActivityIconId;
+            combinedLabel = wifiLabel;
             mMSimcombinedSignalIconId[subscription] = mWifiIconId; // set by updateWifiIcons()
             mMSimContentDescriptionCombinedSignal[subscription] = mContentDescriptionWifi;
+        } else {
+            if (mHasMobileDataFeature) {
+                wifiLabel = "";
+            } else {
+                wifiLabel = context.
+                        getString(R.string.status_bar_settings_signal_meter_disconnected);
+            }
         }
 
         if (mBluetoothTethered) {
-            label = mContext.getString(R.string.bluetooth_tethered);
+            combinedLabel = mContext.getString(R.string.bluetooth_tethered);
             mMSimcombinedSignalIconId[subscription] = mBluetoothTetherIconId;
             mMSimContentDescriptionCombinedSignal[subscription] = mContext.getString(
                     R.string.accessibility_bluetooth_tether);
@@ -846,11 +894,10 @@ public class MSimNetworkController extends NetworkController {
                 (mMSimServiceState[subscription] == null || (!hasService(subscription)
                     && !mMSimServiceState[subscription].isEmergencyOnly()))) {
             // Only display the flight-mode icon if not in "emergency calls only" mode.
-            label = context.getString(R.string.status_bar_settings_signal_meter_disconnected);
-            mMSimContentDescriptionCombinedSignal[subscription] =
-                    mMSimContentDescriptionPhoneSignal[subscription] = mContext
-                    .getString(R.string.accessibility_airplane_mode);
+
             // look again; your radios are now airplanes
+            mMSimContentDescriptionPhoneSignal[subscription] = mContext
+                    .getString(R.string.accessibility_airplane_mode);
             mMSimPhoneSignalIconId[subscription] = mMSimDataSignalIconId[subscription] =
                     R.drawable.stat_sys_signal_flightmode;
             if (subscription == MSimConstants.SUB1) {
@@ -861,12 +908,30 @@ public class MSimNetworkController extends NetworkController {
             mMSimDataTypeIconId[subscription] = 0;
             mNoMSimIconId[subscription] = 0;
 
-            mMSimcombinedSignalIconId[subscription] = mMSimDataSignalIconId[subscription];
+            // combined values from connected wifi take precedence over airplane mode
+            if (mWifiConnected) {
+                // Suppress "No internet connection." from mobile if wifi connected.
+                mobileLabel = "";
+            } else {
+                if (mHasMobileDataFeature) {
+                    // let the mobile icon show "No internet connection."
+                    wifiLabel = "";
+                } else {
+                    wifiLabel = context.
+                            getString(R.string.status_bar_settings_signal_meter_disconnected);
+                    combinedLabel = wifiLabel;
+                }
+                mMSimContentDescriptionCombinedSignal[subscription] =
+                        mMSimContentDescriptionPhoneSignal[subscription];
+                mMSimcombinedSignalIconId[subscription] = mMSimDataSignalIconId[subscription];
+            }
+
         }
         else if (!mMSimDataConnected[subscription] && !mWifiConnected && !mBluetoothTethered) {
             // pretty much totally disconnected
 
-            label = context.getString(R.string.status_bar_settings_signal_meter_disconnected);
+            combinedLabel = context.getString
+                    (R.string.status_bar_settings_signal_meter_disconnected);
             // On devices without mobile radios, we want to show the wifi icon
             mMSimcombinedSignalIconId[subscription] =
                     mHasMobileDataFeature ? mMSimDataSignalIconId[subscription] : mWifiIconId;
@@ -939,8 +1004,13 @@ public class MSimNetworkController extends NetworkController {
             N = mPhoneSignalIconViews.size();
             for (int i=0; i<N; i++) {
                 final ImageView v = mPhoneSignalIconViews.get(i);
-                v.setImageResource(mMSimPhoneSignalIconId[subscription]);
-                v.setContentDescription(mMSimContentDescriptionPhoneSignal[subscription]);
+                if (mMSimPhoneSignalIconId[subscription] == 0) {
+                    v.setVisibility(View.GONE);
+                } else {
+                    v.setVisibility(View.VISIBLE);
+                    v.setImageResource(mMSimPhoneSignalIconId[subscription]);
+                    v.setContentDescription(mMSimContentDescriptionPhoneSignal[subscription]);
+                }
             }
         }
 
@@ -966,7 +1036,7 @@ public class MSimNetworkController extends NetworkController {
             for (int i=0; i<N; i++) {
                 final ImageView v = mWifiIconViews.get(i);
                 if (mWifiIconId == 0) {
-                    v.setVisibility(View.INVISIBLE);
+                    v.setVisibility(View.GONE);
                 } else {
                     v.setVisibility(View.VISIBLE);
                     v.setImageResource(mWifiIconId);
@@ -994,7 +1064,7 @@ public class MSimNetworkController extends NetworkController {
             for (int i=0; i<N; i++) {
                 final ImageView v = mDataTypeIconViews.get(i);
                 if (mMSimDataTypeIconId[subscription] == 0) {
-                    v.setVisibility(View.INVISIBLE);
+                    v.setVisibility(View.GONE);
                 } else {
                     v.setVisibility(View.VISIBLE);
                     v.setImageResource(mMSimDataTypeIconId[subscription]);
@@ -1014,7 +1084,7 @@ public class MSimNetworkController extends NetworkController {
             for (int i=0; i<N; i++) {
                 final ImageView v = mDataDirectionOverlayIconViews.get(i);
                 if (mMSimcombinedActivityIconId[subscription] == 0) {
-                    v.setVisibility(View.INVISIBLE);
+                    v.setVisibility(View.GONE);
                 } else {
                     v.setVisibility(View.VISIBLE);
                     v.setImageResource(mMSimcombinedActivityIconId[subscription]);
@@ -1024,15 +1094,39 @@ public class MSimNetworkController extends NetworkController {
         }
 
         // the label in the notification panel
-        if (!mLastLabel.equals(label)) {
-            mLastLabel = label;
-            N = mLabelViews.size();
+        if (!mLastCombinedLabel.equals(combinedLabel)) {
+            mLastCombinedLabel = combinedLabel; 
+            N = mCombinedLabelViews.size();
             for (int i=0; i<N; i++) {
-                TextView v = mLabelViews.get(i);
-                v.setText(label);
+                TextView v = mCombinedLabelViews.get(i);
+                v.setText(combinedLabel);
             }
         }
-        */
+
+        // wifi label
+        N = mWifiLabelViews.size();
+        for (int i=0; i<N; i++) {
+            TextView v = mWifiLabelViews.get(i);
+            if ("".equals(wifiLabel)) {
+                v.setVisibility(View.GONE);
+            } else {
+                v.setVisibility(View.VISIBLE);
+                v.setText(wifiLabel);
+            }
+        }
+
+        // mobile label
+        N = mMobileLabelViews.size();
+        for (int i=0; i<N; i++) {
+            TextView v = mMobileLabelViews.get(i);
+            if ("".equals(mobileLabel)) {
+                v.setVisibility(View.GONE);
+            } else {
+                v.setVisibility(View.VISIBLE);
+                v.setText(mobileLabel);
+            }
+        }
+
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args, int subscription) {
