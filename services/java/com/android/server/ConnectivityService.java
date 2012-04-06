@@ -2013,7 +2013,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
         if (TextUtils.equals(mNetTrackers[netType].getNetworkInfo().getReason(),
                              Phone.REASON_LINK_PROPERTIES_CHANGED)) {
             if (isTetheringSupported()) {
-                mTethering.handleTetherIfaceChange();
+                mTethering.handleTetherIfaceChange(mNetTrackers[netType].getNetworkInfo());
             }
         }
     }
