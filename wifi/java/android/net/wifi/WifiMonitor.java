@@ -525,7 +525,14 @@ public class WifiMonitor {
         private void handleHostApEvents(String dataString) {
             String[] tokens = dataString.split(" ");
             if (tokens[0].equals(AP_STA_CONNECTED_STR)) {
-                mStateMachine.sendMessage(AP_STA_CONNECTED_EVENT, tokens[1]);
+                for (String token : tokens) {
+                      String[] nameValue = token.split("=");
+                      if (nameValue.length != 2) continue;
+                      if (nameValue[0].equals("dev_addr")) {
+                          String dev_addr = nameValue[1];
+                          mStateMachine.sendMessage(AP_STA_CONNECTED_EVENT, dev_addr);
+                      }
+                 }
             } else if (tokens[0].equals(AP_STA_DISCONNECTED_STR)) {
                 mStateMachine.sendMessage(AP_STA_DISCONNECTED_EVENT, tokens[1]);
             }
