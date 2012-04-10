@@ -1352,6 +1352,25 @@ public class Camera {
          * as a set. Either they are all valid, or none of them are.
          */
         public Point mouth = null;
+
+        /* ###QOALCOMM_CAMERA_ADDS_ON_START### */
+        /**
+         * {@hide}
+         */
+        public int smileDegree = 0;
+        /**
+         * {@hide}
+         */
+        public int smileScore = 0;
+        /**
+         * {@hide}
+         */
+        public int blinkDetected = 0;
+        /**
+         * {@hide}
+         */
+        public int faceRecognised = 0;
+        /* ###QOALCOMM_CAMERA_ADDS_ON_END### */
     }
 
     // Error codes match the enum in include/ui/Camera.h
