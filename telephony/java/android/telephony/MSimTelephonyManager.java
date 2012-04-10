@@ -17,6 +17,8 @@
 
 package android.telephony;
 
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC2_OPERATOR_NUMERIC;
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
 import android.annotation.SdkConstant;
 import android.annotation.SdkConstant.SdkConstantType;
 import android.content.Context;
@@ -800,6 +802,14 @@ public class MSimTelephonyManager extends TelephonyManager {
      */
     public static String getTelephonyProperty(String property, int index, String defaultVal) {
         String propVal = null;
+
+        //now we have two icc operator numeric property,the old method need extend
+        if (property.equals(PROPERTY_ICC_OPERATOR_NUMERIC)){
+            property = index == 0 ? PROPERTY_ICC_OPERATOR_NUMERIC : PROPERTY_ICC2_OPERATOR_NUMERIC;
+            propVal = SystemProperties.get(property);
+            return propVal == null ? defaultVal : propVal;
+        }
+
         String prop = SystemProperties.get(property);
 
         if ((prop != null) && (prop.length() > 0)) {
@@ -877,8 +887,8 @@ public class MSimTelephonyManager extends TelephonyManager {
      */
     public String getSimOperator(int subscription) {
         if (!isMultiSimEnabled) return getSimOperator();
-        return getTelephonyProperty
-                (TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, subscription, "");
+        String property = subscription == 0 ? PROPERTY_ICC_OPERATOR_NUMERIC : PROPERTY_ICC2_OPERATOR_NUMERIC;
+        return SystemProperties.get(property);
     }
 
     /**
