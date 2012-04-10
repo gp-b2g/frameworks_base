@@ -593,6 +593,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                             .setMessage(r.getString(R.string.wifi_p2p_turnon_message))
                             .setPositiveButton(r.getString(R.string.ok), listener)
                             .setNegativeButton(r.getString(R.string.cancel), listener)
+                            .setCancelable(false)
                             .create();
                         dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
                         dialog.show();
@@ -1298,6 +1299,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
             .setTitle(r.getString(R.string.wifi_p2p_dialog_title))
             .setMessage(r.getString(R.string.wifi_p2p_failed_message))
             .setPositiveButton(r.getString(R.string.ok), null)
+            .setCancelable(false)
             .create();
         dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
         dialog.show();
@@ -1309,6 +1311,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
             .setTitle(r.getString(R.string.wifi_p2p_dialog_title))
             .setMessage(r.getString(R.string.wifi_p2p_pin_display_message, pin, peerAddress))
             .setPositiveButton(r.getString(R.string.ok), null)
+            .setCancelable(false)
             .create();
         dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
         dialog.show();
@@ -1344,6 +1347,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                             sendMessage(GROUP_NEGOTIATION_USER_REJECT);
                         }
                     })
+            .setCancelable(false)
             .create();
 
         if (wps.setup == WpsInfo.PBC) {
@@ -1375,6 +1379,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                         }
                     })
             .setNegativeButton(r.getString(R.string.cancel), null)
+            .setCancelable(false)
             .create();
 
         pin.setVisibility(View.GONE);
@@ -1401,6 +1406,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                     }
                     })
             .setNegativeButton(r.getString(R.string.cancel), null)
+            .setCancelable(false)
             .create();
 
         dialog.setMessage(r.getString(R.string.wifi_p2p_pin_go_negotiation_request_message,
@@ -1432,6 +1438,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                             sendMessage(GROUP_INVITATION_USER_REJECT);
                         }
                     })
+            .setCancelable(false)
             .create();
 
         pin.setVisibility(View.GONE);
