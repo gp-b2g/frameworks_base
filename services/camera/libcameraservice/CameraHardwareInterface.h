@@ -116,9 +116,10 @@ public:
 
         if (mDevice->ops->set_preview_window) {
             LOGV("%s buf %p mPreviewWindow %p", __FUNCTION__, buf.get(), mPreviewWindow.get());
-            if (buf.get() && mPreviewWindow.get() && (buf.get() != mPreviewWindow.get())) {
+            if (mPreviewWindow.get() && (buf.get() != mPreviewWindow.get())) {
                  mDevice->ops->set_preview_window(mDevice, 0);
             }
+
             mPreviewWindow = buf;
             mHalPreviewWindow.user = this;
             LOGV("%s &mHalPreviewWindow %p mHalPreviewWindow.user %p", __FUNCTION__,
