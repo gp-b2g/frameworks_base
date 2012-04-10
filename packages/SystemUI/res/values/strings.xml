@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
 /**
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2009, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); 
@@ -182,6 +183,8 @@
     <string name="screenshot_failed_title">Couldn\'t capture screenshot.</string>
     <!-- Notification text displayed when we fail to take a screenshot. [CHAR LIMIT=100] -->
     <string name="screenshot_failed_text">Couldn\'t save screenshot. Storage may be in use.</string>
+    <!-- Notification text displayed when sd card is full. [CHAR LIMIT=100] -->
+    <string name="screenshot_sd_card_full">Couldn\'t save screenshot. SD card is full.</string>
 
     <!-- Title for the USB function chooser in UsbPreferenceActivity. [CHAR LIMIT=30] -->
     <string name="usb_preference_title">USB file transfer options</string>

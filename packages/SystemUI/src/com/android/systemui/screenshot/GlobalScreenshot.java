@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  * Copyright (C) 2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +39,7 @@ import android.hardware.CameraSound;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Environment;
+import android.os.StatFs;
 import android.os.Process;
 import android.provider.MediaStore;
 import android.util.DisplayMetrics;
@@ -51,6 +53,7 @@ import android.view.WindowManager;
 import android.view.animation.Interpolator;
 import android.widget.ImageView;
 import android.os.SystemProperties;
+import android.widget.Toast;
 
 import com.android.systemui.R;
 
@@ -345,6 +348,14 @@ class GlobalScreenshot {
      * Takes a screenshot of the current display and shows an animation.
      */
     void takeScreenshot(Runnable finisher, boolean statusBarVisible, boolean navBarVisible) {
+        //space check
+        if (getAvalibleSpace() < 0x40000) { // 256kB
+            Resources r = mContext.getResources();
+            Toast.makeText(mContext,
+                r.getString(R.string.screenshot_sd_card_full), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         // We need to orient the screenshot correctly (and the Surface api seems to take screenshots
         // only in the natural orientation of the device :!)
         mDisplay.getRealMetrics(mDisplayMetrics);
@@ -581,5 +592,13 @@ class GlobalScreenshot {
             .setAutoCancel(true)
             .getNotification();
         nManager.notify(SCREENSHOT_NOTIFICATION_ID, n);
+    }
+
+    // return the bytes of avalible space on sd card
+    private long getAvalibleSpace() {
+        File mSDCard = Environment.getExternalStorageDirectory();
+        StatFs stat = new StatFs(mSDCard.getPath());
+
+        return stat.getAvailableBlocks() * (long)stat.getBlockSize();
     }
 }
