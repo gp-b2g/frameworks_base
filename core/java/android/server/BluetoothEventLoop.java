@@ -500,6 +500,8 @@ class BluetoothEventLoop {
                 if (mBluetoothService.isBluetoothDock(address)) {
                     mBluetoothService.setLinkTimeout(address, 8000);
                 }
+                mBluetoothService.sendDeviceConnectionStateChange
+                    (device, BluetoothAdapter.STATE_CONNECTED);
             } else {
                 // Check and clean-up if bonding is in progress
                 if (mBluetoothService.getBondState(address) ==
@@ -509,6 +511,8 @@ class BluetoothEventLoop {
                 }
 
                 intent = new Intent(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+                mBluetoothService.sendDeviceConnectionStateChange(
+                    device, BluetoothAdapter.STATE_DISCONNECTED);
             }
             intent.putExtra(BluetoothDevice.EXTRA_DEVICE, device);
             intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);

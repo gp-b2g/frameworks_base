@@ -203,6 +203,8 @@ public class BluetoothService extends IBluetooth.Stub {
 
     private int mProfilesConnected = 0, mProfilesConnecting = 0, mProfilesDisconnecting = 0;
 
+    private int mDeviceConnected = 0;
+
     private static String mDockAddress;
     private String mDockPin;
 
@@ -3571,6 +3573,20 @@ public class BluetoothService extends IBluetooth.Stub {
                 }
             }
 
+            if((state == BluetoothProfile.STATE_DISCONNECTED) &&
+               (mDeviceConnected != 0)) {
+               //Check if there are any connected devices
+               Log.d(TAG, "Device count : " + mDeviceConnected);
+               return;
+            }
+
+            //Need to maintain BT icon turning off BR/EDR profile is disconnecting.
+            if((state == BluetoothProfile.STATE_DISCONNECTING) &&
+               (mDeviceConnected > 1)) {
+                Log.d(TAG, "Device count : " + mDeviceConnected);
+                return;
+            }
+
             Intent intent = new Intent(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
             intent.putExtra(BluetoothDevice.EXTRA_DEVICE, device);
             intent.putExtra(BluetoothAdapter.EXTRA_CONNECTION_STATE,
@@ -3581,6 +3597,28 @@ public class BluetoothService extends IBluetooth.Stub {
             mContext.sendBroadcast(intent, BLUETOOTH_PERM);
             Log.d(TAG, "CONNECTION_STATE_CHANGE: " + device + ": "
                     + prevState + " -> " + state);
+        }
+    }
+
+    public synchronized void sendDeviceConnectionStateChange(BluetoothDevice device, int state) {
+        // Since this is a binder call check if Bluetooth is on still
+        if (getBluetoothStateInternal() == BluetoothAdapter.STATE_OFF) return;
+
+        if (updateDeviceCountersAndCheckForConnStateChange(state)) {
+            String devType = getDeviceProperties().getProperty(device.getAddress(), "Type");
+            //For LE gatt client profiles, the BT icon shows as connected when connected for
+            //pairing with the remote device. But for BR/EDR profiles, the icon shows status
+            //connected only when it is connected to the profile after pairing.
+            if((state == BluetoothAdapter.STATE_CONNECTED) && (!"LE".equals(devType))) return;
+
+            Intent connStateIntent = null;
+            connStateIntent = new Intent(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
+            connStateIntent.putExtra(BluetoothDevice.EXTRA_DEVICE, device);
+            connStateIntent.putExtra(BluetoothAdapter.EXTRA_CONNECTION_STATE, state);
+            connStateIntent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
+            mContext.sendBroadcast(connStateIntent, BLUETOOTH_PERM);
+            Log.d(TAG, " Sent BluetoothAdapte.ACTION_CONNECTION_STATE_CHANGED "+
+                       "with state : " + state);
         }
     }
 
@@ -3639,6 +3677,23 @@ public class BluetoothService extends IBluetooth.Stub {
 
             default:
                 return true;
+        }
+    }
+
+    private boolean updateDeviceCountersAndCheckForConnStateChange(int state) {
+        switch (state) {
+            case BluetoothAdapter.STATE_CONNECTED:
+                ++mDeviceConnected;
+                Log.d(TAG, "Device connected : " + mDeviceConnected);
+                return (mDeviceConnected == 1);
+
+            case BluetoothAdapter.STATE_DISCONNECTED:
+                --mDeviceConnected;
+                Log.d(TAG, "Device connected : " + mDeviceConnected);
+                return (mDeviceConnected == 0);
+
+            default:
+                return false;
         }
     }
 
