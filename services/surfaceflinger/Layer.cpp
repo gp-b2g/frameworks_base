@@ -321,6 +321,10 @@ void Layer::onDraw(const Region& clip) const
         glEnable(GL_TEXTURE_2D);
     }
 
+    if(needsDithering()) {
+        glEnable(GL_DITHER);
+    }
+
     int composeS3DFormat = mQCLayer->needsS3DCompose();
     if (composeS3DFormat)
         drawS3DUIWithOpenGL(clip);
@@ -328,6 +332,9 @@ void Layer::onDraw(const Region& clip) const
         drawWithOpenGL(clip);
     glDisable(GL_TEXTURE_EXTERNAL_OES);
     glDisable(GL_TEXTURE_2D);
+    if(needsDithering()) {
+        glDisable(GL_DITHER);
+    }
 }
 
 // As documented in libhardware header, formats in the range
