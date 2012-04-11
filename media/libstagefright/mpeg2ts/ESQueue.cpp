@@ -32,6 +32,8 @@
 #include <cutils/properties.h>
 #include "include/avc_utils.h"
 
+#define SAMPLE_PER_FRAME 1152
+
 namespace android {
 
 ElementaryStreamQueue::ElementaryStreamQueue(Mode mode)
@@ -40,6 +42,8 @@ ElementaryStreamQueue::ElementaryStreamQueue(Mode mode)
       mAACFrameDuration(0),
       mPrevPESPartial(false),
       mCurPESPartial(false),
+      mPreTimeStamp(-1),
+      mCount(0),
       mMode(mode) {
     char value[PROPERTY_VALUE_MAX] = {0};
     if (property_get("ro.product.device", value, "0"))
@@ -70,6 +74,8 @@ void ElementaryStreamQueue::clear(bool clearFormat) {
     mAACFrameDuration = 0;
     mPrevPESPartial = false;
     mCurPESPartial = false;
+    mPreTimeStamp = -1;
+    mCount = 0;
 }
 
 static bool IsSeeminglyValidADTSHeader(const uint8_t *ptr, size_t size) {
@@ -772,6 +778,18 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitMPEGAudio() {
 
     int64_t timeUs = fetchTimestamp(frameSize);
     CHECK_GE(timeUs, 0ll);
+
+    int64_t frameTimeUs = (SAMPLE_PER_FRAME * 1000 * 1000)/samplingRate; //frame time in microsec
+
+    if(timeUs != mPreTimeStamp) { // for 1st frame keep the packet timestamp
+        mPreTimeStamp = timeUs;
+        mCount = 1;
+    } else { // 2nd frame onwards add frame duration with packet timestamp
+        timeUs += mCount * frameTimeUs;
+        ++mCount;
+    }
+
+    LOGV("timeUs = %lld  sample rate = %d  bitrate= %d channel = %ld frame size = %ld   time Delta = %lld",timeUs,samplingRate, bitrate, numChannels, frameSize,frameTimeUs);
 
     accessUnit->meta()->setInt64("timeUs", timeUs);
 

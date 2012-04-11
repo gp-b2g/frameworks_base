@@ -64,6 +64,9 @@ private:
 
     sp<MetaData> mFormat;
 
+    int64_t mPreTimeStamp;
+    int mCount;
+
     sp<ABuffer> dequeueAccessUnitH264();
     sp<ABuffer> dequeueAccessUnitAAC();
     sp<ABuffer> dequeueAccessUnitMPEGAudio();
