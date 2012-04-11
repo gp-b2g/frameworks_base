@@ -24,6 +24,8 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.provider.Settings;
+import android.net.TrafficStats;
+import android.os.SystemProperties;
 import android.util.Log;
 
 import com.android.internal.telephony.ApnContext;
@@ -63,6 +65,16 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
     protected Message mPendingDataDisableCompleteMsg;
     Subscription mSubscriptionData;
 
+    /*check data activity*/
+    private static final int MAX_DATA_ACTIVITY_ERROR_COUNT = 20;
+    private int mDataActivityErrorCount = 0;
+    private long mTxPkts = 0;
+    private long mRxPkts = 0;
+
+    /*this property is used for turning on data activity reset.*/
+    private static final boolean SUPPORT_DATA_ACTIVITY_RESET =
+        SystemProperties.getBoolean("persist.telephony.da.reset", true);
+
     MSimGsmDataConnectionTracker(MSimGSMPhone p) {
         super(p);
         mPhone = p;
@@ -87,6 +99,8 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
                 EVENT_PS_RESTRICT_ENABLED, null);
         mPhone.getServiceStateTracker().registerForPsRestrictedDisabled(this,
                 EVENT_PS_RESTRICT_DISABLED, null);
+
+        sendMessageDelayed(obtainMessage(EVENT_CHECK_DATA_ACTIVITY),10*1000);
     }
 
     protected void unregisterForAllEvents() {
@@ -103,6 +117,10 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
         mPhone.getServiceStateTracker().unregisterForRoamingOff(this);
         mPhone.getServiceStateTracker().unregisterForPsRestrictedEnabled(this);
         mPhone.getServiceStateTracker().unregisterForPsRestrictedDisabled(this);
+
+        if (hasMessages(EVENT_CHECK_DATA_ACTIVITY)){
+            removeMessages(EVENT_CHECK_DATA_ACTIVITY);
+        }
     }
 
     @Override
@@ -116,10 +134,44 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
                 boolean enabled = (msg.arg1 == ENABLED) ? true : false;
                 onSetInternalDataEnabled(enabled, (Message) msg.obj);
                 break;
-
+            case EVENT_CHECK_DATA_ACTIVITY:
+                onCheckDataActivity();
+                break;
             default:
                 super.handleMessage(msg);
         }
+    }
+
+    private void onCheckDataActivity(){
+        if (!SUPPORT_DATA_ACTIVITY_RESET){
+            return;
+        }
+        long prevTxPkts,prevRxPkts;
+        prevTxPkts = mTxPkts;
+        prevRxPkts = mRxPkts;
+
+        mTxPkts = TrafficStats.getMobileTxPackets();
+        mRxPkts = TrafficStats.getMobileRxPackets();
+
+        if (prevTxPkts >0 || prevRxPkts >0){
+            long sent = mTxPkts-prevTxPkts;
+            long received = mRxPkts- prevRxPkts;
+            if (sent > 0 && received == 0){
+                mDataActivityErrorCount++;
+            }else if (sent == 0 && received >0){
+                mDataActivityErrorCount++;
+            }else if (sent >0 && received >0){
+                mDataActivityErrorCount = 0;
+            }
+        }
+
+        if (mDataActivityErrorCount > MAX_DATA_ACTIVITY_ERROR_COUNT){
+            log("something is wrong with data activity, reset the pdp connection");
+            cleanUpAllConnections("data activity reset");
+        }
+
+        //periodic check
+        sendMessageDelayed(obtainMessage(EVENT_CHECK_DATA_ACTIVITY),10*1000);
     }
 
     /**
@@ -332,6 +384,9 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
             log("update(): NOT the active DDS, unregister for all events!");
             unregisterForAllEvents();
         }
+        //reset data activity check condition
+        mDataActivityErrorCount = 0;
+        mTxPkts = mRxPkts = 0;
     }
 
     protected void notifyDataDisconnectComplete() {
