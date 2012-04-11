@@ -40,6 +40,7 @@
 #include <media/stagefright/MetaData.h>
 #include <surfaceflinger/Surface.h>
 #include <gui/ISurfaceTexture.h>
+#include <cutils/properties.h>
 
 #include "avc_utils.h"
 
@@ -766,6 +767,7 @@ status_t NuPlayer::instantiateDecoder(bool audio, sp<Decoder> *decoder) {
                        new Decoder(notify, mNativeWindow);
     looper()->registerHandler(*decoder);
 
+    char value[PROPERTY_VALUE_MAX] = {0};
     if (mLiveSourceType == kHttpLiveSource){
         //Set flushing state to none
         Mutex::Autolock autoLock(mLock);
@@ -775,6 +777,10 @@ status_t NuPlayer::instantiateDecoder(bool audio, sp<Decoder> *decoder) {
             mFlushingVideo = NONE;
 
         }
+    } else if (audio && mLiveSourceType == kRtspSource &&
+               property_get("ro.product.device", value, "0") &&
+               !strncmp(value, "msm7627a", sizeof("msm7627a") - 1)) {
+        meta->setInt32(kKeyUseSWDec, true);
     }
 
     (*decoder)->configure(meta);
