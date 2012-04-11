@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -521,6 +522,21 @@ public final class BearerData {
         }
     }
 
+    private static void packSmsChar(byte[] packedChars, int bitOffset, int value)
+    {
+       int   t_pos = bitOffset % 8;
+       int   bits   = 8 - t_pos;
+       int   dst_start = (bitOffset + 7)/8;
+
+       dst_start--;
+       packedChars[dst_start] &= (byte) ~((0xff >> t_pos) & (0xff << (8 - (t_pos + bits))));
+       packedChars[dst_start] |= (byte) (((0xff >> t_pos) & (0xff << (8 - (t_pos + bits)))) & (value >> (8 - bits)));
+
+       dst_start++;
+       packedChars[dst_start] &= (byte) ~((0xff) & (0xff << bits));
+       packedChars[dst_start] |= (byte) (((0xff) & (0xff << bits)) & (value << bits));
+    }
+
     private static void encode7bitEms(UserData uData, byte[] udhData, boolean force)
         throws CodingException
     {
@@ -533,6 +549,40 @@ public final class BearerData {
         uData.payload = gcr.data;
         uData.payload[0] = (byte)udhData.length;
         System.arraycopy(udhData, 0, uData.payload, 1, udhData.length);
+    }
+
+    private static void encode7bitAsciiEms(UserData uData, byte[] udhData, boolean force)
+        throws CodingException
+    {
+        byte[] payload = encode7bitAscii(uData.payloadStr, force);
+        int udhBytes = udhData.length + 1;  // Add length octet.
+        int udhSeptets = ((udhBytes * 8) + 6) / 7;
+        int fill_bits = (udhBytes * 8) % 7;
+        int need_pad = 0;
+
+        if (fill_bits != 0)
+        {
+          fill_bits = 7 - fill_bits;
+        }
+
+        uData.msgEncoding = UserData.ENCODING_7BIT_ASCII;
+        uData.msgEncodingSet = true;
+        uData.numFields = udhSeptets + uData.payloadStr.length();
+        if(((uData.payloadStr.length())% 8) == 0)
+        {
+            need_pad = 1;
+        }
+        uData.payload = new byte[udhBytes + payload.length + need_pad];
+        uData.payload[0] = (byte)udhData.length;
+        byte[] smspackload = new byte[payload.length + 1];
+        for (int i = 0, bitOffset = fill_bits;
+                 i < payload.length;
+                 i++, bitOffset += 8)
+        {
+            packSmsChar(smspackload, bitOffset, payload[i]);
+        }
+        System.arraycopy(udhData, 0, uData.payload, 1, udhData.length);
+        System.arraycopy(smspackload, 0, uData.payload, udhBytes, payload.length + need_pad);
     }
 
     private static void encode16bitEms(UserData uData, byte[] udhData)
@@ -561,6 +611,8 @@ public final class BearerData {
                 encode7bitEms(uData, headerData, true);
             } else if (uData.msgEncoding == UserData.ENCODING_UNICODE_16) {
                 encode16bitEms(uData, headerData);
+            }  else if (uData.msgEncoding == UserData.ENCODING_7BIT_ASCII) {
+                encode7bitAsciiEms(uData, headerData, true);
             } else {
                 throw new CodingException("unsupported EMS user data encoding (" +
                                           uData.msgEncoding + ")");

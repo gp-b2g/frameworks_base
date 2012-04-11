@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (C) 2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -318,7 +319,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         uData.payloadStr = message;
         uData.userDataHeader = smsHeader;
         if (encoding == android.telephony.SmsMessage.ENCODING_7BIT) {
-            uData.msgEncoding = UserData.ENCODING_GSM_7BIT_ALPHABET;
+            uData.msgEncoding = UserData.ENCODING_7BIT_ASCII;
         } else { // assume UTF-16
             uData.msgEncoding = UserData.ENCODING_UNICODE_16;
         }
