@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011, 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -194,6 +194,7 @@ public class WebSettings {
     private long            mMaximumDecodedImageSize = 0; // 0 means default
     private boolean         mPrivateBrowsingEnabled = false;
     private boolean         mSyntheticLinksEnabled = true;
+    private boolean         mMediaPreloadEnabled = true;
     // HTML5 API flags
     private boolean         mAppCacheEnabled = false;
     private boolean         mDatabaseEnabled = false;
@@ -1786,6 +1787,16 @@ public class WebSettings {
     synchronized void setSyntheticLinksEnabled(boolean flag) {
         if (mSyntheticLinksEnabled != flag) {
             mSyntheticLinksEnabled = flag;
+            postSync();
+        }
+    }
+
+    /**
+     * @hide
+     */
+    public synchronized void setMediaPreloadEnabled(boolean flag) {
+        if (mMediaPreloadEnabled != flag) {
+            mMediaPreloadEnabled = flag;
             postSync();
         }
     }

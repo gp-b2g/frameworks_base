@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011, 2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,6 +29,7 @@
 package android.webkit;
 
 import android.graphics.SurfaceTexture;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.util.Log;
@@ -96,6 +97,11 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
     private static final int TIMEUPDATE_PERIOD = 250;  // ms
 
     protected boolean mPauseDuringPreparing;
+
+    protected int mVideoWidth;
+    protected int mVideoHeight;
+    protected int mDuration;
+
     // common Video control FUNCTIONS:
     public void start() {
         if (mCurrentState == STATE_PREPARED) {
@@ -219,6 +225,28 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
         // When switching players, surface texture will be reused.
         mUri = Uri.parse(uri);
         mHeaders = generateHeaders(uri, proxy);
+    }
+
+    public void retrieveMetadata(HTML5VideoViewProxy proxy) {
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        try {
+            retriever.setDataSource(mUri.toString(), mHeaders);
+            mVideoWidth = Integer.parseInt(retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
+            mVideoHeight = Integer.parseInt(retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
+            mDuration = Integer.parseInt(retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_DURATION));
+            proxy.updateSizeAndDuration(mVideoWidth, mVideoHeight, mDuration);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        } catch (RuntimeException e) {
+            // RuntimeException occurs when connection is not available or
+            // the source type is not supported (e.g. HLS). Not calling
+            // e.printStackTrace() here since it occurs quite often.
+        } finally {
+            retriever.release();
+        }
     }
 
     // Listeners setup FUNCTIONS:

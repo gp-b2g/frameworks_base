@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011, 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,8 @@ class HTML5VideoViewProxy extends Handler
     private static final int INIT                = 107;
     private static final int TERM                = 108;
     private static final int SET_VOLUME          = 109;
+    private static final int LOAD                = 110;
+    private static final int LOAD_METADATA       = 111;
 
     // Message Ids to be handled on the WebCore thread
     private static final int PREPARED          = 200;
@@ -182,19 +184,21 @@ class HTML5VideoViewProxy extends Handler
         }
 
         // This is on the UI thread.
-        public void play(String url, int time, WebChromeClient client, int videoLayerId) {
-            if (mHTML5VideoView == null
-                || (mHTML5VideoView instanceof HTML5VideoFullScreen
-                    // Some HTML5 video pages make javascript "play" calls even while the
-                    // video is in fullscreen mode. This check is added to prevent this case
-                    // from releasing the fullscreen video view.
-                    && mHTML5VideoView.fullScreenExited())) {
-                if (mHTML5VideoView != null) {
-                    // release the media player to avoid finalize error
-                    mHTML5VideoView.release();
-                }
-                mHTML5VideoView = new HTML5VideoInline(videoLayerId, time, false);
-                mHTML5VideoView.setVideoURI(url, mProxy);
+        public void loadMetadata(String url, int videoLayerId) {
+            if (ensureHTML5VideoInline(url, 0, videoLayerId, true)) {
+                mHTML5VideoView.retrieveMetadata(mProxy);
+            }
+        }
+
+        public void load(String url, int videoLayerId) {
+            if (ensureHTML5VideoInline(url, 0, videoLayerId, false)) {
+                mHTML5VideoView.prepareDataAndDisplayMode(mProxy);
+            }
+        }
+
+        public void play(String url, int time, int videoLayerId) {
+            if (ensureHTML5VideoInline(url, time, videoLayerId, true)
+                || mHTML5VideoView.getCurrentState() == HTML5VideoView.STATE_INITIALIZED) {
                 mHTML5VideoView.prepareDataAndDisplayMode(mProxy);
                 mHTML5VideoView.seekTo(time);
             } else {
@@ -234,7 +238,7 @@ class HTML5VideoViewProxy extends Handler
                 mHTML5VideoView.setVolume(mCachedVolume);
                 mCachedVolume = -1.0f;
             }
-            if (!mHTML5VideoView.isFullScreenMode() || mHTML5VideoView.getAutostart()) {
+            if (mHTML5VideoView.getAutostart()) {
                 mHTML5VideoView.start();
             }
             if (mBaseLayer != 0) {
@@ -259,6 +263,26 @@ class HTML5VideoViewProxy extends Handler
             } else {
                 mCachedVolume = volume;
             }
+        }
+
+        // Return true if we have to allocate a new HTML5VideoInline.
+        // Otherwise return false and we can reuse the previously allocated HTML5VideoInline.
+        private boolean ensureHTML5VideoInline(String url, int time, int videoLayerId, boolean autostart) {
+            if (mHTML5VideoView == null
+                || (mHTML5VideoView instanceof HTML5VideoFullScreen
+                    // Some HTML5 video pages make javascript "play" calls even while the
+                    // video is in fullscreen mode. This check is added to prevent this case
+                    // from releasing the fullscreen video view.
+                    && mHTML5VideoView.fullScreenExited())) {
+                if (mHTML5VideoView != null) {
+                    // release the media player to avoid finalize error
+                    mHTML5VideoView.release();
+                }
+                mHTML5VideoView = new HTML5VideoInline(videoLayerId, time, autostart);
+                mHTML5VideoView.setVideoURI(url, mProxy);
+                return true;
+            }
+            return false;
         }
     }
     private VideoPlayer mVideoPlayer;
@@ -318,6 +342,16 @@ class HTML5VideoViewProxy extends Handler
         mWebCoreHandler.sendMessage(msg);
     }
 
+    public void updateSizeAndDuration(int width, int height, int duration) {
+        Message msg = Message.obtain(mWebCoreHandler, SIZE_CHANGED);
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put("dur", new Integer(duration));
+        map.put("width", new Integer(width));
+        map.put("height", new Integer(height));
+        msg.obj = map;
+        mWebCoreHandler.sendMessage(msg);
+    }
+
     public void onTimeupdate() {
         sendMessage(obtainMessage(TIMEUPDATE));
     }
@@ -337,12 +371,21 @@ class HTML5VideoViewProxy extends Handler
         switch (msg.what) {
             case PLAY: {
                 String url = (String) msg.obj;
-                WebChromeClient client = mWebView.getWebChromeClient();
                 int videoLayerID = msg.arg1;
                 int seekPosition = msg.arg2;
-                if (client != null) {
-                    mVideoPlayer.play(url, seekPosition, client, videoLayerID);
-                }
+                mVideoPlayer.play(url, seekPosition, videoLayerID);
+                break;
+            }
+            case LOAD_METADATA: {
+                String url = (String) msg.obj;
+                int videoLayerID = msg.arg1;
+                mVideoPlayer.loadMetadata(url, videoLayerID);
+                break;
+            }
+            case LOAD: {
+                String url = (String) msg.obj;
+                int videoLayerID = msg.arg1;
+                mVideoPlayer.load(url, videoLayerID);
                 break;
             }
             case SEEK: {
@@ -598,7 +641,7 @@ class HTML5VideoViewProxy extends Handler
                         Integer duration = (Integer) map.get("dur");
                         Integer width = (Integer) map.get("width");
                         Integer height = (Integer) map.get("height");
-                        nativeOnPrepared(duration.intValue(), width.intValue(),
+                        nativeOnSizeChanged(duration.intValue(), width.intValue(),
                                 height.intValue(), mNativePointer);
                         break;
                     }
@@ -657,6 +700,34 @@ class HTML5VideoViewProxy extends Handler
         Message message = obtainMessage(PLAY);
         message.arg1 = videoLayerID;
         message.arg2 = position;
+        message.obj = url;
+        sendMessage(message);
+    }
+
+    /**
+     * Load a video stream.
+     * @param url is the URL of the video stream.
+     */
+    public void loadVideo(String url, int videoLayerID) {
+        if (url == null) {
+            return;
+        }
+        Message message = obtainMessage(LOAD);
+        message.arg1 = videoLayerID;
+        message.obj = url;
+        sendMessage(message);
+    }
+
+    /**
+     * Load video metadata.
+     * @param url is the URL of the video stream.
+     */
+    public void loadMetadata(String url, int videoLayerID) {
+        if (url == null) {
+            return;
+        }
+        Message message = obtainMessage(LOAD_METADATA);
+        message.arg1 = videoLayerID;
         message.obj = url;
         sendMessage(message);
     }
