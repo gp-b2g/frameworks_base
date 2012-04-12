@@ -490,10 +490,18 @@ public class FmTransceiver
     *           false if setStation failed.
     */
    public boolean setStation (int frequencyKHz) {
-      mControl.setFreq(frequencyKHz);
-      mControl.setStation(sFd);
+      int ret;
 
-      return true;
+      mControl.setFreq(frequencyKHz);
+      ret = mControl.setStation(sFd);
+      if(ret < 0 )
+      {
+         return false;
+      }
+      else
+      {
+         return true;
+      }
    }
 
    /*==============================================================
