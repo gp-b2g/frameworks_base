@@ -394,4 +394,10 @@ public class WifiNative {
     public static String p2pCustomCommand(String command) {
         return doStringCommand(command);
     }
+
+    public static boolean setConfigMethod(String config_method) {
+        return WifiNative.doBooleanCommand("SET config_methods " + config_method);
+    }
+
+
 }

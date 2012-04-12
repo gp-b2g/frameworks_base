@@ -1487,7 +1487,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
         WifiNative.setPersistentReconnect(true);
         WifiNative.setDeviceName(mThisDevice.deviceName);
         WifiNative.setDeviceType(mThisDevice.primaryDeviceType);
-
+        WifiNative.setConfigMethod("keypad display push_button");
         mThisDevice.deviceAddress = WifiNative.p2pGetDeviceAddress();
         updateThisDevice(WifiP2pDevice.AVAILABLE);
         if (DBG) Slog.d(TAG, "DeviceAddress: " + mThisDevice.deviceAddress);
