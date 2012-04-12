@@ -56,6 +56,7 @@ import android.content.res.Resources;
 final class CdmaSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "CDMA";
     private ImsSMSDispatcher mImsSMSDispatcher;
+    private int mTeleserviceId = 0;
 
     private byte[] mLastDispatchedSmsFingerprint;
     private byte[] mLastAcknowledgedSmsFingerprint;
@@ -182,7 +183,13 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             return Intents.RESULT_SMS_OUT_OF_MEMORY;
         }
 
+        mTeleserviceId = teleService;
         if (SmsEnvelope.TELESERVICE_WAP == teleService) {
+            return processCdmaWapPdu(sms.getUserData(), sms.messageRef,
+                    sms.getOriginatingAddress());
+        }
+
+        if (SmsEnvelope.TELESERVICE_CT_WAP == teleService) {
             return processCdmaWapPdu(sms.getUserData(), sms.messageRef,
                     sms.getOriginatingAddress());
         }
@@ -231,50 +238,191 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
      *         to applications
      */
     protected int processCdmaWapPdu(byte[] pdu, int referenceNumber, String address) {
+        int segment;
+        int totalSegments;
         int index = 0;
+        int msgType;
 
-        int msgType = (0xFF & pdu[index++]);
-        if (msgType != 0) {
+        int sourcePort = 0;
+        int destinationPort = 0;
+
+        byte subParamID = 0;
+        int subParamLen = 0;
+        int msgID = 0;
+        int msgTemp = 0;
+        int msgHeadID = 0;
+        int numField = 0;
+
+        byte[] push_pdu = null;
+        Log.d(TAG,"processCdmaWapPdu,pdu="+ IccUtils.bytesToHexString(pdu));
+
+        if (SmsEnvelope.TELESERVICE_CT_WAP == mTeleserviceId) {
+            subParamID = pdu[index++];
+            if (subParamID != 0) {
+                Log.w(TAG, "WAP SMS SUBPARAMETER_ID failed!.");
+                return Intents.RESULT_SMS_HANDLED;
+            }
+            subParamLen = pdu[index++];
+            if (subParamLen != 3) {
+                Log.w(TAG, "WAP SUBPARAM_LEN failed!.");
+                return Intents.RESULT_SMS_HANDLED;
+            }
+            // See CDMA_IS-637, WAP-203-WSP and WAP-259-WDP for details of CDMA
+            // push message format.
+            msgType = pdu[index] & 0xF0;
+            msgType >>= 4;
+            msgID = pdu[index++] & 0x0F;
+            msgID = (msgID << 12) & 0xF000;
+            msgTemp = pdu[index++];
+            msgTemp = (msgTemp << 4) & 0x0FF0;
+            msgID |= msgTemp;
+
+            msgTemp = pdu[index] & 0xF0;
+            msgID |= (msgTemp >> 4) & 0xF;
+            msgHeadID = pdu[index++] & 0x04;
+
+            subParamID = pdu[index++];
+            if (subParamID != 1) {
+                Log.w(TAG, "WAP SMS SUBPARAMETER_ID failed!.");
+                return Intents.RESULT_SMS_HANDLED;
+            }
+            subParamLen = (int) (pdu[index++] & 0xff);
+            if (0 != ((pdu[index] & 0xF8) >> 3)) {
+                Log.w(TAG, "WAP SMS MESSAGE_ENCODING failed!.");
+                return Intents.RESULT_SMS_HANDLED;
+            }
+            push_pdu = new byte[subParamLen];
+            for (int i = 0; i < subParamLen - 1; i++) {
+                push_pdu[i] = (byte) ((((pdu[index] & 0x07) << 5) & 0xe0) | (((pdu[index + 1] & 0xF8) >> 3) & 0x1F));
+                index++;
+            }
+
+            index = 0;
+            numField = (int) (push_pdu[index++] & 0xFF);
+        } else {
+            push_pdu = new byte[pdu.length];
+            System.arraycopy(pdu, 0, push_pdu, 0, pdu.length);
+            index = 0;
+            msgID = referenceNumber;
+        }
+
+
+        msgType = push_pdu[index++];
+
+        if (msgType != 0){
             Log.w(TAG, "Received a WAP SMS which is not WDP. Discard.");
             return Intents.RESULT_SMS_HANDLED;
         }
-        int totalSegments = (0xFF & pdu[index++]);   // >= 1
-        int segment = (0xFF & pdu[index++]);         // >= 0
-
-        if (segment >= totalSegments) {
-            Log.e(TAG, "WDP bad segment #" + segment + " expecting 0-" + (totalSegments - 1));
-            return Intents.RESULT_SMS_HANDLED;
-        }
+        totalSegments = push_pdu[index++]; // >=1
+        segment = push_pdu[index++]; // >=0
 
         // Only the first segment contains sourcePort and destination Port
-        int sourcePort = 0;
-        int destinationPort = 0;
         if (segment == 0) {
             //process WDP segment
-            sourcePort = (0xFF & pdu[index++]) << 8;
-            sourcePort |= 0xFF & pdu[index++];
-            destinationPort = (0xFF & pdu[index++]) << 8;
-            destinationPort |= 0xFF & pdu[index++];
+            sourcePort = (0xFF & push_pdu[index++]) << 8;
+            sourcePort |= 0xFF & push_pdu[index++];
+            destinationPort = (0xFF & push_pdu[index++]) << 8;
+            destinationPort |= 0xFF & push_pdu[index++];
             // Some carriers incorrectly send duplicate port fields in omadm wap pushes.
             // If configured, check for that here
             if (mCheckForDuplicatePortsInOmadmWapPush) {
-                if (checkDuplicatePortOmadmWappush(pdu,index)) {
+                if (checkDuplicatePortOmadmWappush(push_pdu,index)) {
                     index = index + 4; // skip duplicate port fields
                 }
             }
         }
-
         // Lookup all other related parts
+        StringBuilder where = new StringBuilder("reference_number =");
+        where.append(msgID);
+        where.append(" AND address = ?");
+        String[] whereArgs = new String[] {address};
+
         Log.i(TAG, "Received WAP PDU. Type = " + msgType + ", originator = " + address
                 + ", src-port = " + sourcePort + ", dst-port = " + destinationPort
-                + ", ID = " + referenceNumber + ", segment# = " + segment + '/' + totalSegments);
+                + ", ID = " + msgID + ", segment# = " + segment + "/" + totalSegments);
 
-        // pass the user data portion of the PDU to the shared handler in SMSDispatcher
-        byte[] userData = new byte[pdu.length - index];
-        System.arraycopy(pdu, index, userData, 0, pdu.length - index);
+        Log.d(TAG,"push_pdu= "+ IccUtils.bytesToHexString(push_pdu) + " Index: " + index);
+        byte[][] pdus = null;
+        Cursor cursor = null;
+        try {
+            cursor = mResolver.query(mRawUri, RAW_PROJECTION, where.toString(), whereArgs, null);
+            int cursorCount = cursor.getCount();
+            Log.i(TAG, "cursorCount " + cursorCount + "totalSegments = " + totalSegments);
+            if (cursorCount != totalSegments - 1) {
+                // We don't have all the parts yet, store this one away
+                ContentValues values = new ContentValues();
+                values.put("date", (long) 0);
+                if (SmsEnvelope.TELESERVICE_CT_WAP == mTeleserviceId) {
+                    values.put("pdu", HexDump.toHexString(push_pdu, index, push_pdu.length - index - 1));
+                } else {
+                    values.put("pdu", HexDump.toHexString(push_pdu, index, push_pdu.length - index));
+                }
+                values.put("address", address);
+                values.put("reference_number", msgID);
+                values.put("count", totalSegments);
+                values.put("sequence", segment);
+                values.put("destination_port", destinationPort);
 
-        return processMessagePart(userData, address, referenceNumber, segment, totalSegments,
-                0L, destinationPort, true);
+                mResolver.insert(mRawUri, values);
+
+                return Intents.RESULT_SMS_HANDLED;
+            }
+
+            // All the parts are in place, deal with them
+            int pduColumn = cursor.getColumnIndex("pdu");
+            int sequenceColumn = cursor.getColumnIndex("sequence");
+
+            pdus = new byte[totalSegments][];
+            for (int i = 0; i < cursorCount; i++) {
+                cursor.moveToNext();
+                int cursorSequence = (int)cursor.getLong(sequenceColumn);
+                // Read the destination port from the first segment
+                if (cursorSequence == 0) {
+                    int destinationPortColumn = cursor.getColumnIndex("destination_port");
+                    destinationPort = (int)cursor.getLong(destinationPortColumn);
+                }
+                pdus[cursorSequence] = HexDump.hexStringToByteArray(
+                        cursor.getString(pduColumn));
+            }
+            // The last part will be added later
+
+            // Remove the parts from the database
+            mResolver.delete(mRawUri, where.toString(), whereArgs);
+        } catch (SQLException e) {
+            Log.e(TAG, "Can't access multipart SMS database", e);
+            return Intents.RESULT_SMS_GENERIC_ERROR;
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+
+        // Build up the data stream
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        for (int i = 0; i < totalSegments; i++) {
+            // reassemble the (WSP-)pdu
+            if (i == segment) {
+                // This one isn't in the DB, so add it
+                output.write(push_pdu, index, push_pdu.length - index);
+            } else {
+                output.write(pdus[i], 0, pdus[i].length);
+            }
+        }
+        Log.i(TAG, "Whole MMS push to handle");
+        byte[] datagram = output.toByteArray();
+        // Dispatch the PDU to applications
+        switch (destinationPort) {
+        case SmsHeader.PORT_WAP_PUSH:
+            // Handle the PUSH
+            Log.i(TAG, "Dispatch MMS push");
+            return mWapPush.dispatchWapPdu(datagram);
+
+        default:{
+            pdus = new byte[1][];
+            pdus[0] = datagram;
+            // The messages were sent to any other WAP port
+            dispatchPortAddressedPdus(pdus, destinationPort);
+            return Activity.RESULT_OK;
+        }
+        }
     }
 
     /** {@inheritDoc} */

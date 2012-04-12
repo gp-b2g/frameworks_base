@@ -219,7 +219,7 @@ public final class CdmaDataProfileTracker extends Handler {
         }
 
         log("Loading data profiles for operator = " + operator);
-        String selection = "numeric = '" + operator + "'" + " and profile_type = 'nai'";
+        String selection = "numeric = '" + operator + "'";
         // query only enabled nai.
         // carrier_enabled : 1 means enabled nai, 0 disabled nai.
         selection += " and carrier_enabled = 1";

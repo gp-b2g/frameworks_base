@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,6 +73,12 @@ public abstract class SMSDispatcher extends Handler {
 
     /** Default timeout for SMS sent query */
     private static final int DEFAULT_SMS_TIMEOUT = 6000;
+
+    protected static final String[] RAW_PROJECTION = new String[] {
+        "pdu",
+        "sequence",
+        "destination_port",
+    };
 
     /** Permission required to receive SMS and SMS-CB messages. */
     public static final String RECEIVE_SMS_PERMISSION = "android.permission.RECEIVE_SMS";

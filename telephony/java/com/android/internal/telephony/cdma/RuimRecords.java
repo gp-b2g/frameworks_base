@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (C) 2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +32,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.SystemProperties;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.telephony.AdnRecord;
@@ -69,6 +71,9 @@ public final class RuimRecords extends IccRecords {
 
     private String mMyMobileNumber;
     private String mMin2Min1;
+
+    private StringBuffer mMcc = null;
+    private StringBuffer mMnc = null;
 
     private String mPrlVersion;
     private boolean mRecordsRequired = false;
@@ -365,20 +370,91 @@ public final class RuimRecords extends IccRecords {
             if (DBG) log("CSIM MDN=" + mMdn);
         }
     }
+    /**
+     * Imsi could be set by ServiceStateTrackers in case of cdma
+     * @param imsi
+     */
+    public void setImsi(String imsi) {
+        mImsi = imsi;
+        mImsiReadyRegistrants.notifyRegistrants();
+    }
 
     private class EfCsimImsimLoaded implements IccRecordLoaded {
         public String getEfName() {
             return "EF_CSIM_IMSIM";
         }
 
-        public void onRecordLoaded(AsyncResult ar) {
-            byte[] data = (byte[]) ar.result;
+        private final static int IMSI_MCC_M_START = 9;
+        private final static int IMSI_MCC_M_END = 8;
+        private final static int IMSI_M_11_12_START = 6;// IMSI_M_11_12p in
 
+        private boolean decode_IMSI_M(byte[] ef_data, StringBuffer mnc, StringBuffer mcc) {
+            if (null == ef_data) {
+                return false;
+            }
+
+            /**
+             * 1.get the IMSI_M_11_12 from EF(IMSI_M) ,which is the 7th byte of this
+             * EF . 2.10 *D12 + D11 - 11 = value of IMSI_M_11_12 3.got D12,D11
+             */
+            int iValue = ef_data[IMSI_M_11_12_START] & 0x7F;// the b8 is reserved
+            iValue += 11;
+            int d12 = 0;// D12 digit
+            int d11 = 0;// D11 digit
+            d11 = (0 == iValue % 10) ? 10 : iValue % 10;
+            d12 = (iValue - d11) / 10;
+            d12 = (10 == d12) ? 0 : d12;
+            d11 = (10 == d11) ? 0 : d11;
+            mnc.append(String.valueOf(d12)).append(String.valueOf(d11));
+
+            /**
+             * byte 9-10 MCC_Mp,[byte10 -MSB of MCC_M byte9-LSB of MCC_M] 100 * D1 +
+             * 10 * D2 + D3 - 111 = value of MCC_M.
+             */
+            int mccValue = ((((ef_data[IMSI_MCC_M_START] & 0x03) << 8) & 0xff00) | (ef_data[IMSI_MCC_M_END] & 0xff));
+            mccValue += 111;
+            int d1 = 0, d2 = 0, d3 = 0;
+            d3 = (0 == mccValue % 10) ? 10 : mccValue % 10;
+            d2 = (0 == ((mccValue - d3) / 10) % 10) ? 10 : ((mccValue - d3) / 10) % 10;
+            d1 = (mccValue - d3 - 10 * d2) / 100;
+            d1 = (10 == d1) ? 0 : d1;
+            d2 = (10 == d2) ? 0 : d2;
+            d3 = (10 == d3) ? 0 : d3;
+            mcc.append(String.valueOf(d1)).append(String.valueOf(d2)).append(String.valueOf(d3));
+
+            return true;
+        }
+
+
+        public void onRecordLoaded(AsyncResult ar) {
+
+            if (ar.exception != null) {
+                log("Exception happened when get IMSI_M:"+ar.exception);
+            }
+
+            byte[] data = (byte[]) ar.result;
             if (data == null || data.length < 10) {
                 Log.e (LOG_TAG, "Invalid IMSI from EF_CSIM_IMSIM " + IccUtils.bytesToHexString(data));
                 mImsi = null;
                 mMin = null;
                 return;
+            }
+
+            if (DBG) log("CSIM_IMSIM=" + IccUtils.bytesToHexString(data));
+
+            mMcc = new StringBuffer();
+            mMnc = new StringBuffer();
+
+            decode_IMSI_M(data, mMnc, mMcc);
+
+            // update mnc mcc so that it can be used to judge the operator
+            StringBuilder operatorNumeric = new StringBuilder();
+            operatorNumeric.append(mMcc).append(mMnc);
+
+            if (!TextUtils.isEmpty(operatorNumeric.toString())) {
+                log("setImsiByRuim:" + operatorNumeric.toString());
+                mncLength = mMnc.length();
+                setImsi(operatorNumeric.toString() + "xxxxxx");
             }
 
             // C.S0065 section 5.2.2 for IMSI_M encoding
@@ -396,14 +472,12 @@ public final class RuimRecords extends IccRecords {
             }
 
             //Update MccTable with the retrieved IMSI
-            String operatorNumeric = getOperatorNumeric();
+            String operator = getOperatorNumeric();
             if (operatorNumeric != null) {
                 if(operatorNumeric.length() <= 6){
-                    MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
+                    MccTable.updateMccMncConfiguration(mContext, operator);
                 }
             }
-
-            mImsiReadyRegistrants.notifyRegistrants();
         }
     }
 

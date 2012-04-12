@@ -1106,6 +1106,11 @@ public abstract class DataConnectionTracker extends Handler {
             String type = apnIdToType(apnId);
             if (!isApnTypeActive(type)) {
                 mRequestedApnType = type;
+                enabledCount--;
+                for (int i = 0; i < dataEnabled.length; i++) {
+                if ( i !=apnId && dataEnabled[i] )
+                    dataEnabled[i] = false;
+                }
                 onEnableNewApn();
             } else {
                 notifyApnIdUpToCurrent(Phone.REASON_APN_SWITCHED, apnId);
@@ -1129,14 +1134,16 @@ public abstract class DataConnectionTracker extends Handler {
                 // send the disconnect msg manually, since the normal route wont send
                 // it (it's not enabled)
                 notifyApnIdDisconnected(Phone.REASON_DATA_DISABLED, apnId);
-                if (dataEnabled[APN_DEFAULT_ID] == true
-                        && !isApnTypeActive(Phone.APN_TYPE_DEFAULT)) {
+                if (/*dataEnabled[APN_DEFAULT_ID] == true
+                        && */!isApnTypeActive(Phone.APN_TYPE_DEFAULT)) {
                     // TODO - this is an ugly way to restore the default conn - should be done
                     // by a real contention manager and policy that disconnects the lower pri
                     // stuff as enable requests come in and pops them back on as we disable back
                     // down to the lower pri stuff
                     mRequestedApnType = Phone.APN_TYPE_DEFAULT;
-                    onEnableNewApn();
+		    enabledCount++;
+		    dataEnabled[APN_DEFAULT_ID] = true;
+                //    onEnableNewApn();
                 }
             }
         }
