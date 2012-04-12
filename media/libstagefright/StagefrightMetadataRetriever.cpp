@@ -31,6 +31,7 @@
 #include <media/stagefright/MediaDefs.h>
 
 #include <cutils/properties.h>
+#include <OMX_QCOMExtns.h>
 
 namespace android {
 
@@ -233,7 +234,24 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
     frame->mHeight = crop_bottom - crop_top + 1;
     frame->mDisplayWidth = frame->mWidth;
     frame->mDisplayHeight = frame->mHeight;
-    frame_width_rounded = ((frame->mWidth + 3)/4)*4;
+
+    int32_t srcFormat;
+    CHECK(meta->findInt32(kKeyColorFormat, &srcFormat));
+
+    frame_width_rounded = frame->mWidth;
+    switch (srcFormat) {
+        case OMX_QCOM_COLOR_FormatYVU420SemiPlanar:
+        case OMX_COLOR_FormatYUV420SemiPlanar:
+        case OMX_TI_COLOR_FormatYUV420PackedSemiPlanar:
+        case QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka:
+            {
+                frame_width_rounded = ((frame->mWidth + 3)/4)*4;
+                break;
+            }
+        default:
+            break;
+    }
+
     frame->mSize = frame_width_rounded * frame->mHeight * 2;
     frame->mData = new uint8_t[frame->mSize];
     frame->mRotationAngle = rotationAngle;
@@ -246,8 +264,6 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
         frame->mDisplayHeight = displayHeight;
     }
 
-    int32_t srcFormat;
-    CHECK(meta->findInt32(kKeyColorFormat, &srcFormat));
 
     ColorConverter converter(
             (OMX_COLOR_FORMATTYPE)srcFormat, OMX_COLOR_Format16bitRGB565);
