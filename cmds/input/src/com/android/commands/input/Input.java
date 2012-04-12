@@ -30,6 +30,7 @@ import android.view.KeyEvent;
  */
 
 public class Input {
+     static final String TAG = "input";
 
     /**
      * Command-line entry point.
@@ -41,7 +42,8 @@ public class Input {
     }
 
     private void run(String[] args) {
-        if (args.length < 1) {
+        if (args.length < 2) {
+            Log.e(TAG, "Error invalid arguments passed to input command.");
             showUsage();
             return;
         }
