@@ -43,6 +43,8 @@ import android.bluetooth.IBluetoothCallback;
 import android.bluetooth.IBluetoothHealthCallback;
 import android.bluetooth.IBluetoothStateChangeCallback;
 import android.bluetooth.IBluetoothGattService;
+import android.bluetooth.IBluetoothGattCallback;
+import android.bluetooth.BluetoothGattAppConfiguration;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -208,6 +210,7 @@ public class BluetoothService extends IBluetooth.Stub {
     private BluetoothPanProfileHandler mBluetoothPanProfileHandler;
     private BluetoothInputProfileHandler mBluetoothInputProfileHandler;
     private BluetoothHealthProfileHandler mBluetoothHealthProfileHandler;
+    private BluetoothGattProfileHandler mBluetoothGattProfileHandler;
     private static final String INCOMING_CONNECTION_FILE =
       "/data/misc/bluetooth/incoming_connection.conf";
     private HashMap<String, Pair<Integer, String>> mIncomingConnections;
@@ -402,6 +405,7 @@ public class BluetoothService extends IBluetooth.Stub {
         mBluetoothInputProfileHandler = BluetoothInputProfileHandler.getInstance(mContext, this);
         mBluetoothPanProfileHandler = BluetoothPanProfileHandler.getInstance(mContext, this);
         mBluetoothHealthProfileHandler = BluetoothHealthProfileHandler.getInstance(mContext, this);
+        mBluetoothGattProfileHandler = BluetoothGattProfileHandler.getInstance(mContext, this);
         mIncomingConnections = new HashMap<String, Pair<Integer, String>>();
         mProfileConnectionState = new HashMap<Integer, Pair<Integer, Integer>>();
     }
@@ -593,7 +597,6 @@ public class BluetoothService extends IBluetooth.Stub {
         }
 
         mBluetoothState.sendMessage(BluetoothAdapterStateMachine.USER_TURN_OFF, saveSetting);
-        SystemProperties.set("bluetooth.isEnabled","false");
         return true;
     }
 
@@ -2451,7 +2454,7 @@ public class BluetoothService extends IBluetooth.Stub {
         }
 
         /* Currently BTC module is not started/stopped for per process (application)
-         usecases. But only for user action of on/off via Settings application. */
+        usecases. But only for user action of on/off via Settings application. */
 
         mBluetoothState.sendMessage(type, callback);
         return true;
@@ -3713,6 +3716,8 @@ public class BluetoothService extends IBluetooth.Stub {
     }
 
 
+    /**** Remote GATT Service handlers ****/
+
     public synchronized String getGattServiceProperty(String path, String property) {
         Map<String, String> properties = mGattProperties.get(path);
         Log.d(TAG, "getGattServiceProperty: " + property + ", path "+ path);
@@ -4378,6 +4383,245 @@ public class BluetoothService extends IBluetooth.Stub {
         setRemoteDeviceProperty(address, "Services", null);
     }
 
+    /**** Local GATT Server handlers ****/
+
+    public boolean registerGattAppConfiguration(BluetoothGattAppConfiguration config,
+                                            IBluetoothGattCallback callback) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+        synchronized (mBluetoothGattProfileHandler) {
+                return mBluetoothGattProfileHandler.registerAppConfiguration(config, callback);
+        }
+    }
+
+    public boolean unregisterGattAppConfiguration(BluetoothGattAppConfiguration config) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+        synchronized (mBluetoothGattProfileHandler) {
+                return mBluetoothGattProfileHandler.unregisterAppConfiguration(config);
+        }
+    }
+
+    public boolean addPrimarySdp(BluetoothGattAppConfiguration config, ParcelUuid uuid,
+                                 int start, int end, boolean eir) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+        synchronized (mBluetoothGattProfileHandler) {
+            return mBluetoothGattProfileHandler.addPrimarySdp(config, uuid, start, end, eir);
+        }
+    }
+
+    public boolean sendIndication(BluetoothGattAppConfiguration config,
+                                  int handle, byte[] value, boolean notify, int sessionHandle) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+        synchronized (mBluetoothGattProfileHandler) {
+            return mBluetoothGattProfileHandler.sendIndication(config, handle, value, notify, sessionHandle);
+        }
+    }
+
+    public boolean discoverPrimaryResponse(BluetoothGattAppConfiguration config,
+                                   ParcelUuid uuid, int handle, int end, int status, int reqHandle) {
+        Log.d(TAG, "Inside discoverPrimaryResponse");
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+
+        int index = mEventLoop.getGattRequestData().indexOf(new Integer(reqHandle));
+        if(index < 0) {
+            Log.e(TAG, "Request handle was not found");
+            return false;
+        } else {
+            mEventLoop.getGattRequestData().remove(index);
+        }
+
+        synchronized (mBluetoothGattProfileHandler) {
+            String uuidStr = null;
+            if(uuid != null) {
+                uuidStr = uuid.toString();
+            }
+
+            return mBluetoothGattProfileHandler.discoverPrimaryResponse(config,
+                                                                      uuidStr,
+                                                                      handle,
+                                                                      end,
+                                                                      status,
+                                                                      reqHandle);
+            }
+    }
+
+    public boolean discoverPrimaryByUuidResponse(BluetoothGattAppConfiguration config,
+                                                 int handle, int end, int status, int reqHandle) {
+        Log.d(TAG, "Inside discoverPrimaryByUuidResponse");
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+
+        int index = mEventLoop.getGattRequestData().indexOf(new Integer(reqHandle));
+        if(index < 0) {
+            Log.e(TAG, "Request handle was not found");
+            return false;
+        } else {
+            mEventLoop.getGattRequestData().remove(index);
+        }
+
+        synchronized (mBluetoothGattProfileHandler) {
+            return mBluetoothGattProfileHandler.discoverPrimaryByUuidResponse(config, handle,
+                                                                              end, status,
+                                                                              reqHandle);
+            }
+    }
+
+    public boolean findIncludedResponse(BluetoothGattAppConfiguration config, ParcelUuid uuid,
+                                        int handle, int start, int end, int status, int reqHandle) {
+        Log.d(TAG, "Inside findIncludedResponse");
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+
+        int index = mEventLoop.getGattRequestData().indexOf(new Integer(reqHandle));
+        if(index < 0) {
+            Log.e(TAG, "Request handle was not found");
+            return false;
+        } else {
+            mEventLoop.getGattRequestData().remove(index);
+        }
+
+        synchronized (mBluetoothGattProfileHandler) {
+            String uuidStr = null;
+            if(uuid != null) {
+                uuidStr = uuid.toString();
+            }
+
+            return mBluetoothGattProfileHandler.findIncludedResponse(config, uuidStr,handle,
+                                                                     start, end,
+                                                                     status, reqHandle);
+            }
+    }
+
+    public boolean discoverCharacteristicResponse(BluetoothGattAppConfiguration config, ParcelUuid uuid,
+                                        int handle, byte property, int valueHandle, int status, int reqHandle) {
+        Log.d(TAG, "Inside discoverCharacteristicResponse");
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+
+        int index = mEventLoop.getGattRequestData().indexOf(new Integer(reqHandle));
+        if(index < 0) {
+            Log.e(TAG, "Request handle was not found");
+            return false;
+        } else {
+            mEventLoop.getGattRequestData().remove(index);
+        }
+
+        synchronized (mBluetoothGattProfileHandler) {
+            String uuidStr = null;
+            if(uuid != null) {
+                uuidStr = uuid.toString();
+            }
+
+            return mBluetoothGattProfileHandler.discoverCharacteristicsResponse(config, uuidStr, handle,
+                                                                     property, valueHandle,
+                                                                     status, reqHandle);
+            }
+    }
+
+    public boolean discoverCharacteristicDescriptorResponse(BluetoothGattAppConfiguration config, ParcelUuid uuid,
+                                        int handle, int status, int reqHandle) {
+        Log.d(TAG, "Inside discoverCharacteristicDescriptorResponse");
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+
+        int index = mEventLoop.getGattRequestData().indexOf(new Integer(reqHandle));
+        if(index < 0) {
+            Log.e(TAG, "Request handle was not found");
+            return false;
+        } else {
+            mEventLoop.getGattRequestData().remove(index);
+        }
+
+        synchronized (mBluetoothGattProfileHandler) {
+            String uuidStr = null;
+            if(uuid != null) {
+                uuidStr = uuid.toString();
+            }
+
+            return mBluetoothGattProfileHandler.discoverCharacteristicDescriptorResponse(config, uuidStr,
+                                                                                         handle,
+                                                                                         status, reqHandle);
+            }
+    }
+
+    public boolean readByTypeResponse(BluetoothGattAppConfiguration config, int handle, ParcelUuid uuid,
+                                        byte[] payload, int status, int reqHandle) {
+        Log.d(TAG, "Inside discoverCharacteristicDescriptorResponse");
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+
+        int index = mEventLoop.getGattRequestData().indexOf(new Integer(reqHandle));
+        if(index < 0) {
+            Log.e(TAG, "Request handle was not found");
+            return false;
+        } else {
+            mEventLoop.getGattRequestData().remove(index);
+        }
+
+        synchronized (mBluetoothGattProfileHandler) {
+            String uuidStr = null;
+            if(uuid != null) {
+                uuidStr = uuid.toString();
+            }
+
+            return mBluetoothGattProfileHandler.readByTypeResponse(config, uuidStr, handle,
+                                                                   payload, status, reqHandle);
+            }
+    }
+
+    public boolean readResponse(BluetoothGattAppConfiguration config, ParcelUuid uuid,
+                                byte[] payload, int status, int reqHandle) {
+        Log.d(TAG, "Inside readResponse");
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+
+        int index = mEventLoop.getGattRequestData().indexOf(new Integer(reqHandle));
+        if(index < 0) {
+            Log.e(TAG, "Request handle was not found");
+            return false;
+        } else {
+            mEventLoop.getGattRequestData().remove(index);
+        }
+
+        synchronized (mBluetoothGattProfileHandler) {
+            String uuidStr = null;
+            if(uuid != null) {
+                uuidStr = uuid.toString();
+            }
+
+            return mBluetoothGattProfileHandler.readResponse(config, uuidStr,
+                                                             payload, status, reqHandle);
+            }
+    }
+
+    public boolean writeResponse(BluetoothGattAppConfiguration config, ParcelUuid uuid,
+                                 int status, int reqHandle) {
+        Log.d(TAG, "Inside writeResponse");
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
+                "Need BLUETOOTH permission");
+
+        int index = mEventLoop.getGattRequestData().indexOf(new Integer(reqHandle));
+        if(index < 0) {
+            Log.e(TAG, "Request handle was not found");
+            return false;
+        } else {
+            mEventLoop.getGattRequestData().remove(index);
+        }
+
+        synchronized (mBluetoothGattProfileHandler) {
+            String uuidStr = null;
+            if(uuid != null) {
+                uuidStr = uuid.toString();
+            }
+
+            return mBluetoothGattProfileHandler.writeResponse(config, uuidStr, status, reqHandle);
+            }
+    }
+
     private native static void classInitNative();
     private native void initializeNativeDataNative();
     private native boolean setupNativeDataNative();
@@ -4474,4 +4718,19 @@ public class BluetoothService extends IBluetooth.Stub {
     private native int disConnectSapNative();
     private native int listConnectionNative();
     private native boolean disconnectAllConnectionsNative();
+
+    //GattServer API
+    native boolean registerGattServerNative(String objPath, int handleCount);
+    native boolean unregisterGattServerNative(String objPath);
+    native boolean addPrimarySdpNative(String objPath, String svcName, String uuidStr, int startHandle, int endHandle, boolean eir);
+    native boolean notifyNative(String objPath, int sessionHandle, int handle, byte[] payload, int cnt);
+    native boolean indicateNative(String objPath, int sessionHandle, int handle, byte[] payload, int cnt);
+    native boolean discoverPrimaryResponseNative(String uuid, int handle, int end, int status, int nativeData);
+    native boolean discoverPrimaryByUuidResponseNative(int handle, int end, int status, int nativeData);
+    native boolean findIncludedResponseNative(String uuid, int handle, int start, int end, int status, int nativeData);
+    native boolean discoverCharacteristicsResponseNative(String uuid, int handle, int property, int valueHandle, int status, int nativeData);
+    native boolean discoverCharacteristicDescriptorResponseNative(String uuid, int handle, int status, int nativeData);
+    native boolean readByTypeResponseNative(String uuid, int handle, byte[] payload, int cnt, int status, int nativeData);
+    native boolean readResponseNative(String uuid, byte[] payload, int cnt, int status, int nativeData);
+    native boolean writeResponseNative(String uuid, int status, int nativeData);
 }

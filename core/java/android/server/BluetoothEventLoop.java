@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2010-2012 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010, 2011 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,8 +36,10 @@ import android.util.Log;
 import android.content.IntentFilter;
 import android.content.BroadcastReceiver;
 
+
 import java.util.HashMap;
 import java.util.List;
+import java.util.ArrayList;
 
 
 /**
@@ -55,6 +57,7 @@ class BluetoothEventLoop {
     private final HashMap<String, Integer> mPasskeyAgentRequestData;
     private final HashMap<String, Integer> mAuthorizationAgentRequestData;
     private final HashMap<String, Integer> mAuthorizationRequestData;
+    private final List<Integer> mGattRequestData;
     private final BluetoothService mBluetoothService;
     private final BluetoothAdapter mAdapter;
     private final BluetoothAdapterStateMachine mBluetoothState;
@@ -67,7 +70,6 @@ class BluetoothEventLoop {
     private static final int EVENT_PAIRING_CONSENT_DELAYED_ACCEPT = 1;
     private static final int EVENT_AGENT_CANCEL = 2;
     private static final int EVENT_PAIRING_TIMEOUT = 3;
-    private static final int EVENT_SAP_USER_TIMEOUT = 4;
 
     private static final int CREATE_DEVICE_ALREADY_EXISTS = 1;
     private static final int CREATE_DEVICE_SUCCESS = 0;
@@ -77,7 +79,7 @@ class BluetoothEventLoop {
     // Response time out is 30 seconds. Setting the INCOMING_PAIRING_TIMEOUT to 26 seconds
     // to make sure that the pairing clean up happens from the HOST side.
     private static final int INCOMING_PAIRING_TIMEOUT = 26000;
-    private static final int USER_CONFIRM_TIMEOUT = 30000;
+
     private static final String BLUETOOTH_ADMIN_PERM = android.Manifest.permission.BLUETOOTH_ADMIN;
     private static final String BLUETOOTH_PERM = android.Manifest.permission.BLUETOOTH;
 
@@ -116,15 +118,6 @@ class BluetoothEventLoop {
                 address = (String) msg.obj;
                 Log.d(TAG, "Cancelling bond process");
                 mBluetoothService.cancelBondProcess(address);
-                break;
-            case EVENT_SAP_USER_TIMEOUT:
-                Log.d(TAG, "SAP user Authorization timeout");
-                Intent intent = new Intent(BluetoothDevice.ACTION_CONNECTION_ACCESS_CANCEL);
-                intent.setClassName(ACCESS_REQUEST_PACKAGE, ACCESS_REQUEST_CLASS);
-                      intent.putExtra(BluetoothDevice.EXTRA_ACCESS_REQUEST_TYPE,
-                      BluetoothDevice.REQUEST_TYPE_SIM_ACCESS);
-                mContext.sendBroadcast(intent, BLUETOOTH_ADMIN_PERM);
-                break;
             }
         }
     };
@@ -141,6 +134,7 @@ class BluetoothEventLoop {
         mPasskeyAgentRequestData = new HashMap<String, Integer>();
         mAuthorizationAgentRequestData = new HashMap<String, Integer>();
         mAuthorizationRequestData = new HashMap<String, Integer>();
+        mGattRequestData = new ArrayList<Integer>();
         mAdapter = adapter;
         //WakeLock instantiation in BluetoothEventLoop class
         PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
@@ -188,6 +182,10 @@ class BluetoothEventLoop {
 
     /* package */ HashMap<String, Integer> getAuthorizationRequestData() {
         return mAuthorizationRequestData;
+    }
+
+    /* package */ List<Integer> getGattRequestData() {
+        return mGattRequestData;
     }
 
     /* package */ void start() {
@@ -772,9 +770,6 @@ class BluetoothEventLoop {
                             BluetoothDevice.REQUEST_TYPE_SIM_ACCESS);
             intent.putExtra(BluetoothDevice.EXTRA_DEVICE, remoteDevice);
             mContext.sendBroadcast(intent, BLUETOOTH_ADMIN_PERM);
-            mHandler.sendMessageDelayed(mHandler
-                 .obtainMessage(EVENT_SAP_USER_TIMEOUT),
-                 USER_CONFIRM_TIMEOUT);
         }
     }
     private void onSapStateChanged(String objectPath, String state, int nativeData) {
@@ -1092,11 +1087,6 @@ class BluetoothEventLoop {
             mBluetoothService.sendUuidIntent(address);
             mBluetoothService.sendGattIntent(address, BluetoothDevice.GATT_RESULT_FAIL);
             mBluetoothService.makeServiceChannelCallbacks(address);
-            if (btDeviceClass == BluetoothClass.Device.PERIPHERAL_POINTING) {
-                log("The device is HID pointing device,moving pairing state to BOND_NONE");
-                mBluetoothService.setBondState(address, BluetoothDevice.BOND_NONE);
-            }
-
             break;
         case CREATE_DEVICE_SUCCESS:
             // nothing to do, UUID intent's will be sent via property changed
@@ -1279,6 +1269,117 @@ class BluetoothEventLoop {
     private void onUpdateCharacteristicValueResult(String charObjectPath, boolean result) {
 
         mBluetoothService.makeUpdateCharacteristicValueCallback(charObjectPath, result);
+    }
+
+    private void onGattDiscoverPrimaryRequest(String gattObjectPath, int start, int end, int reqHandle) {
+        Log.d(TAG, "Inside onGattDiscoverPrimaryRequest");
+
+        mGattRequestData.add(new Integer(reqHandle));
+
+        BluetoothGattProfileHandler gattProfileHandler =
+            BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
+        gattProfileHandler.onGattDiscoverPrimaryRequest(gattObjectPath, start, end, reqHandle);
+    }
+
+    private void onGattDiscoverPrimaryByUuidRequest(String gattObjectPath, String uuid,
+                                                    int start, int end,
+                                                    int reqHandle) {
+        Log.d(TAG, "Inside onGattDiscoverPrimaryByUuidRequest");
+
+        mGattRequestData.add(new Integer(reqHandle));
+
+        BluetoothGattProfileHandler gattProfileHandler =
+            BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
+        gattProfileHandler.onGattDiscoverPrimaryByUuidRequest(gattObjectPath, start, end, uuid,
+                                                              reqHandle);
+    }
+
+    private void onGattDiscoverIncludedRequest(String gattObjectPath, int start,
+                                                    int end, int reqHandle) {
+        Log.d(TAG, "Inside onGattDiscoverIncludedRequest");
+
+        mGattRequestData.add(new Integer(reqHandle));
+
+        BluetoothGattProfileHandler gattProfileHandler =
+            BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
+        gattProfileHandler.onGattDiscoverIncludedRequest(gattObjectPath, start, end, reqHandle);
+    }
+
+    private void onGattDiscoverCharacteristicsRequest(String gattObjectPath, int start,
+                                                    int end, int reqHandle) {
+        Log.d(TAG, "Inside onGattDiscoverCharacteristicsRequest");
+
+        mGattRequestData.add(new Integer(reqHandle));
+
+        BluetoothGattProfileHandler gattProfileHandler =
+            BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
+        gattProfileHandler.onGattDiscoverCharacteristicsRequest(gattObjectPath, start, end, reqHandle);
+    }
+
+    private void onGattDiscoverCharacteristicDescriptorRequest(String gattObjectPath, int start,
+                                                    int end, int reqHandle) {
+        Log.d(TAG, "Inside onGattDiscoverCharacteristicDescriptorRequest");
+
+        mGattRequestData.add(new Integer(reqHandle));
+
+        BluetoothGattProfileHandler gattProfileHandler =
+            BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
+        gattProfileHandler.onGattDiscoverCharacteristicDescriptorRequest(gattObjectPath, start, end, reqHandle);
+    }
+
+    private void onGattReadByTypeRequest(String gattObjectPath, String uuid,
+                                         String auth, int start,
+                                         int end, int reqHandle) {
+        Log.d(TAG, "Inside onGattReadByTypeRequest");
+
+        mGattRequestData.add(new Integer(reqHandle));
+
+        BluetoothGattProfileHandler gattProfileHandler =
+            BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
+        gattProfileHandler.onGattReadByTypeRequest(gattObjectPath, start, end,
+                                                   uuid, auth, reqHandle);
+    }
+
+    private void onGattReadRequest(String gattObjectPath, String auth, int handle, int reqHandle) {
+        Log.d(TAG, "Inside onGattReadRequest");
+
+        mGattRequestData.add(new Integer(reqHandle));
+
+        BluetoothGattProfileHandler gattProfileHandler =
+            BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
+        gattProfileHandler.onGattReadRequest(gattObjectPath, auth, handle, reqHandle);
+    }
+
+    private void onGattReliableWriteRequest(String gattObjectPath, String auth,
+                                    int attrHandle, byte[] value,
+                                    int sessionHandle, int reqHandle) {
+        Log.d(TAG, "onGattReliableWriteRequest");
+
+        mGattRequestData.add(new Integer(reqHandle));
+
+        BluetoothGattProfileHandler gattProfileHandler =
+            BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
+        gattProfileHandler.onGattReliableWriteRequest(gattObjectPath, auth,
+                                              attrHandle, value, sessionHandle, reqHandle);
+    }
+
+    private void onGattWriteRequest(String gattObjectPath, String auth,
+                                    int attrHandle, byte[] value) {
+        Log.d(TAG, "onGattWriteRequest");
+
+        BluetoothGattProfileHandler gattProfileHandler =
+            BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
+        gattProfileHandler.onGattWriteRequest(gattObjectPath, auth,
+                                              attrHandle, value);
+    }
+
+    private void onGattSetClientConfigDescriptor(String gattObjectPath, int sessionHandle,
+                                                 int attrHandle, byte[] value) {
+        Log.d(TAG, "onGattSetClientConfigDescriptor");
+
+        BluetoothGattProfileHandler gattProfileHandler =
+            BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
+        gattProfileHandler.onGattSetClientConfigDescriptor(gattObjectPath, sessionHandle, attrHandle, value);
     }
 
     private static void log(String msg) {

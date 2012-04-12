@@ -25,6 +25,8 @@ import android.bluetooth.BluetoothHealthAppConfiguration;
 import android.os.ParcelUuid;
 import android.os.ParcelFileDescriptor;
 import android.bluetooth.IBluetoothGattService;
+import  android.bluetooth.IBluetoothGattCallback;
+import android.bluetooth.BluetoothGattAppConfiguration;
 
 /**
  * System private API for talking with the Bluetooth service.
@@ -140,6 +142,7 @@ interface IBluetooth
     boolean setDesiredAmpPolicy(in int handle, in int policy);
     void setUseWifiForBtTransfers(in boolean useWifi);
 
+    // GATT client APIs
     boolean getGattServices(in String address, in ParcelUuid uuid);
     String getGattServiceName(in String path);
     boolean discoverCharacteristics(in String path);
@@ -152,6 +155,31 @@ interface IBluetooth
     boolean deregisterCharacteristicsWatcher(in String path);
     boolean startRemoteGattService(in String path, IBluetoothGattService gattCallback);
     void closeRemoteGattService(in String path);
+
+    // GATT server APIs
+    boolean registerGattAppConfiguration(in BluetoothGattAppConfiguration config,
+                                         in IBluetoothGattCallback callback);
+    boolean unregisterGattAppConfiguration(in BluetoothGattAppConfiguration config);
+    boolean addPrimarySdp(in BluetoothGattAppConfiguration config, in ParcelUuid uuid, in int start,
+                          in int end, in boolean eir);
+    boolean sendIndication(in BluetoothGattAppConfiguration config,
+                           in int handle, in byte[] value, in boolean notify, in int sessionHandle);
+    boolean discoverPrimaryResponse(in BluetoothGattAppConfiguration config, in ParcelUuid uuid,
+                        in int handle, in int end, in int status, in int reqHandle);
+    boolean discoverPrimaryByUuidResponse(in BluetoothGattAppConfiguration config,
+                        in int handle, in int end, in int status, in int reqHandle);
+    boolean findIncludedResponse(in BluetoothGattAppConfiguration config, in ParcelUuid uuid,
+                        in int handle, in int start, in int end, in int status, in int reqHandle);
+    boolean discoverCharacteristicResponse(in BluetoothGattAppConfiguration config, in ParcelUuid uuid,
+                        in int handle, in byte property, in int valueHandle, in int status, in int reqHandle);
+    boolean discoverCharacteristicDescriptorResponse(in BluetoothGattAppConfiguration config, in ParcelUuid uuid,
+                        in int handle, in int status, in int reqHandle);
+    boolean readByTypeResponse(in BluetoothGattAppConfiguration config, in int handle, in ParcelUuid uuid,
+                        in byte[] payload, in int status, in int reqHandle);
+    boolean readResponse(in BluetoothGattAppConfiguration config, in ParcelUuid uuid,
+                        in byte[] payload, in int status, in int reqHandle);                            
+    boolean writeResponse(in BluetoothGattAppConfiguration config, in ParcelUuid uuid,
+                        in int status, in int reqHandle);
     void disconnectSap();
     boolean isHostPatchRequired(in BluetoothDevice btDevice, in int patch_id);
 }

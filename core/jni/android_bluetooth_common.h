@@ -46,6 +46,7 @@ namespace android {
 #define BLUEZ_DBUS_BASE_PATH      "/org/bluez"
 #define BLUEZ_DBUS_BASE_IFC       "org.bluez"
 #define BLUEZ_ERROR_IFC           "org.bluez.Error"
+#define FRAMEWORKS_BASE_IFC       "android.frameworks"
 
 // It would be nicer to retrieve this from bluez using GetDefaultAdapter,
 // but this is only possible when the adapter is up (and hcid is running).
@@ -211,6 +212,8 @@ void get_bdaddr_as_string(const bdaddr_t *ba, char *str);
 
 bool debug_no_encrypt();
 
+int register_gatt_path(event_loop_native_data_t *nat, const char *gatt_path);
+int unregister_gatt_path(event_loop_native_data_t *nat, const char *gatt_path);
 
 // Result codes from Bluez DBus calls
 #define BOND_RESULT_ERROR                      -1

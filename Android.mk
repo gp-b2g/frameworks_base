@@ -92,6 +92,7 @@ LOCAL_SRC_FILES += \
 	core/java/android/bluetooth/IBluetoothCallback.aidl \
 	core/java/android/bluetooth/IBluetoothGattService.aidl \
 	core/java/android/bluetooth/IBluetoothGattProfile.aidl \
+	core/java/android/bluetooth/IBluetoothGattCallback.aidl \
 	core/java/android/bluetooth/IBluetoothThermometerCallBack.aidl \
 	core/java/android/bluetooth/IBluetoothThermometerServices.aidl \
 	core/java/android/bluetooth/IBluetoothLEProximityServices.aidl \
@@ -269,6 +270,7 @@ aidl_files := \
 	frameworks/base/core/java/android/app/PendingIntent.aidl \
 	frameworks/base/core/java/android/bluetooth/BluetoothDevice.aidl \
 	frameworks/base/core/java/android/bluetooth/BluetoothHealthAppConfiguration.aidl \
+	frameworks/base/core/java/android/bluetooth/BluetoothGattAppConfiguration.aidl \
 	frameworks/base/core/java/android/content/ComponentName.aidl \
 	frameworks/base/core/java/android/content/Intent.aidl \
 	frameworks/base/core/java/android/content/IntentSender.aidl \

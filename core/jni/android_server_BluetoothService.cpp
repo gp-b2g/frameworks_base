@@ -25,6 +25,7 @@
 #define DBUS_HEALTH_DEVICE_IFACE BLUEZ_DBUS_BASE_IFC ".HealthDevice"
 #define DBUS_HEALTH_CHANNEL_IFACE BLUEZ_DBUS_BASE_IFC ".HealthChannel"
 #define DBUS_CHARACTERISTIC_IFACE BLUEZ_DBUS_BASE_IFC ".Characteristic"
+#define DBUS_GATT_SERVER_INTERFACE  BLUEZ_DBUS_BASE_IFC ".GattServer"
 
 #define LOG_TAG "BluetoothService.cpp"
 
@@ -1622,6 +1623,602 @@ static jstring registerHealthApplicationNative(JNIEnv *env, jobject object,
     return path;
 }
 
+static jboolean registerGattServerNative(JNIEnv *env, jobject object,
+                                           jstring objPath, jint handleCount) {
+    LOGV("%s", __FUNCTION__);
+    jboolean result = JNI_FALSE;
+#ifdef HAVE_BLUETOOTH
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        const char *c_name = FRAMEWORKS_BASE_IFC;
+        const char *c_obj_path;
+        DBusMessage *msg, *reply;
+        DBusError err;
+        dbus_error_init(&err);
+
+        msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC,
+                                            get_adapter_path(env, object),
+                                            DBUS_GATT_SERVER_INTERFACE,
+                                            "RegisterServer");
+
+        if (msg == NULL) {
+            LOGE("Could not allocate D-Bus message object!");
+            return JNI_FALSE;
+        }
+
+        c_obj_path = env->GetStringUTFChars(objPath, NULL);
+
+        /* Append arguments */
+        dbus_message_append_args(msg,
+                                 DBUS_TYPE_STRING, &c_name,
+                                 DBUS_TYPE_OBJECT_PATH, &c_obj_path,
+                                 DBUS_TYPE_UINT16, &handleCount,
+                                 DBUS_TYPE_INVALID);
+
+        /* Make the call. */
+        reply = dbus_connection_send_with_reply_and_block(nat->conn, msg, -1, &err);
+
+        if (!reply) {
+            if (dbus_error_is_set(&err))
+                LOG_AND_FREE_DBUS_ERROR(&err);
+        } else {
+            event_loop_native_data_t *event_nat =
+                get_EventLoop_native_data(env, env->GetObjectField(object, field_mEventLoop));
+
+            int reg_path_result = register_gatt_path(event_nat, c_obj_path);
+            if(reg_path_result) {
+                LOGE("%s: register_gatt_path failed!", __FUNCTION__);
+                result = JNI_FALSE;
+            } else {
+                result = JNI_TRUE;
+            }
+        }
+        env->ReleaseStringUTFChars(objPath, c_obj_path);
+    }
+#endif
+    return result;
+}
+
+static jboolean addPrimarySdpNative(JNIEnv *env, jobject object,
+                                           jstring objPath, jstring svcName,
+                                           jstring uuidStr, jint startHandle,
+                                           jint endHandle, jboolean eir) {
+    LOGV("%s", __FUNCTION__);
+    jboolean result = JNI_FALSE;
+#ifdef HAVE_BLUETOOTH
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        const char *c_obj_path = env->GetStringUTFChars(objPath, NULL);
+        const char *c_svc_name = env->GetStringUTFChars(svcName, NULL);
+        const char *c_uuid_str = env->GetStringUTFChars(uuidStr, NULL);
+        DBusMessage *msg, *reply;
+        DBusError err;
+        dbus_error_init(&err);
+
+        msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC,
+                                            get_adapter_path(env, object),
+                                            DBUS_GATT_SERVER_INTERFACE,
+                                            "AddPrimarySdp");
+
+        if (msg == NULL) {
+            LOGE("Could not allocate D-Bus message object!");
+            return NULL;
+        }
+
+        /* append arguments */
+        dbus_message_append_args(msg,
+                                 DBUS_TYPE_OBJECT_PATH, &c_obj_path,
+                                 DBUS_TYPE_STRING, &c_svc_name,
+                                 DBUS_TYPE_STRING, &c_uuid_str,
+                                 DBUS_TYPE_UINT16, &startHandle,
+                                 DBUS_TYPE_UINT16, &endHandle,
+                                 DBUS_TYPE_BOOLEAN, &eir,
+                                 DBUS_TYPE_INVALID);
+
+        /* Make the call. */
+        reply = dbus_connection_send_with_reply_and_block(nat->conn, msg, -1, &err);
+
+        env->ReleaseStringUTFChars(objPath, c_obj_path);
+        env->ReleaseStringUTFChars(svcName, c_svc_name);
+        env->ReleaseStringUTFChars(uuidStr, c_uuid_str);
+
+        if (!reply) {
+            if (dbus_error_is_set(&err)) {
+                LOG_AND_FREE_DBUS_ERROR(&err);
+            }
+        } else {
+            result = JNI_TRUE;
+        }
+    }
+#endif
+    return result;
+}
+
+static jboolean notifyNative(JNIEnv *env, jobject object,
+                             jstring objPath, jint sessionHandle,
+                             jint handle, jbyteArray payload,
+                             jint cnt) {
+    LOGV("%s", __FUNCTION__);
+    jboolean result = JNI_FALSE;
+#ifdef HAVE_BLUETOOTH
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        const char *c_obj_path = env->GetStringUTFChars(objPath, NULL);
+        DBusMessage *msg, *reply;
+        DBusError err;
+        jbyte *payload_ptr = env->GetByteArrayElements(payload, NULL);
+        dbus_error_init(&err);
+
+        msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC,
+                                            get_adapter_path(env, object),
+                                            DBUS_GATT_SERVER_INTERFACE,
+                                            "Notify");
+
+        if (msg == NULL) {
+            LOGE("Could not allocate D-Bus message object!");
+            return NULL;
+        }
+
+        /* append arguments */
+        dbus_message_append_args(msg,
+                                 DBUS_TYPE_OBJECT_PATH, &c_obj_path,
+                                 DBUS_TYPE_UINT32, &sessionHandle,
+                                 DBUS_TYPE_UINT16, &handle,
+                                 DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &payload_ptr, cnt,
+                                 DBUS_TYPE_INVALID);
+
+        /* Make the call. */
+        reply = dbus_connection_send_with_reply_and_block(nat->conn, msg, -1, &err);
+
+        env->ReleaseStringUTFChars(objPath, c_obj_path);
+        env->ReleaseByteArrayElements(payload, payload_ptr, 0);
+
+        if (!reply) {
+            if (dbus_error_is_set(&err)) {
+                LOG_AND_FREE_DBUS_ERROR(&err);
+            }
+        } else {
+            result = JNI_TRUE;
+        }
+    }
+#endif
+    return result;
+}
+
+static jboolean indicateNative(JNIEnv *env, jobject object,
+                               jstring objPath, jint sessionHandle,
+                               jint handle, jbyteArray payload,
+                               jint cnt) {
+    LOGV("%s", __FUNCTION__);
+    jboolean result = JNI_FALSE;
+#ifdef HAVE_BLUETOOTH
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        const char *c_obj_path = env->GetStringUTFChars(objPath, NULL);
+        DBusMessage *msg, *reply;
+        DBusError err;
+
+        jbyte *payload_ptr = env->GetByteArrayElements(payload, NULL);
+        dbus_error_init(&err);
+
+        msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC,
+                                            get_adapter_path(env, object),
+                                            DBUS_GATT_SERVER_INTERFACE,
+                                            "Indicate");
+
+        if (msg == NULL) {
+            LOGE("Could not allocate D-Bus message object!");
+            return NULL;
+        }
+
+        /* append arguments */
+        dbus_message_append_args(msg,
+                                 DBUS_TYPE_OBJECT_PATH, &c_obj_path,
+                                 DBUS_TYPE_UINT32, &sessionHandle,
+                                 DBUS_TYPE_UINT16, &handle,
+                                 DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &payload_ptr, cnt,
+                                 DBUS_TYPE_INVALID);
+
+        /* Make the call. */
+        reply = dbus_connection_send_with_reply_and_block(nat->conn, msg, -1, &err);
+
+        env->ReleaseStringUTFChars(objPath, c_obj_path);
+        env->ReleaseByteArrayElements(payload, payload_ptr, 0);
+
+        if (!reply) {
+            if (dbus_error_is_set(&err)) {
+                LOG_AND_FREE_DBUS_ERROR(&err);
+            }
+        } else {
+            result = JNI_TRUE;
+        }
+    }
+#endif
+    return result;
+}
+
+static jboolean discoverPrimaryResponseNative(JNIEnv *env, jobject object,
+                                              jstring uuid,
+                                              jint handle,
+                                              jint end,
+                                              jint status,
+                                              int nativeData) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s", __FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        DBusMessage *msg = (DBusMessage *)nativeData;
+        DBusMessage *reply;
+        jboolean isCopy;
+        const char *c_uuid;
+
+        if (!status) {
+            reply = dbus_message_new_method_return(msg);
+            c_uuid = env->GetStringUTFChars(uuid, &isCopy);
+            dbus_message_append_args(reply,
+                                 DBUS_TYPE_UINT16, &handle,
+                                 DBUS_TYPE_UINT16, &end,
+                                 DBUS_TYPE_STRING, &c_uuid,
+                                 DBUS_TYPE_INVALID);
+        } else {
+            LOGE("%s: discoverPrimaryResponse status is false", __FUNCTION__);
+            reply = dbus_message_new_error(msg,
+                    DBUS_ERROR_FAILED, "GATT_ATTRIBUTE_NOT_FOUND");
+        }
+
+        if (!reply) {
+            LOGE("%s: Cannot create message reply to discover primary "
+                 "D-Bus\n", __FUNCTION__);
+            dbus_message_unref(msg);
+            return JNI_FALSE;
+        }
+
+        dbus_connection_send(nat->conn, reply, NULL);
+        dbus_message_unref(msg);
+        dbus_message_unref(reply);
+        if (isCopy == JNI_TRUE) {
+            env->ReleaseStringUTFChars(uuid, c_uuid);
+        }
+        return JNI_TRUE;
+    }
+#endif
+    return JNI_FALSE;
+}
+
+static jboolean discoverPrimaryByUuidResponseNative(JNIEnv *env, jobject object,
+                                              jint handle,
+                                              jint end,
+                                              jint status,
+                                              int nativeData) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s", __FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        DBusMessage *msg = (DBusMessage *)nativeData;
+        DBusMessage *reply;
+
+        if (!status) {
+            reply = dbus_message_new_method_return(msg);
+            dbus_message_append_args(reply,
+                                 DBUS_TYPE_UINT16, &handle,
+                                 DBUS_TYPE_UINT16, &end,
+                                 DBUS_TYPE_INVALID);
+        } else {
+            LOGE("%s: discoverPrimaryByUuidResponseNative status is false", __FUNCTION__);
+            reply = dbus_message_new_error(msg,
+                    DBUS_ERROR_FAILED, "GATT_ATTRIBUTE_NOT_FOUND");
+        }
+
+        if (!reply) {
+            LOGE("%s: Cannot create message reply to discover primary "
+                 "D-Bus\n", __FUNCTION__);
+            dbus_message_unref(msg);
+            return JNI_FALSE;
+        }
+
+        dbus_connection_send(nat->conn, reply, NULL);
+        dbus_message_unref(msg);
+        dbus_message_unref(reply);
+        return JNI_TRUE;
+    }
+#endif
+    return JNI_FALSE;
+}
+
+static jboolean findIncludedResponseNative(JNIEnv *env, jobject object,
+                                           jstring uuid,
+                                           jint handle,
+                                           jint start,
+                                           jint end,
+                                           jint status,
+                                           int nativeData) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s", __FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        DBusMessage *msg = (DBusMessage *)nativeData;
+        DBusMessage *reply;
+        jboolean isCopy;
+        const char *c_uuid;
+
+        if (!status) {
+            reply = dbus_message_new_method_return(msg);
+            c_uuid = env->GetStringUTFChars(uuid, &isCopy);
+
+            dbus_message_append_args(reply,
+                                 DBUS_TYPE_UINT16, &handle,
+                                 DBUS_TYPE_UINT16, &start,
+                                 DBUS_TYPE_UINT16, &end,
+                                 DBUS_TYPE_STRING, &c_uuid,
+                                 DBUS_TYPE_INVALID);
+        } else {
+            LOGE("%s: findIncludedResponseNative status is false", __FUNCTION__);
+            reply = dbus_message_new_error(msg,
+                    DBUS_ERROR_FAILED, "GATT_ATTRIBUTE_NOT_FOUND");
+        }
+
+        if (!reply) {
+            LOGE("%s: Cannot create message reply to discover primary "
+                 "D-Bus\n", __FUNCTION__);
+            dbus_message_unref(msg);
+            return JNI_FALSE;
+        }
+
+        dbus_connection_send(nat->conn, reply, NULL);
+        dbus_message_unref(msg);
+        dbus_message_unref(reply);
+        if (isCopy == JNI_TRUE) {
+            env->ReleaseStringUTFChars(uuid, c_uuid);
+        }
+        return JNI_TRUE;
+    }
+#endif
+    return JNI_FALSE;
+}
+
+static jboolean discoverCharacteristicsResponseNative(JNIEnv *env, jobject object,
+                                           jstring uuid,
+                                           jint handle,
+                                           jint property,
+                                           jint valueHandle,
+                                           jint status,
+                                           int nativeData) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s", __FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        DBusMessage *msg = (DBusMessage *)nativeData;
+        DBusMessage *reply;
+        jboolean isCopy;
+        const char *c_uuid;
+
+        if (!status) {
+            reply = dbus_message_new_method_return(msg);
+            c_uuid = env->GetStringUTFChars(uuid, &isCopy);
+            dbus_message_append_args(reply,
+                                 DBUS_TYPE_UINT16, &handle,
+                                 DBUS_TYPE_BYTE, &property,
+                                 DBUS_TYPE_UINT16, &valueHandle,
+                                 DBUS_TYPE_STRING, &c_uuid,
+                                 DBUS_TYPE_INVALID);
+        } else {
+            LOGE("%s: discoverCharacteristicsResponseNative status is false", __FUNCTION__);
+            reply = dbus_message_new_error(msg,
+                    DBUS_ERROR_FAILED, "GATT_ATTRIBUTE_NOT_FOUND");
+        }
+
+        if (!reply) {
+            LOGE("%s: Cannot create message reply to discover primary "
+                 "D-Bus\n", __FUNCTION__);
+            dbus_message_unref(msg);
+            return JNI_FALSE;
+        }
+
+        dbus_connection_send(nat->conn, reply, NULL);
+        dbus_message_unref(msg);
+        dbus_message_unref(reply);
+        if (isCopy == JNI_TRUE) {
+            env->ReleaseStringUTFChars(uuid, c_uuid);
+        }
+        return JNI_TRUE;
+    }
+#endif
+    return JNI_FALSE;
+}
+
+static jboolean discoverCharacteristicDescriptorResponseNative(JNIEnv *env, jobject object,
+                                           jstring uuid,
+                                           jint handle,
+                                           jint status,
+                                           int nativeData) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s", __FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        DBusMessage *msg = (DBusMessage *)nativeData;
+        DBusMessage *reply;
+        jboolean isCopy;
+        const char *c_uuid;
+
+        if (!status) {
+            reply = dbus_message_new_method_return(msg);
+            c_uuid = env->GetStringUTFChars(uuid, &isCopy);
+            dbus_message_append_args(reply,
+                                 DBUS_TYPE_UINT16, &handle,
+                                 DBUS_TYPE_STRING, &c_uuid,
+                                 DBUS_TYPE_INVALID);
+        } else {
+            LOGE("%s: discoverCharacteristicDescriptorResponseNative status is false", __FUNCTION__);
+            reply = dbus_message_new_error(msg,
+                    DBUS_ERROR_FAILED, "GATT_ATTRIBUTE_NOT_FOUND");
+        }
+
+        if (!reply) {
+            LOGE("%s: Cannot create message reply to discover primary "
+                 "D-Bus\n", __FUNCTION__);
+            dbus_message_unref(msg);
+            return JNI_FALSE;
+        }
+
+        dbus_connection_send(nat->conn, reply, NULL);
+        dbus_message_unref(msg);
+        dbus_message_unref(reply);
+        if (isCopy == JNI_TRUE) {
+            env->ReleaseStringUTFChars(uuid, c_uuid);
+        }
+        return JNI_TRUE;
+    }
+#endif
+    return JNI_FALSE;
+}
+
+static jboolean readByTypeResponseNative(JNIEnv *env, jobject object,
+                                         jstring uuid,
+                                         jint handle,
+                                         jbyteArray payload,
+                                         jint cnt,
+                                         jint status,
+                                         int nativeData) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s", __FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        DBusMessage *msg = (DBusMessage *)nativeData;
+        DBusMessage *reply;
+        jboolean isCopy;
+        jbyte *payload_ptr;
+
+        if (!status) {
+            reply = dbus_message_new_method_return(msg);
+            payload_ptr = env->GetByteArrayElements(payload, &isCopy);
+            dbus_message_append_args(reply,
+                                 DBUS_TYPE_UINT16, &handle,
+                                 DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &payload_ptr, cnt,
+                                 DBUS_TYPE_INVALID);
+        } else {
+            LOGE("%s: discoverCharacteristicDescriptorResponseNative status is false", __FUNCTION__);
+            reply = dbus_message_new_error(msg,
+                    DBUS_ERROR_FAILED, "GATT_ATTRIBUTE_NOT_FOUND");
+        }
+
+        if (!reply) {
+            LOGE("%s: Cannot create message reply to discover primary "
+                 "D-Bus\n", __FUNCTION__);
+            dbus_message_unref(msg);
+            return JNI_FALSE;
+        }
+
+        dbus_connection_send(nat->conn, reply, NULL);
+        dbus_message_unref(msg);
+        dbus_message_unref(reply);
+        if (isCopy == JNI_TRUE) {
+           env->ReleaseByteArrayElements(payload, payload_ptr, 0);
+        }
+        return JNI_TRUE;
+    }
+#endif
+    return JNI_FALSE;
+}
+
+static jboolean readResponseNative(JNIEnv *env, jobject object,
+                                   jstring uuid,
+                                   jbyteArray payload,
+                                   jint cnt,
+                                   jint status,
+                                   int nativeData) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s", __FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        DBusMessage *msg = (DBusMessage *)nativeData;
+        DBusMessage *reply;
+        jboolean isUuidCopy;
+        jboolean isCopy = JNI_FALSE;
+        jbyte *payload_ptr = NULL;
+        const char *c_uuid;
+
+        if (!status) {
+            reply = dbus_message_new_method_return(msg);
+            if (payload != NULL)
+                payload_ptr = env->GetByteArrayElements(payload, &isCopy);
+            c_uuid = env->GetStringUTFChars(uuid, &isUuidCopy);
+            dbus_message_append_args(reply,
+                                 DBUS_TYPE_STRING, &c_uuid,
+                                 DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &payload_ptr, cnt,
+                                 DBUS_TYPE_INVALID);
+        } else {
+            LOGE("%s: readResponseNative status is false", __FUNCTION__);
+            reply = dbus_message_new_error(msg,
+                    DBUS_ERROR_FAILED, "GATT_ATTRIBUTE_NOT_FOUND");
+        }
+
+        if (!reply) {
+            LOGE("%s: Cannot create message reply to discover primary "
+                 "D-Bus\n", __FUNCTION__);
+            dbus_message_unref(msg);
+            return JNI_FALSE;
+        }
+
+        dbus_connection_send(nat->conn, reply, NULL);
+        dbus_message_unref(msg);
+        dbus_message_unref(reply);
+        if (isCopy == JNI_TRUE) {
+           env->ReleaseByteArrayElements(payload, payload_ptr, 0);
+        }
+        if (isUuidCopy == JNI_TRUE) {
+            env->ReleaseStringUTFChars(uuid, c_uuid);
+        }
+        return JNI_TRUE;
+    }
+#endif
+    return JNI_FALSE;
+}
+
+static jboolean writeResponseNative(JNIEnv *env, jobject object,
+                                   jstring uuid,
+                                   jint status,
+                                   int nativeData) {
+#ifdef HAVE_BLUETOOTH
+    LOGV("%s", __FUNCTION__);
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        DBusMessage *msg = (DBusMessage *)nativeData;
+        DBusMessage *reply;
+        jboolean isUuidCopy;
+        const char *c_uuid;
+
+        if (!status) {
+            reply = dbus_message_new_method_return(msg);
+            c_uuid = env->GetStringUTFChars(uuid, &isUuidCopy);
+
+            dbus_message_append_args(reply,
+                                 DBUS_TYPE_STRING, &c_uuid,
+                                 DBUS_TYPE_INVALID);
+        } else {
+            LOGE("%s: writeResponseNative status is false", __FUNCTION__);
+            reply = dbus_message_new_error(msg,
+                    DBUS_ERROR_FAILED, "GATT_ATTRIBUTE_NOT_FOUND");
+        }
+
+        if (!reply) {
+            LOGE("%s: Cannot create message reply to discover primary "
+                 "D-Bus\n", __FUNCTION__);
+            dbus_message_unref(msg);
+            return JNI_FALSE;
+        }
+
+        dbus_connection_send(nat->conn, reply, NULL);
+        dbus_message_unref(msg);
+        dbus_message_unref(reply);
+        if (isUuidCopy == JNI_TRUE) {
+            env->ReleaseStringUTFChars(uuid, c_uuid);
+        }
+        return JNI_TRUE;
+    }
+#endif
+    return JNI_FALSE;
+}
+
 static jstring registerSinkHealthApplicationNative(JNIEnv *env, jobject object,
                                            jint dataType, jstring role,
                                            jstring name) {
@@ -1709,6 +2306,46 @@ static jboolean unregisterHealthApplicationNative(JNIEnv *env, jobject object,
         } else {
             result = JNI_TRUE;
         }
+    }
+#endif
+    return result;
+}
+
+static jboolean unregisterGattServerNative(JNIEnv *env, jobject object,
+                                                    jstring ObjPath) {
+    LOGV("%s", __FUNCTION__);
+    jboolean result = JNI_FALSE;
+#ifdef HAVE_BLUETOOTH
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        const char *c_obj_path = env->GetStringUTFChars(ObjPath, NULL);
+        DBusError err;
+        dbus_error_init(&err);
+        DBusMessage *reply =
+            dbus_func_args_timeout(env, nat->conn, -1,
+                                   get_adapter_path(env, object),
+                                   DBUS_GATT_SERVER_INTERFACE, "DeregisterServer",
+                                   DBUS_TYPE_OBJECT_PATH, &c_obj_path,
+                                   DBUS_TYPE_INVALID);
+
+        if (!reply) {
+            if (dbus_error_is_set(&err))
+                LOG_AND_FREE_DBUS_ERROR(&err);
+        } else {
+
+            event_loop_native_data_t *event_nat =
+                get_EventLoop_native_data(env, env->GetObjectField(object, field_mEventLoop));
+
+            int unreg_gatt_result = unregister_gatt_path(event_nat, c_obj_path);
+            if(unreg_gatt_result) {
+                LOGE("%s: Can't unregister gatt object path!",
+              __FUNCTION__);
+                result = JNI_FALSE;
+            } else {
+                result = JNI_TRUE;
+            }
+        }
+        env->ReleaseStringUTFChars(ObjPath, c_obj_path);
     }
 #endif
     return result;
@@ -2445,6 +3082,20 @@ static JNINativeMethod sMethods[] = {
     {"disConnectSapNative", "()I", (void *)disConnectSapNative},
     {"listConnectionNative", "()I", (void*)listConnectionNative},
     {"disconnectAllConnectionsNative", "()Z", (void*)disconnectAllConnectionsNative},
+    //Gatt Server
+    {"registerGattServerNative", "(Ljava/lang/String;I)Z", (void *)registerGattServerNative},
+    {"unregisterGattServerNative", "(Ljava/lang/String;)Z", (void *)unregisterGattServerNative},
+    {"addPrimarySdpNative", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IIZ)Z", (void *)addPrimarySdpNative},
+    {"notifyNative", "(Ljava/lang/String;II[BI)Z", (void *)notifyNative},
+    {"indicateNative", "(Ljava/lang/String;II[BI)Z", (void *)indicateNative},
+    {"discoverPrimaryResponseNative", "(Ljava/lang/String;IIII)Z", (void *)discoverPrimaryResponseNative},
+    {"discoverPrimaryByUuidResponseNative", "(IIII)Z", (void *)discoverPrimaryByUuidResponseNative},
+    {"findIncludedResponseNative", "(Ljava/lang/String;IIIII)Z", (void *)findIncludedResponseNative},
+    {"discoverCharacteristicsResponseNative", "(Ljava/lang/String;IIIII)Z", (void *)discoverCharacteristicsResponseNative},
+    {"discoverCharacteristicDescriptorResponseNative", "(Ljava/lang/String;III)Z", (void *)discoverCharacteristicDescriptorResponseNative},
+    {"readByTypeResponseNative", "(Ljava/lang/String;I[BIII)Z", (void *)readByTypeResponseNative},
+    {"readResponseNative", "(Ljava/lang/String;[BIII)Z", (void *)readResponseNative},
+    {"writeResponseNative", "(Ljava/lang/String;II)Z", (void *)writeResponseNative},
 };
 
 
