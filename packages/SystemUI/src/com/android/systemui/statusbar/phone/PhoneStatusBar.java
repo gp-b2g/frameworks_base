@@ -81,6 +81,7 @@ import com.android.systemui.R;
 import com.android.systemui.recent.RecentTasksLoader;
 import com.android.systemui.recent.RecentsPanelView;
 import com.android.systemui.recent.TaskDescription;
+import com.android.systemui.statusbar.CUMSimSignalClusterView;
 import com.android.systemui.statusbar.NotificationData;
 import com.android.systemui.statusbar.StatusBar;
 import com.android.systemui.statusbar.StatusBarIconView;
@@ -363,15 +364,26 @@ public class PhoneStatusBar extends StatusBar {
         mBatteryController = new BatteryController(mContext);
         mBatteryController.addIconView((ImageView)sb.findViewById(R.id.battery));
         SignalClusterView signalCluster;
-        MSimSignalClusterView mSimSignalCluster;
+        LinearLayout mSimSignalView;
 
         if (TelephonyManager.getDefault().isMultiSimEnabled()) {
             mMSimNetworkController = new MSimNetworkController(mContext);
-            mSimSignalCluster = (MSimSignalClusterView) sb.findViewById(R.id.msim_signal_cluster);
-            for (int i=0; i < TelephonyManager.getDefault().getPhoneCount(); i++) {
-                mMSimNetworkController.addSignalCluster(mSimSignalCluster, i);
+            mSimSignalView = (LinearLayout) sb.findViewById(R.id.msim_signal_cluster);
+            if (FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) {
+                CUMSimSignalClusterView cuMSimSignalCluster = (CUMSimSignalClusterView)View.inflate(context, R.layout.msim_signal_cluster_view_cu, null);
+                mSimSignalView.addView(cuMSimSignalCluster);
+                for (int i=0; i < TelephonyManager.getDefault().getPhoneCount(); i++) {
+                    mMSimNetworkController.addSignalCluster(cuMSimSignalCluster, i);
+                }
+                cuMSimSignalCluster.setNetworkController(mMSimNetworkController);
+            } else {
+                MSimSignalClusterView mSimSignalCluster = (MSimSignalClusterView)View.inflate(context, R.layout.msim_signal_cluster_view, null);
+                mSimSignalView.addView(mSimSignalCluster);
+                for (int i=0; i < TelephonyManager.getDefault().getPhoneCount(); i++) {
+                    mMSimNetworkController.addSignalCluster(mSimSignalCluster, i);
+                }
+                mSimSignalCluster.setNetworkController(mMSimNetworkController);
             }
-            mSimSignalCluster.setNetworkController(mMSimNetworkController);
         } else {
             mNetworkController = new NetworkController(mContext);
             signalCluster = (SignalClusterView)sb.findViewById(R.id.signal_cluster);
