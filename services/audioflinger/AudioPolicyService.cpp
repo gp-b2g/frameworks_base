@@ -206,7 +206,6 @@ audio_policy_dev_state_t AudioPolicyService::getDeviceConnectionState(
     if (mpAudioPolicy == NULL) {
         return AUDIO_POLICY_DEVICE_STATE_UNAVAILABLE;
     }
-    Mutex::Autolock _l(mLock);
     return mpAudioPolicy->get_device_connection_state(mpAudioPolicy, device,
                                                       device_address);
 }
