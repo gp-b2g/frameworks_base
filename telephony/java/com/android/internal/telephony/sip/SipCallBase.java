@@ -44,7 +44,7 @@ abstract class SipCallBase extends Call {
         return state.toString() + ":" + super.toString();
     }
 
-    void clearDisconnected() {
+    public void clearDisconnected() {
         for (Iterator<Connection> it = connections.iterator(); it.hasNext(); ) {
             Connection c = it.next();
             if (c.getState() == State.DISCONNECTED) it.remove();

@@ -1,5 +1,7 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +18,7 @@
 
 package com.android.internal.telephony;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import android.util.Log;
@@ -24,8 +27,10 @@ import android.util.Log;
  * {@hide}
  */
 public abstract class Call {
-    /* Enums */
 
+    public ArrayList<Connection> connections = new ArrayList<Connection>();
+
+    /* Enums */
     public enum State {
         IDLE, ACTIVE, HOLDING, DIALING, ALERTING, INCOMING, WAITING, DISCONNECTED, DISCONNECTING;
 
@@ -69,6 +74,27 @@ public abstract class Call {
     public abstract boolean isMultiparty();
     public abstract void hangup() throws CallStateException;
     public abstract void hangupAllCalls() throws CallStateException;
+    public abstract void clearDisconnected();
+
+    public static State
+    stateFromDCState(DriverCall.State dcState) {
+        switch (dcState) {
+            case ACTIVE:
+                return State.ACTIVE;
+            case HOLDING:
+                return State.HOLDING;
+            case DIALING:
+                return State.DIALING;
+            case ALERTING:
+                return State.ALERTING;
+            case INCOMING:
+                return State.INCOMING;
+            case WAITING:
+                return State.WAITING;
+            default:
+                throw new RuntimeException("illegal call state:" + dcState);
+        }
+    }
 
     /**
      * hasConnection
@@ -251,5 +277,85 @@ public abstract class Call {
                 Log.w(LOG_TAG, " hangupIfActive: caught " + ex);
             }
         }
+    }
+
+
+    /**
+     * @return true if there's no space in this call for additional connections
+     *         to be added via "conference"
+     */
+    public boolean
+    isFull() {
+        Log.e(LOG_TAG, "isFull, unsupported for this phone");
+        return false;
+    }
+
+    public void
+    attach(ConnectionBase conn, DriverCall dc) {
+        connections.add(conn);
+
+        state = stateFromDCState (dc.state);
+    }
+
+    public void
+    attachFake(ConnectionBase conn, State state) {
+        connections.add(conn);
+
+        this.state = state;
+    }
+
+    /**
+     * Called by ConnectionBase when it has disconnected
+     */
+    void
+    connectionDisconnected(ConnectionBase conn) {
+        if (state != State.DISCONNECTED) {
+            /* If only disconnected connections remain, we are disconnected*/
+
+            boolean hasOnlyDisconnectedConnections = true;
+
+            for (int i = 0, s = connections.size()  ; i < s; i ++) {
+                if (connections.get(i).getState()
+                    != State.DISCONNECTED
+                ) {
+                    hasOnlyDisconnectedConnections = false;
+                    break;
+                }
+            }
+
+            if (hasOnlyDisconnectedConnections) {
+                state = State.DISCONNECTED;
+            }
+        }
+    }
+
+    //***** Called from ConnectionBase
+    void
+    detach(ConnectionBase conn) {
+        connections.remove(conn);
+
+        if (connections.size() == 0) {
+            state = State.IDLE;
+        }
+    }
+
+    boolean
+    update (ConnectionBase conn, DriverCall dc) {
+        State newState;
+        boolean changed = false;
+
+        newState = stateFromDCState(dc.state);
+
+        if (newState != state) {
+            state = newState;
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    public void onHangupLocal() {
+        return;
+        //nop
     }
 }

@@ -24,6 +24,7 @@ import android.os.Handler;
 import android.os.Message;
 
 import com.android.internal.telephony.BaseCommands;
+import com.android.internal.telephony.CallDetails;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -473,4 +474,12 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
 
     public void setDataSubscription(Message response) {
     }
+
+    public void acceptCall(Message result, int callType) {
+    }
+
+    public void dial(String address, int clirMode, UUSInfo uusInfo, CallDetails callDetails,
+            Message result) {
+    }
+
 }

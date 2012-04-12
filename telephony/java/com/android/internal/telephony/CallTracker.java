@@ -1,5 +1,7 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +21,12 @@ package com.android.internal.telephony;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Registrant;
+import android.os.RegistrantList;
 import android.util.Log;
 
 import com.android.internal.telephony.CommandException;
-
+import com.android.internal.telephony.cdma.CdmaCall;
 
 /**
  * {@hide}
@@ -41,6 +45,15 @@ public abstract class CallTracker extends Handler {
 
     public CommandsInterface cm;
 
+    public PhoneBase phone;
+    public PhoneBase imsPhone;
+
+    public Call ringingCall;
+    // A call that is ringing or (call) waiting
+    public Call foregroundCall;
+    public Call backgroundCall;
+    public Phone.State state = Phone.State.IDLE; //Phone state for base phone
+    public boolean mIsInEmergencyCall = false;
 
     //***** Events
 
@@ -59,6 +72,26 @@ public abstract class CallTracker extends Handler {
     protected static final int EVENT_EXIT_ECM_RESPONSE_CDMA        = 14;
     protected static final int EVENT_CALL_WAITING_INFO_CDMA        = 15;
     protected static final int EVENT_THREE_WAY_DIAL_L2_RESULT_CDMA = 16;
+    protected static final int EVENT_MODIFY_CALL                   = 17;
+
+    public abstract void acceptCall() throws CallStateException;
+    public abstract void rejectCall() throws CallStateException;
+    public abstract void switchWaitingOrHoldingAndActive() throws CallStateException;
+    public abstract void setMute(boolean muted);
+    public abstract boolean getMute();
+    public abstract void dispose();
+    public abstract void clearDisconnected();
+    public abstract boolean canConference();
+    public abstract boolean canDial();
+    public abstract boolean canTransfer();
+    public abstract void explicitCallTransfer() throws CallStateException;
+    public abstract void conference() throws CallStateException;
+
+    public RegistrantList voiceCallEndedRegistrants = new RegistrantList();
+    public RegistrantList voiceCallStartedRegistrants = new RegistrantList();
+    public RegistrantList imsCallEndedRegistrants = new RegistrantList();
+    public RegistrantList imsCallStartedRegistrants = new RegistrantList();
+    public RegistrantList callWaitingRegistrants =  new RegistrantList();
 
     protected void pollCallsWhenSafe() {
         needsPoll = true;
@@ -123,7 +156,105 @@ public abstract class CallTracker extends Handler {
     public abstract void unregisterForVoiceCallStarted(Handler h);
     public abstract void registerForVoiceCallEnded(Handler h, int what, Object obj);
     public abstract void unregisterForVoiceCallEnded(Handler h);
+    public abstract void hangupWaitingOrBackground();
+    public abstract void hangupConnectionByIndex(Call call, int index)
+            throws CallStateException;
+    public abstract void hangup (Call call) throws CallStateException;
+    public abstract Connection dial(String dialString) throws CallStateException;
 
     protected abstract void log(String msg);
 
+    public boolean isInEmergencyCall() {
+        return mIsInEmergencyCall;
+    };
+
+    //***** Called from ConnectionBase
+    public void
+    hangup (ConnectionBase conn) throws CallStateException {
+        throw new CallStateException ("ConnectionBase " + conn
+                + "does not belong to CallTracker " + this);
+    }
+
+    public void
+    separate(ConnectionBase conn) throws CallStateException {
+        throw new CallStateException("ConnectionBase " + conn
+                + "does not belong to CallTracker " + this);
+    }
+
+
+    public void
+    hangup (Connection conn) throws CallStateException {
+        throw new CallStateException ("Connection " + conn
+                + "does not belong to CallTracker " + this);
+    }
+
+    public void
+    separate(Connection conn) throws CallStateException {
+        throw new CallStateException("Connection " + conn
+                + "does not belong to CallTracker " + this);
+    }
+
+    public void registerForCallWaiting(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        callWaitingRegistrants.add(r);
+    }
+
+    public void unregisterForCallWaiting(Handler h) {
+        callWaitingRegistrants.remove(h);
+    }
+
+    public Connection getConnectionByIndex(Call call, int index)
+            throws CallStateException {
+        int count = call.connections.size();
+        for (int i = 0; i < count; i++) {
+            Connection cn = call.connections.get(i);
+            if (cn.getIndex() == index) {
+                return (Connection)cn;
+            }
+        }
+
+        return null;
+    }
+
+
+    public Connection dial(String dialString, int clirMode, UUSInfo uusInfo) throws CallStateException {
+        throw new CallStateException("Dial with clirmode & UUSInfo " +
+                "does not belong to CallTracker " + this);
+    }
+
+    public Connection dial(String dialString, UUSInfo uusInfo) throws CallStateException {
+        throw new CallStateException("Dial with UUSInfo does not belong to CallTracker " + this);
+    }
+
+    public Connection dial(String dialString, int clirMode) throws CallStateException {
+        throw new CallStateException("Dial with Clirmode does not belong to CallTracker " + this);
+    }
+
+    public Connection dial(String dialString, CallDetails calldetails) throws CallStateException {
+        throw new CallStateException("Dial with calldetails does not belong to CallTracker "
+                + this);
+    }
+
+    public void acceptCall(PhoneBase incomingPhone) throws CallStateException {
+        throw new CallStateException(
+                "Accept with incomingphone is not supported in this CallTracker " + this);
+    }
+
+    public void acceptCall(PhoneBase phone, int callType) throws CallStateException {
+        throw new CallStateException("Accept with CallType is not supported in this CallTracker "
+                + this);
+    }
+
+    void hangupAllCalls(int callDomain) throws CallStateException {
+        hangupAllCallsP(callDomain);
+    }
+
+    protected void hangupAllCallsP(int callDomain) throws CallStateException {
+        throw new CallStateException("hangupAllCalls is not supported in this CallTracker");
+    }
+
+    public void rejectCall(PhoneBase phone) throws CallStateException {
+        throw new CallStateException(
+                "rejectCall with PhoneBase is not supported in this CallTracker");
+    }
 }

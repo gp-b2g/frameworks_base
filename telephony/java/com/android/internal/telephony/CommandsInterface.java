@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -648,6 +649,20 @@ public interface CommandsInterface {
      void registerForRilConnected(Handler h, int what, Object obj);
      void unregisterForRilConnected(Handler h);
 
+     /**
+      * Registers the handler for RIL_UNSOL_MODIFY_CALL events.
+      *
+      * When ril sends call modify a message is sent to the registrant
+      * which contains an AsyncResult, ar, in msg.obj. The ar.result has
+      * the call details of the call for which modify request is sent
+      *
+      * @param h Handler for notification message.
+      * @param what User-defined message code.
+      * @param obj User object.
+      */
+     void registerForModifyCall(Handler h, int what, Object obj);
+     void unregisterForModifyCall(Handler h);
+
     /**
      * Supply the ICC PIN to the ICC card
      *
@@ -846,6 +861,18 @@ public interface CommandsInterface {
      *  retMsg.obj = AsyncResult ar
      *  ar.exception carries exception on failure
      *  ar.userObject contains the orignal value of result.obj
+     *  ar.result is null on success and failure
+     *
+     */
+    void dial(String address, int clirMode, UUSInfo uusInfo, CallDetails callDetails,
+            Message result);
+
+
+    /**
+     *  returned message
+     *  retMsg.obj = AsyncResult ar
+     *  ar.exception carries exception on failure
+     *  ar.userObject contains the orignal value of result.obj
      *  ar.result is String containing IMSI on success
      */
     void getIMSI(Message result);
@@ -961,6 +988,14 @@ public interface CommandsInterface {
      *  ar.result is null on success and failure
      */
     void acceptCall (Message result);
+
+    /**
+    *
+    *  ar.exception carries exception on failure
+    *  ar.userObject contains the orignal value of result.obj
+    *  ar.result is null on success and failure
+    */
+   void acceptCall (Message result, int callType);
 
     /**
      *  also known as UDUB

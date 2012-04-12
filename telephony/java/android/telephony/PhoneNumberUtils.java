@@ -1,5 +1,7 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -2525,6 +2527,123 @@ public class PhoneNumberUtils
         }
 
         return true;
+    }
+
+    private static boolean isPauseChar(char c) {
+        return c == PhoneNumberUtils.PAUSE;
+    }
+
+    private static boolean isWait(char c) {
+        return c == PhoneNumberUtils.WAIT;
+    }
+
+    // This function is to find the next PAUSE character index if
+    // multiple pauses in a row. Otherwise it finds the next non PAUSE or
+    // non WAIT character index.
+    private static int
+    findNextPCharOrNonPOrNonWCharIndex(String phoneNumber, int currIndex) {
+        boolean wMatched = isWait(phoneNumber.charAt(currIndex));
+        int index = currIndex + 1;
+        int length = phoneNumber.length();
+        while (index < length) {
+            char cNext = phoneNumber.charAt(index);
+            // if there is any W inside P/W sequence,mark it
+            if (isWait(cNext)) {
+                wMatched = true;
+            }
+            // if any characters other than P/W chars after P/W sequence
+            // we break out the loop and append the correct
+            if (!isWait(cNext) && !isPauseChar(cNext)) {
+                break;
+            }
+            index++;
+        }
+
+        // It means the PAUSE character(s) is in the middle of dial string
+        // and it needs to be handled one by one.
+        if ((index < length) && (index > (currIndex + 1))  &&
+            ((wMatched == false) && isPauseChar(phoneNumber.charAt(currIndex)))) {
+            return (currIndex + 1);
+        }
+        return index;
+    }
+
+    // This function returns either PAUSE or WAIT character to append.
+    // It is based on the next non PAUSE/WAIT character in the phoneNumber and the
+    // index for the current PAUSE/WAIT character
+    private static char
+    findPOrWCharToAppend(String phoneNumber, int currPwIndex, int nextNonPwCharIndex) {
+        char c = phoneNumber.charAt(currPwIndex);
+        char ret;
+
+        // Append the PW char
+        ret = (isPauseChar(c)) ? PhoneNumberUtils.PAUSE : PhoneNumberUtils.WAIT;
+
+        // If the nextNonPwCharIndex is greater than currPwIndex + 1,
+        // it means the PW sequence contains not only P characters.
+        // Since for the sequence that only contains P character,
+        // the P character is handled one by one, the nextNonPwCharIndex
+        // equals to currPwIndex + 1.
+        // In this case, skip P, append W.
+        if (nextNonPwCharIndex > (currPwIndex + 1)) {
+            ret = PhoneNumberUtils.WAIT;
+        }
+        return ret;
+    }
+
+    /**@hide
+     * format original dial string
+     * 1) convert international dialing prefix "+" to
+     *    string specified per region
+     *
+     * 2) handle corner cases for PAUSE/WAIT dialing:
+     *
+     *    If PAUSE/WAIT sequence at the end, ignore them.
+     *
+     *    If consecutive PAUSE/WAIT sequence in the middle of the string,
+     *    and if there is any WAIT in PAUSE/WAIT sequence, treat them like WAIT.
+     */
+    public static String formatDialString(String phoneNumber) {
+        /**
+         * TODO(cleanup): This function should move to PhoneNumberUtils, and
+         * tests should be added.
+         */
+
+        if (phoneNumber == null) {
+            return null;
+        }
+        int length = phoneNumber.length();
+        StringBuilder ret = new StringBuilder();
+        char c;
+        int currIndex = 0;
+
+        while (currIndex < length) {
+            c = phoneNumber.charAt(currIndex);
+            if (isPauseChar(c) || isWait(c)) {
+                if (currIndex < length - 1) {
+                    // if PW not at the end
+                    int nextIndex = findNextPCharOrNonPOrNonWCharIndex(phoneNumber, currIndex);
+                    // If there is non PW char following PW sequence
+                    if (nextIndex < length) {
+                        char pC = findPOrWCharToAppend(phoneNumber, currIndex, nextIndex);
+                        ret.append(pC);
+                        // If PW char sequence has more than 2 PW characters,
+                        // skip to the last PW character since the sequence already be
+                        // converted to WAIT character
+                        if (nextIndex > (currIndex + 1)) {
+                            currIndex = nextIndex - 1;
+                        }
+                    } else if (nextIndex == length) {
+                        // It means PW characters at the end, ignore
+                        currIndex = length - 1;
+                    }
+                }
+            } else {
+                ret.append(c);
+            }
+            currIndex++;
+        }
+        return PhoneNumberUtils.cdmaCheckAndProcessPlusCode(ret.toString());
     }
 
     //==== End of utility methods used only in compareStrictly() =====

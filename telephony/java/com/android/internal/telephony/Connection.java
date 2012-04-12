@@ -75,6 +75,8 @@ public abstract class Connection {
 
     Object userData;
 
+    public int index;          // index in CallTracker.connections[], -1 if unassigned
+
     /* Instance Methods */
 
     /**
@@ -309,5 +311,23 @@ public abstract class Connection {
                 .append(" state: " + getState())
                 .append(" post dial state: " + getPostDialState());
         return str.toString();
+    }
+
+    public int
+    getIndex() throws CallStateException {
+        if (index >= 0) {
+            return index + 1;
+        } else {
+            throw new CallStateException ("Index not yet assigned");
+        }
+    }
+
+    public CallDetails getCallDetails() {
+        return null;
+    }
+
+    public PhoneBase getPhoneFromConnection()
+    {
+        return null;
     }
 }

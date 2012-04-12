@@ -93,6 +93,7 @@ public interface RILConstants {
     int GSM_PHONE = 1;
     int CDMA_PHONE = 2;
     int SIP_PHONE  = 3;
+    int RIL_IMS_PHONE = 4;
 
     int LTE_ON_CDMA_UNKNOWN = -1;
     int LTE_ON_CDMA_FALSE = 0;
@@ -296,6 +297,8 @@ cat include/telephony/ril.h | \
     int RIL_REQUEST_MODIFY_QOS = 121;
     int RIL_REQUEST_SUSPEND_QOS = 122;
     int RIL_REQUEST_RESUME_QOS = 123;
+    int RIL_REQUEST_MODIFY_CALL_INITIATE = 124;
+    int RIL_REQUEST_MODIFY_CALL_CONFIRM = 125;
     int RIL_UNSOL_RESPONSE_BASE = 1000;
     int RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED = 1000;
     int RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED = 1001;
@@ -340,4 +343,5 @@ cat include/telephony/ril.h | \
     int RIL_UNSOL_STK_CC_ALPHA_NOTIFY = 1040;
     int RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED = 1041;
     int RIL_UNSOL_QOS_STATE_CHANGED_IND = 1042;
+    int RIL_UNSOL_MODIFY_CALL = 1043;
 }

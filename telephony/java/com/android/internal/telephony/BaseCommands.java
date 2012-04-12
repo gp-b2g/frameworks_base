@@ -73,6 +73,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mCdmaPrlChangedRegistrants = new RegistrantList();
     protected RegistrantList mExitEmergencyCallbackModeRegistrants = new RegistrantList();
     protected RegistrantList mRilConnectedRegistrants = new RegistrantList();
+    protected RegistrantList mModifyCallRegistrants = new RegistrantList();
     protected RegistrantList mIccRefreshRegistrants = new RegistrantList();
     protected RegistrantList mCdmaFwdBurstDtmfRegistrants = new RegistrantList();
     protected RegistrantList mCdmaFwdContDtmfStartRegistrants = new RegistrantList();
@@ -636,6 +637,15 @@ public abstract class BaseCommands implements CommandsInterface {
             Log.d(LOG_TAG, "Notifying: ril connected mRilVersion=" + mRilVersion);
             r.notifyRegistrant(new AsyncResult(null, new Integer(mRilVersion), null));
         }
+    }
+
+    public void registerForModifyCall(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mModifyCallRegistrants.add(r);
+    }
+
+    public void unregisterForModifyCall(Handler h) {
+        mModifyCallRegistrants.remove(h);
     }
 
     @Override

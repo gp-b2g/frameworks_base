@@ -50,6 +50,7 @@ public class DriverCall implements Comparable {
     public String name;
     public int namePresentation;
     public UUSInfo uusInfo;
+    public CallDetails callDetails;
 
     /** returns null on error */
     static DriverCall
@@ -112,7 +113,8 @@ public class DriverCall implements Comparable {
                 + (isVoice ? "voc" : "nonvoc") + ","
                 + (isVoicePrivacy ? "evp" : "noevp") + ","
                 /*+ "number=" + number */ + ",cli=" + numberPresentation + ","
-                /*+ "name="+ name */ + "," + namePresentation;
+                /*+ "name="+ name */ + "," + namePresentation
+                + "Call Details =" + callDetails;
     }
 
     public static State

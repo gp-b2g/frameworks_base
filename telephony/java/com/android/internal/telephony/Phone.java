@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
  * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 
 import com.android.internal.telephony.DataConnection;
+import com.android.internal.telephony.Connection.DisconnectCause;
 import com.android.internal.telephony.gsm.UsimServiceTable;
 import com.android.internal.telephony.ims.IsimRecords;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -215,6 +217,7 @@ public interface Phone {
     static final int PHONE_TYPE_GSM = RILConstants.GSM_PHONE;
     static final int PHONE_TYPE_CDMA = RILConstants.CDMA_PHONE;
     static final int PHONE_TYPE_SIP = RILConstants.SIP_PHONE;
+    static final int PHONE_TYPE_RIL_IMS = RILConstants.RIL_IMS_PHONE;
 
     // Modes for LTE_ON_CDMA
     static final int LTE_ON_CDMA_UNKNOWN = RILConstants.LTE_ON_CDMA_UNKNOWN;
@@ -718,6 +721,16 @@ public interface Phone {
     void acceptCall() throws CallStateException;
 
     /**
+     * Answers a ringing or waiting call. Active calls, if any, go on hold.
+     * Answering occurs asynchronously, and final notification occurs via
+     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
+     * java.lang.Object) registerForPreciseCallStateChanged()}.
+     *
+     * @exception CallStateException when no call is ringing or waiting
+     */
+    void acceptCall(int callType) throws CallStateException;
+
+    /**
      * Reject (ignore) a ringing call. In GSM, this means UDUB
      * (User Determined User Busy). Reject occurs asynchronously,
      * and final notification occurs via
@@ -876,6 +889,11 @@ public interface Phone {
      *                errors are handled asynchronously.
      */
     Connection dial(String dialString, UUSInfo uusInfo) throws CallStateException;
+
+    public Connection dial(String dialString, UUSInfo uusInfo, CallDetails calldetails)
+            throws CallStateException;
+
+    public Connection dial(String dialString, CallDetails calldetails) throws CallStateException;
 
     /**
      * Handles PIN MMI commands (PIN/PIN2/PUK/PUK2), which are initiated
@@ -1888,4 +1906,32 @@ public interface Phone {
      * @return an interface to the UsimServiceTable record, or null if not available
      */
     UsimServiceTable getUsimServiceTable();
+
+    CallTracker getCallTracker();
+
+    /* implement in all phones
+     * ConnectionBase.DisconnectCause
+            disconnectCauseFromCode(int causeCode){
+    if (phone.mCdmaSubscriptionSource == // write generic fun
+                        // toget icc status
+                        // for nv mode n
+                        // remove this check
+                        CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM
+                        && (phone.getUiccApplication() == null ||
+                        phone.getUiccApplication().getState() !=
+                        IccCardApplicationStatus.AppState.APPSTATE_READY)) {
+                    return DisconnectCause.ICC_ERROR;
+    } else if (causeCode == CallFailCause.ERROR_UNSPECIFIED) {
+                    if (phone.mSST.mRestrictedState.isCsRestricted()) {
+                        return DisconnectCause.CS_RESTRICTED;
+                    } else if (phone.mSST.mRestrictedState.isCsEmergencyRestricted()) {
+                        return DisconnectCause.CS_RESTRICTED_EMERGENCY;
+                    } else if (phone.mSST.mRestrictedState.isCsNormalRestricted()) {
+                        return DisconnectCause.CS_RESTRICTED_NORMAL;
+                    } else {
+                        return DisconnectCause.ERROR_UNSPECIFIED;
+                    }
+    }
+    }
+    */
 }

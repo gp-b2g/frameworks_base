@@ -24,6 +24,7 @@ import com.android.internal.telephony.Phone;
 
 import java.util.ArrayList;
 import java.util.List;
+import android.util.Log;
 
 /**
  * {@hide}
@@ -37,7 +38,7 @@ class GsmCall extends Call {
 
     /***************************** Class Methods *****************************/
 
-    static State
+    public static State
     stateFromDCState (DriverCall.State dcState) {
         switch (dcState) {
             case ACTIVE:        return State.ACTIVE;
@@ -167,7 +168,7 @@ class GsmCall extends Call {
      * @return true if there's no space in this call for additional
      * connections to be added via "conference"
      */
-    /*package*/ boolean
+    public boolean
     isFull() {
         return connections.size() == GsmCallTracker.MAX_CONNECTIONS_PER_CALL;
     }
@@ -180,7 +181,7 @@ class GsmCall extends Call {
      * Note that at this point, the hangup request has been dispatched to the radio
      * but no response has yet been received so update() has not yet been called
      */
-    void
+    public void
     onHangupLocal() {
         for (int i = 0, s = connections.size()
                 ; i < s; i++
@@ -195,7 +196,7 @@ class GsmCall extends Call {
     /**
      * Called when it's time to clean up disconnected Connection objects
      */
-    void
+    public void
     clearDisconnected() {
         for (int i = connections.size() - 1 ; i >= 0 ; i--) {
             GsmConnection cn = (GsmConnection)connections.get(i);

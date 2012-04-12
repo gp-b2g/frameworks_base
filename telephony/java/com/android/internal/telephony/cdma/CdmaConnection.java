@@ -52,7 +52,7 @@ public class CdmaConnection extends Connection {
     boolean isIncoming;
     boolean disconnected;
     String cnapName;
-    int index;          // index in CdmaCallTracker.connections[], -1 if unassigned
+
 
     /*
      * These time/timespan values are based on System.currentTimeMillis(),
