@@ -31,6 +31,7 @@ import android.util.Log;
 import com.android.internal.telephony.ApnContext;
 import com.android.internal.telephony.DataConnection;
 import com.android.internal.telephony.DataConnectionAc;
+import com.android.internal.telephony.DataProfile;
 import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.Subscription;
@@ -225,10 +226,30 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
                 // Connection is still there. Try to clean up.
                 if (dcac != null) {
                     if (apnContext.getState() != State.DISCONNECTING) {
-                        if (DBG) log("cleanUpConnection: tearing down");
+                        boolean disconnectAll = false;
+                        if (Phone.APN_TYPE_DUN.equals(apnContext.getApnType())) {
+                            DataProfile dunSetting = fetchDunApn();
+                            if (dunSetting != null &&
+                                    dunSetting.equals(apnContext.getApnSetting())) {
+                                if (DBG) log("tearing down dedicated DUN connection");
+                                // we need to tear it down - we brought it up just for dun and
+                                // other people are camped on it and now dun is done.  We need
+                                // to stop using it and let the normal apn list get used to find
+                                // connections for the remaining desired connections
+                                disconnectAll = true;
+                            }
+                        }
+                        if (DBG) {
+                            log("cleanUpConnection: tearing down" + (disconnectAll ? " all" :""));
+                        }
                         Message msg = obtainMessage(EVENT_DISCONNECT_DONE, apnContext);
-                        apnContext.getDataConnection().tearDown(apnContext.getReason(), msg);
+                        if (disconnectAll) {
+                            apnContext.getDataConnection().tearDownAll(apnContext.getReason(), msg);
+                        } else {
+                            apnContext.getDataConnection().tearDown(apnContext.getReason(), msg);
+                        }
                         apnContext.setState(State.DISCONNECTING);
+
                         mDisconnectPendingCount++;
                     }
                 } else {

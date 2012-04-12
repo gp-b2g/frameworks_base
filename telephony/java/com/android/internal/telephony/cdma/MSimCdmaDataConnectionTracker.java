@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,7 +119,7 @@ public final class MSimCdmaDataConnectionTracker extends CdmaDataConnectionTrack
      * @param tearDown true if the underlying DataConnection should be disconnected.
      * @param reason for the clean up.
      */
-    private void cleanUpConnection(boolean tearDown, String reason, boolean doAll) {
+    protected void cleanUpConnection(boolean tearDown, String reason, boolean doAll) {
         if (DBG) log("cleanUpConnection: reason: " + reason);
 
         // Clear the reconnect alarm, if set.
@@ -149,6 +149,7 @@ public final class MSimCdmaDataConnectionTracker extends CdmaDataConnectionTrack
                                     conn.getDataConnectionId(), 0, reason));
                     }
                     notificationDeferred = true;
+                    mDisconnectPendingCount++;
                 } else {
                     if (DBG) log("cleanUpConnection: !tearDown, call conn.resetSynchronously");
                     if (dcac != null) {
@@ -165,6 +166,11 @@ public final class MSimCdmaDataConnectionTracker extends CdmaDataConnectionTrack
             if (DBG) log("cleanupConnection: !notificationDeferred");
             gotoIdleAndNotifyDataConnection(reason);
         }
+
+         if (tearDown && mDisconnectPendingCount == 0) {
+             notifyDataDisconnectComplete();
+             notifyAllDataDisconnected();
+         }
     }
 
     /**

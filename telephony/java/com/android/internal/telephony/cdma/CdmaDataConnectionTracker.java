@@ -278,7 +278,7 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
      * @param tearDown true if the underlying DataConnection should be disconnected.
      * @param reason for the clean up.
      */
-    private void cleanUpConnection(boolean tearDown, String reason, boolean doAll) {
+    protected void cleanUpConnection(boolean tearDown, String reason, boolean doAll) {
         if (DBG) log("cleanUpConnection: reason: " + reason);
 
         // Clear the reconnect alarm, if set.
