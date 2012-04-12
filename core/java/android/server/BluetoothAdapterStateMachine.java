@@ -593,8 +593,7 @@ final class BluetoothAdapterStateMachine extends StateMachine {
                 case AIRPLANE_MODE_ON:
                     broadcastState(BluetoothAdapter.STATE_TURNING_OFF);
                     transitionTo(mSwitching);
-                    if (mBluetoothService.getAdapterConnectionState() !=
-                        BluetoothAdapter.STATE_DISCONNECTED) {
+                    if (mBluetoothService.getAdapterConnectionCount() > 0) {
                         mBluetoothService.disconnectDevices();
                         sendMessageDelayed(DEVICES_DISCONNECT_TIMEOUT,
                                            DEVICES_DISCONNECT_TIMEOUT_TIME);
@@ -714,8 +713,7 @@ final class BluetoothAdapterStateMachine extends StateMachine {
                     break;
                 case TURN_HOT:
                     broadcastState(BluetoothAdapter.STATE_TURNING_OFF);
-                    if (mBluetoothService.getAdapterConnectionState() !=
-                        BluetoothAdapter.STATE_DISCONNECTED) {
+                    if (mBluetoothService.getAdapterConnectionCount() > 0) {
                         mBluetoothService.disconnectDevices();
                         sendMessageDelayed(DEVICES_DISCONNECT_TIMEOUT,
                                            DEVICES_DISCONNECT_TIMEOUT_TIME);
