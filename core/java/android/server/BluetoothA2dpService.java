@@ -374,6 +374,14 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
     }
 
     private synchronized void sendMetaData(String path) {
+
+        if (mTrackName == null)
+            mTrackName = DEFAULT_METADATA_STRING;
+        if (mArtistName == null)
+            mArtistName = DEFAULT_METADATA_STRING;
+        if (mAlbumName == null)
+            mAlbumName = DEFAULT_METADATA_STRING;
+
         if(DBG) {
             Log.d(TAG, "sendMetaData "+ path);
             Log.d(TAG, "Meta data info is trackname: "+ mTrackName+" artist: "+mArtistName);
