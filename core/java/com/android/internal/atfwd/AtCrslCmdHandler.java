@@ -128,9 +128,9 @@ public class AtCrslCmdHandler extends AtCmdBaseHandler implements AtCmdHandler {
                 }
                 break;
 
-            case AtCmd.ATCMD_OPCODE_NA_EQ_QU:
+            case AtCmd.ATCMD_OPCODE_NA_QU:
                 try {
-                    // AT+CRSL=?
+                    // AT+CRSL?
                     Integer ringVolume = audioService.getStreamVolume(AudioManager.STREAM_RING);
                     result = ringVolume.toString(ringVolume);
                     isAtCmdRespOK = true;
@@ -141,8 +141,8 @@ public class AtCrslCmdHandler extends AtCmdBaseHandler implements AtCmdHandler {
                 }
                 break;
 
-            case  AtCmd.ATCMD_OPCODE_NA_QU:
-                // AT+CRSL?
+            case  AtCmd.ATCMD_OPCODE_NA_EQ_QU:
+                // AT+CRSL=?
                 result = getFormattedRingerVolumeRange();
                 if(result.length() > 0) {
                     isAtCmdRespOK = true;
