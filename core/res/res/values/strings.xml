@@ -107,7 +107,8 @@
     <string name="needPuk2">Type PUK2 to unblock SIM card.</string>
     <!-- Displayed when a SIM PIN/PUK is entered incorrectly. -->
     <string name="pinpuk_attempts">\nAttempts Remaining :</string>
-
+    <!-- Displayed when user attempts to change SIM PIN1 without enabling PIN1. -->
+    <string name="enablePin">Unsuccessful. Enable SIM/RUIM LOCK.</string>
 
     <!-- Displayed as the title for a success/failure report enabling/disabling caller ID. -->
     <string name="ClipMmi">Incoming Caller ID</string>

@@ -1264,6 +1264,11 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     sb.append("\n");
                     sb.append(context.getText(
                             com.android.internal.R.string.needPuk2));
+                } else if (err == CommandException.Error.REQUEST_NOT_SUPPORTED) {
+                    if (sc.equals(SC_PIN)) {
+                        sb.append(context.getText(
+                            com.android.internal.R.string.enablePin));
+                    }
                 } else {
                     sb.append(getErrorMessage(ar));
                 }
