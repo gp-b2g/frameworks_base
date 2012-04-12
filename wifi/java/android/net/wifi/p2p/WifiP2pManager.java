@@ -263,9 +263,11 @@ public class WifiP2pManager {
     public static final int RESPONSE_GROUP_INFO                     = BASE + 27;
 
     /** @hide */
-    public static final int REQUEST_CUSTOM_STRING                   = BASE + 28;
+    public static final int UPDATE_WFD_SETTINGS                     = BASE + 30;
     /** @hide */
-    public static final int RESPONSE_CUSTOM_STRING                  = BASE + 29;
+    public static final int UPDATE_WFD_SETTINGS_SUCCEEDED           = BASE + 31;
+    /** @hide */
+    public static final int UPDATE_WFD_SETTINGS_FAILED              = BASE + 32;
 
     /**
      * Create a new WifiP2pManager instance. Applications use
@@ -415,13 +417,17 @@ public class WifiP2pManager {
                             ((PeerListListener) listener).onPeersAvailable(peers);
                         }
                         break;
-                    case WifiP2pManager.RESPONSE_CUSTOM_STRING:
-                        WifiP2pConfig config = (WifiP2pConfig)message.obj;
-                        Log.d(TAG, "Custom Command Response received");
-                        String stringResp = config.deviceAddress;
-                        Log.d(TAG, "Custom Command Response received" + stringResp);
+
+                    case WifiP2pManager.UPDATE_WFD_SETTINGS_SUCCEEDED:
+                        Log.d(TAG, "Update WFD settings succeeded");
                         if(listener != null) {
-                            ((StringResponseListener) listener).onResponseAvailable(stringResp);
+                            ((ActionListener)listener).onSuccess();
+                        }
+                        break;
+                    case WifiP2pManager.UPDATE_WFD_SETTINGS_FAILED:
+                        Log.d(TAG, "Update WFD settings failed");
+                        if(listener != null) {
+                            ((ActionListener)listener).onFailure(ERROR);
                         }
                         break;
                     case WifiP2pManager.RESPONSE_CONNECTION_INFO:
@@ -658,25 +664,26 @@ public class WifiP2pManager {
     }
 
     /**
-     * Send a custom string command to Wifi Supplicant.
+     * Update Wi-Fi Display parameters of the local device.
      *
-     * <p> The function call immediately returns after sending the 
-     * custom command to the framework. The application is notified 
-     * when the string response is available callbacks {@link 
-     * StringResponseListener}  
+     * <p> This function sets WFD parameters in the device to
+     * advertise the support for WFD when it is being
+     * discovered by another device. The application is notified of
+     * a success or failure to set specified WFD parameters through
+     * listener callbacks {@link ActionListener#onSuccess} or {@link
+     * ActionListener#onFailure}.
      *
-
+     * The event WIFI_P2P_THIS_DEVICE_CHANGED_ACTION is broadcast
+     * on succesful completion of the setting.
+     *
      * @param c is the channel created at {@link #initialize}
-     * @param command is the custom string command to be executed
+     * @param wfdInfo is the custom string command to be executed
      * @param listener for callbacks for string response
      */
-    public void sendCustomStringCommand(Channel c, String command, StringResponseListener listener) {
+    public void updateWFDInfo(Channel c, WfdInfo wfdInfo, ActionListener listener) {
         if (c == null) return;
-        if (command == null) return;
-        WifiP2pConfig config = new  WifiP2pConfig();
-        config.deviceAddress = command;//Pass string command using device address
-
-        c.mAsyncChannel.sendMessage(REQUEST_CUSTOM_STRING, 0, c.putListener(listener), config);
+        if (wfdInfo == null) return;
+        c.mAsyncChannel.sendMessage(UPDATE_WFD_SETTINGS, 0, c.putListener(listener), wfdInfo);
     }
 
 }
