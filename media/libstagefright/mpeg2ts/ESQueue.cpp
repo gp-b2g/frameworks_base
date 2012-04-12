@@ -38,7 +38,9 @@ ElementaryStreamQueue::ElementaryStreamQueue(Mode mode)
     : mMode(mode),
       mAACtimeUs(-1),
       mAACFrameDuration(0),
-      mIsHWAACDec(false) {
+      mIsHWAACDec(false),
+      mPrevPESPartial(false),
+      mCurPESPartial(false) {
     char value[PROPERTY_VALUE_MAX] = {0};
     if (property_get("ro.product.device", value, "0"))
     {
@@ -66,6 +68,8 @@ void ElementaryStreamQueue::clear(bool clearFormat) {
     }
     mAACtimeUs = -1;
     mAACFrameDuration = 0;
+    mPrevPESPartial = false;
+    mCurPESPartial = false;
 }
 
 static bool IsSeeminglyValidADTSHeader(const uint8_t *ptr, size_t size) {
@@ -496,10 +500,16 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
 
             offset += aac_frame_length;
         }
+
+        if ((mBuffer->size() - offset) > 0)
+            mCurPESPartial = true;
+        else if ((mBuffer->size() - offset) == 0)
+            mCurPESPartial = false;
     }
 
     if (offset == 0)
     {
+        mPrevPESPartial = mCurPESPartial;
         return NULL;
     }
 
@@ -508,7 +518,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
         int64_t tmpUs = fetchTimestamp(ranges.itemAt(i));
         if (mIsHWAACDec)
         {
-            if (mAACtimeUs > 0 && mAACFrameDuration > 0)
+            if (mAACtimeUs >= 0 && mAACFrameDuration > 0)
             {
                 mAACtimeUs = mAACtimeUs + (mAACFrameDuration);
             }
@@ -519,9 +529,16 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
         }
         else
         {
-            if (i == 0)
+            // If Prev PES was complete, take timestamp of first frame
+            // If Prev PES was partial, take time stamp of the second
+            // frame(which is the first complete frame)
+            if (i == 0 && !mPrevPESPartial)
             {
                 mAACtimeUs = tmpUs;
+            }
+            else if (i == 1 && mPrevPESPartial)
+            {
+                mAACtimeUs = tmpUs ;
             }
         }
     }
@@ -551,6 +568,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
     {
         LOGW("no time for AAC access unit");
     }
+    mPrevPESPartial = mCurPESPartial;
 
     return accessUnit;
 }
