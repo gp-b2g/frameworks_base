@@ -304,8 +304,6 @@ final class BluetoothPanProfileHandler {
         mContext.sendBroadcast(intent, BluetoothService.BLUETOOTH_PERM);
 
         debugLog("Pan Device state : device: " + device + " State:" + prevState + "->" + state);
-        mBluetoothService.sendConnectionStateChange(device, BluetoothProfile.PAN, state,
-                                                    prevState);
     }
 
     private class BluetoothPanDevice {

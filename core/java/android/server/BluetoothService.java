@@ -397,7 +397,8 @@ public class BluetoothService extends IBluetooth.Stub {
         filter.addAction(BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED);
         filter.addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
         filter.addAction(BluetoothA2dp.ACTION_PLAYING_STATE_CHANGED);
-
+        filter.addAction(BluetoothInputDevice.ACTION_CONNECTION_STATE_CHANGED);
+        filter.addAction(BluetoothPan.ACTION_CONNECTION_STATE_CHANGED);
         filter.addAction(Intent.ACTION_DOCK_EVENT);
         filter.addAction(BluetoothDevice.ACTION_CONNECTION_ACCESS_REPLY);
         filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
@@ -2524,6 +2525,26 @@ public class BluetoothService extends IBluetooth.Stub {
                 } else {
                     Log.e(TAG, "BluetoothA2dp service not available");
                 }
+            } else if (BluetoothInputDevice.ACTION_CONNECTION_STATE_CHANGED.equals(action)) {
+                Log.i(TAG, "Input connection state change" + action);
+                int state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, 0);
+                int prevState =
+                    intent.getIntExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, 0);
+                BluetoothDevice inputDevice =
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+
+                sendConnectionStateChange(inputDevice, BluetoothProfile.INPUT_DEVICE, state,
+                                                    prevState);
+            } else if (BluetoothPan.ACTION_CONNECTION_STATE_CHANGED.equals(action)) {
+                Log.i(TAG, "Pan connection state change" + action);
+                int state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, 0);
+                int prevState =
+                    intent.getIntExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, 0);
+                BluetoothDevice panDevice =
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+
+                sendConnectionStateChange(panDevice, BluetoothProfile.PAN, state,
+                                                    prevState);
             } else if (BluetoothDevice.ACTION_CONNECTION_ACCESS_REPLY.equals(action)) {
                 Log.i(TAG, "Received ACTION_CONNECTION_ACCESS_REPLY");
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
