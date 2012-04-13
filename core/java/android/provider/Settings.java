@@ -1383,6 +1383,14 @@ public final class Settings {
          */
         public static final String SCREEN_OFF_TIMEOUT = "screen_off_timeout";
 
+      /**
+             * Int value to specify if the fuction of display home location is enabled.
+             * 0 = Disable  1 = Enable
+             * @hide
+             */
+        public static final String DISPLAY_HOME_LOCATION = "display_home_location";
+
+
         /**
          * If 0, the compatibility mode is off for all applications.
          * If 1, older applications run under compatibility mode.
