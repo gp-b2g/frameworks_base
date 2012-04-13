@@ -1138,7 +1138,7 @@ Log.i(TAG,"In updateSimIcon card =" + cardIndex + ", simState= " + mMSimState[ca
                 if (mMSimDataTypeIconId[subscription] == 0) {
                     v.setVisibility(View.GONE);
                 } else {
-                    v.setVisibility(View.VISIBLE);
+                    v.setVisibility(FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE?View.INVISIBLE:View.VISIBLE);
                     v.setImageResource(mMSimDataTypeIconId[subscription]);
                     v.setContentDescription(mMSimContentDescriptionDataType[subscription]);
                 }
