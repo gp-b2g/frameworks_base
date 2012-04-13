@@ -24,8 +24,8 @@
                   android:label="_ShadersTest"
                   android:theme="@android:style/Theme.Black.NoTitleBar">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.qrdtools" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
     </application>
