@@ -17,8 +17,10 @@
 
 package android.webkit;
 
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.database.Cursor;
 import android.graphics.Point;
@@ -32,6 +34,8 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 import android.provider.MediaStore;
+import android.provider.Settings;
+import android.provider.Settings.SettingNotFoundException;
 import android.util.Log;
 import android.util.SparseBooleanArray;
 import android.view.KeyEvent;
@@ -321,6 +325,41 @@ public final class WebViewCore {
      */
     protected void jsAlert(String url, String message) {
         mCallbackProxy.onJsAlert(url, message);
+    }
+
+    /**
+     * Set the screen orientation of the containing activity
+     * @param orientation - String containing orientation
+     */
+    protected void setScreenOrientationLock(String orientation) {
+        final int orientationValue;
+        int sysAutoRotate = 1;
+
+        try {
+            sysAutoRotate = Settings.System.getInt(mContext.getContentResolver(), Settings.System.ACCELEROMETER_ROTATION);
+        }
+        catch (SettingNotFoundException e) {
+            Log.e(LOGTAG, "Unable to access system settings to attain auto-rotate setting. " + e);
+        }
+
+        if (orientation.equals("landscape")) {
+            orientationValue = (sysAutoRotate == 1) ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+        } else if (orientation.equals("portrait")) {
+            orientationValue = (sysAutoRotate == 1) ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        } else {
+            //return orientation to system settings, including any the user set
+            orientationValue = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+        }
+
+        //calling runnable on UI thread
+        final Activity containingActivity = (Activity) getContext();
+        containingActivity.runOnUiThread(
+            new Runnable() {
+                public void run() {
+                    containingActivity.setRequestedOrientation(orientationValue);
+                }
+            }
+        );
     }
 
     /**
@@ -756,7 +795,7 @@ public final class WebViewCore {
                                 /* 1 means enabling power collapse */
                                 mPerf.cpuSetOptions(Performance.CPUOPT_CPU0_PWRCLSP,1);
                                 mPerf.cpuSetOptions(Performance.CPUOPT_CPU0_FREQMIN,0);
-  
+
                                 break;
 
                             case EventHub.ADD_PACKAGE_NAME:
