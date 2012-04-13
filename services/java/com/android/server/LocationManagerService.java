@@ -122,7 +122,9 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
     private static boolean sProvidersLoaded = false;
 
     private final Context mContext;
-    private final String mNetworkLocationProviderPackageName;
+    private String mNetworkLocationProviderPackageName;
+    private final String mNetworkLocationProviderPackageName1;
+    private final String mNetworkLocationProviderPackageName2;
     private final String mGeocodeProviderPackageName;
     private final String mGeoFencerPackageName;
     private GeocoderProxy mGeocodeProvider;
@@ -497,12 +499,26 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
 
         // initialize external network location and geocoder services
         PackageManager pm = mContext.getPackageManager();
-        if (mNetworkLocationProviderPackageName != null &&
-                pm.resolveService(new Intent(mNetworkLocationProviderPackageName), 0) != null) {
+        if (mNetworkLocationProviderPackageName1 != null &&
+                pm.resolveService(new Intent(mNetworkLocationProviderPackageName1), 0) != null) {
             mNetworkLocationProvider =
                 new LocationProviderProxy(mContext, LocationManager.NETWORK_PROVIDER,
-                        mNetworkLocationProviderPackageName, mLocationHandler);
+                        mNetworkLocationProviderPackageName1, mLocationHandler);
             addProvider(mNetworkLocationProvider);
+
+            mNetworkLocationProviderPackageName = mNetworkLocationProviderPackageName1;
+        }
+        else if (mNetworkLocationProviderPackageName2 != null &&
+                pm.resolveService(new Intent(mNetworkLocationProviderPackageName2), 0) != null) {
+            mNetworkLocationProvider =
+                new LocationProviderProxy(mContext, LocationManager.NETWORK_PROVIDER,
+                        mNetworkLocationProviderPackageName2, mLocationHandler);
+            addProvider(mNetworkLocationProvider);
+
+            mNetworkLocationProviderPackageName = mNetworkLocationProviderPackageName2;
+        }
+        if (LOCAL_LOGV) {
+            Slog.v(TAG, "Loaded NLP: " + mNetworkLocationProviderPackageName);
         }
 
         if (mGeocodeProviderPackageName != null &&
@@ -527,8 +543,18 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         super();
         mContext = context;
         Resources resources = context.getResources();
-        mNetworkLocationProviderPackageName = resources.getString(
-                com.android.internal.R.string.config_networkLocationProvider);
+
+        mNetworkLocationProviderPackageName1 = resources.getString(
+                com.android.internal.R.string.config_networkLocationProvider1);
+
+        mNetworkLocationProviderPackageName2 = resources.getString(
+                com.android.internal.R.string.config_networkLocationProvider2);
+
+        if (LOCAL_LOGV) {
+            Slog.v(TAG, "NLP[1]: " + mNetworkLocationProviderPackageName1);
+            Slog.v(TAG, "NLP[2]: " + mNetworkLocationProviderPackageName2);
+        }
+
         mGeocodeProviderPackageName = resources.getString(
                 com.android.internal.R.string.config_geocodeProvider);
         mGeoFencerPackageName = resources.getString(
