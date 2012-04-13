@@ -11,8 +11,8 @@
         <activity android:name="RsBench"
                   android:label="RsBenchmark">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.qrdtools" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
       </application>
