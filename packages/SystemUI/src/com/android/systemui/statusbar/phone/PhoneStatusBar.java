@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,6 +92,7 @@ import com.android.systemui.statusbar.policy.LocationController;
 import com.android.systemui.statusbar.policy.NetworkController;
 import com.android.systemui.statusbar.policy.MSimNetworkController;
 import com.android.systemui.statusbar.policy.NotificationRowLayout;
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 public class PhoneStatusBar extends StatusBar {
     static final String TAG = "PhoneStatusBar";
@@ -542,7 +543,11 @@ public class PhoneStatusBar extends StatusBar {
                 + " icon=" + icon);
         StatusBarIconView view = new StatusBarIconView(mContext, slot, null);
         view.set(icon);
-        mStatusIcons.addView(view, viewIndex, new LinearLayout.LayoutParams(mIconSize, mIconSize));
+        if (FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) {
+            mStatusIcons.addView(view, viewIndex, new LinearLayout.LayoutParams(mIconSize, mIconSize));
+        } else {
+            mStatusIcons.addView(view, viewIndex, new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, mIconSize));
+        }
     }
 
     public void updateIcon(String slot, int index, int viewIndex,
