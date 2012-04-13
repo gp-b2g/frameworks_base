@@ -120,8 +120,7 @@ public class GeoFencerProxy extends GeoFencerBase {
     protected boolean start(GeoFenceParams geofence) {
         if (ensureGeoFencer()) {
             try {
-                mGeoFencer.setGeoFence(mListener, geofence);
-                return true;
+                return mGeoFencer.setGeoFence(mListener, geofence);
             } catch (RemoteException re) {
             }
         }

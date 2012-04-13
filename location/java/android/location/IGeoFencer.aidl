@@ -35,8 +35,8 @@ import android.app.PendingIntent;
 /**
  * {@hide}
  */
-oneway interface IGeoFencer {
-    void setGeoFence(in IBinder who, in GeoFenceParams params);
+interface IGeoFencer {
+    boolean setGeoFence(in IBinder who, in GeoFenceParams params);
     void clearGeoFence(in IBinder who, in PendingIntent fence);
     void clearGeoFenceUser(int uid);
 }
