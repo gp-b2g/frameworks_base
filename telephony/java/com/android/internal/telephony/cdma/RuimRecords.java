@@ -744,7 +744,7 @@ public final class RuimRecords extends IccRecords {
          * the app is not ready
          * then bail
          */
-        if (recordsRequested || !mRecordsRequired
+        if (recordsRequested /*|| !mRecordsRequired*/
             || AppState.APPSTATE_READY != mParentApp.getState()) {
             if (DBG) log("fetchRuimRecords: Abort fetching records recordsRequested = "
                             + recordsRequested
