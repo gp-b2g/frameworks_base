@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +35,7 @@ import android.os.Message;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.SystemClock;
+import android.os.SystemProperties;
 import android.util.EventLog;
 import android.util.Log;
 import android.util.Slog;
@@ -640,6 +642,7 @@ final class ActivityRecord {
                     sb.append(shortComponentName);
                     sb.append(": ");
                     TimeUtils.formatDuration(thisTime, sb);
+                    SystemProperties.set("service.am.launchtime", thisTime+"");
                     if (thisTime != totalTime) {
                         sb.append(" (total ");
                         TimeUtils.formatDuration(totalTime, sb);

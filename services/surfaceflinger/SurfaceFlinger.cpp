@@ -522,6 +522,7 @@ void SurfaceFlinger::postFramebuffer()
     mLastSwapBufferTime = systemTime() - now;
     mDebugInSwapBuffers = 0;
     mSwapRegion.clear();
+    debugShowFPS();
 }
 
 void SurfaceFlinger::handleConsoleEvents()
@@ -1220,13 +1221,18 @@ void SurfaceFlinger::debugShowFPS() const
     static int mLastFrameCount = 0;
     static nsecs_t mLastFpsTime = 0;
     static float mFps = 0;
+    char value[PROPERTY_VALUE_MAX];
+
     mFrameCount++;
     nsecs_t now = systemTime();
     nsecs_t diff = now - mLastFpsTime;
-    if (diff > ms2ns(250)) {
+    if (diff > ms2ns(1000)) {
         mFps =  ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
         mLastFpsTime = now;
         mLastFrameCount = mFrameCount;
+
+        sprintf(value, "%f", mFps);
+        property_set("hw.sf.fps", value);
     }
     // XXX: mFPS has the value we want
  }
