@@ -1614,11 +1614,17 @@ public class WifiStateMachine extends StateMachine {
             mWifiInfo.setNetworkId(WifiConfiguration.INVALID_NETWORK_ID);
         }
 
-        if (state == SupplicantState.ASSOCIATING) {
+// WAPI++
+            Log.w(TAG, "handleSupplicantStateChange: 1");
+        if ((state == SupplicantState.ASSOCIATING) 
+            || (state == SupplicantState.ASSOCIATED) 
+            || (state == SupplicantState.FOUR_WAY_HANDSHAKE)) {
             /* BSSID is valid only in ASSOCIATING state */
+            Log.w(TAG, "handleSupplicantStateChange: 2");
             mWifiInfo.setBSSID(stateChangeResult.BSSID);
+			NetworkUtils.enableInterface(mInterfaceName);
         }
-
+// WAPI--
         mSupplicantStateTracker.sendMessage(Message.obtain(message));
         mWpsStateMachine.sendMessage(Message.obtain(message));
 

@@ -33,6 +33,8 @@ import static android.net.wifi.WifiConfiguration.INVALID_NETWORK_ID;
 import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
+// WAPI
+import android.net.wifi.WifiConfiguration.KeyMgmt;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -979,6 +981,20 @@ class WifiConfigStore {
                 break setVariables;
             }
 
+	//ming
+            if (config.allowedKeyManagement.get(KeyMgmt.WAPI_CERT)) {
+		  WifiNative.setNetworkVariableCommand(netId, "pairwise", "SMS4");
+		  WifiNative.setNetworkVariableCommand(netId, "group", "SMS4");	
+            }
+            if (config.allowedKeyManagement.get(KeyMgmt.WAPI_PSK)) {
+            	  Log.w(TAG, "addOrUpdateNetworkNative: proto=WAPI");
+		  WifiNative.setNetworkVariableCommand(netId, "proto", "WAPI");	
+            	  Log.w(TAG, "addOrUpdateNetworkNative: pairwise=SMS4");
+		  WifiNative.setNetworkVariableCommand(netId, "pairwise", "SMS4");
+            	  Log.w(TAG, "addOrUpdateNetworkNative: group=SMS4");
+		  WifiNative.setNetworkVariableCommand(netId, "group", "SMS4");
+            }
+            // WAPI+++
             boolean hasSetKey = false;
             if (config.wepKeys != null) {
                 for (int i = 0; i < config.wepKeys.length; i++) {

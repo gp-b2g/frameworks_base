@@ -19,7 +19,7 @@ package android.net.wifi;
 import android.net.LinkProperties;
 import android.os.Parcelable;
 import android.os.Parcel;
-
+import android.util.Log;
 import java.util.BitSet;
 
 /**
@@ -106,17 +106,22 @@ public class WifiConfiguration implements Parcelable {
         /** IEEE 802.1X using EAP authentication and (optionally) dynamically
          * generated WEP keys. */
         public static final int IEEE8021X = 3;
-
+//wapi+++
+	 /** {@hide} */
+	    public static final int WAPI_PSK=4;
+	/** {@hide} */
+	    public static final int WAPI_CERT=5;
+//wapi---
         /** WPA2 pre-shared key for use with soft access point
           * (requires {@code preSharedKey} to be specified).
           * @hide
           */
-        public static final int WPA2_PSK = 4;
+        public static final int WPA2_PSK = 6;
 
         public static final String varName = "key_mgmt";
 
         public static final String[] strings = { "NONE", "WPA_PSK", "WPA_EAP", "IEEE8021X",
-                "WPA2_PSK" };
+               "WAPI_PSK", "WAPI_CERT", "WPA2_PSK" };
     }
 
     /**
@@ -129,10 +134,14 @@ public class WifiConfiguration implements Parcelable {
         public static final int WPA = 0;
         /** WPA2/IEEE 802.11i */
         public static final int RSN = 1;
+// WAPI+++
+	/** WAPI */
+	/** {@hide} */
+	    public static final int WAPI = 2;
 
         public static final String varName = "proto";
 
-        public static final String[] strings = { "WPA", "RSN" };
+        public static final String[] strings = { "WPA", "RSN" , "WAPI" };
     }
 
     /**
@@ -167,8 +176,9 @@ public class WifiConfiguration implements Parcelable {
         public static final int CCMP = 2;
 
         public static final String varName = "pairwise";
-
-        public static final String[] strings = { "NONE", "TKIP", "CCMP" };
+//WAPI++
+        public static final String[] strings = { "NONE", "TKIP", "CCMP", "SMS4" };
+//WAPI--
     }
 
     /**
@@ -193,8 +203,9 @@ public class WifiConfiguration implements Parcelable {
         public static final int CCMP = 3;
 
         public static final String varName = "group";
-
-        public static final String[] strings = { "WEP40", "WEP104", "TKIP", "CCMP" };
+//WAPI++
+        public static final String[] strings = { "WEP40", "WEP104", "TKIP", "CCMP", "SMS4" };
+//WAPI--
     }
 
     /** Possible status of a network configuration. */
@@ -264,6 +275,9 @@ public class WifiConfiguration implements Parcelable {
      * string otherwise.
      */
     public String preSharedKey;
+// WAPI+++
+    public int wapiPskType;
+//  WAPI---	
     /**
      * Up to four WEP keys. Either an ASCII string enclosed in double
      * quotation marks (e.g., {@code "abcdef"} or a string
@@ -516,6 +530,11 @@ public class WifiConfiguration implements Parcelable {
             return KeyMgmt.WPA_EAP;
         } else if (allowedKeyManagement.get(KeyMgmt.IEEE8021X)) {
             return KeyMgmt.IEEE8021X;
+        } else if (allowedKeyManagement.get(KeyMgmt.WAPI_PSK)) {
+        Log.w("Settings.AccessPoint", "getAuthType: WAPI_PSK");
+            return KeyMgmt.WAPI_PSK;
+	    } else if (allowedKeyManagement.get(KeyMgmt.WAPI_CERT)) {
+            return KeyMgmt.WAPI_CERT;
         }
         return KeyMgmt.NONE;
     }
@@ -565,6 +584,9 @@ public class WifiConfiguration implements Parcelable {
         dest.writeString(SSID);
         dest.writeString(BSSID);
         dest.writeString(preSharedKey);
+       // WAPI+++
+        dest.writeInt(wapiPskType);
+      //  WAPI---
         for (String wepKey : wepKeys)
             dest.writeString(wepKey);
         dest.writeInt(wepTxKeyIndex);
@@ -596,6 +618,9 @@ public class WifiConfiguration implements Parcelable {
                 config.SSID = in.readString();
                 config.BSSID = in.readString();
                 config.preSharedKey = in.readString();
+		  // WAPI+++
+                config.wapiPskType = in.readInt();
+         // WAPI---	
                 for (int i = 0; i < config.wepKeys.length; i++)
                     config.wepKeys[i] = in.readString();
                 config.wepTxKeyIndex = in.readInt();

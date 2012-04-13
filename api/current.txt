@@ -12526,6 +12526,7 @@ package android.net.wifi {
     field public java.lang.String preSharedKey;
     field public int priority;
     field public int status;
+    field public int wapiPskType;
     field public java.lang.String[] wepKeys;
     field public int wepTxKeyIndex;
   }
