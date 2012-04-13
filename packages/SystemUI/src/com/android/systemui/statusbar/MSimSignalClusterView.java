@@ -218,7 +218,7 @@ public class MSimSignalClusterView
                 mMobileTypeSub2.setVisibility(
                     (!mWifiVisible && !FeatureQuery.FEATURE_ANNUCIATOR_NEW_STATUSBAR_STYLE) ? View.VISIBLE : View.GONE);
                 mNoSimSlotSub2.setImageResource(mNoSimIconId[subscription]);
-                mNoSimSlot.setVisibility(mMNoSimIconVisiable[subscription] ? View.VISIBLE : View.GONE);
+                mNoSimSlotSub2.setVisibility(mMNoSimIconVisiable[subscription] ? View.VISIBLE : View.GONE);
             }
         } else {
             if (subscription == 0) {
