@@ -1681,6 +1681,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         send(rr);
     }
 
+    public void avoidCurrentCdmaSystem(boolean on,Message result){
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_CDMA_AVOID_SYSTEM,result);
+        rr.mp.writeInt(1);
+        rr.mp.writeInt(on?1:0);
+        if (RILJ_LOGD) riljLog(rr.serialString()+"> "+requestToString(rr.mRequest));
+        send(rr);
+    }
+
     public void
     setSuppServiceNotifications(boolean enable, Message result) {
         RILRequest rr
@@ -2521,6 +2529,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_DATA_REGISTRATION_STATE: ret =  responseStrings(p); break;
             case RIL_REQUEST_OPERATOR: ret =  responseStrings(p); break;
             case RIL_REQUEST_RADIO_POWER: ret =  responseVoid(p); break;
+            case RIL_REQUEST_CDMA_AVOID_SYSTEM: ret = responseVoid(p); break;
             case RIL_REQUEST_DTMF: ret =  responseVoid(p); break;
             case RIL_REQUEST_SEND_SMS: ret =  responseSMS(p); break;
             case RIL_REQUEST_SETUP_QOS: ret =  responseStrings(p); break;
@@ -3988,6 +3997,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_DATA_REGISTRATION_STATE: return "DATA_REGISTRATION_STATE";
             case RIL_REQUEST_OPERATOR: return "OPERATOR";
             case RIL_REQUEST_RADIO_POWER: return "RADIO_POWER";
+            case RIL_REQUEST_CDMA_AVOID_SYSTEM: return "CDMA_AVOID_SYSTEM";
             case RIL_REQUEST_DTMF: return "DTMF";
             case RIL_REQUEST_SEND_SMS: return "SEND_SMS";
             case RIL_REQUEST_SETUP_QOS: return "SETUP_QOS";

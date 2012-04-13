@@ -711,4 +711,7 @@ public class RilImsPhone extends PhoneBase {
     {
         Log.e(LOG_TAG, "Error! " + name + "() is not supported by " + getPhoneName());
     }
+
+    public  void avoidCurrentCdmaSystem(boolean on,Message response){
+    }
 }

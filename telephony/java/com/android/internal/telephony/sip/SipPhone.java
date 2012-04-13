@@ -37,6 +37,7 @@ import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneNotifier;
+import com.android.internal.telephony.CommandException;
 
 import java.text.ParseException;
 import java.util.List;
@@ -938,5 +939,15 @@ public class SipPhone extends SipPhoneBase {
                     onError(Connection.DisconnectCause.ERROR_UNSPECIFIED);
             }
         }
+    }
+
+    public void avoidCurrentCdmaSystem(boolean on,Message response){
+	    Log.d(LOG_TAG,"not supported on gsm phone");
+	    if (response != null){
+		    CommandException ce = new CommandException(CommandException.Error.REQUEST_NOT_SUPPORTED);
+		    AsyncResult.forMessage(response).exception = ce;
+		    response.sendToTarget();
+	    }
+	    return;
     }
 }
