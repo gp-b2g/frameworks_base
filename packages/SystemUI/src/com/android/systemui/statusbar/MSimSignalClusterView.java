@@ -18,6 +18,7 @@
 package com.android.systemui.statusbar;
 
 import android.content.Context;
+import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.util.AttributeSet;
 import android.util.Slog;
@@ -153,7 +154,7 @@ public class MSimSignalClusterView
 
     public void setMobileDataIndicators(boolean visible, int strengthIcon, int activityIcon,
             int typeIcon, String contentDescription, String typeContentDescription,
-            int noSimIcon, int subscription) {
+            int noSimIcon, int subscription, ServiceState[] simServiceState) {
         mMobileVisible = visible;
         mMobileStrengthId[subscription] = strengthIcon;
         mMobileActivityId[subscription] = activityIcon;

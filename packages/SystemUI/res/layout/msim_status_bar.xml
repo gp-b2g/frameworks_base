@@ -3,7 +3,7 @@
 /* apps/common/assets/default/default/skins/StatusBar.xml
 **
 ** Copyright 2006 The Android Open Source Project
-** Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+** Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@
             android:orientation="horizontal"
             android:gravity="center"
             >
-            <include layout="@layout/msim_signal_cluster_view"
+            <LinearLayout
                 android:id="@+id/msim_signal_cluster"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
