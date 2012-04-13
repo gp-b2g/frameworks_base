@@ -1843,4 +1843,8 @@ public interface CommandsInterface {
      *          Callback message contains the information of SUCCESS/FAILURE.
     */
     public void getQosStatus (int qosId, Message result);
+
+   /** avoid current cdma system
+   */
+    public void avoidCurrentCdmaSystem(boolean on,Message result);
 }

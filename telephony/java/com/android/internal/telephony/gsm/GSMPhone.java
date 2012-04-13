@@ -78,6 +78,7 @@ import com.android.internal.telephony.UiccManager;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.IccVmNotSupportedException;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.CommandException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -1831,6 +1832,19 @@ public class GSMPhone extends PhoneBase {
             Log.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages );
         }
         return countVoiceMessages;
+    }
+
+
+    /**
+      */
+    public void avoidCurrentCdmaSystem(boolean on,Message response){
+        Log.d(LOG_TAG,"not supported on gsm phone");
+        if (response != null){
+            CommandException ce = new CommandException(CommandException.Error.REQUEST_NOT_SUPPORTED);
+            AsyncResult.forMessage(response).exception = ce;
+            response.sendToTarget();
+        }
+        return;
     }
 
 }

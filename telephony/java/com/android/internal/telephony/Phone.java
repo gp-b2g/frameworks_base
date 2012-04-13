@@ -1948,4 +1948,7 @@ public interface Phone {
     }
     }
     */
+
+    /*cdma avoid system*/
+    void avoidCurrentCdmaSystem(boolean on,Message response);
 }

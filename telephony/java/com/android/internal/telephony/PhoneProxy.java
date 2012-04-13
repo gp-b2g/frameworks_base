@@ -1052,4 +1052,9 @@ public class PhoneProxy extends Handler implements Phone {
     public CallTracker getCallTracker() {
         return mActivePhone.getCallTracker();
     }
+
+    public void avoidCurrentCdmaSystem(boolean on,Message onCompleteMsg){
+        mActivePhone.avoidCurrentCdmaSystem(on,onCompleteMsg);
+    }
+
 }

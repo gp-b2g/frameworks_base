@@ -1334,4 +1334,6 @@ public abstract class PhoneBase extends Handler implements Phone {
         Log.e(LOG_TAG, "disconnectCauseFromCode unsupported for this phone");
         return DisconnectCause.ERROR_UNSPECIFIED;
     }
+
+    public abstract void avoidCurrentCdmaSystem(boolean on,Message response);
 }

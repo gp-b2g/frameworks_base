@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -299,6 +299,7 @@ cat include/telephony/ril.h | \
     int RIL_REQUEST_RESUME_QOS = 123;
     int RIL_REQUEST_MODIFY_CALL_INITIATE = 124;
     int RIL_REQUEST_MODIFY_CALL_CONFIRM = 125;
+    int RIL_REQUEST_CDMA_AVOID_SYSTEM = 126;
     int RIL_UNSOL_RESPONSE_BASE = 1000;
     int RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED = 1000;
     int RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED = 1001;

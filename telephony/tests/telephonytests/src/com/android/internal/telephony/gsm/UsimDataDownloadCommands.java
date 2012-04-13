@@ -687,4 +687,7 @@ class UsimDataDownloadCommands extends BaseCommands {
     public void dial(String address, int clirMode, UUSInfo uusInfo, CallDetails callDetails,
             Message result) {
     }
+
+    public void avoidCurrentCdmaSystem(boolean on,Message result){
+    }
 }

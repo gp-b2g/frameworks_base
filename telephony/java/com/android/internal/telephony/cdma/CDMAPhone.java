@@ -1541,4 +1541,8 @@ public class CDMAPhone extends PhoneBase {
         return (sp.getInt(mVmCountKey, 0));
     }
 
+    public void avoidCurrentCdmaSystem(boolean on,Message response){
+        mCM.avoidCurrentCdmaSystem(on,response);
+    }
+
 }
