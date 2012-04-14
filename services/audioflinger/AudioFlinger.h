@@ -1,6 +1,7 @@
 /* //device/include/server/AudioFlinger/AudioFlinger.h
 **
 ** Copyright 2007, The Android Open Source Project
+** Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -135,11 +136,15 @@ public:
                                     uint32_t *pLatencyMs,
                                     uint32_t flags);
 
-    virtual int openSession(   uint32_t *pDevices,
-                                    uint32_t *pFormat,
-                                    uint32_t flags,
-                                    int32_t  streamType,
-                                    int32_t  sessionId);
+    virtual int openSession(uint32_t *pDevices,
+                            uint32_t *pFormat,
+                            uint32_t flags,
+                            int32_t  streamType,
+                            int32_t  sessionId,
+                            uint32_t samplingRate,
+                            uint32_t channels);
+
+    virtual audio_stream_out_t* getOutputSession();
 
     virtual status_t pauseSession(int output, int32_t  streamType);
 

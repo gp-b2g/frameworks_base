@@ -1,6 +1,7 @@
 /* //device/extlibs/pv/android/AudioTrack.cpp
 **
 ** Copyright 2007, The Android Open Source Project
+** Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -335,10 +336,10 @@ status_t AudioTrack::set(
     }
 
     audio_io_handle_t output = AudioSystem::getSession((audio_stream_type_t)streamType,
-            format, (audio_policy_output_flags_t)flags, lpaSessionId);
+            format, (audio_policy_output_flags_t)flags, lpaSessionId, sampleRate, channels);
 
     if (output == 0) {
-        LOGE("Could not get audio output for stream type %d", streamType);
+        LOGE("Could not get audio session for stream type %d", streamType);
         return BAD_VALUE;
     }
     mVolume[LEFT] = 1.0f;
@@ -1103,7 +1104,7 @@ void AudioTrack::releaseBuffer(Buffer* audioBuffer)
 
 ssize_t AudioTrack::write(const void* buffer, size_t userSize)
 {
-
+    if (mAudioSession != -1) return BAD_VALUE;
     if (mSharedBuffer != 0) return INVALID_OPERATION;
 
     if (ssize_t(userSize) < 0) {

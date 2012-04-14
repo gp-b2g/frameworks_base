@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006-2007 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -607,7 +608,9 @@ audio_io_handle_t AudioSystem::getOutput(audio_stream_type_t stream,
 audio_io_handle_t AudioSystem::getSession(audio_stream_type_t stream,
                                           uint32_t      format,
                                           audio_policy_output_flags_t flags,
-                                          int           sessionId)
+                                          int           sessionId,
+                                          uint32_t      samplingRate,
+                                          uint32_t      channels)
 {
     audio_io_handle_t output = 0;
 
@@ -618,7 +621,7 @@ audio_io_handle_t AudioSystem::getSession(audio_stream_type_t stream,
     const sp<IAudioPolicyService>& aps = AudioSystem::get_audio_policy_service();
     if (aps == 0) return 0;
 
-    output = aps->getSession(stream, format, flags, sessionId);
+    output = aps->getSession(stream, format, flags, sessionId, samplingRate, channels);
 
     return output;
 }

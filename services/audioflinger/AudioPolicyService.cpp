@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -294,14 +295,16 @@ audio_io_handle_t AudioPolicyService::getOutput(audio_stream_type_t stream,
 audio_io_handle_t AudioPolicyService::getSession(audio_stream_type_t stream,
                                     uint32_t format,
                                     audio_policy_output_flags_t flags,
-                                    int32_t sessionId)
+                                    int32_t sessionId,
+                                    uint32_t samplingRate,
+                                    uint32_t channels)
 {
     if (mpAudioPolicy == NULL) {
         return 0;
     }
     LOGV("getSession() tid %d", gettid());
     Mutex::Autolock _l(mLock);
-    return mpAudioPolicy->get_session(mpAudioPolicy, stream, format, flags, sessionId);
+    return mpAudioPolicy->get_session(mpAudioPolicy, stream, format, flags, sessionId, samplingRate, channels);
 }
 
 status_t AudioPolicyService::startOutput(audio_io_handle_t output,
@@ -1508,7 +1511,9 @@ static audio_io_handle_t aps_open_session(void *service,
                                 uint32_t *pFormat,
                                 audio_policy_output_flags_t flags,
                                 int32_t stream,
-                                int32_t sessionId)
+                                int32_t sessionId,
+                                uint32_t samplingRate,
+                                uint32_t channels)
 {
     sp<IAudioFlinger> af = AudioSystem::get_audio_flinger();
     if (af == 0) {
@@ -1516,7 +1521,7 @@ static audio_io_handle_t aps_open_session(void *service,
         return 0;
     }
 
-    return af->openSession(pDevices, (uint32_t *)pFormat, flags, stream, sessionId);
+    return af->openSession(pDevices, (uint32_t *)pFormat, flags, stream, sessionId, samplingRate, channels);
 }
 
 static int aps_close_session(void *service, audio_io_handle_t output)

@@ -1,6 +1,7 @@
 /*
 **
 ** Copyright 2009, The Android Open Source Project
+** Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -154,7 +155,9 @@ public:
                                         audio_stream_type_t stream,
                                         uint32_t format,
                                         audio_policy_output_flags_t flags,
-                                        int32_t sessionId)
+                                        int32_t sessionId,
+                                        uint32_t samplingRate,
+                                        uint32_t channels)
     {
         Parcel data, reply;
         data.writeInterfaceToken(IAudioPolicyService::getInterfaceDescriptor());
@@ -162,6 +165,8 @@ public:
         data.writeInt32(static_cast <uint32_t>(format));
         data.writeInt32(static_cast <uint32_t>(flags));
         data.writeInt32(static_cast <int32_t>(sessionId));
+        data.writeInt32(static_cast <uint32_t>(samplingRate));
+        data.writeInt32(static_cast <uint32_t>(channels));
         remote()->transact(GET_SESSION, data, &reply);
         return static_cast <audio_io_handle_t> (reply.readInt32());
     }
@@ -495,10 +500,14 @@ status_t BnAudioPolicyService::onTransact(
             uint32_t format = data.readInt32();
             audio_policy_output_flags_t flags = static_cast <audio_policy_output_flags_t>(data.readInt32());
             int32_t sessionId = data.readInt32();
+            uint32_t samplingRate = data.readInt32();
+            uint32_t channels     = data.readInt32();
             audio_io_handle_t output = getSession(stream,
                                                  format,
                                                  flags,
-                                                 sessionId);
+                                                 sessionId,
+                                                 samplingRate,
+                                                 channels);
             reply->writeInt32(static_cast <int>(output));
             return NO_ERROR;
         } break;

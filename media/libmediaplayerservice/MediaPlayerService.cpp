@@ -1,6 +1,7 @@
 /*
 **
 ** Copyright 2008, The Android Open Source Project
+** Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -1681,6 +1682,23 @@ bool CallbackThread::threadLoop() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+status_t MediaPlayerService::AudioCache::openSession(
+        int format, int lpaSessionId, uint32_t sampleRate, int channels)
+{
+    LOGV("Audio Cache: openSession(%u, %d, %d)", sampleRate, channels, format);
+    if (mHeap->getHeapID() < 0) {
+        LOGE("invalid heap - NO INIT");
+        return NO_INIT;
+    }
+
+    mSampleRate = sampleRate;
+    mChannelCount = (uint16_t)channels;
+    mFormat = (uint16_t)format;
+    mMsecsPerFrame = 1.e3 / (float) sampleRate;
+
+    return NO_ERROR;
+
+}
 
 status_t MediaPlayerService::AudioCache::open(
         uint32_t sampleRate, int channelCount, int format, int bufferCount,
@@ -1782,6 +1800,11 @@ void MediaPlayerService::AudioCache::notify(
 int MediaPlayerService::AudioCache::getSessionId()
 {
     return 0;
+}
+
+void MediaPlayerService::AudioCache::closeSession()
+{
+    LOGV("AudioCache: closeSession");
 }
 
 void MediaPlayerService::addBatteryData(uint32_t params)

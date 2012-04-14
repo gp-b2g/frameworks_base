@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +32,7 @@
 #include <media/IEffect.h>
 #include <media/IEffectClient.h>
 #include <utils/String8.h>
+#include <hardware/audio.h>
 
 namespace android {
 
@@ -133,10 +135,13 @@ public:
                                     uint32_t *pLatencyMs,
                                     uint32_t flags) = 0;
     virtual int openSession(uint32_t *pDevices,
-                                 uint32_t *pFormat,
-                                 uint32_t flags,
-                                 int32_t  stream,
-                                 int32_t  sessionId){return 0;};
+                            uint32_t *pFormat,
+                            uint32_t flags,
+                            int32_t  stream,
+                            int32_t  sessionId,
+                            uint32_t samplingRate,
+                            uint32_t channels){return 0;};
+    virtual audio_stream_out_t* getOutputSession() = 0;
     virtual status_t pauseSession(int output, int32_t  stream) = 0;
     virtual status_t resumeSession(int output, int32_t  stream) = 0;
     virtual status_t closeSession(int output) = 0;

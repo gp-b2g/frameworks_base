@@ -1,6 +1,7 @@
 /*
 **
 ** Copyright 2007, The Android Open Source Project
+** Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -56,6 +57,7 @@ enum {
     OPEN_SESSION,
     OPEN_DUPLICATE_OUTPUT,
     CLOSE_OUTPUT,
+    GET_OUTPUT_SESSION,
     PAUSE_SESSION,
     RESUME_SESSION,
     CLOSE_SESSION,
@@ -470,7 +472,9 @@ public:
                             uint32_t *pFormat,
                             uint32_t flags,
                             int32_t  stream,
-                            int32_t  sessionId)
+                            int32_t  sessionId,
+                            uint32_t samplingRate,
+                            uint32_t channels)
     {
         Parcel data, reply;
         uint32_t devices = pDevices ? *pDevices : 0;
@@ -482,6 +486,8 @@ public:
         data.writeInt32(flags);
         data.writeInt32(stream);
         data.writeInt32(sessionId);
+        data.writeInt32(samplingRate);
+        data.writeInt32(channels);
         remote()->transact(OPEN_SESSION, data, &reply);
         int  output = reply.readInt32();
         LOGV("openOutput() returned output, %p", output);
@@ -490,6 +496,14 @@ public:
         format = reply.readInt32();
         if (pFormat) *pFormat = format;
         return output;
+    }
+
+    virtual audio_stream_out_t* getOutputSession()
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        remote()->transact(GET_OUTPUT_SESSION, data, &reply);
+        return (audio_stream_out_t*)reply.readInt32();
     }
 
     virtual status_t pauseSession(int output, int32_t  stream)
@@ -1033,15 +1047,24 @@ status_t BnAudioFlinger::onTransact(
             uint32_t flags = data.readInt32();
             int32_t  stream = data.readInt32();
             int32_t  sessionId = data.readInt32();
+            uint32_t samplingRate = data.readInt32();
+            uint32_t channels = data.readInt32();
             int output = openSession(&devices,
                                      &format,
                                      flags,
                                      stream,
-                                     sessionId);
+                                     sessionId,
+                                     samplingRate,
+                                     channels);
             LOGV("OPEN_SESSION output, %p", output);
             reply->writeInt32(output);
             reply->writeInt32(devices);
             reply->writeInt32(format);
+            return NO_ERROR;
+        } break;
+        case GET_OUTPUT_SESSION: {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            reply->writeInt32((uint32_t)getOutputSession());
             return NO_ERROR;
         } break;
         case PAUSE_SESSION: {

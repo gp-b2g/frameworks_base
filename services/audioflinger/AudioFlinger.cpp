@@ -5447,10 +5447,12 @@ int AudioFlinger::openOutput(uint32_t *pDevices,
 }
 
 int AudioFlinger::openSession(uint32_t *pDevices,
-                                   uint32_t *pFormat,
-                                   uint32_t flags,
-                                   int32_t  streamType,
-                                   int32_t  sessionId)
+                              uint32_t *pFormat,
+                              uint32_t flags,
+                              int32_t  streamType,
+                              int32_t  sessionId,
+                              uint32_t samplingRate,
+                              uint32_t channels)
 {
     status_t status;
     mHardwareStatus = AUDIO_HW_OUTPUT_OPEN;
@@ -5472,7 +5474,8 @@ int AudioFlinger::openSession(uint32_t *pDevices,
     outHwDev = findSuitableHwDev_l(*pDevices);
     if (outHwDev == NULL)
         return 0;
-    status = outHwDev->open_output_session(outHwDev, *pDevices, (int *)&format,sessionId,&outStream);
+    status = outHwDev->open_output_session(outHwDev, *pDevices, (int *)&format,
+                                           sessionId, samplingRate, channels, &outStream);
 
     LOGV("openSession() openOutputSession returned output %p, Format %d, status %d",
             outStream,
@@ -5491,6 +5494,14 @@ int AudioFlinger::openSession(uint32_t *pDevices,
         return id;
     }
     return 0;
+}
+
+audio_stream_out_t* AudioFlinger::getOutputSession()
+{
+    if (mLPAOutput) {
+        return mLPAOutput->stream;
+    }
+    return NULL;
 }
 
 status_t AudioFlinger::pauseSession(int output, int32_t  streamType)

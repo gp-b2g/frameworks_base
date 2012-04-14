@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +58,9 @@ public:
     virtual audio_io_handle_t getSession(audio_stream_type_t stream,
                                         uint32_t format = AUDIO_FORMAT_DEFAULT,
                                         audio_policy_output_flags_t flags = AUDIO_POLICY_OUTPUT_FLAG_DIRECT,
-                                        int32_t  sessionId=-1) { return 0; }
+                                        int32_t  sessionId=-1,
+                                        uint32_t samplingRate = 0,
+                                        uint32_t channels = 0) { return 0; }
     virtual status_t pauseSession(audio_io_handle_t output, audio_stream_type_t stream) { return 0; }
     virtual status_t resumeSession(audio_io_handle_t output, audio_stream_type_t stream) { return 0; }
     virtual status_t closeSession(audio_io_handle_t output) = 0;
