@@ -9441,6 +9441,7 @@ package android.hardware {
     method public int getMinExposureCompensation();
     method public int getPictureFormat();
     method public android.hardware.Camera.Size getPictureSize();
+    method public java.lang.String getPowerMode();
     method public android.hardware.Camera.Size getPreferredPreviewSizeForVideo();
     method public int getPreviewFormat();
     method public void getPreviewFpsRange(int[]);
@@ -9496,7 +9497,7 @@ package android.hardware {
     method public java.util.List<java.lang.Integer> getZoomRatios();
     method public boolean isAutoExposureLockSupported();
     method public boolean isAutoWhiteBalanceLockSupported();
-    method public boolean isFullsizeVideoSnapSupported();
+    method public boolean isPowerModeSupported();
     method public boolean isSmoothZoomSupported();
     method public boolean isVideoSnapshotSupported();
     method public boolean isVideoStabilizationSupported();
@@ -9539,6 +9540,7 @@ package android.hardware {
     method public void setMeteringAreas(java.util.List<android.hardware.Camera.Area>);
     method public void setPictureFormat(int);
     method public void setPictureSize(int, int);
+    method public void setPowerMode(java.lang.String);
     method public void setPreviewFormat(int);
     method public void setPreviewFpsRange(int, int);
     method public deprecated void setPreviewFrameRate(int);
@@ -9614,8 +9616,10 @@ package android.hardware {
     field public static final java.lang.String KEY_AE_BRACKET_HDR = "ae-bracket-hdr";
     field public static final java.lang.String LENSSHADE_DISABLE = "disable";
     field public static final java.lang.String LENSSHADE_ENABLE = "enable";
+    field public static final java.lang.String LOW_POWER = "Low_Power";
     field public static final java.lang.String MCE_DISABLE = "disable";
     field public static final java.lang.String MCE_ENABLE = "enable";
+    field public static final java.lang.String NORMAL_POWER = "Normal_Power";
     field public static final int PREVIEW_FPS_MAX_INDEX = 1; // 0x1
     field public static final int PREVIEW_FPS_MIN_INDEX = 0; // 0x0
     field public static final java.lang.String REDEYE_REDUCTION_DISABLE = "disable";
