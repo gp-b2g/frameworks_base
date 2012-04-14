@@ -142,6 +142,7 @@ ifeq ($(call is-vendor-board-platform,QCOM),true)
     ifeq ($(BOARD_USES_ALSA_AUDIO),true)
         LOCAL_SRC_FILES += LPAPlayerALSA.cpp
         ifeq ($(call is-chipset-in-board-platform,msm8960),true)
+            LOCAL_SRC_FILES += MPQAudioPlayer.cpp
             LOCAL_SRC_FILES += TunnelPlayer.cpp
         endif
         LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-audio/libalsa-intf
