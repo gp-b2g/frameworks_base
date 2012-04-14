@@ -375,11 +375,11 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
 
     private synchronized void sendMetaData(String path) {
 
-        if (mTrackName == null)
+        if (mTrackName == null || mTrackName.isEmpty())
             mTrackName = DEFAULT_METADATA_STRING;
-        if (mArtistName == null)
+        if (mArtistName == null || mArtistName.isEmpty())
             mArtistName = DEFAULT_METADATA_STRING;
-        if (mAlbumName == null)
+        if (mAlbumName == null || mAlbumName.isEmpty())
             mAlbumName = DEFAULT_METADATA_STRING;
 
         if(DBG) {
@@ -817,11 +817,9 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
             } else {
                 if (state == BluetoothA2dp.STATE_PLAYING && mPlayingA2dpDevice == null) {
                    mPlayingA2dpDevice = device;
-                   mPlayStatus = STATUS_PLAYING;
                    handleSinkPlayingStateChange(device, state, BluetoothA2dp.STATE_NOT_PLAYING);
                 } else if (state == BluetoothA2dp.STATE_CONNECTED && mPlayingA2dpDevice != null) {
                     mPlayingA2dpDevice = null;
-                    mPlayStatus = STATUS_PAUSED;
                     handleSinkPlayingStateChange(device, BluetoothA2dp.STATE_NOT_PLAYING,
                         BluetoothA2dp.STATE_PLAYING);
                 } else {
