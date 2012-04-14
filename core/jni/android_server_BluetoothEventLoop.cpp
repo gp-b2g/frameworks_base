@@ -1821,11 +1821,11 @@ DBusHandlerResult gatt_event_filter(DBusConnection *conn,
 
         if (vlen != 0) {
             byteArray = env->NewByteArray(vlen);
+            if (byteArray)
+                env->SetByteArrayRegion(byteArray, 0, vlen, value);
+            else
+                goto failure;
         }
-        if (byteArray) {
-            env->SetByteArrayRegion(byteArray, 0, vlen, value);
-        } else
-            goto failure;
 
         dbus_message_ref(msg);  // increment refcount because we pass to java
 
