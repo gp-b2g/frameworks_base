@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +32,8 @@ import android.util.Log;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.io.File;
+import java.io.BufferedReader;
 
 /**
  * MediaScanner helper class.
@@ -222,6 +225,36 @@ public class MediaFile {
         return false;
     }
 
+    private static boolean isAC3Enabled() {
+        int soc_id = 0;
+        String file_info_id;
+        try {
+            File socFile = new File("/sys/devices/system/soc/soc0/id");
+            if(socFile != null) {
+                FileReader inputSocFile = new FileReader(socFile);
+                if(inputSocFile != null) {
+                   BufferedReader socBufferReader = new BufferedReader(inputSocFile);
+                   if(socBufferReader != null) {
+                       file_info_id =socBufferReader.readLine();
+                       Log.w("MediaFile", "String id = " + file_info_id);
+                       soc_id = Integer.parseInt(file_info_id);
+                       socBufferReader.close();
+                   }
+                   inputSocFile.close();
+                }
+            }
+        } catch(Exception e) {
+            Log.e("MediaFile","Exception in FileReader");
+        }
+        Log.w("MediaFile", "integer id = " + soc_id);
+        if(soc_id == 130) {
+            Log.w("MediaFile",  "MPQ Audio Decode true");
+            return true;
+        }
+        Log.w("MediaFile",  "MPQ Audio Decode false" );
+        return false;
+    }
+
     static {
         addFileType("MP3", FILE_TYPE_MP3, "audio/mpeg", MtpConstants.FORMAT_MP3);
         addFileType("M4A", FILE_TYPE_M4A, "audio/mp4", MtpConstants.FORMAT_MPEG);
@@ -301,6 +334,9 @@ public class MediaFile {
         addFileType("ZIP", FILE_TYPE_ZIP, "application/zip");
         addFileType("MPG", FILE_TYPE_MP2PS, "video/mp2p");
         addFileType("MPEG", FILE_TYPE_MP2PS, "video/mp2p");
+        if(isAC3Enabled()) {
+            addFileType("AC3", FILE_TYPE_AC3, "audio/ac3");
+        }
     }
 
     public static boolean isAudioFileType(int fileType) {
