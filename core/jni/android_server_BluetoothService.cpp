@@ -2135,13 +2135,14 @@ static jboolean readResponseNative(JNIEnv *env, jobject object,
         jboolean isUuidCopy;
         jboolean isCopy = JNI_FALSE;
         jbyte *payload_ptr = NULL;
-        const char *c_uuid;
+        const char *c_uuid = NULL;
 
         if (!status) {
             reply = dbus_message_new_method_return(msg);
             if (payload != NULL)
                 payload_ptr = env->GetByteArrayElements(payload, &isCopy);
-            c_uuid = env->GetStringUTFChars(uuid, &isUuidCopy);
+            if(uuid != NULL)
+                c_uuid = env->GetStringUTFChars(uuid, &isUuidCopy);
             dbus_message_append_args(reply,
                                  DBUS_TYPE_STRING, &c_uuid,
                                  DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &payload_ptr, cnt,
@@ -2166,7 +2167,9 @@ static jboolean readResponseNative(JNIEnv *env, jobject object,
            env->ReleaseByteArrayElements(payload, payload_ptr, 0);
         }
         if (isUuidCopy == JNI_TRUE) {
-            env->ReleaseStringUTFChars(uuid, c_uuid);
+            if(uuid != NULL) {
+                env->ReleaseStringUTFChars(uuid, c_uuid);
+            }
         }
         return JNI_TRUE;
     }
@@ -2185,11 +2188,12 @@ static jboolean writeResponseNative(JNIEnv *env, jobject object,
         DBusMessage *msg = (DBusMessage *)nativeData;
         DBusMessage *reply;
         jboolean isUuidCopy;
-        const char *c_uuid;
+        const char *c_uuid = NULL;
 
         if (!status) {
             reply = dbus_message_new_method_return(msg);
-            c_uuid = env->GetStringUTFChars(uuid, &isUuidCopy);
+            if(uuid != NULL)
+                c_uuid = env->GetStringUTFChars(uuid, &isUuidCopy);
 
             dbus_message_append_args(reply,
                                  DBUS_TYPE_STRING, &c_uuid,
@@ -2211,7 +2215,9 @@ static jboolean writeResponseNative(JNIEnv *env, jobject object,
         dbus_message_unref(msg);
         dbus_message_unref(reply);
         if (isUuidCopy == JNI_TRUE) {
-            env->ReleaseStringUTFChars(uuid, c_uuid);
+            if(uuid != NULL) {
+                env->ReleaseStringUTFChars(uuid, c_uuid);
+            }
         }
         return JNI_TRUE;
     }
