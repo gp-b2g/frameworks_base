@@ -567,6 +567,7 @@ void LPAPlayer::pause(bool playPendingSamples) {
     } else {
         if (a2dpDisconnectPause) {
             a2dpDisconnectPause = false;
+            mAudioSink->pause();
             mPauseTime = mSeekTimeUs + getTimeStamp(A2DP_DISCONNECT);
             pthread_cond_signal(&a2dp_notification_cv);
         } else {
@@ -1314,7 +1315,6 @@ void LPAPlayer::A2DPNotificationThreadEntry() {
         }
         else {
             mInternalSeeking = true;
-
             mReachedEOS = false;
             mSeekTimeUs += getTimeStamp(A2DP_DISCONNECT);
             mNumA2DPBytesPlayed = 0;
