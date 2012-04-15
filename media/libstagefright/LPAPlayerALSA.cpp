@@ -52,7 +52,7 @@ extern "C" {
 
 static const char   mName[] = "LPAPlayer";
 
-#define MEM_BUFFER_SIZE 524288
+#define MEM_BUFFER_SIZE 262144
 //#define PMEM_BUFFER_SIZE (4800 * 4)
 #define MEM_BUFFER_COUNT 4
 
