@@ -529,7 +529,9 @@ void AudioFlinger::createSession(
                     if(mLPAEffectChain.get()) {
                         mLPAEffectChain.clear();
                     }
+                    t->mLock.lock();
                     mLPAEffectChain = t->getEffectChain_l(*sessionId);
+                    t->mLock.unlock();
                 }
             }
             mLPASessionId = *sessionId;
