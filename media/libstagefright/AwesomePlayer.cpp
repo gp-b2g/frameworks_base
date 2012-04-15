@@ -1580,6 +1580,7 @@ status_t AwesomePlayer::initAudioDecoder() {
 
     if((is_mpq)&&((strcmp("true",mpqAudioDecode) == 0)||(atoi(mpqAudioDecode))) &&
             (MPQAudioPlayer::getMPQAudioObjectsAlive() == 0) &&
+            (mVideoSource == NULL) &&
             (property_get("ro.product.device", value, "0") &&
             (!strncmp(value, "msm8960", sizeof("msm8960") - 1)))) {
 
