@@ -45,6 +45,7 @@ public class UiccManager extends Handler {
     private static final int EVENT_GET_ICC_STATUS_DONE = 2;
     private static final int EVENT_RADIO_UNAVAILABLE = 3;
     private static final int EVENT_RADIO_OFF = 4;
+    private static final int EVENT_UICC_MGR_INIT_COMPLETE = 5;
     private static UiccManager mInstance;
 
     private Context mContext;
@@ -90,9 +91,10 @@ public class UiccManager extends Handler {
             mCi[i].registerForOff(this, EVENT_RADIO_OFF, index);
             // TODO remove this once modem correctly notifies the unsols
             mCi[i].registerForOn(this, EVENT_ICC_STATUS_CHANGED, index);
-            mCatService[i] = new CatService( mCi[i], mContext, i);
 
         }
+        Message msg = this.obtainMessage(EVENT_UICC_MGR_INIT_COMPLETE);
+        msg.sendToTarget();
     }
 
     @Override
@@ -123,6 +125,16 @@ public class UiccManager extends Handler {
                 if (!isAirplaneModeCardPowerDown()) {
                     Log.d(LOG_TAG, "EVENT_RADIO_OFF calling getIccCardStatus on index " + index);
                     mCi[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE, index));
+                }
+                break;
+            case EVENT_UICC_MGR_INIT_COMPLETE:
+                Log.d(LOG_TAG, "INIT COMPLETED ");
+                for (int i = 0; i < mCi.length; i++) {
+                    Log.d(LOG_TAG, "Creating CatService on " + i);
+                    mCatService[i] = new CatService( mCi[i], mContext, i);
+                    if (mCatService[i] == null) {
+                        Log.e(LOG_TAG, "Couldn't create CatService on " + i);
+                    }
                 }
                 break;
             default:

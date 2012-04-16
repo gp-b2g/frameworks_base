@@ -981,7 +981,7 @@ public class CatService extends Handler implements AppInterface {
             mIccFileHandler = fh;
             if (mIccFileHandler != null && mIconLoader == null) {
                 // Initialize new IconLoader
-                CatLog.d(this, "Error in initializing new IconLoader");
+                CatLog.d(this, "Creating IconLoader");
                 mIconLoader = new IconLoader(mIccFileHandler, mSlotId);
                 if (mIconLoader == null) {
                     CatLog.d(this, "Error in initializing new IconLoader");
