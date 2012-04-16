@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -53,6 +55,7 @@ public class AudioManager {
     private long mVolumeKeyUpTime;
     private int  mVolumeControlStream = -1;
     private static String TAG = "AudioManager";
+    private static String SILENT_BOOT_KEY = "persist.sys.silent";
     private static boolean localLOGV = false;
 
     /**
@@ -629,12 +632,10 @@ public class AudioManager {
             return;
         }
         IAudioService service = getService();
-        /**
         if(ringerMode==RINGER_MODE_SILENT)
             SystemProperties.set(SILENT_BOOT_KEY, "1");
         else
             SystemProperties.set(SILENT_BOOT_KEY, "0");
-            **/
         try {
             service.setRingerMode(ringerMode);
         } catch (RemoteException e) {
