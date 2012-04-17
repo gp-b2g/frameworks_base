@@ -52,6 +52,7 @@
 
 #ifdef SRS_PROCESSING
 #include "srs_processing.h"
+#include "postpro_patch_ics.h"
 #endif
 
 #include <media/EffectsFactoryApi.h>
@@ -204,6 +205,9 @@ void AudioFlinger::onFirstRef()
 
         if (!mPrimaryHardwareDev) {
             mPrimaryHardwareDev = dev;
+#ifdef SRS_PROCESSING
+        SRS_Processing::RawDataSet(NULL, "qdsp hook", &mPrimaryHardwareDev, sizeof(&mPrimaryHardwareDev));
+#endif
             LOGI("Using '%s' (%s.%s) as the primary audio interface",
                  mod->name, mod->id, audio_interfaces[i]);
         }
@@ -1003,8 +1007,8 @@ status_t AudioFlinger::setParameters(int ioHandle, const String8& keyValuePairs)
         mHardwareStatus = AUDIO_SET_PARAMETER;
 
 #ifdef SRS_PROCESSING
-        bool status = SRS_Processing::ParamsSet(SRS_Processing::AUTO, keyValuePairs);
-        if(status && mLPAOutput && mLPAStreamIsActive) {
+        POSTPRO_PATCH_ICS_PARAMS_SET(keyValuePairs);
+        if(mLPAOutput && mLPAStreamIsActive) {
             LOGV("setParameters:: Notifying EFFECT_CONFIG_CHANGED");
             audioConfigChanged_l(AudioSystem::EFFECT_CONFIG_CHANGED, 0, NULL);
         }
@@ -1090,8 +1094,7 @@ String8 AudioFlinger::getParameters(int ioHandle, const String8& keys)
         String8 out_s8;
 
 #ifdef SRS_PROCESSING
-        out_s8 = SRS_Processing::ParamsGet(SRS_Processing::AUTO, keys);
-        if (out_s8 != "") out_s8 += ";";
+        POSTPRO_PATCH_ICS_PARAMS_GET(keys, out_s8);
 #endif
 
         for (size_t i = 0; i < mAudioHwDevs.size(); i++) {
@@ -2208,8 +2211,7 @@ bool AudioFlinger::MixerThread::threadLoop()
     acquireWakeLock();
 
 #ifdef SRS_PROCESSING
-    LOGD("SRS_Processing - MixerThread - OutNotify_Init: %p TID %d\n", this, gettid());
-    SRS_Processing::ProcessOutNotify(SRS_Processing::AUTO, this, true);
+    POSTPRO_PATCH_ICS_OUTPROC_MIX_INIT(this, gettid());
 #endif
 
     while (!exitPending())
@@ -2364,9 +2366,7 @@ bool AudioFlinger::MixerThread::threadLoop()
              unlockEffectChains(effectChains);
 
 #ifdef SRS_PROCESSING
-            if (mFormat == AUDIO_FORMAT_PCM_16_BIT) {
-                SRS_Processing::ProcessOut(SRS_Processing::AUTO, this, mMixBuffer, mixBufferSize, mSampleRate, mChannelCount);
-            }
+             POSTPRO_PATCH_ICS_OUTPROC_MIX_SAMPLES(this, mFormat, mMixBuffer, mixBufferSize, mSampleRate, mChannelCount);
 #endif
 
             mLastWriteTime = systemTime();
@@ -2412,8 +2412,7 @@ bool AudioFlinger::MixerThread::threadLoop()
     }
 
 #ifdef SRS_PROCESSING
-    LOGD("SRS_Processing - MixerThread - OutNotify_Exit: %p TID %d\n", this, gettid());
-    SRS_Processing::ProcessOutNotify(SRS_Processing::AUTO, this, false);
+    POSTPRO_PATCH_ICS_OUTPROC_MIX_EXIT(this, gettid());
 #endif
 
     releaseWakeLock();
@@ -2702,9 +2701,7 @@ bool AudioFlinger::MixerThread::checkForNewParameters_l()
         int value;
 
 #ifdef SRS_PROCESSING
-        if (param.getInt(String8(AudioParameter::keyRouting), value) == NO_ERROR){
-            SRS_Processing::ProcessOutRoute(SRS_Processing::AUTO, this, value);
-        }
+        POSTPRO_PATCH_ICS_OUTPROC_MIX_ROUTE(this, param, value);
 #endif
 
         if (param.getInt(String8(AudioParameter::keySamplingRate), value) == NO_ERROR) {
@@ -3345,8 +3342,7 @@ bool AudioFlinger::DuplicatingThread::threadLoop()
     acquireWakeLock();
 
 #ifdef SRS_PROCESSING
-    LOGD("SRS_Processing - DuplicatingThread - OutNotify_Init: %p TID %d\n", this, gettid());
-    SRS_Processing::ProcessOutNotify(SRS_Processing::AUTO, this, true);
+    POSTPRO_PATCH_ICS_OUTPROC_DUPE_INIT(this, gettid());
 #endif
 
 
@@ -3461,9 +3457,7 @@ bool AudioFlinger::DuplicatingThread::threadLoop()
             unlockEffectChains(effectChains);
 
 #ifdef SRS_PROCESSING
-            if (mFormat == AUDIO_FORMAT_PCM_16_BIT) {
-                SRS_Processing::ProcessOut(SRS_Processing::AUTO, this, mMixBuffer, mixBufferSize, mSampleRate, mChannelCount);
-            }
+            POSTPRO_PATCH_ICS_OUTPROC_DUPE_SAMPLES(this, mFormat, mMixBuffer, mixBufferSize, mSampleRate, mChannelCount);
 #endif
 
             standbyTime = systemTime() + kStandbyTimeInNsecs;
@@ -3490,8 +3484,7 @@ bool AudioFlinger::DuplicatingThread::threadLoop()
     }
 
 #ifdef SRS_PROCESSING
-    LOGD("SRS_Processing - DuplicatingThread - OutNotify_Exit: %p TID %d\n", this, gettid());
-    SRS_Processing::ProcessOutNotify(SRS_Processing::AUTO, this, false);
+    POSTPRO_PATCH_ICS_OUTPROC_DUPE_EXIT(this, gettid());
 #endif
 
     releaseWakeLock();
