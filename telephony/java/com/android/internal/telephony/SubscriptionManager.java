@@ -913,7 +913,15 @@ public class SubscriptionManager extends Handler {
 
         // Set subscription is required if both the cards are unavailable
         // and when those are available next time!
-        mSetSubsModeRequired = !mCardInfoAvailable[0] && !mCardInfoAvailable[1];
+        boolean allCardsUnavailable = true;
+        for (boolean available : mCardInfoAvailable) {
+            allCardsUnavailable = allCardsUnavailable && !available;
+        }
+        logd("processCardInfoNotAvailable allCardsUnavailable = " + allCardsUnavailable);
+        if (allCardsUnavailable) {
+            mSetSubsModeRequired = true;
+            mSetDdsRequired = true;
+        }
         logd("processCardInfoNotAvailable mSetSubsModeRequired = " + mSetSubsModeRequired);
 
         // Reset the current subscription and notify the subscriptions deactivated.
