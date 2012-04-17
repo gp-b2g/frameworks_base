@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
 /* Copyright 2006, The Android Open Source Project
+** Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -342,6 +343,9 @@
 
     <!-- label for item that turns off power in phone options dialog -->
     <string name="global_action_power_off">Power off</string>
+
+    <!-- label for item that fast power on/off in phone options dialog -->
+    <string name="global_action_power_off_fast">Power Off(Fast)</string>
 
     <!-- label for item that enables silent mode in phone options dialog -->
     <string name="global_action_toggle_silent_mode">Silent mode</string>

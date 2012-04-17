@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1941,6 +1942,21 @@ public class Intent implements Parcelable, Cloneable {
      */
     @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
     public static final String ACTION_AIRPLANE_MODE_CHANGED = "android.intent.action.AIRPLANE_MODE";
+
+    /**
+     * <p>Broadcast Action: faster power down and power on the phone. One or
+     * more radios have been turned off or on. The intent will have the following extra value:</p>
+     * <ul>
+     *   <li><em>state</em> - A boolean value indicating whether fast power on/off is on. If true,
+     *   then cell radio and possibly other radios such as bluetooth or WiFi may have also been
+     *   turned off</li>
+     * </ul>
+     *
+     * <p class="note">This is a protected intent that can only be sent
+     * by the system.
+     */
+    @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+    public static final String ACTION_FAST_BOOT_START = "android.intent.action.FAST_BOOT_START";
 
     /**
      * Broadcast Action: Some content providers have parts of their namespace

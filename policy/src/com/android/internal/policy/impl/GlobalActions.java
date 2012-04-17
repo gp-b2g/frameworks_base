@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -181,6 +182,25 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
 
         // next: airplane mode
         mItems.add(mAirplaneModeOn);
+
+        // add: fastboot
+        mItems.add(
+            new SinglePressAction(
+                    com.android.internal.R.drawable.ic_lock_power_off,
+                    R.string.global_action_power_off_fast) {
+
+                public void onPress() {
+                    startFastBoot();
+                }
+
+                public boolean showDuringKeyguard() {
+                    return true;
+                }
+
+                public boolean showBeforeProvisioning() {
+                    return true;
+                }
+            });
 
         // last: silent mode
         if (SHOW_SILENT_TOGGLE) {
@@ -626,5 +646,17 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         intent.putExtra("state", on);
         mContext.sendBroadcast(intent);
+    }
+
+    /**
+     * Start Fast Boot
+     */
+    private void startFastBoot() {
+        synchronized (this) {
+            Intent intent = new Intent(Intent.ACTION_FAST_BOOT_START);
+            intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
+            intent.putExtra("state", true);
+            mContext.sendBroadcast(intent);
+        }
     }
 }
