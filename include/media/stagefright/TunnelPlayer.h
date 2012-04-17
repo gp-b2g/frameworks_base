@@ -76,21 +76,19 @@ public:
 
 private:
 
-    //Structure to hold ion buffer information
+    //Structure to hold pmem buffer information
     class BuffersAllocated {
     public:
         BuffersAllocated(void *buf1, int32_t nSize) :
-        ionBuf(buf1), ionBufsize(nSize)
+        pmemBuf(buf1), pmemBufsize(nSize)
         {}
-        void* ionBuf;
-        int32_t ionBufsize;
+        void* pmemBuf;
+        int32_t pmemBufsize;
         uint32_t bytesToWrite;
     };
-    List<BuffersAllocated> mInputIonEmptyQueue;
-    List<BuffersAllocated> mInputIonFilledQueue;
+    List<BuffersAllocated> mInputPmemEmptyQueue;
+    List<BuffersAllocated> mInputPmemFilledQueue;
     List<BuffersAllocated> mInputBufPool;
-
-    void *mCaptureBuffer;
 
     //Structure to recieve the BT notification from the flinger.
     class AudioFlingerTunnelDecodeClient: public IBinder::DeathRecipient, public BnAudioFlingerClient {
@@ -118,7 +116,6 @@ private:
 
     //event fd to signal the EOS and Kill from the userspace
     int mEfd;
-    int mA2DPEfd;
 
     //Declare all the threads
     pthread_t mEventThread;
@@ -139,8 +136,8 @@ private:
     bool mA2dpNotificationThreadAlive;
 
     //Declare the condition Variables and Mutex
-    Mutex mInputIonRequestMutex;
-    Mutex mInputIonResponseMutex;
+    Mutex mInputPmemRequestMutex;
+    Mutex mInputPmemResponseMutex;
     Mutex mExtractorMutex;
     Mutex mEventMutex;
     Mutex mA2dpMutex;
@@ -163,8 +160,6 @@ private:
     MediaBuffer *mInputBuffer;
     uint32_t mInputBufferSize;
     int32_t mInputBufferCount;
-    uint32_t mCaptureBufferSize;
-    int32_t mCaptureBufferCount;
 
     //Audio Parameters
     int mSampleRate;
@@ -227,9 +222,9 @@ private:
 
     void onPauseTimeOut();
 
-    void ionBufferAlloc(int32_t nSize);
+    void pmemBufferAlloc(int32_t nSize);
 
-    void ionBufferDeAlloc();
+    void pmemBufferDeAlloc();
 
     // make sure Decoder thread has exited
     void requestAndWaitForExtractorThreadExit();
@@ -264,14 +259,6 @@ private:
     int64_t getAudioTimeStampUs();
 
     bool isReadyToPostEOS(int errPoll, void *fd);
-
-    status_t setCaptureMixerControl(int value);
-
-    void postEOSOnError();
-
-    status_t syncResume(void *handle);
-
-    status_t flush(void *handle);
 
     TunnelPlayer(const TunnelPlayer &);
     TunnelPlayer &operator=(const TunnelPlayer &);

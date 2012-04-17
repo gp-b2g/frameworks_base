@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-//#define LOG_NDEBUG 0
+#define LOG_NDEBUG 0
 #define LOG_NDDEBUG 0
 #define LOG_TAG "TunnelPlayer"
 #include <utils/Log.h>
@@ -48,24 +48,17 @@ extern "C" {
 
 #include "include/AwesomePlayer.h"
 
-#define ION_BUFFER_SIZE (600 *1024)
-#define ION_BUFFER_COUNT 4
+#define PMEM_BUFFER_SIZE (600 *1024)
+#define PMEM_BUFFER_COUNT 4
 
-#define ION_CAPTURE_BUFFER_SIZE 4096
-#define ION_CAPTURE_BUFFER_COUNT 24
-
+#define PMEM_CAPTURE_BUFFER_SIZE 4096
 //Values to exit poll via eventfd
 #define KILL_EVENT_THREAD 1
 #define SIGNAL_EVENT_THREAD 2
-#define KILL_A2DP_THREAD 3
-#define SIGNAL_A2DP_THREAD 4
 
 #define NUM_FDS 2
 #define TUNNEL_SESSION_ID 2
 #define RENDER_LATENCY 24000
-#define AFE_PROXY_SAMPLE_RATE 48000
-#define AFE_PROXY_CHANNEL_COUNT 2
-#define AFE_PROXY_PERIOD_SIZE 3072
 
 namespace android {
 int TunnelPlayer::mTunnelObjectsAlive = 0;
@@ -94,7 +87,7 @@ mIsAudioRouted(false),
 mIsA2DPEnabled(false),
 mAudioSink(audioSink),
 mObserver(observer) {
-    LOGD("TunnelPlayer::TunnelPlayer()");
+    LOGE("TunnelPlayer::TunnelPlayer()");
 
     mAudioFlinger = NULL;
     mAudioFlingerClient = NULL;
@@ -111,7 +104,6 @@ mObserver(observer) {
     mAudioFlinger->registerClient(mAudioFlingerClient);
 
     mEfd = -1;
-    mA2DPEfd = -1;
     mMimeType.setTo("");
     mA2dpDisconnectPause = false;
 
@@ -120,13 +112,8 @@ mObserver(observer) {
     mSeekTimeUs = 0;
     mTimeout = -1;
 
-    mInputBufferSize =  ION_BUFFER_SIZE;
-    mInputBufferCount = ION_BUFFER_COUNT;
-    mCaptureBufferSize = ION_CAPTURE_BUFFER_SIZE;
-    mCaptureBufferCount = ION_CAPTURE_BUFFER_COUNT;
-    mCaptureBuffer = NULL;
-    mPlaybackHandle = NULL;
-    mCaptureHandle = NULL;
+    mInputBufferSize =  PMEM_BUFFER_SIZE;
+    mInputBufferCount = PMEM_BUFFER_COUNT;
 
     LOGV("mInputBufferSize = %d, mInputBufferCount = %d",\
             mInputBufferSize ,mInputBufferCount);
@@ -218,6 +205,7 @@ void TunnelPlayer::AudioFlingerTunnelDecodeClient::ioConfigChanged(int event, in
 }
 
 void TunnelPlayer::handleA2DPSwitch() {
+    Mutex::Autolock autoLock(mLock);
 
     LOGV("handleA2dpSwitch()");
     if(mIsA2DPEnabled) {
@@ -225,14 +213,12 @@ void TunnelPlayer::handleA2DPSwitch() {
 
         // 1.	If not paused - pause the driver
         //TODO: CHECK if audio routed has to be checked
-        if (!mIsPaused && mIsAudioRouted) {
+        if (!mIsPaused) {
             if (ioctl(local_handle->fd, SNDRV_PCM_IOCTL_PAUSE,1) < 0) {
                 LOGE("AUDIO PAUSE failed");
             }
         }
-        //If internal seek reqd
-        //mSeekTimeUs += getAudioTimeStampUs();
-        //2. If not paused - Query the time. - Not reqd , time need not be stored
+        //2.	If not paused - Query the time. - Not reqd , time need not be stored
 
         //TODO: Is Internal Seeking required ? I believe not
 	//3 Signal Notification thread
@@ -260,7 +246,7 @@ status_t TunnelPlayer::start(bool sourceAlreadyStarted) {
     CHECK(!mStarted);
     CHECK(mSource != NULL);
 
-    LOGD("start: sourceAlreadyStarted %d", sourceAlreadyStarted);
+    LOGE("start: sourceAlreadyStarted %d", sourceAlreadyStarted);
     //Check if the source is started, start it
     status_t err;
     if (!sourceAlreadyStarted) {
@@ -270,19 +256,22 @@ status_t TunnelPlayer::start(bool sourceAlreadyStarted) {
         }
     }
 
+    /*TO DO  : Need to check if first buffer has to be read and
+    INFO_FORMAT_CHANGED honoured*/
+
     sp<MetaData> format = mSource->getFormat();
     const char *mime;
     bool success = format->findCString(kKeyMIMEType, &mime);
     mMimeType = mime;
     CHECK(success);
+//    CHECK(!strcasecmp(mMimeType.string(), MEDIA_MIMETYPE_AUDIO_MPEG) || (!strcasecmp(mime,MEDIA_MIMETYPE_AUDIO_AAC)));
 
     success = format->findInt32(kKeySampleRate, &mSampleRate);
     CHECK(success);
 
     success = format->findInt32(kKeyChannelCount, &mNumChannels);
     CHECK(success);
-
-    //Sending some dumb channel value to avoid crash - at ALSA HW params.
+    //TODO : Snding some dumb channel value to avoid crash- at ALSA HW params.
     if(!mNumChannels)
         mNumChannels = 2;
     int64_t durationUs;
@@ -293,15 +282,14 @@ status_t TunnelPlayer::start(bool sourceAlreadyStarted) {
     createThreads();
     LOGV("All Threads Created.");
 
-    //TODO : Add state machine for A2DP
+
     if (!mIsA2DPEnabled) {
         LOGV("Opening a routing session for audio playback:\
                 mSampleRate = %d mNumChannels =  %d",\
                 mSampleRate, mNumChannels);
 
         err = mAudioSink->openSession(
-                AUDIO_FORMAT_PCM_16_BIT, TUNNEL_SESSION_ID,
-                mSampleRate, mNumChannels);
+                AUDIO_FORMAT_PCM_16_BIT, TUNNEL_SESSION_ID, mSampleRate, mNumChannels);
         if (err != OK) {
 
             //TODO: Release first buffer if it is being handled
@@ -317,9 +305,7 @@ status_t TunnelPlayer::start(bool sourceAlreadyStarted) {
     else {
         LOGV("Before Audio Sink Open");
         err = mAudioSink->open(
-                AFE_PROXY_SAMPLE_RATE,
-                AFE_PROXY_CHANNEL_COUNT,
-                AUDIO_FORMAT_PCM_16_BIT,
+                mSampleRate, mNumChannels,AUDIO_FORMAT_PCM_16_BIT,
                 DEFAULT_AUDIOSINK_BUFFERCOUNT);
         if(err != OK) {
             LOGE("Audio Sink -open failed = %d", err);
@@ -329,25 +315,23 @@ status_t TunnelPlayer::start(bool sourceAlreadyStarted) {
         LOGV("After Audio Sink Open");
         mAudioSinkOpen = true;
 
-        err = setCaptureMixerControl(1);
-        if(err) {
-            LOGE("setCaptureMixerControl failed err = %d",err);
-            return err;
-        }
-        char *captureDevice = (char *) "hw:0,8";
+        //TODO : What is the proxy afe device?
+        char *captureDevice = (char *) "hw:0,x";
         LOGV("pcm_open capture device hardware %s for Tunnel Mode ",\
                 captureDevice);
 
         // Open the capture device
-        mCaptureHandle = (void *)pcm_open((DEBUG_ON | PCM_MMAP| PCM_STEREO |
+        if (mNumChannels == 1)
+            mCaptureHandle = (void *)pcm_open((PCM_MMAP | DEBUG_ON | PCM_MONO |
+                    PCM_IN), captureDevice);
+        else
+            mCaptureHandle = (void *)pcm_open((PCM_MMAP | DEBUG_ON | PCM_STEREO |
                     PCM_IN) , captureDevice);
         struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
         if (!capture_handle) {
-            LOGE("Failed to initialize ALSA hardware hw:0,8");
+            LOGE("Failed to initialize ALSA hardware hw:0,4");
             return BAD_VALUE;
         }
-
-        capture_handle->flags = (DEBUG_ON | PCM_MMAP| PCM_STEREO | PCM_IN);
 
         //Set the hardware and software params for the capture device
         err = setCaptureALSAParams();
@@ -356,6 +340,7 @@ status_t TunnelPlayer::start(bool sourceAlreadyStarted) {
             return err;
         }
 
+        //MMAP the capture buffer
         mmap_buffer(capture_handle);
         //Prepare the capture  device
         err = pcm_prepare(capture_handle);
@@ -364,6 +349,10 @@ status_t TunnelPlayer::start(bool sourceAlreadyStarted) {
             return err;
         }
         mCaptureHandle = (void *)capture_handle;
+        //TODO:set the mixer controls for proxy port
+        //mixer_cntl_set
+        //TODO : Allocate the buffer required for capture side
+
     }
 
     char *tunnelDevice = (char *) "hw:0,9";
@@ -376,7 +365,7 @@ status_t TunnelPlayer::start(bool sourceAlreadyStarted) {
     struct pcm * local_handle = (struct pcm *)mPlaybackHandle;
 
     if (!local_handle) {
-        LOGE("Failed to initialize ALSA hardware hw:0,9");
+        LOGE("Failed to initialize ALSA hardware hw:0,4");
         return BAD_VALUE;
     }
 
@@ -396,7 +385,7 @@ status_t TunnelPlayer::start(bool sourceAlreadyStarted) {
         return err;
     }
     mPlaybackHandle = (void *)local_handle;
-    ionBufferAlloc(mInputBufferSize);
+    pmemBufferAlloc(mInputBufferSize);
     LOGD(" Tunnel Driver Started");
     mStarted = true;
 
@@ -408,7 +397,6 @@ status_t TunnelPlayer::start(bool sourceAlreadyStarted) {
 status_t TunnelPlayer::seekTo(int64_t time_us) {
     Mutex::Autolock autoLock1(mSeekLock);
     Mutex::Autolock autoLock(mLock);
-    status_t err = NO_ERROR;
     LOGD("seekTo: time_us %lld", time_us);
     if (mReachedExtractorEOS) {
         mReachedExtractorEOS = false;
@@ -420,38 +408,43 @@ status_t TunnelPlayer::seekTo(int64_t time_us) {
     mSeekTimeUs = time_us;
     mTimePaused = 0;
     struct pcm * local_handle = (struct pcm *)mPlaybackHandle;
-    struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
-
     LOGV("In seekTo(), mSeekTimeUs %lld",mSeekTimeUs);
-    if (mStarted) {
-        LOGV("Paused case, %d",mIsPaused);
-        mInputIonResponseMutex.lock();
-        mInputIonRequestMutex.lock();
-        mInputIonFilledQueue.clear();
-        mInputIonEmptyQueue.clear();
+    if (!mIsA2DPEnabled) {
+        if (mStarted) {
+            LOGV("Paused case, %d",mIsPaused);
 
-        List<BuffersAllocated>::iterator it = mInputBufPool.begin();
-        for(;it!=mInputBufPool.end();++it) {
-             mInputIonEmptyQueue.push_back(*it);
+            mInputPmemResponseMutex.lock();
+            mInputPmemRequestMutex.lock();
+            mInputPmemFilledQueue.clear();
+            mInputPmemEmptyQueue.clear();
+
+            List<BuffersAllocated>::iterator it = mInputBufPool.begin();
+            for(;it!=mInputBufPool.end();++it) {
+                 mInputPmemEmptyQueue.push_back(*it);
+            }
+
+            mInputPmemRequestMutex.unlock();
+            mInputPmemResponseMutex.unlock();
+            LOGV("Transferred all the buffers from response queue to\
+                    request queue to handle seek");
+            if (!mIsPaused) {
+                if (ioctl(local_handle->fd, SNDRV_PCM_IOCTL_PAUSE,1) < 0) {
+                    LOGE("Audio Pause failed");
+                }
+                local_handle->start = 0;
+                pcm_prepare(local_handle);
+                LOGV("Reset, drain and prepare completed");
+                local_handle->sync_ptr->flags =
+                        SNDRV_PCM_SYNC_PTR_APPL | SNDRV_PCM_SYNC_PTR_AVAIL_MIN;
+                sync_ptr(local_handle);
+                LOGV("appl_ptr= %d",\
+                        (int)local_handle->sync_ptr->c.control.appl_ptr);
+                mExtractorCv.signal();
+            }
         }
-        mInputIonRequestMutex.unlock();
-        mInputIonResponseMutex.unlock();
-        LOGV("Transferred all the buffers from response queue to\
-                request queue to handle seek");
-        err = flush(mPlaybackHandle);
-        if(err) {
-            LOGE("flush returned err = %d",err);
-            return err;
-        }
+    } else {
+
     }
-    if (mIsA2DPEnabled) {
-         if(!mIsPaused) {
-            mAudioSink->pause();
-            mAudioSink->flush();
-            mAudioSink->start();
-         }
-    }
-    mExtractorCv.signal();
     return OK;
 }
 
@@ -463,13 +456,10 @@ void TunnelPlayer::pause(bool playPendingSamples) {
     mIsPaused = true;
     mTimeout  = -1;
     struct pcm * local_handle = (struct pcm *)mPlaybackHandle;
-    struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
 
     if (playPendingSamples) {
         if (ioctl(local_handle->fd, SNDRV_PCM_IOCTL_PAUSE,1) < 0) {
             LOGE("Audio Pause failed");
-            postEOSOnError();
-            return;
         }
         if (!mIsA2DPEnabled) {
             if (!mPauseEventPending) {
@@ -484,27 +474,19 @@ void TunnelPlayer::pause(bool playPendingSamples) {
                 mAudioSink->pauseSession();
         }
         else {
-            if (mAudioSink.get() != NULL)
-                mAudioSink->stop();
+
         }
+
         mTimePaused = mSeekTimeUs + getAudioTimeStampUs();
     }
     else {
         if (mA2dpDisconnectPause) {
             mA2dpDisconnectPause = false;
-            LOGV("mA2dpDisconnectPause - TunnelPlayer::Pause - Pause driver");
-             if (ioctl(local_handle->fd, SNDRV_PCM_IOCTL_PAUSE,1) < 0) {
-                LOGE("Audio Pause failed");
-                postEOSOnError();
-                return;
-              }
             mA2dpNotificationCv.signal();
         } else {
             LOGV("TunnelPlayer::Pause - Pause driver");
             if (ioctl(local_handle->fd, SNDRV_PCM_IOCTL_PAUSE,1) < 0) {
                 LOGE("Audio Pause failed");
-                postEOSOnError();
-                return;
             }
             if (!mIsA2DPEnabled) {
                 if(!mPauseEventPending) {
@@ -521,21 +503,17 @@ void TunnelPlayer::pause(bool playPendingSamples) {
                 }
             }
             else {
-                LOGV(" Pause: sink - pause & flush");
-                mAudioSink->pause();
-                mAudioSink->flush();
             }
+
+            mTimePaused = mSeekTimeUs + getAudioTimeStampUs();
         }
-        mTimePaused = mSeekTimeUs + getAudioTimeStampUs();
     }
 }
 
 void TunnelPlayer::resume() {
     Mutex::Autolock autoLock(mLock);
-    LOGV("Resume: mIsPaused %d",mIsPaused);
-    struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
+    LOGD("Resume: mIsPaused %d",mIsPaused);
 
-    status_t err = NO_ERROR;
     if (mIsPaused) {
         CHECK(mStarted);
         if (!mIsA2DPEnabled) {
@@ -549,92 +527,37 @@ void TunnelPlayer::resume() {
 
             if (!mIsAudioRouted) {
                 LOGV("Opening a session for TUNNEL playback");
-                err = mAudioSink->openSession(AUDIO_FORMAT_PCM_16_BIT,
+                status_t err = mAudioSink->openSession(AUDIO_FORMAT_PCM_16_BIT,
                                                        TUNNEL_SESSION_ID);
-                if(err) {
-                    postEOSOnError();
-                    return;
-                }
                 mIsAudioRouted = true;
             }
-        }
-        LOGV("Attempting Sync resume\n");
-        err = syncResume(mPlaybackHandle);
-        if(err)
-           return;
-        if(!mIsA2DPEnabled) {
+            LOGV("Attempting Sync resume\n");
+            struct pcm * local_handle = (struct pcm *)mPlaybackHandle;
+            if (!(mSeeking || mInternalSeeking)) {
+                if (ioctl(local_handle->fd, SNDRV_PCM_IOCTL_PAUSE,0) < 0)
+                    LOGE("AUDIO Resume failed");
+                LOGV("Sync resume done\n");
+            }
+            else {
+                local_handle->start = 0;
+                pcm_prepare(local_handle);
+                LOGV("Reset, drain and prepare completed");
+                local_handle->sync_ptr->flags =
+                        SNDRV_PCM_SYNC_PTR_APPL | SNDRV_PCM_SYNC_PTR_AVAIL_MIN;
+                sync_ptr(local_handle);
+                LOGV("appl_ptr= %d",\
+                        (int)local_handle->sync_ptr->c.control.appl_ptr);
+            }
             if (mAudioSink.get() != NULL) {
                 mAudioSink->resumeSession();
             }
-            mIsPaused = false;
-            mExtractorCv.signal();
-            return;
         } else {
-            if (!mAudioSinkOpen) {
-                if (mAudioSink.get() != NULL) {
-                    LOGV("%s mAudioSink close session", __func__);
-                    mAudioSink->closeSession();
-                    mIsAudioRouted = false;
-                } else {
-                    LOGE("close session NULL");
-                }
 
-                LOGV("Resume: Before Audio Sink Open");
-                status_t ret = mAudioSink->open(AFE_PROXY_SAMPLE_RATE,
-                                                AFE_PROXY_CHANNEL_COUNT,
-                                                AUDIO_FORMAT_PCM_16_BIT,
-                                                DEFAULT_AUDIOSINK_BUFFERCOUNT);
-                if(ret) {
-                    postEOSOnError();
-                    return;
-                }
-                mAudioSink->start();
-                LOGV("Resume: After Audio Sink Open");
-                mAudioSinkOpen = true;
-                err = pcm_prepare(capture_handle);
-                if(err != OK) {
-                    LOGE("PCM Prepare - capture failed err = %d", err);
-                }
-                if (ioctl(capture_handle->fd, SNDRV_PCM_IOCTL_START)) {
-                    LOGE("SNDRV_PCM_IOCTL_START call failed with error no %d"\
-                            , errno);
-                    err = -errno;
-                    if (errno == EPIPE) {
-                        LOGE("Failed in SNDRV_PCM_IOCTL_START\n");
-                    } else {
-                        LOGE("IOCTL_START failed for proxy Err no: %d \n", errno);
-                    }
-                } else {
-                    LOGD(" Proxy Driver started(IOCTL_START Success)\n");
-                    capture_handle->start = 1;
-                }
-                mIsPaused = false;
-                mExtractorCv.signal();
-                LOGV("Resume: Waking up the decoder thread");
-            } else {
-                /* If AudioSink is already open just start it */
-                mAudioSink->start();
-                mIsPaused = false;
-                err = pcm_prepare(capture_handle);
-                if(err != OK) {
-                    LOGE("PCM Prepare - capture failed err = %d", err);
-                }
-                if (ioctl(capture_handle->fd, SNDRV_PCM_IOCTL_START)) {
-                    err = -errno;
-                    if (errno == EPIPE) {
-                        LOGE("Failed in SNDRV_PCM_IOCTL_START\n");
-                    } else {
-                        LOGE("IOCTL_START failed for proxy Err no: %d \n", errno);
-                    }
-                } else {
-                    LOGD(" Proxy Driver started(IOCTL_START Success)\n");
-                    capture_handle->start = 1;
-                }
-            }
-            mA2dpCv.signal();
-            mExtractorCv.signal();
         }
     }
+    mIsPaused = false;
+    mExtractorCv.signal();
+
 }
 
 void TunnelPlayer::reset() {
@@ -645,8 +568,8 @@ void TunnelPlayer::reset() {
     struct pcm * local_handle = (struct pcm *)mPlaybackHandle;
     struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
     LOGV("reset() Empty Queue.size() = %d, Filled Queue.size() = %d",\
-            mInputIonEmptyQueue.size(),\
-            mInputIonFilledQueue.size());
+            mInputPmemEmptyQueue.size(),\
+            mInputPmemFilledQueue.size());
 
     // make sure Extractor thread has exited
     requestAndWaitForExtractorThreadExit();
@@ -660,28 +583,17 @@ void TunnelPlayer::reset() {
 
     // Close the audiosink after all the threads exited to make sure
     // there is no thread writing data to audio sink or applying effect
-
-    ionBufferDeAlloc();
-    LOGD("Buffer Deallocation complete! Closing pcm handle");
-    if(local_handle) {
-        pcm_close(local_handle);
-        local_handle = NULL;
-        mPlaybackHandle = (void*)local_handle;
-    }
-
     if (mIsA2DPEnabled) {
-
-        //TODO : Deallocate the buffer for capture side
-        if(capture_handle) {
-            pcm_close(capture_handle);
-            capture_handle = NULL;
-            mCaptureHandle = (void*)capture_handle;
-        }
         mAudioSink->close();
         mAudioSinkOpen = false;
+        //TODO : Deallocate the buffer for capture side
+        pcm_close(capture_handle);
+        mCaptureHandle = (void*)capture_handle;
+
     } else {
         mAudioSink->closeSession();
         mIsAudioRouted =  false;
+
     }
     mAudioSink.clear();
 
@@ -692,17 +604,24 @@ void TunnelPlayer::reset() {
     }
 
     mSource->stop();
-    mSource.clear();
 
-    if(mCaptureBuffer == NULL) {
-        free(mCaptureBuffer);
-        mCaptureBuffer = NULL;
+    // The following hack is necessary to ensure that the OMX
+    // component is completely released by the time we may try
+    // to instantiate it again.
+    wp<MediaSource> tmp = mSource;
+    mSource.clear();
+    while (tmp.promote() != NULL) {
+        usleep(1000);
     }
 
+    pmemBufferDeAlloc();
+    LOGD("Buffer Deallocation complete! Closing pcm handle");
+    pcm_close(local_handle);
+    mPlaybackHandle = (void*)local_handle;
     LOGV("reset() after Empty Queue size = %d,\
             Filled Queue size() = %d ",\
-            mInputIonEmptyQueue.size(),\
-            mInputIonFilledQueue.size());
+            mInputPmemEmptyQueue.size(),\
+            mInputPmemFilledQueue.size());
 
     mPositionTimeMediaUs = -1;
     mPositionTimeRealUs = -1;
@@ -752,8 +671,7 @@ void *TunnelPlayer::extractorThreadWrapper(void *me) {
 void TunnelPlayer::extractorThreadEntry() {
 
     mExtractorMutex.lock();
-    pid_t tid  = gettid();
-    androidSetThreadPriority(tid, ANDROID_PRIORITY_AUDIO);
+    setpriority(PRIO_PROCESS, 0, ANDROID_PRIORITY_AUDIO);
     prctl(PR_SET_NAME, (unsigned long)"Tunnel DecodeThread", 0, 0, 0);
     LOGV("extractorThreadEntry wait for signal \n");
 
@@ -766,45 +684,46 @@ void TunnelPlayer::extractorThreadEntry() {
 
     while (!mKillExtractorThread) {
 
-        mInputIonRequestMutex.lock();
+        mInputPmemRequestMutex.lock();
         LOGV("extractor Empty Queue size() = %d,\
                 Filled Queue size() = %d ",\
-                mInputIonEmptyQueue.size(),\
-                mInputIonFilledQueue.size());
+                mInputPmemEmptyQueue.size(),\
+                mInputPmemFilledQueue.size());
 
-        if (mInputIonEmptyQueue.empty() || mReachedExtractorEOS || mIsPaused ||
+        if (mInputPmemEmptyQueue.empty() || mReachedExtractorEOS || mIsPaused ||
             (mIsA2DPEnabled && !mAudioSinkOpen) || mAsyncReset ) {
             LOGV("extractorThreadEntry: mIsPaused %d  mReachedExtractorEOS %d\
                  mIsA2DPEnabled %d mAudioSinkOpen %d mAsyncReset %d ",\
                  mIsPaused, mReachedExtractorEOS, mIsA2DPEnabled,\
                  mAudioSinkOpen, mAsyncReset);
             LOGV("extractorThreadEntry: waiting on mExtractorCv");
-            mExtractorCv.wait(mInputIonRequestMutex);
+            mExtractorCv.wait(mInputPmemRequestMutex);
             //TODO: Guess this should be removed plz verify
-            mInputIonRequestMutex.unlock();
+            mInputPmemRequestMutex.unlock();
             LOGV("extractorThreadEntry: received a signal to wake up");
             continue;
         }
 
-        mInputIonRequestMutex.unlock();
+        mInputPmemRequestMutex.unlock();
         Mutex::Autolock autoLock1(mSeekLock);
-        mInputIonRequestMutex.lock();
+        mInputPmemRequestMutex.lock();
 
-        List<BuffersAllocated>::iterator it = mInputIonEmptyQueue.begin();
+        List<BuffersAllocated>::iterator it = mInputPmemEmptyQueue.begin();
         BuffersAllocated buf = *it;
-        mInputIonEmptyQueue.erase(it);
-        mInputIonRequestMutex.unlock();
+        mInputPmemEmptyQueue.erase(it);
+        mInputPmemRequestMutex.unlock();
+        //memset(buf.pmemBuf, 0x0, mInputBufferSize);
         LOGV("Calling fillBuffer for size %d",mInputBufferSize);
-        buf.bytesToWrite = fillBuffer(buf.ionBuf, mInputBufferSize);
+        buf.bytesToWrite = fillBuffer(buf.pmemBuf, mInputBufferSize);
         LOGV("fillBuffer returned size %d",buf.bytesToWrite);
         if (buf.bytesToWrite <= 0) {
-            mInputIonRequestMutex.lock();
-            mInputIonEmptyQueue.push_back(buf);
-            mInputIonRequestMutex.unlock();
+            mInputPmemRequestMutex.lock();
+            mInputPmemEmptyQueue.push_back(buf);
+            mInputPmemRequestMutex.unlock();
             /*Post EOS to Awesome player when i/p EOS is reached,
             all input buffers have been decoded and response queue is empty*/
             if(mObserver && mReachedExtractorEOS &&
-                       mInputIonFilledQueue.empty()) {
+                       mInputPmemFilledQueue.empty()) {
                 LOGD("Posting EOS event..zero byte buffer and\
                         response queue is empty");
                 mReachedDecoderEOS = true;
@@ -812,9 +731,9 @@ void TunnelPlayer::extractorThreadEntry() {
             }
             continue;
         }
-        mInputIonResponseMutex.lock();
-        mInputIonFilledQueue.push_back(buf);
-        mInputIonResponseMutex.unlock();
+        mInputPmemResponseMutex.lock();
+        mInputPmemFilledQueue.push_back(buf);
+        mInputPmemResponseMutex.unlock();
 
         LOGV("Start Event thread\n");
         mEventCv.signal();
@@ -823,7 +742,7 @@ void TunnelPlayer::extractorThreadEntry() {
         }
         LOGV("PCM write start");
         struct pcm * local_handle = (struct pcm *)mPlaybackHandle;
-        pcm_write(local_handle, buf.ionBuf, local_handle->period_size);
+        pcm_write(local_handle, buf.pmemBuf, local_handle->period_size);
 
         if (mReachedExtractorEOS) {
             //TODO : Is this code reqd - start seems to fail?
@@ -833,16 +752,16 @@ void TunnelPlayer::extractorThreadEntry() {
                 local_handle->start = 1;
         }
         if (buf.bytesToWrite < mInputBufferSize &&
-                    mInputIonFilledQueue.size() == 1) {
+                    mInputPmemFilledQueue.size() == 1) {
             LOGD("Last buffer case");
             uint64_t writeValue = SIGNAL_EVENT_THREAD;
             write(mEfd, &writeValue, sizeof(uint64_t));
         }
         LOGV("PCM write complete");
-        if (mIsA2DPEnabled) {
-            LOGV("A2DP signal");
+
+        if (mIsA2DPEnabled)
             mA2dpCv.signal();
-        }
+
     }
     mExtractorThreadAlive = false;
     LOGD("Extractor Thread is dying");
@@ -864,8 +783,7 @@ void  TunnelPlayer::eventThreadEntry() {
     struct pcm * local_handle = NULL;
     mEventMutex.lock();
     mTimeout = -1;
-    pid_t tid  = gettid();
-    androidSetThreadPriority(tid, ANDROID_PRIORITY_AUDIO);
+    setpriority(PRIO_PROCESS, 0, ANDROID_PRIORITY_AUDIO);
     prctl(PR_SET_NAME, (unsigned long)"Tunnel EventThread", 0, 0, 0);
 
     while(!mStarted && !mKillEventThread) {
@@ -891,7 +809,7 @@ void  TunnelPlayer::eventThreadEntry() {
 	LOGV("pfd[0].revents =%d ", pfd[0].revents);
 	LOGV("pfd[1].revents =%d ", pfd[1].revents);
         if (err_poll == EINTR)
-            LOGD("Timer is intrrupted");
+            LOGE("Timer is intrrupted");
         if (pfd[1].revents & POLLIN) {
             uint64_t u;
             read(mEfd, &u, sizeof(uint64_t));
@@ -899,7 +817,7 @@ void  TunnelPlayer::eventThreadEntry() {
                     (unsigned long long)u);
             pfd[1].revents = 0;
             if (u == SIGNAL_EVENT_THREAD) {
-                LOGV("Setting timeout last buffer");
+                LOGV("### Setting timeout last buffer");
                 {
                     Mutex::Autolock autoLock(mLock);
                     mTimeout = ((mDurationUs -
@@ -908,7 +826,7 @@ void  TunnelPlayer::eventThreadEntry() {
                 LOGV("Setting timeout due Last buffer seek to %d,\
                         mReachedExtractorEOS %d, Fille Queue size() %d",\
                         mTimeout, mReachedExtractorEOS,\
-                        mInputIonFilledQueue.size());
+                        mInputPmemFilledQueue.size());
                 continue;
             }
         }
@@ -942,29 +860,29 @@ void  TunnelPlayer::eventThreadEntry() {
 
             {
                 Mutex::Autolock autoLock(mLock);
-                mInputIonResponseMutex.lock();
-                BuffersAllocated buf = *(mInputIonFilledQueue.begin());
-                mInputIonFilledQueue.erase(mInputIonFilledQueue.begin());
+                mInputPmemResponseMutex.lock();
+                BuffersAllocated buf = *(mInputPmemFilledQueue.begin());
+                mInputPmemFilledQueue.erase(mInputPmemFilledQueue.begin());
                 /*If the rendering is complete report EOS to the AwesomePlayer*/
                 if (mObserver && !mAsyncReset && mReachedExtractorEOS &&
-                        mInputIonFilledQueue.size() == 1) {
+                        mInputPmemFilledQueue.size() == 1) {
                       mTimeout = ((mDurationUs -
                               (mSeekTimeUs + getAudioTimeStampUs())) / 1000);
 
                     LOGD("Setting timeout to %d, mReachedExtractorEOS %d,\
                              Filled Queue size() %d", mTimeout,\
                              mReachedExtractorEOS,\
-                             mInputIonFilledQueue.size());
+                             mInputPmemFilledQueue.size());
                 }
 
-                mInputIonResponseMutex.unlock();
+                mInputPmemResponseMutex.unlock();
                 // Post buffer to request Q
 
-                mInputIonRequestMutex.lock();
+                mInputPmemRequestMutex.lock();
 
-                mInputIonEmptyQueue.push_back(buf);
+                mInputPmemEmptyQueue.push_back(buf);
 
-                mInputIonRequestMutex.unlock();
+                mInputPmemRequestMutex.unlock();
                 mExtractorCv.signal();
             }
         }
@@ -1007,95 +925,81 @@ void TunnelPlayer::A2DPNotificationThreadEntry() {
                 LOGV("Close Session");
                 if (mAudioSink.get() != NULL) {
                     mAudioSink->closeSession();
+                    LOGV("mAudioSink close session");
                     mIsAudioRouted = false;
                 } else {
                     LOGE("close session NULL");
                 }
 
                 // Open  and Start Sink
-                status_t err = mAudioSink->open(AFE_PROXY_SAMPLE_RATE,
-                        AFE_PROXY_CHANNEL_COUNT,
+                status_t err = mAudioSink->open(mSampleRate, mNumChannels,
                         AUDIO_FORMAT_PCM_16_BIT,
                         DEFAULT_AUDIOSINK_BUFFERCOUNT);
                 mAudioSink->start();
                 LOGV("After Audio Sink Open");
                 mAudioSinkOpen = true;
             }
-
-            err = setCaptureMixerControl(1);
-            if(err) {
-                LOGE("setCaptureMixerControl failed err = %d",err);
-                postEOSOnError();
-                continue;
-            }
             // open capture device
-            char *captureDevice = (char *) "hw:0,8";
+            //TODO : What is the proxy afe device?
+            char *captureDevice = (char *) "hw:0,x";
             LOGV("pcm_open capture device hardware %s for Tunnel Mode ",\
                     captureDevice);
 
-            {
-                Mutex::Autolock autolock (mA2dpMutex);
-                // Open the capture device
+            // Open the capture device
+            if (mNumChannels == 1)
+                mCaptureHandle = (void *)pcm_open((PCM_MMAP | DEBUG_ON | PCM_MONO |
+                        PCM_IN), captureDevice);
+            else
                 mCaptureHandle = (void *)pcm_open((PCM_MMAP | DEBUG_ON | PCM_STEREO |
-                            PCM_IN) , captureDevice);
-                struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
-                if (!capture_handle) {
-                    LOGE("Failed to initialize ALSA hardware hw:0,8");
-                    postEOSOnError();
-                    continue;
-                }
-
-                capture_handle->flags = (DEBUG_ON | PCM_MMAP| PCM_STEREO | PCM_IN);
-
-                //Set the hardware and software params for the capture device
-                err = setCaptureALSAParams();
-                if(err != OK) {
-                    LOGE("Set Capture AALSA Params = %d", err);
-                    postEOSOnError();
-                    continue;
-                }
-
-                mmap_buffer(capture_handle);
-
-                //Prepare the capture  device
-                err = pcm_prepare(capture_handle);
-                if(err != OK) {
-                    LOGE("PCM Prepare - capture failed err = %d", err);
-                    postEOSOnError();
-                    continue;
-                }
-                mCaptureHandle = (void *)capture_handle;
+                        PCM_IN) , captureDevice);
+            struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
+            if (!capture_handle) {
+                LOGE("Failed to initialize ALSA hardware hw:0,4");
+                break;
             }
+
+            //Set the hardware and software params for the capture device
+            err = setCaptureALSAParams();
+            if(err != OK) {
+                LOGE("Set Capture AALSA Params = %d", err);
+                break;
+            }
+
+            //MMAP the capture buffer
+            mmap_buffer(capture_handle);
+            //Prepare the capture  device
+            err = pcm_prepare(capture_handle);
+            if(err != OK) {
+                LOGE("PCM Prepare - capture failed err = %d", err);
+                break;
+            }
+            mCaptureHandle = (void *)capture_handle;
+            //TODO:set the mixer controls for proxy port
+            //mixer_cntl_set
+            //TODO : Allocate the buffer required from capture side
+
             // RESUME
             if(!mIsPaused) {
                 if (ioctl(((struct pcm *)mPlaybackHandle)->fd,
-                         SNDRV_PCM_IOCTL_PAUSE,0) < 0) {
+                         SNDRV_PCM_IOCTL_PAUSE,0) < 0)
                     LOGE("AUDIO Resume failed");
-                    postEOSOnError();
-                    continue;
-                }
                 LOGV("Sync resume done\n");
             }
 
             // Signal Extractor thread
             LOGD("Signalling to extractor condition variable");
-            if(!err) {
-                mExtractorCv.signal();
-                mA2dpCv.signal();
-            }
+            mExtractorCv.signal();
+
+            //A2DP thread will be signalled from extractor thread
+
         } else {
+
             // Stop and close the sink
             mAudioSink->stop();
             mAudioSink->close();
             mAudioSinkOpen = false;
             LOGV("resume:: opening audio session with mSampleRate %d\
                     numChannels %d ", mSampleRate, mNumChannels);
-            // Mixer control disable
-            err = setCaptureMixerControl(0);
-            if(err) {
-                LOGE("setCaptureMixerControl failed err = %d",err);
-                postEOSOnError();
-            }
 
             // open session / pause session
             err = mAudioSink->openSession(AUDIO_FORMAT_PCM_16_BIT,
@@ -1106,33 +1010,17 @@ void TunnelPlayer::A2DPNotificationThreadEntry() {
 
             // stop capture device
             //TODO : De allocate the buffer for capture side
-            {
-                if(mA2DPEfd != -1) {
-                    uint64_t writeValue = SIGNAL_A2DP_THREAD;
-                    LOGD("Writing to mEfd %d",mA2DPEfd);
-                    write(mA2DPEfd, &writeValue, sizeof(uint64_t));
-                }
+            pcm_close((struct pcm *)mCaptureHandle);
 
-                Mutex::Autolock autolock (mA2dpMutex);
-                pcm_close((struct pcm *)mCaptureHandle);
-                mCaptureHandle = NULL;
-            }
-
-            if(mCaptureBuffer) {
-                free(mCaptureBuffer);
-                mCaptureBuffer = NULL;
-            }
+            // Mixer control disable
 
             // Signal extractor thread
-           if(!err)
-               mExtractorCv.signal();
-               //TODO: check if we need to signal A2Dp thread
+            mExtractorCv.signal(); //check if we need to signal A2Dp thread
         }
     }
-    //TODO : Need to see if internal seek is required
-    //  Since in the decoding is in dsp it might
-    //  not be require.
-
+//TODO : Need to see if internal seek is required
+//       Since in the decoding is in dsp it might
+//       not be require
     mA2dpNotificationThreadAlive = false;
     LOGD("A2DPNotificationThread is dying");
 
@@ -1143,227 +1031,33 @@ void *TunnelPlayer::A2DPThreadWrapper(void *me) {
 }
 
 void TunnelPlayer::A2DPThreadEntry() {
-
-    pid_t tid  = gettid();
-    androidSetThreadPriority(tid, ANDROID_PRIORITY_AUDIO);
-    prctl(PR_SET_NAME, (unsigned long)"Tunnel A2DPThread", 0, 0, 0);
-    int ionBufCount = 0;
-    uint32_t bytesWritten = 0;
-    uint32_t numBytesRemaining = 0;
-    uint32_t bytesAvailInBuffer = 0;
-    struct snd_xferi x;
-    unsigned avail = 0;
-    struct pollfd pfdProxy[NUM_FDS];
-    void  *data;
-    long frames = 0;
-    int err = NO_ERROR;
-    int err_poll = 0;
-    x.frames = 0;
-
-    while(!mKillA2DPThread) {
-
-        if(!mIsA2DPEnabled) {
-             bytesWritten = 0;
-             numBytesRemaining = 0;
-             bytesAvailInBuffer = 0;
-             avail = 0;
-             frames = 0;
-             x.frames = 0;
-             err = NO_ERROR;
-             err_poll = 0;
-             if(mA2DPEfd != -1) {
-                 close(mA2DPEfd);
-                 mA2DPEfd = -1;
-             }
-        }
-
-        {
-
-            Mutex::Autolock autolock(mA2dpMutex);
-            struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
-
-            if (!mAudioSinkOpen || mIsPaused || !mIsA2DPEnabled ||
-                    mReachedDecoderEOS || !capture_handle || (err != NO_ERROR)) {
-                LOGD("A2DPThreadEntry:: mAudioSinkOpen %d isPaused %d\
-                       bIsA2DPEnabled %d",\
-                       mAudioSinkOpen, mIsPaused,\
-                       mIsA2DPEnabled);
-                LOGD("A2DPThreadEntry:: Waiting on mA2DPCv");
-                mA2dpCv.wait(mA2dpMutex);
-                LOGD("A2DPThreadEntry:: received signal to wake up");
-                mA2dpMutex.unlock();
-                continue;
-            }
-
-            //TODO: Check capture fd also here!!!
-            if(mA2DPEfd == -1) {
-                LOGV("Allocating A2Dp poll fd");
-                pfdProxy[0].fd = capture_handle->fd;
-                pfdProxy[0].events = (POLLIN | POLLERR | POLLNVAL);
-                LOGV("Allocated A2DP poll fd");
-                mA2DPEfd = eventfd(0,0);
-                pfdProxy[1].fd = mA2DPEfd;
-                pfdProxy[1].events = (POLLIN | POLLERR | POLLNVAL);
-                frames = (capture_handle->flags & PCM_MONO) ?
-                         (capture_handle->period_size / 2) :
-                         (capture_handle->period_size / 4);
-                x.frames = (capture_handle->flags & PCM_MONO) ?
-                           (capture_handle->period_size / 2) :
-                           (capture_handle->period_size / 4);
-            }
-            CHECK(capture_handle);
-            if ((!capture_handle->start && !mKillA2DPThread )) {
-                if (ioctl(capture_handle->fd, SNDRV_PCM_IOCTL_START)) {
-                    err = -errno;
-                    if (errno == EPIPE) {
-                        LOGV("Failed in SNDRV_PCM_IOCTL_START\n");
-                        /* we failed to make our window -- try to restart */
-                        capture_handle->underruns++;
-                        capture_handle->running = 0;
-                        capture_handle->start = 0;
-                        continue;
-                    } else {
-                        LOGE("IOCTL_START failed for proxy err: %d \n", errno);
-                        postEOSOnError();
-                        continue;
-                    }
-                } else {
-                    LOGD(" Proxy Driver started(IOCTL_START Success)\n");
-                    capture_handle->start = 1;
-                }
-            }
-
-            capture_handle->sync_ptr->flags = SNDRV_PCM_SYNC_PTR_APPL |
-                   SNDRV_PCM_SYNC_PTR_AVAIL_MIN;
-
-            while(!mKillA2DPThread &&  mIsA2DPEnabled &&  !mReachedDecoderEOS) {
-                LOGV("Calling sync_ptr(proxy");
-                err = sync_ptr(capture_handle);
-                if(err == EPIPE) {
-                    LOGE("Failed in sync_ptr \n");
-                    /* we failed to make our window -- try to restart */
-                    capture_handle->underruns++;
-                    capture_handle->running = 0;
-                    capture_handle->start = 0;
-                    continue;
-                }else if(err != NO_ERROR){
-                    LOGE("Error: Sync ptr returned %d", err);
-                    postEOSOnError();
-                    break;
-                }
-
-                avail = pcm_avail(capture_handle);
-                LOGV("avail is = %d frames = %ld, avai_min = %d\n",\
-                         avail, frames,(int)capture_handle->sw_p->avail_min);
-                if (avail < capture_handle->sw_p->avail_min) {
-                    err_poll = poll(pfdProxy, NUM_FDS, TIMEOUT_INFINITE);
-                    if (pfdProxy[1].revents & POLLIN) {
-                       LOGV("Event on userspace fd");
-                    }
-                    if ((pfdProxy[1].revents & POLLERR) ||
-                            (pfdProxy[1].revents & POLLNVAL)) {
-                        LOGV("POLLERR or INVALID POLL");
-                        err = BAD_VALUE;
-                        postEOSOnError();
-                        break;
-                    }
-                    if((pfdProxy[0].revents & POLLERR) ||
-                            (pfdProxy[0].revents & POLLNVAL)) {
-                        LOGV("POLLERR or INVALID POLL on zero");
-                        err = BAD_VALUE;
-                        postEOSOnError();
-                        break;
-                    }
-                    if (pfdProxy[0].revents & POLLIN) {
-                        LOGV("POLLIN on zero");
-                    }
-                    LOGV("err_poll = %d",err_poll);
-                    continue;
-                }
-                break;
-            }
-            if (x.frames > avail)
-                frames = avail;
-
-            data  = dst_address(capture_handle);
-            if(mCaptureBuffer == NULL)
-                mCaptureBuffer =  malloc(mCaptureBufferSize);
-            memcpy(mCaptureBuffer, (char *)data, mCaptureBufferSize);
-
-            x.frames -= frames;
-            capture_handle->sync_ptr->c.control.appl_ptr += frames;
-            capture_handle->sync_ptr->flags = 0;
-            LOGV("Calling sync_ptr for proxy after sync");
-            err = sync_ptr(capture_handle);
-            if(err == EPIPE) {
-                LOGV("Failed in sync_ptr \n");
-                capture_handle->running = 0;
-                //TODO :should return error here
-                continue;
-            }else if( err != NO_ERROR ){
-                LOGE("Error: Sync ptr returned %d", err);
-                postEOSOnError();
-                break;
-            }
-        }
-        void *copyBuffer = mCaptureBuffer;
-        numBytesRemaining = mCaptureBufferSize;
-        while (err == OK && (numBytesRemaining  > 0) && !mKillA2DPThread
-                && mIsA2DPEnabled &&  !mReachedDecoderEOS) {
-           if(mIsPaused && numBytesRemaining) {
-                mA2dpMutex.lock();
-                LOGV("Paused : wait  for A2DPCV");
-                mA2dpCv.wait(mA2dpMutex);
-                LOGV("Signalled!!!!");
-                mA2dpMutex.unlock();
-                continue;
-            }
-            bytesAvailInBuffer = mAudioSink->bufferSize();
-            uint32_t writeLen = bytesAvailInBuffer > numBytesRemaining ?
-                    numBytesRemaining : bytesAvailInBuffer;
-            LOGV("Writing %d bytes to A2DP ", writeLen);
-            bytesWritten = mAudioSink->write(copyBuffer, writeLen);
-            LOGV("bytesWritten = %d",bytesWritten);
-            //Need to check warning here - void used in arithmetic
-            copyBuffer = (char *)copyBuffer + bytesWritten;
-            numBytesRemaining -= bytesWritten;
-            LOGV("@_@bytes To write2:%d",numBytesRemaining);
-        }
-    }
-
-    if(mA2DPEfd != -1) {
-        close(mA2DPEfd);
-        mA2DPEfd = -1;
-    }
-    mA2dpThreadAlive = false;
-    LOGD("A2DP Thread is dying");
 }
 
-void TunnelPlayer::ionBufferAlloc(int32_t nSize) {
+void TunnelPlayer::pmemBufferAlloc(int32_t nSize) {
 
-    void  *ion_buf = NULL;
+    void  *pmem_buf = NULL;
     int i = 0;
 
     struct pcm * local_handle = (struct pcm *)mPlaybackHandle;
 
     for (i = 0; i < mInputBufferCount; i++) {
-        ion_buf = (int32_t *)local_handle->addr + (nSize * i/sizeof(int));
-        BuffersAllocated buf(ion_buf, nSize);
-        memset(buf.ionBuf, 0x0, nSize);
-        mInputIonEmptyQueue.push_back(buf);
+        pmem_buf = (int32_t *)local_handle->addr + (nSize * i/sizeof(int));
+        BuffersAllocated buf(pmem_buf, nSize);
+        memset(buf.pmemBuf, 0x0, nSize);
+        mInputPmemEmptyQueue.push_back(buf);
         mInputBufPool.push_back(buf);
     }
-    LOGV("ionBufferAlloc calling with required size %d", nSize);
-    LOGD("The ION that is allocated - buffer is %x",\
-           (unsigned int)ion_buf);
+    LOGV("pmemBufferAlloc calling with required size %d", nSize);
+    LOGD("The PMEM that is allocated - buffer is %x",\
+            (unsigned int)pmem_buf);
 }
 
-void TunnelPlayer::ionBufferDeAlloc() {
+void TunnelPlayer::pmemBufferDeAlloc() {
 
     //Remove all the buffers from request queue
     while (!mInputBufPool.empty()) {
         List<BuffersAllocated>::iterator it = mInputBufPool.begin();
-        BuffersAllocated &ionBuffer = *it;
+        BuffersAllocated &pmemBuffer = *it;
         LOGD("Removing input buffer from Buffer Pool ");
         mInputBufPool.erase(it);
     }
@@ -1526,11 +1220,9 @@ void TunnelPlayer::requestAndWaitForEventThreadExit() {
     if (!mEventThreadAlive)
         return;
     mKillEventThread = true;
-    if(mEfd != -1) {
-        uint64_t writeValue = KILL_EVENT_THREAD;
-        LOGD("Writing to mEfd %d",mEfd);
-        write(mEfd, &writeValue, sizeof(uint64_t));
-    }
+    uint64_t writeValue = KILL_EVENT_THREAD;
+    LOGE("Writing to mEfd %d",mEfd);
+    write(mEfd, &writeValue, sizeof(uint64_t));
     mEventCv.signal();
     pthread_join(mEventThread,NULL);
     LOGD("event thread killed");
@@ -1538,16 +1230,9 @@ void TunnelPlayer::requestAndWaitForEventThreadExit() {
 
 void TunnelPlayer::requestAndWaitForA2DPThreadExit() {
 
-    if (!mA2dpThreadAlive) {
-        LOGD("Return - thread not live");
+    if (!mA2dpThreadAlive)
         return;
-    }
     mKillA2DPThread = true;
-    if(mA2DPEfd != -1) {
-        uint64_t writeValue = KILL_A2DP_THREAD;
-        LOGD("Writing to mEfd %d",mEfd);
-        write(mA2DPEfd, &writeValue, sizeof(uint64_t));
-    }
     mA2dpCv.signal();
     pthread_join(mA2DPThread,NULL);
     LOGD("a2dp thread killed");
@@ -1583,22 +1268,22 @@ void TunnelPlayer::onPauseTimeOut() {
             mTimeout = -1;
         }
 
-        LOGD("onPauseTimeOut seektime= %lld", mSeekTimeUs);
+        LOGE("onPauseTimeOut seektime= %lld", mSeekTimeUs);
 
-        mInputIonResponseMutex.lock();
-        mInputIonRequestMutex.lock();
-        mInputIonFilledQueue.clear();
-        mInputIonEmptyQueue.clear();
+        mInputPmemResponseMutex.lock();
+        mInputPmemRequestMutex.lock();
+        mInputPmemFilledQueue.clear();
+        mInputPmemEmptyQueue.clear();
         List<BuffersAllocated>::iterator it = mInputBufPool.begin();
         for(;it!=mInputBufPool.end();++it) {
-             mInputIonEmptyQueue.push_back(*it);
+             mInputPmemEmptyQueue.push_back(*it);
         }
-        mInputIonRequestMutex.unlock();
-        mInputIonResponseMutex.unlock();
+        mInputPmemRequestMutex.unlock();
+        mInputPmemResponseMutex.unlock();
         LOGV("onPauseTimeOut after Empty Queue size() = %d,\
                 Filled Queue.size() = %d ",\
-                mInputIonEmptyQueue.size(),\
-                mInputIonFilledQueue.size());
+                mInputPmemEmptyQueue.size(),\
+                mInputPmemFilledQueue.size());
         mAudioSink->closeSession();
         mIsAudioRouted = false;
         release_wake_lock("TUNNEL_LOCK");
@@ -1641,8 +1326,7 @@ status_t  TunnelPlayer::setPlaybackALSAParams() {
         goto fail;
     }
 
-    hwParams = (struct snd_pcm_hw_params*)
-           calloc(1, sizeof(struct snd_pcm_hw_params));
+    hwParams = (struct snd_pcm_hw_params*) calloc(1, sizeof(struct snd_pcm_hw_params));
     if (!hwParams) {
         LOGV( "Failed to allocate ALSA hardware parameters!");
         err = -1;
@@ -1652,17 +1336,15 @@ status_t  TunnelPlayer::setPlaybackALSAParams() {
     param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_ACCESS,
             (pcm_handle->flags & PCM_MMAP) ? SNDRV_PCM_ACCESS_MMAP_INTERLEAVED
             : SNDRV_PCM_ACCESS_RW_INTERLEAVED);
-    param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_FORMAT,
-            SNDRV_PCM_FORMAT_S16_LE);
+    param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FORMAT_S16_LE);
     param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_SUBFORMAT,
             SNDRV_PCM_SUBFORMAT_STD);
 
    if(mHasVideo)
         param_set_min(hwParams, SNDRV_PCM_HW_PARAM_PERIOD_TIME, 10);
    else {
-        mInputBufferSize = ION_BUFFER_SIZE;
-        param_set_min(hwParams, SNDRV_PCM_HW_PARAM_PERIOD_BYTES,
-                mInputBufferSize);
+        mInputBufferSize = PMEM_BUFFER_SIZE;
+        param_set_min(hwParams, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, mInputBufferSize);
    }
 
     param_set_int(hwParams, SNDRV_PCM_HW_PARAM_SAMPLE_BITS, 16);
@@ -1686,15 +1368,14 @@ status_t  TunnelPlayer::setPlaybackALSAParams() {
 
     mInputBufferSize =  pcm_handle->period_size;
     mInputBufferCount =  pcm_handle->period_cnt;
-    /*if(mInputBufferCount > (ION_BUFFER_COUNT << 1)) {
-        LOGE("mInputBufferCount = %d , (ION_BUFFER_COUNT << 1) = %d,\
-        ION_BUFFER_COUNT = %d",mInputBufferCount,\
-        (ION_BUFFER_COUNT << 1), ION_BUFFER_COUNT);
-        mInputBufferCount = (ION_BUFFER_COUNT << 1);
+    /*if(mInputBufferCount > (PMEM_BUFFER_COUNT << 1)) {
+        LOGE("mInputBufferCount = %d , (PMEM_BUFFER_COUNT << 1) = %d,\
+        PMEM_BUFFER_COUNT = %d",mInputBufferCount,\
+        (PMEM_BUFFER_COUNT << 1), PMEM_BUFFER_COUNT);
+        mInputBufferCount = (PMEM_BUFFER_COUNT << 1);
     }*/
 
-    swParams = (struct snd_pcm_sw_params*)
-            calloc(1, sizeof(struct snd_pcm_sw_params));
+    swParams = (struct snd_pcm_sw_params*) calloc(1, sizeof(struct snd_pcm_sw_params));
     if (!swParams) {
         LOGV( "Failed to allocate ALSA software parameters!\n");
         err = -1;
@@ -1731,39 +1412,32 @@ status_t  TunnelPlayer::setCaptureALSAParams() {
 
      LOGV("setCaptureALSAParams");
 
-    capture_handle->channels = AFE_PROXY_CHANNEL_COUNT;
-    capture_handle->rate = AFE_PROXY_SAMPLE_RATE;
-    capture_handle->period_size = AFE_PROXY_PERIOD_SIZE;
+     hwParams = (struct snd_pcm_hw_params*) calloc(1, sizeof(struct snd_pcm_hw_params));
+     if (!hwParams) {
+          LOGE("Failed to allocate ALSA hardware parameters - Capture!");
+          err = -ENOMEM;
+          goto fail;
+     }
 
-    hwParams = (struct snd_pcm_hw_params*)
-             calloc(1, sizeof(struct snd_pcm_hw_params));
-    if (!hwParams) {
-         LOGE("Failed to allocate ALSA hardware parameters - Capture!");
-         err = -ENOMEM;
-         goto fail;
-    }
+     param_init(hwParams);
 
-    param_init(hwParams);
+     param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_ACCESS,
+             (capture_handle->flags & PCM_MMAP)?
+             SNDRV_PCM_ACCESS_MMAP_INTERLEAVED :
+             SNDRV_PCM_ACCESS_RW_INTERLEAVED);
+     param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FORMAT_S16_LE);
+     param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_SUBFORMAT,
+                    SNDRV_PCM_SUBFORMAT_STD);
+     param_set_min(hwParams, SNDRV_PCM_HW_PARAM_PERIOD_BYTES,
+             PMEM_CAPTURE_BUFFER_SIZE);
 
-    param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_ACCESS,
-            (capture_handle->flags & PCM_MMAP)?
-            SNDRV_PCM_ACCESS_MMAP_INTERLEAVED :
-            SNDRV_PCM_ACCESS_RW_INTERLEAVED);
-    param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FORMAT_S16_LE);
-    param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_SUBFORMAT,
-            SNDRV_PCM_SUBFORMAT_STD);
-    param_set_min(hwParams, SNDRV_PCM_HW_PARAM_PERIOD_BYTES,
-            capture_handle->period_size);
 
-     //param_set_min(hwParams, SNDRV_PCM_HW_PARAM_PERIOD_TIME, 10);
+     //param_set_min(params, SNDRV_PCM_HW_PARAM_PERIOD_TIME, 10);
      param_set_int(hwParams, SNDRV_PCM_HW_PARAM_SAMPLE_BITS, 16);
      param_set_int(hwParams, SNDRV_PCM_HW_PARAM_FRAME_BITS,
-                    (AFE_PROXY_CHANNEL_COUNT - 1) ? 32 : 16);
-
-     param_set_int(hwParams, SNDRV_PCM_HW_PARAM_CHANNELS,
-             capture_handle->channels);
-     param_set_int(hwParams, SNDRV_PCM_HW_PARAM_RATE,
-             capture_handle->rate);
+                    mNumChannels - 1 ? 32 : 16);
+     param_set_int(hwParams, SNDRV_PCM_HW_PARAM_CHANNELS, mNumChannels);
+     param_set_int(hwParams, SNDRV_PCM_HW_PARAM_RATE, mSampleRate);
 
      param_set_hw_refine(capture_handle, hwParams);
 
@@ -1782,12 +1456,8 @@ status_t  TunnelPlayer::setCaptureALSAParams() {
      LOGV("Capture - buffer_size (%d)", capture_handle->buffer_size);
      LOGV("Capture - period_cnt  (%d)\n", capture_handle->period_cnt);
 
-     mCaptureBufferSize = capture_handle->period_size;
-     mCaptureBufferCount = capture_handle->period_cnt;
-
      //Set Software params
-     swParams = (struct snd_pcm_sw_params*)
-            calloc(1, sizeof(struct snd_pcm_sw_params));
+     swParams = (struct snd_pcm_sw_params*) calloc(1, sizeof(struct snd_pcm_sw_params));
      if (!swParams) {
          LOGE("Failed to allocate ALSA software parameters -Capture !\n");
          err = -ENOMEM;
@@ -1799,7 +1469,8 @@ status_t  TunnelPlayer::setCaptureALSAParams() {
      swParams->avail_min = (capture_handle->flags & PCM_MONO) ?
              capture_handle->period_size/2 : capture_handle->period_size/4;
      swParams->start_threshold = 1;
-     swParams->stop_threshold = capture_handle->buffer_size;
+     swParams->stop_threshold = (capture_handle->flags & PCM_MONO) ?
+            capture_handle->buffer_size/2 : capture_handle->buffer_size/4;
 
      /* needed for old kernels */
      swParams->xfer_align = (capture_handle->flags & PCM_MONO) ?
@@ -1839,7 +1510,7 @@ bool TunnelPlayer::isReadyToPostEOS(int errPoll, void *fd) {
             (errPoll == 0 || (pfd[0].revents & POLLIN &&
 
             //Filled Queue has only the last buffer
-            mInputIonFilledQueue.size() == 1)) &&
+            mInputPmemFilledQueue.size() == 1)) &&
 
             //EOS from parser set to true
             mReachedExtractorEOS &&
@@ -1865,116 +1536,8 @@ bool TunnelPlayer::isReadyToPostEOS(int errPoll, void *fd) {
     else {
         return false;
     }
-}
-
-status_t TunnelPlayer::setCaptureMixerControl(int value) {
 
 
-    struct mixer *mixer;
-    struct mixer_ctl *ctl;
-    LOGD("setCaptureMixerControl = %d", value);
-    status_t status = NO_ERROR;
-    const char* device = "/dev/snd/controlC0";
-
-    mixer = mixer_open(device);
-    if (!mixer){
-        LOGE("Mixer Open failed ");
-        return -1;
-    }
-
-    ctl = mixer_get_control(mixer , "AFE_PCM_RX Audio Mixer MultiMedia4" ,0);
-    if (!ctl) {
-        LOGE("Cannot find control\n");
-        mixer_close(mixer);
-        return -1;
-    }
-
-    status =  mixer_ctl_set(ctl, value );
-    if(status) {
-        LOGE("mixer_ctl_set set failed");
-        return status;
-    }
-
-    if(value == 1) {
-        ctl = mixer_get_control(mixer, "COMPRESSED RX Volume", 0);
-        if (!ctl) {
-            LOGE("Volume : Cannot find control\n");
-            mixer_close(mixer);
-            return -1;
-        }
-        status =  mixer_ctl_set(ctl, 100 );
-        if(status) {
-            LOGE("Volume : mixer_ctl_set set failed");
-            return status;
-        }
-    }
-
-    mixer_close(mixer);
-
-    return status;
-}
-
-void TunnelPlayer::postEOSOnError() {
-    mFinalStatus = BAD_VALUE;
-    mReachedDecoderEOS = true;
-    if(mObserver) {
-        mObserver->postAudioEOS();
-    }
-}
-
-status_t  TunnelPlayer::syncResume(void *handle) {
-
-    status_t err = NO_ERROR;
-        struct pcm * local_handle = (struct pcm *)handle;
-        if (!(mSeeking || mInternalSeeking)) {
-            if (ioctl(local_handle->fd, SNDRV_PCM_IOCTL_PAUSE,0) < 0) {
-                LOGE("AUDIO Resume failed");
-                postEOSOnError();
-                return err;
-            }
-            LOGV("Sync resume done\n");
-        }
-        else {
-            local_handle->start = 0;
-            err = pcm_prepare(local_handle);
-            if(err) {
-                postEOSOnError();
-                return err;
-            }
-            LOGV("Reset, drain and prepare completed");
-            local_handle->sync_ptr->flags =
-                    SNDRV_PCM_SYNC_PTR_APPL | SNDRV_PCM_SYNC_PTR_AVAIL_MIN;
-            sync_ptr(local_handle);
-            LOGV("appl_ptr= %d",\
-                    (int)local_handle->sync_ptr->c.control.appl_ptr);
-
-        }
-    return err;
-
-}
-
-status_t TunnelPlayer::flush(void * handle) {
-
-     struct pcm * local_handle = (struct pcm *)handle;
-     status_t err = NO_ERROR;
-     if (!mIsPaused) {
-         if (ioctl(local_handle->fd, SNDRV_PCM_IOCTL_PAUSE,1) < 0) {
-              LOGE("Audio Pause failed");
-              return UNKNOWN_ERROR;
-         }
-         local_handle->start = 0;
-         err = pcm_prepare(local_handle);
-         if(err)
-             return err;
-         LOGV("Reset, drain and prepare completed");
-         local_handle->sync_ptr->flags =
-                  SNDRV_PCM_SYNC_PTR_APPL | SNDRV_PCM_SYNC_PTR_AVAIL_MIN;
-         sync_ptr(local_handle);
-         LOGV("appl_ptr= %d",\
-                   (int)local_handle->sync_ptr->c.control.appl_ptr);
-
-     }
-    return err;
 }
 
 } //namespace android
