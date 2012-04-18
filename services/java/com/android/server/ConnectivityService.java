@@ -3334,11 +3334,13 @@ private NetworkStateTracker makeWimaxStateTracker() {
 
         mFmcSM = FmcStateMachine.create(mContext, mListener, this);
         if (mFmcSM != null) {
-            try {
-                mListener.onFmcStatus(mFmcSM.getStatus());
-            } catch (RemoteException e) {
-                Slog.d(TAG, "RemoteException " + e.getMessage());
-            }
+            //try {
+                // if we try to notify FMC status at this moment, we will get FMC_CLOSE
+                // This notification will make UI layer confuse about FMC status
+                // mListener.onFmcStatus(mFmcSM.getStatus());
+            //} catch (RemoteException e) {
+                //Slog.d(TAG, "RemoteException " + e.getMessage());
+            //}
             mFmcEnabled = mFmcSM.startFmc();
             Slog.d(TAG, "mFmcEnabled=" + mFmcEnabled);
             return mFmcEnabled;

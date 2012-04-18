@@ -68,7 +68,7 @@ public class NetworkController extends BroadcastReceiver {
     static final boolean CHATTY = true; // additional diagnostics, but not logspew
 
     // FMC related
-    private static final String FMC_STATE_CHANGED_ACTION = "android.fmc.FMC_STATE_CHANGED_ACTION";
+    protected static final String FMC_STATE_CHANGED_ACTION = "android.fmc.FMC_STATE_CHANGED_ACTION";
     // private static final String ENABLE_FMC_ACTION = "android.fmc.ENABLE_FMC_ACTION";
     private static final String FMC_ENABLED_STATUS = "fmc_enabled_status";
 
@@ -945,7 +945,7 @@ public class NetworkController extends BroadcastReceiver {
         }
     }
 
-    private final void updateFmc(Intent intent) {
+    protected final void updateFmc(Intent intent) {
         final String action = intent.getAction();
         if (FMC_STATE_CHANGED_ACTION.equals(action)) {
             final int status = intent.getIntExtra("FmcStatus", -1);

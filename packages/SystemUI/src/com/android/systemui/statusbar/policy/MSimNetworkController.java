@@ -325,6 +325,9 @@ public class MSimNetworkController extends NetworkController {
                 action.equals(WimaxManagerConstants.WIMAX_NETWORK_STATE_CHANGED_ACTION)) {
             updateWimaxState(intent);
             refreshViews(MSimTelephonyManager.getDefault().getDefaultSubscription());
+        } else if (action.equals(FMC_STATE_CHANGED_ACTION)) {
+            updateFmc(intent);
+            refreshViews(MSimTelephonyManager.getDefault().getDefaultSubscription());
         }
     }
 

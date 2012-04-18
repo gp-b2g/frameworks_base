@@ -363,19 +363,26 @@ public class FmcStateMachine extends StateMachine {
         }
 
         protected void setStatus(final int status) {
+            setStatus(status, true);
+        }
+
+        protected void setStatus(final int status, boolean needNotify) {
             if (DBG) Log.d(this.getName(), "setStatus status=" + status);
 
             mFmcStatus = status;
-            if (mListener != null) {
-                try {
-                    mListener.onFmcStatus(status);
-                } catch (RemoteException e) {
-                    if (DBG) Log.e(this.getName(), "setStatus RemoteException=" + e.getMessage());
+            if (needNotify) {
+                if (mListener != null) {
+                    try {
+                        mListener.onFmcStatus(status);
+                    } catch (RemoteException e) {
+                        if (DBG) Log.e(this.getName(), "setStatus RemoteException=" + e.getMessage());
+                    }
+                } else {
+                    if (DBG) Log.e(this.getName(), "setStatus mListener is null");
                 }
-            } else {
-                if (DBG) Log.e(this.getName(), "setStatus mListener is null");
             }
         }
+
 
         protected final void sendEnableFmc() {
             if (DBG) Log.d(this.getName(), "sendEnableFmc");
@@ -599,7 +606,9 @@ public class FmcStateMachine extends StateMachine {
             if (DBG) Log.d(this.getName(), "enter");
             /* Do not override status if tearing down from DsNotAvail or Failure states */
             if (mUserShutDown) {
-                setStatus(FMC_STATUS_CLOSED);
+                // This time we don't need notify FMC status, otherwise it will make UI layer
+                // confuse about FMC status
+                setStatus(FMC_STATUS_CLOSED, false);
             } else {
                 mUserShutDown = true;
             }
