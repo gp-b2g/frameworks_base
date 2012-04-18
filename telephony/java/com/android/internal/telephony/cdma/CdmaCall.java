@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +17,6 @@
 
 package com.android.internal.telephony.cdma;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.android.internal.telephony.Call;
@@ -32,7 +32,6 @@ import com.android.internal.telephony.Call.State;
 public final class CdmaCall extends Call {
     /*************************** Instance Variables **************************/
 
-    /*package*/ ArrayList<Connection> connections = new ArrayList<Connection>();
     /*package*/ State state = State.IDLE;
     /*package*/ CdmaCallTracker owner;
 
