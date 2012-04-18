@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -458,6 +458,9 @@ public class BluetoothGattService {
         {
             Log.d(TAG, "onCharacteristicsDiscovered: " + paths);
 
+            if (mClosed)
+                return;
+
             if (paths !=null) {
 
                 int count = paths.length;
@@ -494,6 +497,9 @@ public class BluetoothGattService {
         public synchronized void onSetCharacteristicProperty(String path, String property, boolean result)
         {
             Log.d(TAG, "onSetCharacteristicProperty: " + path + " property " + property + " result " + result);
+            if (mClosed)
+                return;
+
             if ((path == null) || (property == null)) {
                 return;
             }
@@ -520,6 +526,9 @@ public class BluetoothGattService {
 
         public synchronized void onValueChanged(String path, String value)
         {
+            if (mClosed)
+                return;
+
             if (path == null) {
                 return;
             }
@@ -531,7 +540,7 @@ public class BluetoothGattService {
             }
             try {
                 profileCallback.onValueChanged(path, value);
-            } catch (RemoteException e) {Log.e(TAG, "", e);}
+            } catch (Exception e) {Log.e(TAG, "", e);}
         }
 
         public synchronized boolean setCharacteristicProperty(String path, String key,
@@ -546,6 +555,9 @@ public class BluetoothGattService {
 
         public synchronized void onCharacteristicValueUpdated(String path, boolean result)
         {
+
+            if (mClosed)
+                return;
 
             if (result) {
                 updateCharacteristicPropertyCache(path);
