@@ -66,6 +66,9 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
     private boolean success = false;
     private boolean mRefreshCache = false;
 
+    //variable used to save valid records' recordnum
+    private Map<Integer, ArrayList<Integer>> mRecordNums;
+
     private static final int EVENT_PBR_LOAD_DONE = 1;
     private static final int EVENT_USIM_ADN_LOAD_DONE = 2;
     private static final int EVENT_IAP_LOAD_DONE = 3;
@@ -111,6 +114,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         mIapFileRecord = new HashMap<Integer,ArrayList<byte[]>>();
         mEmailFileRecord = new HashMap<Integer,ArrayList<byte[]>>();
         mAnrFileRecord = new  HashMap<Integer,ArrayList<byte[]>>();
+        mRecordNums = new HashMap<Integer, ArrayList<Integer>>();
         mPbrFile = null;
         // We assume its present, after the first read this is updated.
         // So we don't have to read from UICC if its not present on subsequent reads.
@@ -123,6 +127,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         mIapFileRecord.clear();
         mEmailFileRecord.clear();
         mAnrFileRecord.clear();
+        mRecordNums.clear();
         mPbrFile = null;
         mAdnLengthList.clear();
         mIsPbrPresent = true;
@@ -187,7 +192,6 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         Map <Integer,Integer> fileIds;
         fileIds = mPbrFile.mFileIds.get(recNum);
         if (fileIds == null) return;
-
         if (fileIds.containsKey(USIM_EFEMAIL_TAG)) {
             int efid = fileIds.get(USIM_EFEMAIL_TAG);
             // Check if the EFEmail is a Type 1 file or a type 2 file.
@@ -198,11 +202,16 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                 readIapFileAndWait(fileIds.get(USIM_EFIAP_TAG),recNum);
                 if (!hasRecordIn(mIapFileRecord,recNum))
                     return;
+                mFh.loadEFLinearFixedAll(fileIds.get(USIM_EFEMAIL_TAG),
+                    obtainMessage(EVENT_EMAIL_LOAD_DONE,recNum));
+            } else {
+                mFh.loadEFLinearFixedPart(fileIds.get(USIM_EFEMAIL_TAG),
+                    getValidRecordNums(recNum),
+                    obtainMessage(EVENT_EMAIL_LOAD_DONE,recNum));
             }
             // Read the EFEmail file.
             log("readEmailFileAndWait email efid is : " + fileIds.get(USIM_EFEMAIL_TAG));
-            mFh.loadEFLinearFixedAll(fileIds.get(USIM_EFEMAIL_TAG),
-                    obtainMessage(EVENT_EMAIL_LOAD_DONE,recNum));
+
             try {
                 mLock.wait();
             } catch (InterruptedException e) {
@@ -230,9 +239,14 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                     Log.e(LOG_TAG, "Error: IAP file is empty");
                     return;
                 }
-            }
-            mFh.loadEFLinearFixedAll(fileIds.get(USIM_EFANR_TAG),
+                mFh.loadEFLinearFixedAll(fileIds.get(USIM_EFANR_TAG),
                     obtainMessage(EVENT_ANR_LOAD_DONE,recNum));
+            } else {
+                mFh.loadEFLinearFixedPart(fileIds.get(USIM_EFANR_TAG),
+                    getValidRecordNums(recNum),
+                    obtainMessage(EVENT_ANR_LOAD_DONE,recNum));
+            }
+
             try {
                 mLock.wait();
             } catch (InterruptedException e) {
@@ -246,7 +260,8 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         }
     }
     private void readIapFileAndWait(int efid,int recNum) {
-        mFh.loadEFLinearFixedAll(efid, obtainMessage(EVENT_IAP_LOAD_DONE, recNum));
+        log("pbrIndex is " + recNum);
+        mFh.loadEFLinearFixedPart(efid, getValidRecordNums(recNum) ,obtainMessage(EVENT_IAP_LOAD_DONE, recNum));
         try {
             mLock.wait();
         } catch (InterruptedException e) {
@@ -372,7 +387,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
     }
     private int getInitIndexBy(int pbrIndex) {
         int index = 0;
-        while (pbrIndex != 0) {
+        while (pbrIndex > 0) {
             index += mAdnLengthList.get(pbrIndex-1);
             pbrIndex--;
         }
@@ -758,6 +773,32 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         mPbrFile = new PbrFile(records);
     }
 
+    private void putValidRecNums(int pbrIndex) {
+        ArrayList<Integer> recordNums = new ArrayList<Integer>();
+        int initAdnIndex = getInitIndexBy(pbrIndex);
+        log("pbr index is " + pbrIndex + ", initAdnIndex is " + initAdnIndex);
+        for (int i=0; i < mAdnLengthList.get(pbrIndex); i++) {
+            if (!TextUtils.isEmpty(mPhoneBookRecords.get(i + initAdnIndex).getNumber())) {
+                recordNums.add(i+1);
+                log("valid recnum is " + (i+1));
+            }
+        }
+        //Need to read at least one record to inint
+        //variable mIapFileRecord, mEmailFileRecord,mAnrFileRecord
+        if (recordNums.size() == 0) {
+            recordNums.add(0);
+        }
+        mRecordNums.put(pbrIndex, recordNums);
+    }
+
+    private ArrayList<Integer> getValidRecordNums(int pbrIndex) {
+        return mRecordNums.get(pbrIndex);
+    }
+
+    private boolean hasValidRecords(int pbrIndex) {
+        return mRecordNums.get(pbrIndex).size()>0;
+    }
+
     @Override
     public void handleMessage(Message msg) {
         AsyncResult ar;
@@ -786,10 +827,11 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         case EVENT_USIM_ADN_LOAD_DONE:
             log("Loading USIM ADN records done");
             ar = (AsyncResult) msg.obj;
-                pbrIndex = (Integer) ar.userObj;
+            pbrIndex = (Integer) ar.userObj;
             if (ar.exception == null) {
                 mPhoneBookRecords.addAll((ArrayList<AdnRecord>)ar.result);
-                    mAdnLengthList.add(pbrIndex, ((ArrayList<AdnRecord>)ar.result).size());
+                mAdnLengthList.add(pbrIndex, ((ArrayList<AdnRecord>)ar.result).size());
+                putValidRecNums(pbrIndex);
             }
             synchronized (mLock) {
                 mLock.notify();
@@ -798,9 +840,9 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         case EVENT_IAP_LOAD_DONE:
             log("Loading USIM IAP records done");
             ar = (AsyncResult) msg.obj;
-                pbrIndex = (Integer) ar.userObj;
+            pbrIndex = (Integer) ar.userObj;
             if (ar.exception == null) {
-                    mIapFileRecord.put(pbrIndex,(ArrayList<byte[]>)ar.result);
+                mIapFileRecord.put(pbrIndex,(ArrayList<byte[]>)ar.result);
             }
             synchronized (mLock) {
                 mLock.notify();
@@ -809,185 +851,185 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         case EVENT_EMAIL_LOAD_DONE:
             log("Loading USIM Email records done");
             ar = (AsyncResult) msg.obj;
-                pbrIndex = (Integer) ar.userObj;
+            pbrIndex = (Integer) ar.userObj;
             if (ar.exception == null) {
-                    mEmailFileRecord.put(pbrIndex,(ArrayList<byte[]>)ar.result);
+                mEmailFileRecord.put(pbrIndex,(ArrayList<byte[]>)ar.result);
             }
 
             synchronized (mLock) {
                 mLock.notify();
             }
             break;
-            case EVENT_ANR_LOAD_DONE:
-                log("Loading USIM Anr records done");
-                ar = (AsyncResult) msg.obj;
-                pbrIndex = (Integer) ar.userObj;
-                if (ar.exception == null) {
-                    mAnrFileRecord.put(pbrIndex,(ArrayList<byte[]>)ar.result);
-                }
+        case EVENT_ANR_LOAD_DONE:
+            log("Loading USIM Anr records done");
+            ar = (AsyncResult) msg.obj;
+            pbrIndex = (Integer) ar.userObj;
+            if (ar.exception == null) {
+                mAnrFileRecord.put(pbrIndex,(ArrayList<byte[]>)ar.result);
+            }
+            synchronized (mLock) {
+                mLock.notify();
+            }
+            break;
+        case EVENT_EF_EMAIL_RECORD_SIZE_DONE:
+            ar = (AsyncResult)(msg.obj);
+            String emails = (String)(ar.userObj);
+            adnRecIndex = ((int) msg.arg1)-1;
+            efid = (int)msg.arg2;
+            String email[] = emails.split(",");
+            if (email.length == 1) {
+                oldEmail = email[0];
+                newEmail = "";
+            } else if (email.length > 1) {
+                oldEmail = email[0];
+                newEmail = email[1];
+            }
+            if (ar.exception != null) {
+                success = false;
                 synchronized (mLock) {
                     mLock.notify();
                 }
-                break;
-            case EVENT_EF_EMAIL_RECORD_SIZE_DONE:
-                ar = (AsyncResult)(msg.obj);
-                String emails = (String)(ar.userObj);
-                adnRecIndex = ((int) msg.arg1)-1;
-                efid = (int)msg.arg2;
-                String email[] = emails.split(",");
-                if (email.length == 1) {
-                    oldEmail = email[0];
-                    newEmail = "";
-                } else if (email.length > 1) {
-                    oldEmail = email[0];
-                    newEmail = email[1];
+                return;
+            }
+            recordSize = (int[])ar.result;
+            recordNumber = getEmailRecIndex(adnRecIndex, mPhoneBookRecords.size(),oldEmail);
+            if (recordSize.length != 3 || recordNumber > recordSize[2] || recordNumber <= 0) {
+                success = false;
+                synchronized (mLock) {
+                    mLock.notify();
                 }
-                if (ar.exception != null) {
-                    success = false;
-                    synchronized (mLock) {
-                        mLock.notify();
-                    }
-                    return;
+                return;
+            }
+            data = buildEmailData(recordSize[0],adnRecIndex,newEmail);
+            mFh.updateEFLinearFixed(efid, recordNumber,
+                data, null, obtainMessage(EVENT_UPDATE_EMAIL_RECORD_DONE,recordNumber,adnRecIndex,data));
+            pendingExtLoads=1;
+            break;
+        case EVENT_EF_ANR_RECORD_SIZE_DONE:
+            ar = (AsyncResult)(msg.obj);
+            String anrs = (String)(ar.userObj);
+            adnRecIndex = ((int) msg.arg1)-1;
+            efid = (int) msg.arg2;
+            String[] anr = anrs.split(",");
+            if (anr.length == 1) {
+                oldAnr = anr[0];
+                newAnr = "";
+            } else if (anr.length > 1) {
+                oldAnr = anr[0];
+                newAnr = anr[1];
+            }
+            if (ar.exception != null) {
+                success = false;
+                synchronized (mLock) {
+                    mLock.notify();
                 }
-                recordSize = (int[])ar.result;
-                recordNumber = getEmailRecIndex(adnRecIndex, mPhoneBookRecords.size(),oldEmail);
-                if (recordSize.length != 3 || recordNumber > recordSize[2] || recordNumber <= 0) {
-                    success = false;
-                    synchronized (mLock) {
-                        mLock.notify();
-                    }
-                    return;
+                return;
+            }
+            recordSize = (int[])ar.result;
+            recordNumber = getAnrRecIndex(adnRecIndex, mPhoneBookRecords.size(),oldAnr);
+            if (recordSize.length != 3 || recordNumber > recordSize[2] || recordNumber <= 0) {
+                success = false;
+                synchronized (mLock) {
+                    mLock.notify();
                 }
-                data = buildEmailData(recordSize[0],adnRecIndex,newEmail);
-                mFh.updateEFLinearFixed(efid, recordNumber,
-                    data, null, obtainMessage(EVENT_UPDATE_EMAIL_RECORD_DONE,recordNumber,adnRecIndex,data));
-                pendingExtLoads=1;
-                break;
-            case EVENT_EF_ANR_RECORD_SIZE_DONE:
-                ar = (AsyncResult)(msg.obj);
-                String anrs = (String)(ar.userObj);
-                adnRecIndex = ((int) msg.arg1)-1;
-                efid = (int) msg.arg2;
-                String[] anr = anrs.split(",");
-                if (anr.length == 1) {
-                    oldAnr = anr[0];
-                    newAnr = "";
-                } else if (anr.length > 1) {
-                    oldAnr = anr[0];
-                    newAnr = anr[1];
+                return;
+            }
+            data = buildAnrData(recordSize[0],adnRecIndex,newAnr);
+            mFh.updateEFLinearFixed(efid, recordNumber,
+                data, null, obtainMessage(EVENT_UPDATE_ANR_RECORD_DONE,recordNumber,adnRecIndex,data));
+            pendingExtLoads = 1;
+            break;
+        case EVENT_UPDATE_EMAIL_RECORD_DONE:
+            ar = (AsyncResult)(msg.obj);
+            if (ar.exception != null) {
+                success = false;
+            }
+            data = (byte[])(ar.userObj);
+            recordNumber = (int)msg.arg1;
+            adnRecIndex = (int)msg.arg2;
+            pbrIndex = getPbrIndexBy(adnRecIndex);
+            log("EVENT_UPDATE_EMAIL_RECORD_DONE");
+            pendingExtLoads = 0;
+            success = true;
+            mEmailFileRecord.get(pbrIndex).set(recordNumber-1, data);
+            synchronized (mLock) {
+                mLock.notify();
+            }
+            break;
+        case EVENT_UPDATE_ANR_RECORD_DONE:
+            ar = (AsyncResult)(msg.obj);
+            data = (byte[] )(ar.userObj);
+            recordNumber = (int)msg.arg1;
+            adnRecIndex = (int)msg.arg2;
+            pbrIndex = getPbrIndexBy(adnRecIndex);
+            if (ar.exception != null) {
+                success = false;
+            }
+            log("EVENT_UPDATE_ANR_RECORD_DONE");
+            pendingExtLoads = 0;
+            success = true;
+            mAnrFileRecord.get(pbrIndex).set(recordNumber-1, data);
+            synchronized (mLock) {
+                mLock.notify();
+            }
+            break;
+        case EVENT_EF_IAP_RECORD_SIZE_DONE:
+            log("EVENT_EF_IAP_RECORD_SIZE_DONE");
+            ar = (AsyncResult)(msg.obj);
+            recordNumber = (int)msg.arg2;
+            adnRecIndex = ((int)msg.arg1)-1;
+            pbrIndex = getPbrIndexBy(adnRecIndex);
+            efid = getEfidByTag(pbrIndex,USIM_EFIAP_TAG);
+            int tag = (Integer)ar.userObj;
+            if (ar.exception != null) {
+                success = false;
+                synchronized (mLock) {
+                    mLock.notify();
                 }
-                if (ar.exception != null) {
-                    success = false;
-                    synchronized (mLock) {
-                        mLock.notify();
-                    }
-                    return;
+                return;
+            }
+            recordSize = (int[])ar.result;
+            data = null;
+            if (recordSize.length != 3 || adnRecIndex+1 > recordSize[2] || recordNumber == 0) {
+                success = false;
+                synchronized (mLock) {
+                    mLock.notify();
                 }
-                recordSize = (int[])ar.result;
-                recordNumber = getAnrRecIndex(adnRecIndex, mPhoneBookRecords.size(),oldAnr);
-                if (recordSize.length != 3 || recordNumber > recordSize[2] || recordNumber <= 0) {
-                    success = false;
-                    synchronized (mLock) {
-                        mLock.notify();
-                    }
-                    return;
+                return;
+            }
+            if (hasRecordIn(mIapFileRecord,pbrIndex)) {
+                data = mIapFileRecord.get(pbrIndex).get(adnRecIndex);
+                switch(tag) {
+                    case USIM_EFEMAIL_TAG:
+                        data[mEmailTagNumberInIap] = (byte)recordNumber;
+                        break;
+                    case USIM_EFANR_TAG:
+                        data[mAnrTagNumberInIap] = (byte)recordNumber;
+                        break;
                 }
-                data = buildAnrData(recordSize[0],adnRecIndex,newAnr);
-                mFh.updateEFLinearFixed(efid, recordNumber,
-                    data, null, obtainMessage(EVENT_UPDATE_ANR_RECORD_DONE,recordNumber,adnRecIndex,data));
                 pendingExtLoads = 1;
-                break;
-            case EVENT_UPDATE_EMAIL_RECORD_DONE:
-                ar = (AsyncResult)(msg.obj);
-                if (ar.exception != null) {
-                    success = false;
-                }
-                data = (byte[])(ar.userObj);
-                recordNumber = (int)msg.arg1;
-                adnRecIndex = (int)msg.arg2;
-                pbrIndex = getPbrIndexBy(adnRecIndex);
-                log("EVENT_UPDATE_EMAIL_RECORD_DONE");
-                pendingExtLoads = 0;
-                success = true;
-                mEmailFileRecord.get(pbrIndex).set(recordNumber-1, data);
-                synchronized (mLock) {
-                    mLock.notify();
-                }
-                break;
-            case EVENT_UPDATE_ANR_RECORD_DONE:
-                ar = (AsyncResult)(msg.obj);
-                data = (byte[] )(ar.userObj);
-                recordNumber = (int)msg.arg1;
-                adnRecIndex = (int)msg.arg2;
-                pbrIndex = getPbrIndexBy(adnRecIndex);
-                if (ar.exception != null) {
-                    success = false;
-                }
-                log("EVENT_UPDATE_ANR_RECORD_DONE");
-                pendingExtLoads = 0;
-                success = true;
-                mAnrFileRecord.get(pbrIndex).set(recordNumber-1, data);
-                synchronized (mLock) {
-                    mLock.notify();
-                }
-                break;
-            case EVENT_EF_IAP_RECORD_SIZE_DONE:
-                log("EVENT_EF_IAP_RECORD_SIZE_DONE");
-                ar = (AsyncResult)(msg.obj);
-                recordNumber = (int)msg.arg2;
-                adnRecIndex = ((int)msg.arg1)-1;
-                pbrIndex = getPbrIndexBy(adnRecIndex);
-                efid = getEfidByTag(pbrIndex,USIM_EFIAP_TAG);
-                int tag = (Integer)ar.userObj;
-                if (ar.exception != null) {
-                    success = false;
-                    synchronized (mLock) {
-                        mLock.notify();
-                    }
-                    return;
-                }
-                recordSize = (int[])ar.result;
-                data = null;
-                if (recordSize.length != 3 || adnRecIndex+1 > recordSize[2] || recordNumber == 0) {
-                    success = false;
-                    synchronized (mLock) {
-                        mLock.notify();
-                    }
-                    return;
-                }
-                if (hasRecordIn(mIapFileRecord,pbrIndex)) {
-                    data = mIapFileRecord.get(pbrIndex).get(adnRecIndex);
-                    switch(tag) {
-                        case USIM_EFEMAIL_TAG:
-                            data[mEmailTagNumberInIap] = (byte)recordNumber;
-                            break;
-                        case USIM_EFANR_TAG:
-                            data[mAnrTagNumberInIap] = (byte)recordNumber;
-                            break;
-                    }
-                    pendingExtLoads = 1;
-                    Log.d(LOG_TAG, " IAP  efid= " +efid + ", update IAP index= " + (adnRecIndex+1) +
-                        " with value= " + IccUtils.bytesToHexString(data));
-                    mFh.updateEFLinearFixed(efid, adnRecIndex+1,
-                        data, null, obtainMessage(EVENT_UPDATE_IAP_RECORD_DONE,adnRecIndex,recordNumber,data));
-                }
-                break;
-            case EVENT_UPDATE_IAP_RECORD_DONE:
-                ar = (AsyncResult)(msg.obj);
-                if (ar.exception != null) {
-                    success = false;
-                }
-                data = (byte[] )(ar.userObj);
-                adnRecIndex = (int)msg.arg1;
-                pbrIndex = getPbrIndexBy(adnRecIndex);
-                log("EVENT_UPDATE_IAP_RECORD_DONE");
-                pendingExtLoads = 0;
-                success = true;
-                mIapFileRecord.get(pbrIndex).set(adnRecIndex, data);
-                synchronized (mLock) {
-                    mLock.notify();
-                }
-                break;
+                Log.d(LOG_TAG, " IAP  efid= " +efid + ", update IAP index= " + (adnRecIndex+1) +
+                    " with value= " + IccUtils.bytesToHexString(data));
+                mFh.updateEFLinearFixed(efid, adnRecIndex+1,
+                    data, null, obtainMessage(EVENT_UPDATE_IAP_RECORD_DONE,adnRecIndex,recordNumber,data));
+            }
+            break;
+        case EVENT_UPDATE_IAP_RECORD_DONE:
+            ar = (AsyncResult)(msg.obj);
+            if (ar.exception != null) {
+                success = false;
+            }
+            data = (byte[] )(ar.userObj);
+            adnRecIndex = (int)msg.arg1;
+            pbrIndex = getPbrIndexBy(adnRecIndex);
+            log("EVENT_UPDATE_IAP_RECORD_DONE");
+            pendingExtLoads = 0;
+            success = true;
+            mIapFileRecord.get(pbrIndex).set(adnRecIndex, data);
+            synchronized (mLock) {
+                mLock.notify();
+            }
+            break;
         }
     }
 
