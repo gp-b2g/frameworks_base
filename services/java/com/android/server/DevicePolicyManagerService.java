@@ -637,7 +637,22 @@ public class DevicePolicyManagerService extends IDevicePolicyManager.Stub {
         return new JournaledFile(new File(base), new File(base + ".tmp"));
     }
 
+    private void updateMaximumTimeToLock() {
+        Slog.d(TAG, "update the timeout!");
+        long timeMs = getMaximumTimeToLock(null);
+        if (timeMs <= 0) {
+            timeMs = Integer.MAX_VALUE;
+        }
+        Slog.d(TAG, "update the timeout to " + timeMs);
+        try {
+            getIPowerManager().setMaximumScreenOffTimeount((int) timeMs);
+        } catch (RemoteException e) {
+            Slog.w(TAG, "Failure talking with power manager", e);
+        }
+    }
+
     private void saveSettingsLocked() {
+        updateMaximumTimeToLock();
         JournaledFile journal = makeJournaledFile();
         FileOutputStream stream = null;
         try {
