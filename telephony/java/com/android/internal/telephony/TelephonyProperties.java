@@ -103,6 +103,11 @@ public interface TelephonyProperties
      */
     static String PROPERTY_ICC_OPERATOR_NUMERIC = "gsm.sim.operator.numeric";
 
+    /** record  the operator numeric in different property,get PROPERTY_ICC_OPERATOR_NUMERIC 
+     *  just return slot 0 operator numeric;
+     */
+    static String PROPERTY_ICC2_OPERATOR_NUMERIC = "gsm.sim2.operator.numeric";
+
     /** PROPERTY_ICC_OPERATOR_ALPHA is also known as the SPN, or Service Provider Name.
      *  Availability: SIM state must be "READY"
      */

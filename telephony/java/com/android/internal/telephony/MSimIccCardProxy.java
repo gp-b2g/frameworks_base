@@ -43,6 +43,7 @@ import static com.android.internal.telephony.Phone.CDMA_SUBSCRIPTION_NV;
 
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC2_OPERATOR_NUMERIC;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
 
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_SIM_STATE;
@@ -96,8 +97,8 @@ public class MSimIccCardProxy extends IccCardProxy {
                     String operator = ((SIMRecords)mIccRecords).getOperatorNumeric();
                     int sub = (mSubscriptionData != null) ? mSubscriptionData.subId : 0;
                     if (operator != null) {
-                        MSimTelephonyManager.setTelephonyProperty
-                                (PROPERTY_ICC_OPERATOR_NUMERIC, sub, operator);
+                      String property = sub == 0 ? PROPERTY_ICC_OPERATOR_NUMERIC : PROPERTY_ICC2_OPERATOR_NUMERIC;
+                      SystemProperties.set(property, operator);
                     } else {
                         Log.e(LOG_TAG, "EVENT_RECORDS_LOADED Operator name is null");
                     }
@@ -185,7 +186,8 @@ public class MSimIccCardProxy extends IccCardProxy {
     void resetProperties() {
         if (mSubscriptionData != null
                 && mCurrentAppType == AppFamily.APP_FAM_3GPP) {
-            MSimTelephonyManager.setTelephonyProperty(PROPERTY_ICC_OPERATOR_NUMERIC, mSubscriptionData.subId,"" );
+            SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, "");
+            SystemProperties.set(PROPERTY_ICC2_OPERATOR_NUMERIC, "");
             MSimTelephonyManager.setTelephonyProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, mSubscriptionData.subId, "");
             MSimTelephonyManager.setTelephonyProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSubscriptionData.subId, "");
          }
