@@ -1029,6 +1029,47 @@ public final class BearerData {
         }
     }
 
+    public static String decode7bitAsciiEms(byte[] data, int offset, int numFields)
+        throws CodingException
+    {
+        try {
+            int fill_bits = (offset * 8) % 7 ;
+            int udhoffset = 0;
+
+            if (fill_bits != 0) {
+              fill_bits = 7 - fill_bits;
+            }
+
+            udhoffset = (offset) * 8 + fill_bits;
+
+            StringBuffer strBuf = new StringBuffer(numFields);
+            BitwiseInputStream inStream = new BitwiseInputStream(data);
+            int wantedBits = (udhoffset) + ((numFields - offset - 1)* 7);
+            if (inStream.available() < wantedBits) {
+                throw new CodingException("insufficient data (wanted " + wantedBits +
+                                          " bits, but only have " + inStream.available() + ")");
+            }
+            inStream.skip(udhoffset);
+            for (int i = 0; i < (numFields - offset - 1); i++) {
+                int charCode = inStream.read(7);
+                if ((charCode >= UserData.ASCII_MAP_BASE_INDEX) &&
+                        (charCode <= UserData.ASCII_MAP_MAX_INDEX)) {
+                    strBuf.append(UserData.ASCII_MAP[charCode - UserData.ASCII_MAP_BASE_INDEX]);
+                } else if (charCode == UserData.ASCII_NL_INDEX) {
+                    strBuf.append('\n');
+                } else if (charCode == UserData.ASCII_CR_INDEX) {
+                    strBuf.append('\r');
+                } else {
+                    /* For other charCodes, they are unprintable, and so simply use SPACE. */
+                    strBuf.append(' ');
+                }
+            }
+            return strBuf.toString();
+        } catch (BitwiseInputStream.AccessException ex) {
+            throw new CodingException("7bit ASCII decode failed: " + ex);
+        }
+    }
+
     private static String decode7bitGsm(byte[] data, int offset, int numFields)
         throws CodingException
     {
@@ -1215,7 +1256,11 @@ public final class BearerData {
             break;
         case UserData.ENCODING_IA5:
         case UserData.ENCODING_7BIT_ASCII:
-            userData.payloadStr = decode7bitAscii(userData.payload, offset, userData.numFields);
+            if(hasUserDataHeader) {
+               userData.payloadStr = decode7bitAsciiEms(userData.payload, offset, userData.numFields);
+            } else {
+                userData.payloadStr = decode7bitAscii(userData.payload, offset, userData.numFields);
+            }
             break;
         case UserData.ENCODING_UNICODE_16:
             userData.payloadStr = decodeUtf16(userData.payload, offset, userData.numFields);
