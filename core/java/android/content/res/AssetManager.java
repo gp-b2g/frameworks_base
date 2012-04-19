@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +25,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+
+import java.util.regex.*;
+
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 /**
  * Provides access to an application's raw asset files; see {@link Resources}
@@ -142,6 +147,40 @@ public final class AssetManager {
     }
 
     /**
+     * {@hide}
+     * replace all the wifi string to WLAN in china
+     *
+     * @param res The string need to be replaced.
+     *
+     * @return CharSequence The replaced string.
+     */
+    public static CharSequence replaceAllWiFi(CharSequence res){
+        if(null==res)
+            return null;
+        //ignore some special string contain "wifi" string
+        String regEx = "[a-zA-Z]wi-?fi";
+        Pattern p=Pattern.compile(regEx,Pattern.CASE_INSENSITIVE);
+        Matcher m=p.matcher(res);
+        if(m.find())
+            return res;
+
+        regEx = "wi-?fi[a-zA-Z]";
+        p=Pattern.compile(regEx,Pattern.CASE_INSENSITIVE);
+        m=p.matcher(res);
+        if(m.find())
+            return res;
+
+        if (localLOGV) Log.i(TAG, "before replace string is "+res);
+        regEx="wi-?fi";
+        p=Pattern.compile(regEx,Pattern.CASE_INSENSITIVE);
+        m=p.matcher(res);
+        res=m.replaceAll("WLAN");
+
+        if (localLOGV) Log.i(TAG, "after replace string is "+res);
+        return res;
+    }
+
+    /**
      * Retrieve the string value associated with a particular resource
      * identifier for the current configuration / skin.
      */
@@ -149,9 +188,14 @@ public final class AssetManager {
         synchronized (this) {
             TypedValue tmpValue = mValue;
             int block = loadResourceValue(ident, (short) 0, tmpValue, true);
+            CharSequence resourceText = null;
             if (block >= 0) {
                 if (tmpValue.type == TypedValue.TYPE_STRING) {
-                    return mStringBlocks[block].get(tmpValue.data);
+                    resourceText = mStringBlocks[block].get(tmpValue.data);
+                    if(FeatureQuery.FEATURE_DISPLAY_USE_WLAN_INSTEAD){
+                        resourceText=replaceAllWiFi(resourceText);
+                    }
+                    return resourceText;
                 }
                 return tmpValue.coerceToString();
             }
