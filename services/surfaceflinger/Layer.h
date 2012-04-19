@@ -83,6 +83,10 @@ public:
     // only for debugging
     inline const sp<GraphicBuffer>& getActiveBuffer() const { return mActiveBuffer; }
 
+    // Get PAR Info
+    int getPARWidth() { return mSurfaceTexture->getWRatio(); }
+    int getPARHeight() { return mSurfaceTexture->getHRatio(); }
+
 protected:
     virtual void onFirstRef();
     virtual void dump(String8& result, char* scratch, size_t size) const;
