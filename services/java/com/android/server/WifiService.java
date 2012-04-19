@@ -67,6 +67,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.PrintWriter;
 
 import com.android.internal.app.IBatteryStats;
@@ -1008,7 +1009,16 @@ public class WifiService extends IWifiManager.Stub {
             //Never sleep as long as the user has not changed the settings
             int wifiSleepPolicy = Settings.System.getInt(mContext.getContentResolver(),
                     Settings.System.WIFI_SLEEP_POLICY,
-                    Settings.System.WIFI_SLEEP_POLICY_NEVER);
+                    Settings.System.WIFI_SLEEP_POLICY_DEFAULT);
+	    Slog.w(TAG,"wifisleeppolicy = " + wifiSleepPolicy);
+            try {
+                FileOutputStream os = new FileOutputStream(
+                                          "/sys/android_wlan/wlan_power/sleep_policy", true);
+                os.write(new byte[] { (byte)(wifiSleepPolicy + 0x30)});
+                os.close();
+            } catch (Exception e) {
+                Slog.w(TAG, "Failed setting sleep policy");
+            }
 
             if (wifiSleepPolicy == Settings.System.WIFI_SLEEP_POLICY_NEVER) {
                 // Never sleep
