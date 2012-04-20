@@ -848,7 +848,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
         // register for WIFI Display intents
         IntentFilter wifiDisplayFilter = new IntentFilter(
-                                                Intent.ACTION_WIFI_DISPLAY);
+                                                Intent.ACTION_WIFI_DISPLAY_VIDEO);
         Intent wifidisplayIntent = context.registerReceiver(
                                       mWifiDisplayReceiver, wifiDisplayFilter);
 
@@ -3343,7 +3343,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     BroadcastReceiver mWifiDisplayReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-            if (action.equals(Intent.ACTION_WIFI_DISPLAY)) {
+            if (action.equals(Intent.ACTION_WIFI_DISPLAY_VIDEO)) {
                 int state = intent.getIntExtra("state", 0);
                 if(state == 1) {
                     mWifiDisplayConnected = true;

@@ -5544,6 +5544,7 @@ package android.content {
     field public static final java.lang.String ACTION_WALLPAPER_CHANGED = "android.intent.action.WALLPAPER_CHANGED";
     field public static final java.lang.String ACTION_WEB_SEARCH = "android.intent.action.WEB_SEARCH";
     field public static final java.lang.String ACTION_WIFI_DISPLAY = "android.intent.action.WIFI_DISPLAY";
+    field public static final java.lang.String ACTION_WIFI_DISPLAY_VIDEO = "android.intent.action.WIFI_DISPLAY_VIDEO";
     field public static final java.lang.String CATEGORY_ALTERNATIVE = "android.intent.category.ALTERNATIVE";
     field public static final java.lang.String CATEGORY_APP_BROWSER = "android.intent.category.APP_BROWSER";
     field public static final java.lang.String CATEGORY_APP_CALCULATOR = "android.intent.category.APP_CALCULATOR";
