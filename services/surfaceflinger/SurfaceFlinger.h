@@ -182,8 +182,6 @@ public:
 
     //HDMI Specific
     virtual void                        enableExternalDisplay(int disp_type, int externaltype);
-    virtual void                        setActionSafeWidthRatio(float asWidthRatio);
-    virtual void                        setActionSafeHeightRatio(float asHeightRatio);
 
     virtual status_t captureScreen(DisplayID dpy,
             sp<IMemoryHeap>* heap,
