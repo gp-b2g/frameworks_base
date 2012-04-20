@@ -68,6 +68,12 @@ public class Process {
     public static final int PHONE_UID = 1001;
 
     /**
+     * Defines the UID/GID under which the bluetooth code runs.
+     * {@hide}
+     */
+    public static final int BLUETOOTH_UID = 1002;
+
+    /**
      * Defines the UID/GID for the user shell.
      * @hide
      */
