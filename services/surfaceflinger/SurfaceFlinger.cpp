@@ -442,11 +442,6 @@ bool SurfaceFlinger::threadLoop()
         handleWorkList();
     }
 
-    if (isRotationCompleted() == false) {
-        LOGD("Rotation is not finished. Skip the composition");
-        return true;
-    }
-
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
     if (LIKELY(hw.canDraw())) {
 #ifdef GFX_TESTFRAMEWORK
@@ -849,19 +844,6 @@ void SurfaceFlinger::unlockPageFlip(const LayerVector& currentLayers)
         const sp<LayerBase>& layer(layers[i]);
         layer->unlockPageFlip(planeTransform, mDirtyRegion);
     }
-}
-
-bool SurfaceFlinger::isRotationCompleted()
-{
-    const Vector< sp<LayerBase> >& currentLayers(mVisibleLayersSortedByZ);
-    const size_t count = currentLayers.size();
-
-    for (size_t i=0 ; i<count ; i++) {
-        if (currentLayers[i]->isRotated() == false) {
-            return false;
-        }
-    }
-    return true;
 }
 
 void SurfaceFlinger::handleWorkList()

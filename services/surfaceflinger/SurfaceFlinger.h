@@ -311,7 +311,6 @@ private:
             void        handlePageFlip();
             bool        lockPageFlip(const LayerVector& currentLayers);
             void        unlockPageFlip(const LayerVector& currentLayers);
-            bool        isRotationCompleted();
             void        handleWorkList();
             void        handleRepaint();
             void        postFramebuffer();

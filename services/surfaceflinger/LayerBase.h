@@ -114,7 +114,6 @@ public:
     virtual void setPerFrameData(hwc_layer_t* hwcl);
             void setOverlay(bool inOverlay);
             bool isOverlay() const;
-    virtual bool isRotated() const;
 
 
     /**
