@@ -197,7 +197,7 @@ public class CatService extends Handler implements AppInterface {
         } else {
             CatLog.d(this, "UiccManager instance is null");
         }
-
+        mCmdIf.reportStkServiceIsRunning(null);
         // Check if STK application is availalbe
         mStkAppInstalled = isStkAppInstalled();
 
