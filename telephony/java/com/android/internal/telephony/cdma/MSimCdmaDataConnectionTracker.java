@@ -247,7 +247,7 @@ public final class MSimCdmaDataConnectionTracker extends CdmaDataConnectionTrack
                 sendOnComplete = false;
                 if (!prevEnabled) {
                     resetAllRetryCounts();
-                    onTrySetupData(Phone.REASON_DATA_ENABLED);
+                    onTrySetupData(Phone.REASON_DATA_ENABLED, false);
                 } else {
                     cleanUpAllConnections(null, onCompleteMsg);
                 }

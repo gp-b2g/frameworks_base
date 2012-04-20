@@ -1131,7 +1131,10 @@ public abstract class DataConnection extends StateMachine {
             switch (msg.what) {
                 case EVENT_CONNECT:
                     cp = (ConnectionParams) msg.obj;
-                    if (cp != null && !cp.apn.isInPartialRetry()) {
+                    boolean isPartialRetry =
+                            (msg.arg1 == Phone.DUALIP_PARTIAL_RETRY) ? true : false;
+                    if (DBG) log("DcActiveState msg.what=EVENT_CONNECT msg.arg1=" + msg.arg1);
+                    if (cp != null && !isPartialRetry) {
                         /* No partial retry necessary */
                         mRefCount++;
                         if (DBG)
@@ -1161,7 +1164,6 @@ public abstract class DataConnection extends StateMachine {
                         /* update the partial retry result in the APN so that
                          * the next retry can reuse this information.
                          */
-                        cp.apn.setInPartialRetry(mInPartialRetry);
                         retVal = HANDLED;
                     }
                     mPendingRequest = false;
@@ -1502,9 +1504,11 @@ public abstract class DataConnection extends StateMachine {
      *        With AsyncResult.userObj set to the original msg.obj,
      *        AsyncResult.result = FailCause and AsyncResult.exception = Exception().
      * @param apn is the Access Point Name to bring up a connection to
+     * @param isPartialRetry is a flag indicating if this is retry caused by partial failure
      */
-    public void bringUp(Message onCompletedMsg, DataProfile apn) {
-        sendMessage(obtainMessage(EVENT_CONNECT, new ConnectionParams(apn, onCompletedMsg)));
+    public void bringUp(Message onCompletedMsg, DataProfile apn, boolean isPartialRetry) {
+        int arg1 = isPartialRetry ? Phone.DUALIP_PARTIAL_RETRY : Phone.DUALIP_NOT_PARTIAL_RETRY;
+        sendMessage(obtainMessage(EVENT_CONNECT, arg1, 0, new ConnectionParams(apn, onCompletedMsg)));
     }
 
     /**

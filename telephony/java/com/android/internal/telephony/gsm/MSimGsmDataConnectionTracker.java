@@ -346,7 +346,7 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
                 sendOnComplete = false;
                 if (!prevEnabled) {
                     resetAllRetryCounts();
-                    onTrySetupData(Phone.REASON_DATA_ENABLED);
+                    onTrySetupData(Phone.REASON_DATA_ENABLED, false);
                 } else {
                     cleanUpAllConnections(null, onCompleteMsg);
                 }
