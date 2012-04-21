@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,10 +62,15 @@ AudioSource::AudioSource(
       mMime(MEDIA_MIMETYPE_AUDIO_RAW) {
 
     LOGV("sampleRate: %d, channels: %d", sampleRate, channels);
-    CHECK(channels == 1 || channels == 2);
+    CHECK(channels == 1 || channels == 2 || channels == 6);
     uint32_t flags = AudioRecord::RECORD_AGC_ENABLE |
                      AudioRecord::RECORD_NS_ENABLE  |
                      AudioRecord::RECORD_IIR_ENABLE;
+
+    if ((( inputSource == AUDIO_SOURCE_MIC ) || (inputSource == AUDIO_SOURCE_CAMCORDER))
+        &&(channels == 6)) {
+        sampleRate = 48000;
+    }
 
     if ( NO_ERROR != AudioSystem::getInputBufferSize(
         sampleRate, mFormat, channels, (size_t*)&mMaxBufferSize) ) {
@@ -73,9 +78,21 @@ AudioSource::AudioSource(
         LOGV("mMaxBufferSize = %d", mMaxBufferSize);
     }
 
+    uint32_t inChannel;
+    if ( channels == 1 ) {
+        inChannel = AUDIO_CHANNEL_IN_MONO;
+    } else if ( channels == 2 ) {
+        inChannel = AUDIO_CHANNEL_IN_STEREO;
+    } else if ( channels == 6 ) {
+        inChannel = AUDIO_CHANNEL_IN_5POINT1;
+    } else {
+        LOGE("unsupported channel number:%d",channels);
+        return;
+    }
+
     mRecord = new AudioRecord(
                 inputSource, sampleRate, AUDIO_FORMAT_PCM_16_BIT,
-                channels > 1? AUDIO_CHANNEL_IN_STEREO: AUDIO_CHANNEL_IN_MONO,
+                inChannel,
                 4 * kMaxBufferSize / sizeof(int16_t), /* Enable ping-pong buffers */
                 flags,
                 AudioRecordCallbackFunction,

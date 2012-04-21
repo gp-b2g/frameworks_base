@@ -161,8 +161,8 @@ static const char *audio_interfaces[] = {
 #define ARRAY_SIZE(x) (sizeof((x))/sizeof(((x)[0])))
 
 static uint32_t getInputChannelCount(uint32_t channels) {
-    // only mono or stereo is supported for input sources
-    return popcount((channels) & (AUDIO_CHANNEL_IN_STEREO | AUDIO_CHANNEL_IN_MONO));
+    // Mono, Stereo, Quad and 5.1 are the allowed Channel IN's
+    return popcount((channels) & (AUDIO_CHANNEL_IN_STEREO | AUDIO_CHANNEL_IN_MONO | AUDIO_CHANNEL_IN_5POINT1));
 }
 // ----------------------------------------------------------------------------
 
@@ -5206,8 +5206,8 @@ bool AudioFlinger::RecordThread::checkForNewParameters_l()
                     reqFormat == mInput->stream->common.get_format(&mInput->stream->common) &&
                     reqFormat == AUDIO_FORMAT_PCM_16_BIT &&
                     ((int)mInput->stream->common.get_sample_rate(&mInput->stream->common) <= (2 * reqSamplingRate)) &&
-                    (getInputChannelCount(mInput->stream->common.get_channels(&mInput->stream->common)) < 3) &&
-                    (reqChannelCount < 3)) {
+                    (getInputChannelCount(mInput->stream->common.get_channels(&mInput->stream->common)) < 7) &&
+                    (reqChannelCount < 7)) {
                     status = NO_ERROR;
                 }
                 if (status == NO_ERROR) {
@@ -5282,7 +5282,7 @@ void AudioFlinger::RecordThread::readInputParameters()
     mFrameCount = mInputBytes / mFrameSize;
     mRsmpInBuffer = new int16_t[mFrameCount * mChannelCount];
 
-    if (mSampleRate != mReqSampleRate && mChannelCount < 3 && mReqChannelCount < 3)
+    if (mSampleRate != mReqSampleRate && mChannelCount < 7 && mReqChannelCount < 7)
     {
         int channelCount;
          // optmization: if mono to mono, use the resampler in stereo to stereo mode to avoid
@@ -5679,7 +5679,7 @@ int AudioFlinger::openInput(uint32_t *pDevices,
     if (inStream == NULL && status == BAD_VALUE &&
         reqFormat == format && format == AUDIO_FORMAT_PCM_16_BIT &&
         (samplingRate <= 2 * reqSamplingRate) &&
-        (getInputChannelCount(channels) < 3) && (getInputChannelCount(reqChannels) < 3)) {
+        (getInputChannelCount(channels) < 7) && (getInputChannelCount(reqChannels) < 7)) {
         LOGV("openInput() reopening with proposed sampling rate and channels");
         status = inHwDev->open_input_stream(inHwDev, *pDevices, (int *)&format,
                                             &channels, &samplingRate,

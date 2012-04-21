@@ -1,7 +1,7 @@
 /*
 **
 ** Copyright 2008, The Android Open Source Project
-** Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+** Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -162,7 +162,7 @@ status_t AudioRecord::set(
         return BAD_VALUE;
     }
 
-    int channelCount = popcount((channelMask) & (AUDIO_CHANNEL_IN_STEREO | AUDIO_CHANNEL_IN_MONO));
+    int channelCount = popcount((channelMask) & (AUDIO_CHANNEL_IN_STEREO | AUDIO_CHANNEL_IN_MONO | AUDIO_CHANNEL_IN_5POINT1));
 
     if (sessionId == 0 ) {
         mSessionId = AudioSystem::newAudioSessionId();
