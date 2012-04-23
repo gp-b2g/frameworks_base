@@ -233,4 +233,10 @@ public interface TelephonyProperties
      * Type: boolean ( true = EONS enabled, false = EONS disabled)
      */
     static final String PROPERTY_EONS_ENABLED = "persist.eons.enabled";
+
+    /**
+     * Property to control alpha ID display for proactive commands
+     * Type: boolean ( true = alpha display enabled, false = alpha display disabled)
+     */
+    static final String PROPERTY_ALPHA_USRCNF = "persist.atel.noalpha.usrcnf";
 }
