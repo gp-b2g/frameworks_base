@@ -359,11 +359,18 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
             if (mFormat == NULL)
             {
                 unsigned profile = bits.getBits(2);
-                CHECK_NE(profile, 3u);
+                // Avoid crash, rather look for next packet to get the format info
+                if(profile == 3u) {
+                    return NULL;
+                }
                 unsigned sampling_freq_index = bits.getBits(4);
                 bits.getBits(1);  // private_bit
                 unsigned channel_configuration = bits.getBits(3);
-                CHECK_NE(channel_configuration, 0u);
+                // Avoid crash, rather look for next packet to get the format info
+                if(channel_configuration ==  0u) {
+                    return NULL;
+                }
+
                 bits.skipBits(2);  // original_copy, home
 
                 mFormat = MakeAACCodecSpecificData(profile,
@@ -444,11 +451,19 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
             if (mFormat == NULL)
             {
                 unsigned profile = bits.getBits(2);
-                CHECK_NE(profile, 3u);
+                // Avoid crash, rather look for next packet to get the format info
+                if(profile == 3u) {
+                    return NULL;
+                }
+
                 unsigned sampling_freq_index = bits.getBits(4);
                 bits.getBits(1);  // private_bit
                 unsigned channel_configuration = bits.getBits(3);
-                CHECK_NE(channel_configuration, 0u);
+                // Avoid crash, rather look for next packet to get the format info
+                if(channel_configuration == 0u) {
+                    return NULL;
+                }
+
                 bits.skipBits(2);  // original_copy, home
 
                 mFormat = MakeAACCodecSpecificData(profile,
