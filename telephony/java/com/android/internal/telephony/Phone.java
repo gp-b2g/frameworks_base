@@ -169,7 +169,7 @@ public interface Phone {
      * Constants for Dual-IP partial retries
      */
     static final int DUALIP_PARTIAL_RETRY = 1;
-
+    static final int DUALIP_NOT_PARTIAL_RETRY = 0;
     /**
      * Optional reasons for disconnect and connect
      */
