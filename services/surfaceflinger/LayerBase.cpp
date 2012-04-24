@@ -378,10 +378,6 @@ bool LayerBase::isOverlay() const {
     return mInOverlay;
 }
 
-bool LayerBase::isRotated() const {
-    return true;
-}
-
 void LayerBase::setFiltering(bool filtering)
 {
     mFiltering = filtering;
