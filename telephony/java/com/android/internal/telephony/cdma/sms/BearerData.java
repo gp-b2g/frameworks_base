@@ -1034,23 +1034,24 @@ public final class BearerData {
     {
         try {
             int fill_bits = (offset * 8) % 7 ;
+            int udhSeptets = ((offset * 8) + 6) / 7;
             int udhoffset = 0;
 
             if (fill_bits != 0) {
               fill_bits = 7 - fill_bits;
             }
 
-            udhoffset = (offset) * 8 + fill_bits;
+	    udhoffset = offset * 8 + fill_bits;
 
             StringBuffer strBuf = new StringBuffer(numFields);
             BitwiseInputStream inStream = new BitwiseInputStream(data);
-            int wantedBits = (udhoffset) + ((numFields - offset - 1)* 7);
+            int wantedBits = (udhoffset) + ((numFields - udhSeptets)* 7);
             if (inStream.available() < wantedBits) {
                 throw new CodingException("insufficient data (wanted " + wantedBits +
                                           " bits, but only have " + inStream.available() + ")");
             }
             inStream.skip(udhoffset);
-            for (int i = 0; i < (numFields - offset - 1); i++) {
+            for (int i = 0; i < (numFields - udhSeptets); i++) {
                 int charCode = inStream.read(7);
                 if ((charCode >= UserData.ASCII_MAP_BASE_INDEX) &&
                         (charCode <= UserData.ASCII_MAP_MAX_INDEX)) {
