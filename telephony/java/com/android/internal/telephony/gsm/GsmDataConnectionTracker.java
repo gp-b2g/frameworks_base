@@ -1338,7 +1338,9 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                     // Its active so update the DataConnections link properties
                     UpdateLinkPropertyResult result =
                         dcac.updateLinkPropertiesDataCallStateSync(newState);
-                    if (result.oldLp.equals(result.newLp)) {
+                    if (result.setupResult == DataCallState.SetupResult.ERR_Stale) {
+                        log("onDataStateChanged(ar): state is Inactive no changes");
+                    } else if (result.oldLp.equals(result.newLp)) {
                         if (DBG) log("onDataStateChanged(ar): no change");
                     } else {
                         if (result.oldLp.isIdenticalInterfaceName(result.newLp)) {
