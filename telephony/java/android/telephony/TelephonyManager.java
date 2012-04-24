@@ -646,7 +646,13 @@ public class TelephonyManager {
      * @see #SIM_STATE_CARD_IO_ERROR
      */
     public int getSimState() {
-        String prop = SystemProperties.get(TelephonyProperties.PROPERTY_SIM_STATE);
+        String prop = null;
+        if (isMultiSimEnabled) {
+            int subId = MSimTelephonyManager.getDefault().getDefaultSubscription();
+            prop = getTelephonyProperty(TelephonyProperties.PROPERTY_SIM_STATE, subId, "");
+        } else {
+            prop = SystemProperties.get(TelephonyProperties.PROPERTY_SIM_STATE);
+        }
         if ("ABSENT".equals(prop)) {
             return SIM_STATE_ABSENT;
         }
