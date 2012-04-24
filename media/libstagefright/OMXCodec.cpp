@@ -1055,6 +1055,7 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta) {
             setVideoInputFormat(mMIME, meta);
         } else {
             int32_t width, height;
+            QOMX_ENABLETYPE extra_data;
             bool success = meta->findInt32(kKeyWidth, &width);
             success = success && meta->findInt32(kKeyHeight, &height);
             CHECK(success);
@@ -1080,6 +1081,11 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta) {
                     LOGW("Failed to set frame packing format on component");
                 }
             }
+	    extra_data.bEnable = OMX_TRUE;
+	    err = mOMX->setParameter(mNode,
+                         (OMX_INDEXTYPE)OMX_QcomIndexParamFrameInfoExtraData,
+                         (void*)&extra_data,
+                         sizeof(extra_data));
         }
     }
 
@@ -2082,6 +2088,7 @@ OMXCodec::OMXCodec(
       mSPSParsed(false),
       bInvalidState(false),
       m3DVideoDetected(false),
+      mPARDataUpdated(false),
       mIsAacFormatAdif(0),
       latenessUs(0),
       LC_level(0),
@@ -2951,6 +2958,12 @@ void OMXCodec::on_message(const omx_message &msg) {
                  flags,
                  msg.u.extended_buffer_data.timestamp,
                  msg.u.extended_buffer_data.timestamp / 1E6);
+
+            if (((!strncasecmp(mMIME, "video/", 6)) &&
+                (!strncmp(mComponentName, "OMX.qcom.", 9))) &&
+                (!mThumbnailMode)) {
+                   processPARData();
+            }
 
             if (!strncasecmp(mMIME, "video/", 6) && mOMXLivesLocally
                && msg.u.extended_buffer_data.range_length > 0) {
@@ -6034,6 +6047,45 @@ void OMXCodec::setQCELPFormat(int32_t numChannels, int32_t sampleRate, int32_t b
     else{
       LOGI("QCELP decoder \n");
     }
+}
+
+status_t OMXCodec::processPARData() {
+    if (!mPARDataUpdated) {
+        CODEC_LOGI("In processPARData");
+        OMX_QCOM_EXTRADATA_FRAMEINFO extradata;
+        memset(&extradata,0,sizeof(extradata));
+
+        status_t err = mOMX->getConfig(mNode,
+                        (OMX_INDEXTYPE)OMX_QcomIndexParamFrameInfoExtraData,
+                        &extradata,sizeof(extradata));
+        if (err != OK) {
+            LOGV("Not supported config OMX_QcomIndexParamFrameInfoExtraData");
+            return OK;
+        }
+        if (extradata.aspectRatio.aspectRatioX !=0 &&
+           extradata.aspectRatio.aspectRatioY != 0) {
+            CODEC_LOGV(" aspectRatioX = %d aspectRatioY = %d",
+                       extradata.aspectRatio.aspectRatioX,
+                       extradata.aspectRatio.aspectRatioY);
+
+            if (mNativeWindow.get() == NULL ||
+                mNativeWindow.get()->perform == NULL) {
+              LOGE("mNativeWindow.get is NULL");
+              return UNKNOWN_ERROR;
+            }
+            err = mNativeWindow.get()->perform(mNativeWindow.get(),
+                    NATIVE_WINDOW_SET_PIXEL_ASPECT_RATIO,
+                    extradata.aspectRatio.aspectRatioX,
+                    extradata.aspectRatio.aspectRatioY);
+            if (err != 0) {
+                LOGE("native_window_update_set_pixel failed: %s (%d)",
+                        strerror(-err), -err);
+                return err;
+            }
+            mPARDataUpdated = true;
+        }
+    }
+    return OK;
 }
 
 status_t OMXCodec::processSEIData() {

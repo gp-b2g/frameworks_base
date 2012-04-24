@@ -238,6 +238,7 @@ private:
     List<int64_t> mDecodingTimeList;
     bool m3DVideoDetected;
 
+    bool mPARDataUpdated;
     //Used to indicate if the AAC container has ADIF format
     int32_t mIsAacFormatAdif;
 
@@ -370,7 +371,7 @@ private:
             unsigned *profile, unsigned *level, const sp<MetaData> &meta);
 
     status_t processSEIData();
-
+    status_t processPARData();
     OMXCodec(const OMXCodec &);
     OMXCodec &operator=(const OMXCodec &);
     status_t setWMAFormat(const sp<MetaData> &inputFormat);
