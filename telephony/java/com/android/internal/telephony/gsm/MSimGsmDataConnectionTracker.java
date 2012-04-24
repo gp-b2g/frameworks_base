@@ -74,7 +74,7 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
 
     /*this property is used for turning on data activity reset.*/
     private static final boolean SUPPORT_DATA_ACTIVITY_RESET =
-        SystemProperties.getBoolean("persist.telephony.da.reset", true);
+        SystemProperties.getBoolean("persist.telephony.da.reset", false);
 
     MSimGsmDataConnectionTracker(MSimGSMPhone p) {
         super(p);
