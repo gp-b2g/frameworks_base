@@ -562,6 +562,25 @@ public final class BluetoothHeadset implements BluetoothProfile {
     }
 
     /**
+     * Indicates if current device supports voice dialing over bluetooth SCO.
+     *
+     * @return true if voice dialing over bluetooth is supported, false otherwise.
+     * @hide
+     */
+    public boolean isBluetoothVoiceDialingSupported(BluetoothDevice device) {
+        if (mService != null && isEnabled() &&
+            isValidDevice(device)) {
+            try {
+                return mService.isBluetoothVoiceDialingEnabled(device);
+            } catch (RemoteException e) {
+                Log.e(TAG,  Log.getStackTraceString(new Throwable()));
+            }
+        }
+        if (mService == null) Log.w(TAG, "Proxy not attached to service");
+        return false;
+    }
+
+    /**
      * Cancel the outgoing connection.
      * Note: This is an internal function and shouldn't be exposed
      *
