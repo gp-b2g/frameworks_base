@@ -237,7 +237,7 @@ class SupplicantStateTracker extends StateMachine {
          * The max number of the WPA supplicant loop iterations before we
          * decide that the loop should be terminated:
          */
-        private static final int MAX_SUPPLICANT_LOOP_ITERATIONS = 4;
+        private static final int MAX_SUPPLICANT_LOOP_ITERATIONS = 10;
         private int mLoopDetectIndex;
         private int mLoopDetectCount;
 
