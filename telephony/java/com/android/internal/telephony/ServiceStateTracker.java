@@ -57,7 +57,6 @@ public abstract class ServiceStateTracker extends Handler {
      */
     protected int[] pollingContext;
     protected boolean mDesiredPowerState;
-    protected boolean mRadioPowerIsInProgress = false;
 
     /**
      *  Values correspond to ServiceState.RADIO_TECHNOLOGY_ definitions.
@@ -241,12 +240,7 @@ public abstract class ServiceStateTracker extends Handler {
     public void
     setRadioPower(boolean power) {
         mDesiredPowerState = power;
-        if (!mRadioPowerIsInProgress) {
-            mRadioPowerIsInProgress = true;
-            setPowerStateToDesired();
-        } else {
-            log("Previous radio power request is in progress ignore current request");
-        }
+        setPowerStateToDesired();
     }
 
     /**
