@@ -234,6 +234,10 @@ public:
     void dump(String8& result) const;
     void dump(String8& result, const char* prefix, char* buffer, size_t SIZE) const;
 
+    // Get PAR Info
+    int getWRatio() { return wRatio; }
+    int getHRatio() { return hRatio; }
+
 protected:
 
     // freeBufferLocked frees the resources (both GraphicBuffer and EGLImage)
@@ -521,6 +525,10 @@ private:
     };
 
     BufferInfo mNextBufferInfo;
+
+    // Pixel Aspect Ratio specified by client.
+    int wRatio;
+    int hRatio;
 };
 
 // ----------------------------------------------------------------------------

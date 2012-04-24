@@ -140,6 +140,8 @@ SurfaceTexture::SurfaceTexture(GLuint tex, bool allowSynchronousMode,
 #endif
     mTexTarget(texTarget),
     mS3DFormat(0),
+    wRatio(1),
+    hRatio(1),
     mFrameCounter(0) {
     // Choose a name using the PID and a process-unique ID.
     mName = String8::format("unnamed-%d-%d", getpid(), createProcessUniqueId());
@@ -774,6 +776,10 @@ status_t SurfaceTexture::performQcomOperation(int operation, int arg1, int arg2,
         case NATIVE_WINDOW_SET_S3D_FORMAT:
             mS3DFormat = arg1;
             break;
+        case NATIVE_WINDOW_SET_PIXEL_ASPECT_RATIO: {
+            wRatio = arg1;
+            hRatio = arg2;
+        } break;
         default: return BAD_VALUE;
     };
     return OK;
