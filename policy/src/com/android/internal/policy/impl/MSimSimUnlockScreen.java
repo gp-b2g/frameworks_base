@@ -43,6 +43,9 @@ public class MSimSimUnlockScreen extends SimUnlockScreen implements KeyguardScre
 
     private int mSubscription = 0;
 
+    private static final int[] pinStrIds = {R.string.keyguard_password_enter_sim1_pin_code,
+                                            R.string.keyguard_password_enter_sim2_pin_code};
+
     public MSimSimUnlockScreen(Context context, Configuration configuration,
         KeyguardUpdateMonitor updateMonitor, KeyguardScreenCallback callback,
         LockPatternUtils lockpatternutils, int subscription) {
@@ -51,9 +54,7 @@ public class MSimSimUnlockScreen extends SimUnlockScreen implements KeyguardScre
         layoutType(context);
         mSubscription = subscription;
         if (TelephonyManager.getDefault().isMultiSimEnabled()) {
-            String displayText = getContext().getString
-                      (R.string.keyguard_password_enter_pin_code_for_subscription)
-                      + (mSubscription + 1);
+            String displayText = getContext().getString(pinStrIds[mSubscription]);
             mHeaderText.setText(displayText);
         } else {
             mHeaderText.setText(R.string.keyguard_password_enter_pin_code);
@@ -85,9 +86,7 @@ public class MSimSimUnlockScreen extends SimUnlockScreen implements KeyguardScre
     public void onResume() {
         // start fresh
         if (TelephonyManager.getDefault().isMultiSimEnabled()) {
-            String displayText = getContext().getString
-                    (R.string.keyguard_password_enter_pin_code_for_subscription)
-                    + (mSubscription + 1);
+            String displayText = getContext().getString(pinStrIds[mSubscription]);
             mHeaderText.setText(displayText);
         } else {
            mHeaderText.setText(R.string.keyguard_password_enter_pin_code);

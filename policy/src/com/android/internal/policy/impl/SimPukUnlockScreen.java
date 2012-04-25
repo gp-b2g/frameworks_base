@@ -74,6 +74,9 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
 
     private static final char[] DIGITS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
+    private static final int[] pukStrIds = {R.string.keyguard_password_enter_sim1_pin_code,
+                                            R.string.keyguard_password_enter_sim2_pin_code};
+
     public SimPukUnlockScreen(Context context, Configuration configuration,
             KeyguardUpdateMonitor updateMonitor, KeyguardScreenCallback callback,
             LockPatternUtils lockpatternutils, int subscription) {
@@ -114,9 +117,7 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
         if (TelephonyManager.getDefault().isMultiSimEnabled()) {
             mKeyguardStatusViewManager = new MSimKeyguardStatusViewManager(this, updateMonitor,
                     lockpatternutils, callback, true);
-            String displayText = getContext().getString
-                    (R.string.keyguard_password_enter_puk_code_for_subscription) +
-                    (mSubscription + 1);
+            String displayText = getContext().getString(pukStrIds[mSubscription]);
             mHeaderText.setText(displayText);
         } else {
             mKeyguardStatusViewManager = new KeyguardStatusViewManager(this, updateMonitor,
@@ -144,9 +145,7 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
     public void onResume() {
         // start fresh
         if (TelephonyManager.getDefault().isMultiSimEnabled()) {
-            String displayText = getContext().getString
-                    (R.string.keyguard_password_enter_puk_code_for_subscription)
-                    + (mSubscription + 1);
+            String displayText = getContext().getString(pukStrIds[mSubscription]);
             mHeaderText.setText(displayText);
         } else {
             mHeaderText.setText(R.string.keyguard_password_enter_puk_code);

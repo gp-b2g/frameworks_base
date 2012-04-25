@@ -1779,6 +1779,8 @@
          Displayed in one line in a large font.  -->
     <string name="keyguard_password_enter_pin_code">Enter PIN code</string>
     <string name="keyguard_password_enter_pin_code_for_subscription">Enter PIN code for Subscription</string>
+    <string name="keyguard_password_enter_sim1_pin_code">Enter SIM1 PIN code</string>
+    <string name="keyguard_password_enter_sim2_pin_code">Enter SIM2 PIN code</string>
 
     <!-- Instructions telling the user to enter their SIM PUK to unlock the keyguard.
          Displayed in one line in a large font.  -->
@@ -1786,6 +1788,8 @@
     <!-- Instructions telling the user to enter their SIM PUK for a particular subscription
          to unlock the keyguard. Displayed in one line in a large font.  -->
     <string name="keyguard_password_enter_puk_code_for_subscription">Enter PUK and new PIN code for Subscription</string>
+    <string name="keyguard_password_enter_sim1_puk_code">Enter SIM1 PUK and new PIN code</string>
+    <string name="keyguard_password_enter_sim2_puk_code">Enter SIM2 PUK and new PIN code</string>
 
     <!-- Prompt to enter SIM PUK in Edit Text Box in unlock screen -->
     <string name="keyguard_password_enter_puk_prompt">PUK code</string>
