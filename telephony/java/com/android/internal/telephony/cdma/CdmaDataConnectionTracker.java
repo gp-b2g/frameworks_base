@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -194,8 +194,7 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
 
         if (mCheckForConnectivity) {
             allowed = allowed &&
-                    (psState == ServiceState.STATE_IN_SERVICE ||
-                            mAutoAttachOnCreation) &&
+                    (mAutoAttachOnCreation) &&
                     (mCdmaPhone.mSST.isConcurrentVoiceAndDataAllowed() ||
                             mPhone.getState() == Phone.State.IDLE) &&
                     !roaming &&
@@ -215,7 +214,7 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
 
         if (!allowed && DBG) {
             String reason = "";
-            if (!((psState == ServiceState.STATE_IN_SERVICE) || mAutoAttachOnCreation)) {
+            if (! mAutoAttachOnCreation) {
                 reason += " - psState= " + psState;
             }
             if (!subscriptionFromNv &&

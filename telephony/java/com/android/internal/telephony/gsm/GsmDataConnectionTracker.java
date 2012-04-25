@@ -664,9 +664,8 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         int radioTech  = mPhone.getServiceState().getRadioTechnology();
 
         boolean allowed =
-                    (gprsState == ServiceState.STATE_IN_SERVICE || mAutoAttachOnCreation) &&
+                    (mAutoAttachOnCreation) &&
                     ((mUseNvOperatorForEhrpd &&
-                      radioTech == ServiceState.RADIO_TECHNOLOGY_EHRPD &&
                       mCdmaHomeOperatorNumeric != null) ||
                      recordsLoaded) &&
                     (mPhone.getState() == Phone.State.IDLE ||
