@@ -137,8 +137,6 @@ public:
 
     //HDMI SPecific functions
     static void enableExternalDisplay(int disp_type, int enable);
-    static void setActionSafeWidthRatio(float asWidthRatio);
-    static void setActionSafeHeightRatio(float asHeightRatio);
 
     status_t    hide(SurfaceID id);
     status_t    show(SurfaceID id, int32_t layer = -1);
