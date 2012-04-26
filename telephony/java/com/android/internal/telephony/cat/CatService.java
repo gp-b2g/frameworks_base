@@ -30,6 +30,7 @@ import android.os.SystemProperties;
 import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccFileHandler;
+import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UiccCard;
 import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.UiccManager;
@@ -167,7 +168,7 @@ public class CatService extends Handler implements AppInterface {
     private static final int DEV_ID_TERMINAL    = 0x82;
     private static final int DEV_ID_NETWORK     = 0x83;
 
-    static final String STK_DEFAULT = "Defualt Message";
+    static final String STK_DEFAULT = "Default Message";
 
     public CatService(CommandsInterface ci, Context context, int slotId) {
         if (ci == null || context == null) {
@@ -412,11 +413,24 @@ public class CatService extends Handler implements AppInterface {
             case RECEIVE_DATA:
             case SEND_DATA:
                 BIPClientParams cmd = (BIPClientParams) cmdParams;
-                if (cmd.bHasAlphaId && (cmd.textMsg.text == null)) {
+                /*
+                 * If the text mesg is null, need to send the response
+                 * back to the card in the following scenarios
+                 * - It has alpha ID tag with no Text Msg (or)
+                 * - If alphaUsrCnf is not set. In the above cases
+                 *   there should be no UI indication given to the user.
+                 */
+                boolean alphaUsrCnf = SystemProperties.getBoolean(
+                         TelephonyProperties.PROPERTY_ALPHA_USRCNF, false);
+                CatLog.d(this, "alphaUsrCnf: " + alphaUsrCnf + ", bHasAlphaId: " + cmd.bHasAlphaId);
+
+                if (( cmd.textMsg.text == null) && ( cmd.bHasAlphaId || !alphaUsrCnf)) {
                     CatLog.d(this, "cmd " + cmdParams.getCommandType() + " with null alpha id");
                     // If alpha length is zero, we just respond with OK.
                     if (isProactiveCmd) {
                         sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
+                    } else if (cmdParams.getCommandType() == CommandType.OPEN_CHANNEL) {
+                        mCmdIf.handleCallSetupRequestFromSim(true, null);
                     }
                     return;
                 }
