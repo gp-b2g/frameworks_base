@@ -744,7 +744,8 @@ void LPAPlayer::reset() {
         }
     }
     local_handle->start = 0;
-    pcm_prepare(local_handle);
+    if (mIsAudioRouted)
+       pcm_prepare(local_handle);
     pcm_close(local_handle);
     handle = (void*)local_handle;
 
