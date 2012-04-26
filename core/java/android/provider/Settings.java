@@ -1140,6 +1140,12 @@ public final class Settings {
         public static final String ANC = "anc";
 
         /**
+         * @hide
+         * Whether INCALL MUSIC is enabled.
+         */
+        public static final String INCALLMUSIC = "incallmusic";
+
+        /**
           * Default file manager to show files on extrenal storage media
           * when it is mounted
           * @hide
