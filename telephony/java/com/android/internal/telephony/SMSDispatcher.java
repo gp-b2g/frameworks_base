@@ -246,7 +246,7 @@ public abstract class SMSDispatcher extends Handler {
         mPendingMessagesList = new ArrayList<SmsTracker>();
         mSyncronousSending = SystemProperties.getBoolean(
                 TelephonyProperties.SMS_SYNCHRONOUS_SENDING,
-                false);
+                true);
         Log.d(TAG, "SMSDispatcher: ctor mSmsCapable=" + mSmsCapable + " format=" + getFormat()
                 + " mSmsReceiveDisabled=" + mSmsReceiveDisabled
                 + " mSmsSendDisabled=" + mSmsSendDisabled);
