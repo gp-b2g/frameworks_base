@@ -74,8 +74,8 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
 
     private static final char[] DIGITS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
-    private static final int[] pukStrIds = {R.string.keyguard_password_enter_sim1_pin_code,
-                                            R.string.keyguard_password_enter_sim2_pin_code};
+    private static final int[] pukStrIds = {R.string.keyguard_password_enter_sim1_puk_code,
+                                            R.string.keyguard_password_enter_sim2_puk_code};
 
     public SimPukUnlockScreen(Context context, Configuration configuration,
             KeyguardUpdateMonitor updateMonitor, KeyguardScreenCallback callback,
