@@ -237,6 +237,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     // WAKE_LOCK_TIMEOUT occurs.
     int mRequestMessagesWaiting;
 
+    private static final boolean MULTI_SIM_ENABLED = SystemProperties.getBoolean(
+            TelephonyProperties.PROPERTY_MULTI_SIM_ENABLED, false);
+
+    // In case of Multi SIM, Phone App should take the control over
+    // the modem to activate the subscriptions on powerup.  So if the
+    // radio state in RADIO_ON on powerup or on rild socket reconnect,
+    // we need to power off the modem explicitly.  This flag is set
+    // to true only in case of Multi SIM enabled cases.
+    private boolean mRilPowerOff;
+
     //I'd rather this be LinkedList or something
     ArrayList<RILRequest> mRequestsList = new ArrayList<RILRequest>();
 
@@ -604,6 +614,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 Log.i(LOG_TAG, "Disconnected from '" + rilSocket
                       + "' socket");
 
+                // If RILD socket reconnects(ie., RILD process is restarted),
+                // then in case of MultiSim scenario we need to power off to
+                // to take the control over the modem.
+                mRilPowerOff = MULTI_SIM_ENABLED;
+
                 setRadioState (RadioState.RADIO_UNAVAILABLE);
 
                 try {
@@ -644,6 +659,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         mPreferredNetworkType = preferredNetworkType;
         mPhoneType = RILConstants.NO_PHONE;
         mInstanceId = instanceId;
+        mRilPowerOff = MULTI_SIM_ENABLED;
 
         PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
@@ -2369,6 +2385,18 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private void switchToRadioState(RadioState newState) {
+        if (mRilPowerOff) {
+            Log.i(LOG_TAG, "Socket Reconnected / Init");
+            mRilPowerOff = false;
+            if (newState.isOn()) {
+                /* In case of MultiSIM, when rild restarts and socket reconnects
+                 * power off the modem and power on explicitly.
+                 */
+                if (RILJ_LOGD) Log.d(LOG_TAG, "Radio ON @ Socket Connect; reset to OFF");
+                setRadioPower(false, null);
+                return;
+            }
+        }
         setRadioState(newState);
     }
 
