@@ -256,6 +256,8 @@ class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     public void dispose() {
+        log("ServiceStateTracker dispose");
+
         // Unregister for all events.
         cm.unregisterForAvailable(this);
         cm.unregisterForRadioStateChanged(this);
