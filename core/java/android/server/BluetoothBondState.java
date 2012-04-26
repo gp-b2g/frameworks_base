@@ -107,6 +107,10 @@ class BluetoothBondState {
         loadBondState();
     }
 
+    public synchronized void deinitBondState() {
+        closeProfileProxy();
+    }
+
     private void loadBondState() {
         if (mService.getBluetoothStateInternal() !=
                 BluetoothAdapter.STATE_TURNING_ON) {

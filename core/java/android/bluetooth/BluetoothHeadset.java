@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -241,10 +242,10 @@ public final class BluetoothHeadset implements BluetoothProfile {
      */
     /*package*/ synchronized void close() {
         if (DBG) log("close()");
-        if (mConnection != null) {
+        if (mConnection != null && mService != null) {
             mContext.unbindService(mConnection);
-            mConnection = null;
         }
+        mConnection = null;
         mServiceListener = null;
     }
 

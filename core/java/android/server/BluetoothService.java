@@ -662,6 +662,7 @@ public class BluetoothService extends IBluetooth.Stub {
 
         // Log bluetooth off to battery stats.
         long ident = Binder.clearCallingIdentity();
+        mBondState.deinitBondState();
         try {
             mBatteryStats.noteBluetoothOff();
             //Balancing calls to unbind Headset service which is bound
