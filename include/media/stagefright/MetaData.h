@@ -129,6 +129,8 @@ enum {
     kKeyWMABitspersample  = 'bsps',  // int64_t
     kKeyWMAVirPktSize     = 'vpks',  // int64_t
 
+    kKeyFileFormat        = 'ffmt',  // cstring
+
     // An indication that a video buffer has been rendered.
     kKeyRendered          = 'rend',  // bool (int32_t)
 
