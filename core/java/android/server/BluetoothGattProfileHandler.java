@@ -623,7 +623,9 @@ final class BluetoothGattProfileHandler {
                 try {
                     callback.onGattDiscoverPrimaryServiceRequest(config, start, end, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Remote Exception:" + e);
+                    Log.e(TAG, "Exception:" + e);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "Exception:" + e);
                 }
              }
          }
@@ -645,7 +647,9 @@ final class BluetoothGattProfileHandler {
                     Log.d(TAG, "Convert string to parceluuid : " + uuid);
                     callback.onGattDiscoverPrimaryServiceByUuidRequest(config, start, end, uuid, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Remote Exception:" + e);
+                    Log.e(TAG, "Exception:" + e);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "Exception:" + e);
                 }
              }
          }
@@ -664,7 +668,9 @@ final class BluetoothGattProfileHandler {
                 try {
                     callback.onGattFindIncludedServiceRequest(config, start, end, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Remote Exception:" + e);
+                    Log.e(TAG, "Exception:" + e);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "Exception:" + e);
                 }
              }
          }
@@ -683,7 +689,9 @@ final class BluetoothGattProfileHandler {
                 try {
                     callback.onGattDiscoverCharacteristicRequest(config, start, end, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Remote Exception:" + e);
+                    Log.e(TAG, "Exception:" + e);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "Exception:" + e);
                 }
              }
          }
@@ -703,7 +711,9 @@ final class BluetoothGattProfileHandler {
                     callback.onGattDiscoverCharacteristicDescriptorRequest(config, start,
                                                                            end, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Remote Exception:" + e);
+                    Log.e(TAG, "Exception:" + e);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "Exception:" + e);
                 }
              }
          }
@@ -723,7 +733,9 @@ final class BluetoothGattProfileHandler {
                     Log.d(TAG, "Convert string to parceluuid : " + uuid);
                     callback.onGattReadByTypeRequest(config, uuid, start, end, auth, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Remote Exception:" + e);
+                    Log.e(TAG, "Exception:" + e);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "Exception:" + e);
                 }
              }
          }
@@ -740,7 +752,9 @@ final class BluetoothGattProfileHandler {
                 try {
                     callback.onGattReadRequest(config, handle, auth, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Remote Exception:" + e);
+                    Log.e(TAG, "Exception:" + e);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "Exception:" + e);
                 }
              }
          }
@@ -757,7 +771,9 @@ final class BluetoothGattProfileHandler {
                 try {
                     callback.onGattWriteRequest(config, attrHandle, value, auth);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Remote Exception:" + e);
+                    Log.e(TAG, "Exception:" + e);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "Exception:" + e);
                 }
              }
          }
@@ -767,14 +783,15 @@ final class BluetoothGattProfileHandler {
                                                               int attrHandle, byte[] value, int sessionHandle, int reqHandle) {
          BluetoothGattAppConfiguration config = getConfigFromPath(gattObjectPath);
          Log.d(TAG, "Gatt object path : "  + gattObjectPath + ", config " + config);
-
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
              if (callback != null) {
                 try {
                     callback.onGattReliableWriteRequest(config, attrHandle, value, auth, sessionHandle, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Remote Exception:" + e);
+                    Log.e(TAG, "Exception:" + e);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "Exception:" + e);
                 }
              }
          }
@@ -791,7 +808,9 @@ final class BluetoothGattProfileHandler {
                 try {
                     callback.onGattSetClientConfigDescriptor(config, attrHandle, value, sessionHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Remote Exception:" + e);
+                    Log.e(TAG, "Exception:" + e);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "Exception:" + e);
                 }
              }
          }
@@ -816,7 +835,9 @@ final class BluetoothGattProfileHandler {
             try {
                 callback.onGattAppConfigurationStatusChange(config, status);
             } catch (RemoteException e) {
-                Log.e(TAG, "Remote Exception:" + e);
+                Log.e(TAG, "Exception:" + e);
+            } catch (NullPointerException e) {
+                Log.e(TAG, "Exception:" + e);
             }
         }
     }
@@ -829,7 +850,9 @@ final class BluetoothGattProfileHandler {
             try {
                 callback.onGattActionComplete(config, action, status);
             } catch (RemoteException e) {
-                Log.e(TAG, "Remote Exception:" + e);
+                Log.e(TAG, "Exception:" + e);
+            } catch (NullPointerException e) {
+                Log.e(TAG, "Exception:" + e);
             }
         }
     }
