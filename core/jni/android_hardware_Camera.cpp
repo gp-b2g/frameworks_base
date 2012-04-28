@@ -55,8 +55,16 @@ struct fields_t {
     jfieldID    face_sm_degree;
     jfieldID    face_sm_score;
     jfieldID    face_blink_detected;
+    jfieldID    face_gaze_angle;
+    jfieldID    face_updown_dir;
+    jfieldID    face_leftright_dir;
+    jfieldID    face_roll_dir;
+    jfieldID    face_leye_blink;
+    jfieldID    face_reye_blink;
+    jfieldID    face_left_right_gaze;
+    jfieldID    face_top_bottom_gaze;
     jfieldID    face_recognised;
-	jfieldID    point_x;
+    jfieldID    point_x;
     jfieldID    point_y;
     jmethodID   point_constructor;
     /* ###QOALCOMM_CAMERA_ADDS_ON_END### */
@@ -394,7 +402,15 @@ void JNICameraContext::postMetadata(JNIEnv *env, int32_t msgType, camera_frame_m
         env->SetIntField(face, fields.face_sm_degree, metadata->faces[i].smile_degree);
         env->SetIntField(face, fields.face_sm_score, metadata->faces[i].smile_score);
         env->SetIntField(face, fields.face_blink_detected, metadata->faces[i].blink_detected);
+        env->SetIntField(face, fields.face_gaze_angle, metadata->faces[i].gaze_angle);
         env->SetIntField(face, fields.face_recognised, metadata->faces[i].face_recognised);
+        env->SetIntField(face, fields.face_updown_dir, metadata->faces[i].updown_dir);
+        env->SetIntField(face, fields.face_leftright_dir, metadata->faces[i].leftright_dir);
+        env->SetIntField(face, fields.face_roll_dir, metadata->faces[i].roll_dir);
+        env->SetIntField(face, fields.face_leye_blink, metadata->faces[i].leye_blink);
+        env->SetIntField(face, fields.face_reye_blink, metadata->faces[i].reye_blink);
+        env->SetIntField(face, fields.face_left_right_gaze, metadata->faces[i].left_right_gaze);
+        env->SetIntField(face, fields.face_top_bottom_gaze, metadata->faces[i].top_bottom_gaze);
         /* ###QOALCOMM_CAMERA_ADDS_ON_END### */
 
         env->DeleteLocalRef(face);
@@ -1019,6 +1035,14 @@ int register_android_hardware_Camera(JNIEnv *env)
         { "android/hardware/Camera$Face", "smileScore", "I", &fields.face_sm_score },
         { "android/hardware/Camera$Face", "blinkDetected", "I", &fields.face_blink_detected },
         { "android/hardware/Camera$Face", "faceRecognised", "I", &fields.face_recognised },
+        { "android/hardware/Camera$Face", "gazeAngle", "I", &fields.face_gaze_angle },
+        { "android/hardware/Camera$Face", "updownDir", "I", &fields.face_updown_dir },
+        { "android/hardware/Camera$Face", "leftrightDir", "I", &fields.face_leftright_dir },
+        { "android/hardware/Camera$Face", "rollDir", "I", &fields.face_roll_dir },
+        { "android/hardware/Camera$Face", "leyeBlink", "I", &fields.face_leye_blink },
+        { "android/hardware/Camera$Face", "reyeBlink", "I", &fields.face_reye_blink },
+        { "android/hardware/Camera$Face", "leftrightGaze", "I", &fields.face_left_right_gaze },
+        { "android/hardware/Camera$Face", "topbottomGaze", "I", &fields.face_top_bottom_gaze },
         { "android/graphics/Point", "x", "I", &fields.point_x },
         { "android/graphics/Point", "y", "I", &fields.point_y },
         /* ###QOALCOMM_CAMERA_ADDS_ON_END### */
