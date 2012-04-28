@@ -20,6 +20,7 @@ import android.content.pm.ActivityInfo;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.LocaleUtil;
+import android.util.Slog;
 
 import java.util.Locale;
 
@@ -214,13 +215,16 @@ public final class Configuration implements Parcelable, Comparable<Configuration
     public static final int ORIENTATION_PORTRAIT = 1;
     public static final int ORIENTATION_LANDSCAPE = 2;
     public static final int ORIENTATION_SQUARE = 3;
-    
+    public static final int ORIENTATION_REVERSE_PORTRAIT = 4;
+    public static final int ORIENTATION_REVERSE_LANDSCAPE = 5;
+
     /**
      * Overall orientation of the screen.  May be one of
      * {@link #ORIENTATION_LANDSCAPE}, {@link #ORIENTATION_PORTRAIT},
      * or {@link #ORIENTATION_SQUARE}.
      */
     public int orientation;
+    public int altOrientation;
 
     public static final int UI_MODE_TYPE_MASK = 0x0f;
     public static final int UI_MODE_TYPE_UNDEFINED = 0x00;
@@ -318,6 +322,7 @@ public final class Configuration implements Parcelable, Comparable<Configuration
         navigation = o.navigation;
         navigationHidden = o.navigationHidden;
         orientation = o.orientation;
+        altOrientation = o.altOrientation;
         screenLayout = o.screenLayout;
         uiMode = o.uiMode;
         screenWidthDp = o.screenWidthDp;
@@ -463,6 +468,7 @@ public final class Configuration implements Parcelable, Comparable<Configuration
         navigation = NAVIGATION_UNDEFINED;
         navigationHidden = NAVIGATIONHIDDEN_UNDEFINED;
         orientation = ORIENTATION_UNDEFINED;
+        altOrientation = ORIENTATION_UNDEFINED;
         screenLayout = SCREENLAYOUT_SIZE_UNDEFINED;
         uiMode = UI_MODE_TYPE_UNDEFINED;
         screenWidthDp = compatScreenWidthDp = SCREEN_WIDTH_DP_UNDEFINED;
@@ -545,6 +551,11 @@ public final class Configuration implements Parcelable, Comparable<Configuration
                 && orientation != delta.orientation) {
             changed |= ActivityInfo.CONFIG_ORIENTATION;
             orientation = delta.orientation;
+        }
+        if (delta.altOrientation != ORIENTATION_UNDEFINED
+                && altOrientation != delta.altOrientation) {
+            changed |= ActivityInfo.CONFIG_ORIENTATION;
+            altOrientation = delta.altOrientation;
         }
         if (delta.screenLayout != SCREENLAYOUT_SIZE_UNDEFINED
                 && screenLayout != delta.screenLayout) {
@@ -665,6 +676,11 @@ public final class Configuration implements Parcelable, Comparable<Configuration
                 && orientation != delta.orientation) {
             changed |= ActivityInfo.CONFIG_ORIENTATION;
         }
+
+        if (delta.altOrientation != ORIENTATION_UNDEFINED
+                && altOrientation != delta.altOrientation) {
+            changed |= ActivityInfo.CONFIG_ORIENTATION;
+        }
         if (delta.screenLayout != SCREENLAYOUT_SIZE_UNDEFINED
                 && screenLayout != delta.screenLayout) {
             changed |= ActivityInfo.CONFIG_SCREEN_LAYOUT;
@@ -764,6 +780,7 @@ public final class Configuration implements Parcelable, Comparable<Configuration
         dest.writeInt(navigation);
         dest.writeInt(navigationHidden);
         dest.writeInt(orientation);
+        dest.writeInt(altOrientation);
         dest.writeInt(screenLayout);
         dest.writeInt(uiMode);
         dest.writeInt(screenWidthDp);
@@ -792,6 +809,7 @@ public final class Configuration implements Parcelable, Comparable<Configuration
         navigation = source.readInt();
         navigationHidden = source.readInt();
         orientation = source.readInt();
+        altOrientation = source.readInt();
         screenLayout = source.readInt();
         uiMode = source.readInt();
         screenWidthDp = source.readInt();

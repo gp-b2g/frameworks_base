@@ -6053,10 +6053,36 @@ public class WindowManagerService extends IWindowManager.Stub
         final int dh = mCurDisplayHeight;
 
         int orientation = Configuration.ORIENTATION_SQUARE;
+
         if (dw < dh) {
             orientation = Configuration.ORIENTATION_PORTRAIT;
+            switch(mRotation)
+            {
+            case Surface.ROTATION_0:
+            case Surface.ROTATION_90:
+                config.altOrientation = Configuration.ORIENTATION_PORTRAIT;
+                break;
+            case Surface.ROTATION_180:
+            case Surface.ROTATION_270:
+                config.altOrientation = Configuration.ORIENTATION_REVERSE_PORTRAIT;
+                break;
+            }
+
         } else if (dw > dh) {
             orientation = Configuration.ORIENTATION_LANDSCAPE;
+
+            switch(mRotation)
+            {
+            case Surface.ROTATION_0:
+            case Surface.ROTATION_90:
+                config.altOrientation = Configuration.ORIENTATION_LANDSCAPE;
+                break;
+            case Surface.ROTATION_180:
+            case Surface.ROTATION_270:
+                config.altOrientation = Configuration.ORIENTATION_REVERSE_LANDSCAPE;
+                break;
+            }
+
         }
         config.orientation = orientation;
 
