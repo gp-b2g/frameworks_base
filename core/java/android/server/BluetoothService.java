@@ -1490,7 +1490,30 @@ public class BluetoothService extends IBluetooth.Stub {
                 classOfDevice);
     }
 
-    public boolean setLEConnectionParams(String address,
+    public boolean setLEConnectionParams(String address, byte prohibitRemoteChg,
+                                         byte filterPolicy, int scanInterval,
+                                         int scanWindow, int intervalMin,
+                                         int intervalMax, int latency,
+                                         int superVisionTimeout, int minCeLen,
+                                         int maxCeLen) {
+        if (!BluetoothAdapter.checkBluetoothAddress(address)) {
+            mContext.enforceCallingOrSelfPermission(BLUETOOTH_ADMIN_PERM,
+                    "Need BLUETOOTH_ADMIN permission");
+            return false;
+        }
+
+        if (!isEnabledInternal()) return false;
+
+        return setLEConnectionParamNative(getObjectPathFromAddress(address),
+                                          (int) prohibitRemoteChg, (int) filterPolicy,
+                                          scanInterval, scanWindow,
+                                          intervalMin, intervalMax,
+                                          latency, superVisionTimeout,
+                                          minCeLen, maxCeLen);
+    }
+
+    public boolean updateLEConnectionParams(String address,
+                                       byte prohibitRemoteChg,
                                        int intervalMin,
                                        int intervalMax,
                                        int slaveLatency,
@@ -1503,7 +1526,8 @@ public class BluetoothService extends IBluetooth.Stub {
 
         if (!isEnabledInternal()) return false;
 
-        return setConnectionParametersNative(getObjectPathFromAddress(address),
+        return updateLEConnectionParametersNative(getObjectPathFromAddress(address),
+                                             (int) prohibitRemoteChg,
                                              intervalMin,
                                              intervalMax,
                                              slaveLatency,
@@ -4764,8 +4788,12 @@ public class BluetoothService extends IBluetooth.Stub {
             String value);
     private native boolean setDevicePropertyIntegerNative(String objectPath, String key,
             int value);
-    private native boolean setConnectionParametersNative(String objectPath, int intervalMin,
-            int intervalMax, int slaveLatency, int supervisionTimeout);
+    private native boolean updateLEConnectionParametersNative(String objectPath,
+            int prohibitRemoteChg, int intervalMin, int intervalMax, int slaveLatency,
+            int supervisionTimeout);
+    private native boolean setLEConnectionParamNative(String objectPath, int prohibitRemoteChg,
+            int filterPolicy, int scanInterval, int scanWindow, int intervalMin, int intervalMax,
+            int latency, int superVisionTimeout, int minCeLen, int maxCeLen);
     private native boolean registerRssiUpdateWatcherNative(String objectPath,
             int rssiThreshold, int interval, boolean updateOnThreshExceed);
     private native boolean unregisterRssiUpdateWatcherNative(String objectPath);

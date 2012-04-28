@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008, The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,7 +77,11 @@ interface IBluetooth
     boolean registerRssiUpdateWatcher(in String address, in int rssiThreshold, in int interval,
                                       in boolean updateOnThreshExceed);
     boolean unregisterRssiUpdateWatcher(in String address);
-    boolean setLEConnectionParams(String address, int intervalMin, int intervalMax, int slaveLatency, int supervisionTimeout);
+    boolean setLEConnectionParams(in String address, in byte prohibitRemoteChg, in byte filterPolicy,
+    in int scanInterval, in int scanWindow, in int intervalMin, in int intervalMax, in int latency,
+    in int superVisionTimeout, in int minCeLen, in int maxCeLen);
+    boolean updateLEConnectionParams(in String address, in byte prohibitRemoteChg,
+    in int intervalMin, in int intervalMax, in int slaveLatency, in int supervisionTimeout);
     String getRemoteName(in String address);
     String getRemoteAlias(in String address);
     boolean setRemoteAlias(in String address, in String name);

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -856,19 +856,55 @@ public final class BluetoothDevice implements Parcelable {
         return false;
     }
 
-     /**
-     * Set the connection parameters of the remote device.
+    /**
+     * Set the preferred connection parameters of the remote device.
      * <p>Requires {@link android.Manifest.permission#BLUETOOTH}.
      *
      * @param connection parameters values.
      * @hide
      */
-    public boolean setLEConnectionParams(int intervalMin,
-                                       int intervalMax,
-                                       int slaveLatency,
-                                       int supervisionTimeout) {
+    public boolean setLEConnectionParams(byte prohibitRemoteChg,
+                                         byte filterPolicy,
+                                         int scanInterval,
+                                         int scanWindow,
+                                         int intervalMin,
+                                         int intervalMax,
+                                         int latency,
+                                         int superVisionTimeout,
+                                         int minCeLen,
+                                         int maxCeLen) {
         try {
             return sService.setLEConnectionParams(mAddress,
+                                                  prohibitRemoteChg,
+                                                  filterPolicy,
+                                                  scanInterval,
+                                                  scanWindow,
+                                                  intervalMin,
+                                                  intervalMax,
+                                                  latency,
+                                                  superVisionTimeout,
+                                                  minCeLen,
+                                                  maxCeLen
+                                                  );
+        } catch (RemoteException e) {Log.e(TAG, "", e);}
+        return false;
+    }
+
+    /**
+     * Update the LE connection parameters of the remote device.
+     * <p>Requires {@link android.Manifest.permission#BLUETOOTH}.
+     *
+     * @param connection parameters values.
+     * @hide
+     */
+    public boolean updateLEConnectionParams(byte prohibitRemoteChg,
+                                            int intervalMin,
+                                            int intervalMax,
+                                            int slaveLatency,
+                                            int supervisionTimeout) {
+        try {
+            return sService.updateLEConnectionParams(mAddress,
+                                                prohibitRemoteChg,
                                                 intervalMin,
                                                 intervalMax,
                                                 slaveLatency,
