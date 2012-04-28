@@ -145,6 +145,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import com.android.internal.app.SuspendThread;
 
 /**
  * WindowManagerPolicy implementation for the Android phone UI.  This
@@ -3158,6 +3159,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             case KeyEvent.KEYCODE_POWER: {
                 result &= ~ACTION_PASS_TO_USER;
                 if (down) {
+                    if(SuspendThread.getSuspendStatus(mContext)) {
+                        Log.w(TAG, "Need to start suspend wake");
+                        SuspendThread.wakeup(mContext);
+                    }
+
                     if (isScreenOn && !mPowerKeyTriggered
                             && (event.getFlags() & KeyEvent.FLAG_FALLBACK) == 0) {
                         mPowerKeyTriggered = true;
