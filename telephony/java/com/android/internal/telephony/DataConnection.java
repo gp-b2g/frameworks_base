@@ -519,6 +519,7 @@ public abstract class DataConnection extends StateMachine {
         mPartialSuccess = false;
         mPendingProtocol = null;
         mApn = null;
+        resetRetryCount();
     }
 
     /**
