@@ -105,7 +105,6 @@ void LiveSession::disconnect() {
 void LiveSession::seekTo(int64_t timeUs, int64_t* newSeekTime ) {
     Mutex::Autolock autoLock(mLock);
     mSeeking = true;
-    mHTTPDataSource->disconnect();
 
     sp<AMessage> msg = new AMessage(kWhatSeek, id());
     msg->setInt64("timeUs", timeUs);
