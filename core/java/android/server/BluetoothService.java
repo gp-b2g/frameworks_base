@@ -2622,6 +2622,23 @@ public class BluetoothService extends IBluetooth.Stub {
                         BluetoothA2dp.STATE_PLAYING);
                 mConnectionManager.setA2dpAudioActive(playingState == BluetoothA2dp.STATE_PLAYING);
             } else if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)) {
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (device == null) {
+                    return;
+                }
+                // There are no services for HID and PAN profiles. So having
+                // Broadcast Listeners there can cause leak as we dont have
+                // point to unregister Listener. Currently handling the device
+                // connection state change to update the Profile States.
+                if (getInputDeviceConnectionState(device) !=
+                           BluetoothInputDevice.STATE_DISCONNECTED) {
+                    handleInputDevicePropertyChange(device.getAddress(), false);
+                }
+                if (getPanDeviceConnectionState(device) != BluetoothPan.STATE_DISCONNECTED &&
+                    mBluetoothPanProfileHandler != null) {
+                        handlePanDeviceStateChange(device,  BluetoothPan.STATE_DISCONNECTED,
+                                   mBluetoothPanProfileHandler.getPanDeviceRole(device));
+                }
                 if ((listConnectionNative() == 0) &&
                     (getBluetoothStateInternal() == BluetoothAdapter.STATE_TURNING_OFF)) {
                     Log.i(TAG, "All connections disconnected");
@@ -3672,15 +3689,21 @@ public class BluetoothService extends IBluetooth.Stub {
     private boolean updateCountersAndCheckForConnectionStateChange(int state, int prevState) {
         switch (prevState) {
             case BluetoothProfile.STATE_CONNECTING:
-                mProfilesConnecting--;
+                if (mProfilesConnecting > 0) { // always expected to be > 0
+                    mProfilesConnecting--;
+                }
                 break;
 
             case BluetoothProfile.STATE_CONNECTED:
-                mProfilesConnected--;
+                if (mProfilesConnected > 0) { // always expected to be > 0
+                    mProfilesConnected--;
+                }
                 break;
 
             case BluetoothProfile.STATE_DISCONNECTING:
-                mProfilesDisconnecting--;
+                if (mProfilesDisconnecting > 0) { // always expected to be > 0
+                    mProfilesDisconnecting--;
+                }
                 break;
         }
 

@@ -127,6 +127,14 @@ final class BluetoothPanProfileHandler {
         return panDevice.mState;
     }
 
+    public int getPanDeviceRole(BluetoothDevice device) {
+        BluetoothPanDevice panDevice = mPanDevices.get(device);
+        if (panDevice == null) {
+            return 0;
+        }
+        return panDevice.mLocalRole;
+    }
+
     boolean connectPanDevice(BluetoothDevice device) {
         String objectPath = mBluetoothService.getObjectPathFromAddress(device.getAddress());
         if (DBG) Log.d(TAG, "connect PAN(" + objectPath + ")");

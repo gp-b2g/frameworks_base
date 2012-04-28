@@ -454,6 +454,8 @@ class BluetoothEventLoop {
             if (name.equals("Connected") && propValues[1].equals("false")) {
                 Intent intent = new Intent(BluetoothDevice.ACTION_ACL_DISCONNECTED);
                 BluetoothDevice device = mAdapter.getRemoteDevice(address);
+                mBluetoothService.sendDeviceConnectionStateChange(
+                    device, BluetoothAdapter.STATE_DISCONNECTED);
                 intent.putExtra(BluetoothDevice.EXTRA_DEVICE, device);
                 intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
                 mContext.sendBroadcast(intent, BLUETOOTH_PERM);
