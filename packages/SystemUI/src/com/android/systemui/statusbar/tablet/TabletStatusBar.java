@@ -194,7 +194,7 @@ public class TabletStatusBar extends StatusBar implements
     private RecentTasksLoader mRecentTasksLoader;
     private InputMethodsPanel mInputMethodsPanel;
     private CompatModePanel mCompatModePanel;
-
+    private int prevAltOrientation = Configuration.ORIENTATION_UNDEFINED;
     private int mSystemUiVisibility = 0;
     // used to notify status bar for suppressing notification LED
     private boolean mPanelSlightlyVisible;
@@ -424,6 +424,20 @@ public class TabletStatusBar extends StatusBar implements
     @Override
     protected void onConfigurationChanged(Configuration newConfig) {
         mHeightReceiver.updateHeight(); // display size may have changed
+        if ((newConfig.altOrientation == Configuration.ORIENTATION_REVERSE_LANDSCAPE &&
+             prevAltOrientation == Configuration.ORIENTATION_LANDSCAPE) ||
+            (newConfig.altOrientation == Configuration.ORIENTATION_REVERSE_PORTRAIT &&
+             prevAltOrientation == Configuration.ORIENTATION_PORTRAIT) ||
+            (newConfig.altOrientation == Configuration.ORIENTATION_PORTRAIT &&
+             prevAltOrientation == Configuration.ORIENTATION_REVERSE_PORTRAIT) ||
+            (newConfig.altOrientation == Configuration.ORIENTATION_LANDSCAPE &&
+             prevAltOrientation == Configuration.ORIENTATION_REVERSE_LANDSCAPE))
+        {
+
+            mNavigationArea.invalidate();
+            mNotificationArea.invalidate();
+        }
+        prevAltOrientation = newConfig.altOrientation;
         loadDimens();
         mNotificationPanelParams.height = getNotificationPanelHeight();
         WindowManagerImpl.getDefault().updateViewLayout(mNotificationPanel,
