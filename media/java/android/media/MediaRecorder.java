@@ -234,6 +234,8 @@ public class MediaRecorder
         public static final int QCP = 9;
         /** 3GPP2 media file format*/
         public static final int THREE_GPP2 = 10;
+        /** WAVE media file format*/
+        public static final int WAVE = 11;
     };
 
     /**
@@ -260,6 +262,8 @@ public class MediaRecorder
         public static final int EVRC = 6;
         /** QCELP audio codec */
         public static final int QCELP =7;
+        /** Linear PCM audio codec */
+        public static final int LPCM =8;
     }
 
     /**

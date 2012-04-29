@@ -77,6 +77,7 @@ LOCAL_SRC_FILES:=                         \
         Utils.cpp                         \
         VBRISeeker.cpp                    \
         WAVExtractor.cpp                  \
+        WAVEWriter.cpp                    \
         WVMExtractor.cpp                  \
         XINGSeeker.cpp                    \
         avc_utils.cpp                     \

@@ -134,6 +134,7 @@ private:
     status_t startAMRRecording();
     status_t startFMA2DPWriter();
     status_t startAACRecording();
+    status_t startWAVERecording();
     status_t startRawAudioRecording();
     status_t startRTPRecording();
     status_t startMPEG2TSRecording();

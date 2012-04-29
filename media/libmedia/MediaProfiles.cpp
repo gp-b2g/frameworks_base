@@ -44,6 +44,7 @@ const MediaProfiles::NameToTagMap MediaProfiles::sAudioEncoderNameMap[] = {
     {"amrnb", AUDIO_ENCODER_AMR_NB},
     {"amrwb", AUDIO_ENCODER_AMR_WB},
     {"aac",   AUDIO_ENCODER_AAC},
+    {"lpcm",  AUDIO_ENCODER_LPCM},
 };
 
 const MediaProfiles::NameToTagMap MediaProfiles::sFileFormatMap[] = {
@@ -822,6 +823,7 @@ MediaProfiles::createDefaultAudioEncoders(MediaProfiles *profiles)
 {
     profiles->mAudioEncoders.add(createDefaultAmrNBEncoderCap());
     profiles->mAudioEncoders.add(createDefaultAacEncoderCap());
+    profiles->mAudioEncoders.add(createDefaultLpcmEncoderCap());
 }
 
 /*static*/ void
@@ -861,6 +863,13 @@ MediaProfiles::createDefaultAacEncoderCap()
 {
     return new MediaProfiles::AudioEncoderCap(
         AUDIO_ENCODER_AAC, 64000, 156000, 8000, 48000, 1, 2);
+}
+
+/*static*/ MediaProfiles::AudioEncoderCap*
+MediaProfiles::createDefaultLpcmEncoderCap()
+{
+    return new MediaProfiles::AudioEncoderCap(
+        AUDIO_ENCODER_LPCM, 768000, 4608000, 48000, 48000, 1, 6);
 }
 
 /*static*/ void

@@ -11045,6 +11045,7 @@ package android.media {
     field public static final int DEFAULT = 0; // 0x0
     field public static final int EAAC_PLUS = 5; // 0x5
     field public static final int EVRC = 6; // 0x6
+    field public static final int LPCM = 8; // 0x8
     field public static final int QCELP = 7; // 0x7
   }
 
@@ -11078,6 +11079,7 @@ package android.media {
     field public static final int RAW_AMR = 3; // 0x3
     field public static final int THREE_GPP = 1; // 0x1
     field public static final int THREE_GPP2 = 10; // 0xa
+    field public static final int WAVE = 11; // 0xb
   }
 
   public final class MediaRecorder.VideoEncoder {
