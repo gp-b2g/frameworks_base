@@ -275,7 +275,6 @@ public abstract class DataConnectionTracker extends Handler {
     protected Activity mActivity = Activity.NONE;
     protected State mState = State.IDLE;
 
-
     protected long mTxPkts;
     protected long mRxPkts;
     protected int mNetStatPollPeriod;

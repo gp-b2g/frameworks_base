@@ -200,7 +200,7 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
     }
 
     @Override
-    protected void cleanUpConnection(boolean tearDown, ApnContext apnContext) {
+    protected void cleanUpConnection(boolean tearDown, ApnContext apnContext, boolean doAll) {
 
         if (apnContext == null) {
             if (DBG) log("cleanUpConnection: apn context is null");
@@ -226,7 +226,7 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
                 // Connection is still there. Try to clean up.
                 if (dcac != null) {
                     if (apnContext.getState() != State.DISCONNECTING) {
-                        boolean disconnectAll = false;
+                        boolean disconnectAll = doAll;
                         if (Phone.APN_TYPE_DUN.equals(apnContext.getApnType())) {
                             DataProfile dunSetting = fetchDunApn();
                             if (dunSetting != null &&
