@@ -52,7 +52,7 @@ public class FmReceiver extends FmTransceiver
    * @see #searchStations(int, int, int, int, int)
    * @see #searchStationList
    */
-   public static final int FM_RX_SEARCHDIR_DOWN = 1;
+   public static final int FM_RX_SEARCHDIR_DOWN=0;
    /**
    * Search (seek/scan/searchlist) by inrementing the frequency
    *
@@ -61,7 +61,7 @@ public class FmReceiver extends FmTransceiver
    * @see #searchStations(int, int, int, int, int)
    * @see #searchStationList
    */
-   public static final int FM_RX_SEARCHDIR_UP = 0;
+   public static final int FM_RX_SEARCHDIR_UP=1;
 
    /**
    * Scan dwell (Preview) duration = 0 seconds
