@@ -208,7 +208,8 @@ AwesomePlayer::AwesomePlayer()
       mVideoBuffer(NULL),
       mDecryptHandle(NULL),
       mLastVideoTimeUs(-1),
-      mTextPlayer(NULL) {
+      mTextPlayer(NULL),
+      mBufferingDone(false) {
     CHECK_EQ(mClient.connect(), (status_t)OK);
 
     DataSource::RegisterDefaultSniffers();
@@ -725,6 +726,8 @@ void AwesomePlayer::onBufferingUpdate() {
 
         if (eos) {
             if (finalStatus == ERROR_END_OF_STREAM) {
+                LOGV("End of Streaming, EOS Reached, Buffering is at 100 percent");
+                mBufferingDone = true;
                 notifyListener_l(MEDIA_BUFFERING_UPDATE, 100);
             }
             if (mFlags & PREPARING) {
@@ -740,6 +743,8 @@ void AwesomePlayer::onBufferingUpdate() {
                 int percentage = 100.0 * (double)cachedDurationUs / mDurationUs;
                 if (percentage > 100) {
                     percentage = 100;
+                    LOGV("Percentage is 100, EOS Reached");
+                    mBufferingDone = true;
                 }
 
                 notifyListener_l(MEDIA_BUFFERING_UPDATE, percentage);
@@ -781,6 +786,7 @@ void AwesomePlayer::onBufferingUpdate() {
 
         if (eos) {
             if (finalStatus == ERROR_END_OF_STREAM) {
+                mBufferingDone = true;
                 notifyListener_l(MEDIA_BUFFERING_UPDATE, 100);
             }
             if (mFlags & PREPARING) {
@@ -791,6 +797,7 @@ void AwesomePlayer::onBufferingUpdate() {
             int percentage = 100.0 * (double)cachedDurationUs / mDurationUs;
             if (percentage > 100) {
                 percentage = 100;
+                mBufferingDone = true;
             }
 
             notifyListener_l(MEDIA_BUFFERING_UPDATE, percentage);
@@ -828,7 +835,10 @@ void AwesomePlayer::onBufferingUpdate() {
     }
 
     mBufferingEventPending = false;
-    postBufferingEvent_l();
+
+    if(!mBufferingDone) {
+        postBufferingEvent_l();
+    }
 }
 
 void AwesomePlayer::sendCacheStats() {
