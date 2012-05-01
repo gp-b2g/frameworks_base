@@ -169,6 +169,10 @@ static dbus_bool_t dbus_func_args_async_valist(JNIEnv *env,
     dbus_async_call_t *pending;
     dbus_bool_t reply = FALSE;
 
+    if (!path || !func || !ifc) {
+        return FALSE;
+    }
+
     /* Compose the command */
     msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC, path, ifc, func);
 
@@ -223,8 +227,11 @@ dbus_bool_t dbus_func_args_async(JNIEnv *env,
                                  ...) {
     dbus_bool_t ret;
     va_list lst;
-    va_start(lst, first_arg_type);
+    if (!path || !func || !ifc) {
+        return FALSE;
+    }
 
+    va_start(lst, first_arg_type);
     ret = dbus_func_args_async_valist(env, conn,
                                       timeout_ms,
                                       reply, user, nat,
@@ -253,6 +260,10 @@ DBusMessage * dbus_func_args_timeout_valist(JNIEnv *env,
     DBusMessage *msg = NULL, *reply = NULL;
     const char *name;
     bool return_error = (err != NULL);
+
+    if (!path || !func || !ifc) {
+        return NULL;
+    }
 
     if (!return_error) {
         err = (DBusError*)malloc(sizeof(DBusError));
@@ -309,6 +320,10 @@ DBusMessage * dbus_func_args_generic_timeout_valist(JNIEnv *env,
     const char *name;
     bool return_error = (err != NULL);
 
+    if (!path || !func || !ifc) {
+        return NULL;
+    }
+
     if (!return_error) {
         err = (DBusError*)malloc(sizeof(DBusError));
         dbus_error_init(err);
@@ -352,6 +367,10 @@ DBusMessage * dbus_func_args_timeout(JNIEnv *env,
                                      ...) {
     DBusMessage *ret;
     va_list lst;
+    if (!path || !func || !ifc) {
+        return NULL;
+    }
+
     va_start(lst, first_arg_type);
     ret = dbus_func_args_timeout_valist(env, conn, timeout_ms, NULL,
                                         path, ifc, func,
@@ -377,6 +396,10 @@ DBusMessage * dbus_func_args_generic(JNIEnv *env,
                              ...) {
     DBusMessage *ret;
     va_list lst;
+    if (!path || !func || !ifc) {
+        return NULL;
+    }
+
     va_start(lst, first_arg_type);
     ret = dbus_func_args_generic_timeout_valist(env, conn, -1, NULL,
                                         service, path, ifc, func,
@@ -394,6 +417,10 @@ DBusMessage * dbus_func_args(JNIEnv *env,
                              ...) {
     DBusMessage *ret;
     va_list lst;
+    if (!path || !func || !ifc) {
+        return NULL;
+    }
+
     va_start(lst, first_arg_type);
     ret = dbus_func_args_timeout_valist(env, conn, -1, NULL,
                                         path, ifc, func,
@@ -412,6 +439,10 @@ DBusMessage * dbus_func_args_error(JNIEnv *env,
                                    ...) {
     DBusMessage *ret;
     va_list lst;
+    if (!path || !func || !ifc) {
+        return NULL;
+    }
+
     va_start(lst, first_arg_type);
     ret = dbus_func_args_timeout_valist(env, conn, -1, err,
                                         path, ifc, func,
