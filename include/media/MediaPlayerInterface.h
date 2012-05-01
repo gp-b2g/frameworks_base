@@ -103,6 +103,7 @@ public:
         virtual void        resumeSession() {return;};
         virtual void        close() = 0;
         virtual void        closeSession() {return;};
+        virtual int         getAudioStreamType() {return 0;};
     };
 
                         MediaPlayerBase() : mCookie(0), mNotify(0) {}
