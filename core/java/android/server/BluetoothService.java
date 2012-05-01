@@ -4872,12 +4872,12 @@ public class BluetoothService extends IBluetooth.Stub {
     native boolean addPrimarySdpNative(String objPath, String svcName, String uuidStr, int startHandle, int endHandle, boolean eir);
     native boolean notifyNative(String objPath, int sessionHandle, int handle, byte[] payload, int cnt);
     native boolean indicateNative(String objPath, int sessionHandle, int handle, byte[] payload, int cnt);
-    native boolean discoverPrimaryResponseNative(String uuid, int handle, int end, int status, int nativeData);
-    native boolean discoverPrimaryByUuidResponseNative(int handle, int end, int status, int nativeData);
-    native boolean findIncludedResponseNative(String uuid, int handle, int start, int end, int status, int nativeData);
-    native boolean discoverCharacteristicsResponseNative(String uuid, int handle, int property, int valueHandle, int status, int nativeData);
-    native boolean discoverCharacteristicDescriptorResponseNative(String uuid, int handle, int status, int nativeData);
-    native boolean readByTypeResponseNative(String uuid, int handle, byte[] payload, int cnt, int status, int nativeData);
-    native boolean readResponseNative(String uuid, byte[] payload, int cnt, int status, int nativeData);
-    native boolean writeResponseNative(String uuid, int status, int nativeData);
+    native boolean discoverPrimaryResponseNative(String uuid, String status, int handle, int end, int nativeData);
+    native boolean discoverPrimaryByUuidResponseNative(String status, int handle, int end, int nativeData);
+    native boolean findIncludedResponseNative(String uuid, String status, int handle, int start, int end, int nativeData);
+    native boolean discoverCharacteristicsResponseNative(String uuid, String status, int handle, int property, int valueHandle, int nativeData);
+    native boolean discoverCharacteristicDescriptorResponseNative(String uuid, String status, int handle, int nativeData);
+    native boolean readByTypeResponseNative(String uuid, String status, int handle, byte[] payload, int cnt, int nativeData);
+    native boolean readResponseNative(String uuid, String status, byte[] payload, int cnt, int nativeData);
+    native boolean writeResponseNative(String uuid, String status, int nativeData);
 }

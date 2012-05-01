@@ -100,6 +100,7 @@ final class BluetoothGattProfileHandler {
             boolean result = true;
             String path = config.getPath();
             int payloadLen = 0;
+            String errorString;
 
             switch (msg.what) {
             case MESSAGE_REGISTER_APPLICATION:
@@ -174,34 +175,28 @@ final class BluetoothGattProfileHandler {
                 end = msg.getData().getInt(END);
                 reqHandle = msg.getData().getInt(REQUEST_HANDLE);
                 errorCode = msg.getData().getInt(ERROR);
+                errorString = errorStatusToString(errorCode);
 
-                result  = mBluetoothService.discoverPrimaryResponseNative(uuid, handle, end, errorCode, reqHandle);
+                result  = mBluetoothService.discoverPrimaryResponseNative(uuid, errorString, handle, end, reqHandle);
 
-                if (!result) {
+                if (!result)
                     status = BluetoothGatt.GATT_SUCCESS;
-
-                } else {
+                else
                     status = BluetoothGatt.GATT_FAILURE;
-                }
-
                 break;
             case MESSAGE_DISCOVER_PRIMARY_SERVICE_BY_UUID_RESP:
                 handle = msg.getData().getInt(HANDLE);
                 end = msg.getData().getInt(END);
                 reqHandle = msg.getData().getInt(REQUEST_HANDLE);
                 errorCode = msg.getData().getInt(ERROR);
+                errorString = errorStatusToString(errorCode);
+                result  = mBluetoothService.discoverPrimaryByUuidResponseNative(errorString, handle,
+                                                                                end, reqHandle);
 
-                result  = mBluetoothService.discoverPrimaryByUuidResponseNative(handle, end,
-                                                                                errorCode,
-                                                                                reqHandle);
-
-                if (!result) {
+                if (!result)
                     status = BluetoothGatt.GATT_SUCCESS;
-
-                } else {
+                else
                     status = BluetoothGatt.GATT_FAILURE;
-                }
-
                 break;
 
             case MESSAGE_FIND_INCLUDED_SERVICE_RESP:
@@ -211,17 +206,14 @@ final class BluetoothGattProfileHandler {
                 end = msg.getData().getInt(END);
                 reqHandle = msg.getData().getInt(REQUEST_HANDLE);
                 errorCode = msg.getData().getInt(ERROR);
+                errorString = errorStatusToString(errorCode);
 
-                result  = mBluetoothService.findIncludedResponseNative(uuid, handle, start, end,
-                                                                       errorCode, reqHandle);
-
-                if (!result) {
+                result  = mBluetoothService.findIncludedResponseNative(uuid, errorString,
+                                                                       handle, start, end, reqHandle);
+                if (!result)
                     status = BluetoothGatt.GATT_SUCCESS;
-
-                } else {
+                else
                     status = BluetoothGatt.GATT_FAILURE;
-                }
-
                 break;
 
              case MESSAGE_DISCOVER_CHARACTERISTICS_RESP:
@@ -231,18 +223,15 @@ final class BluetoothGattProfileHandler {
                 reqHandle = msg.getData().getInt(REQUEST_HANDLE);
                 errorCode = msg.getData().getInt(ERROR);
                 property = msg.getData().getByte(PROPERTY);
+                errorString = errorStatusToString(errorCode);
 
-                result  = mBluetoothService.discoverCharacteristicsResponseNative(uuid, handle, (int) property,
-                                                                                  valueHandle,
-                                                                                  errorCode, reqHandle);
-
-                if (!result) {
+                result  = mBluetoothService.discoverCharacteristicsResponseNative(uuid, errorString,
+                                                                                  handle, (int) property,
+                                                                                  valueHandle, reqHandle);
+                if (!result)
                     status = BluetoothGatt.GATT_SUCCESS;
-
-                } else {
+                else
                     status = BluetoothGatt.GATT_FAILURE;
-                }
-
                 break;
 
             case MESSAGE_DISCOVER_CHARACTERISTIC_DESC_RESP:
@@ -250,18 +239,15 @@ final class BluetoothGattProfileHandler {
                 handle = msg.getData().getInt(HANDLE);
                 reqHandle = msg.getData().getInt(REQUEST_HANDLE);
                 errorCode = msg.getData().getInt(ERROR);
+                errorString = errorStatusToString(errorCode);
 
-                result  = mBluetoothService.discoverCharacteristicDescriptorResponseNative(uuid, handle,
-                                                                                  errorCode,
+                result  = mBluetoothService.discoverCharacteristicDescriptorResponseNative(uuid,
+                                                                                  errorString, handle,
                                                                                   reqHandle);
-
-                if (!result) {
+                if (!result)
                     status = BluetoothGatt.GATT_SUCCESS;
-
-                } else {
+                else
                     status = BluetoothGatt.GATT_FAILURE;
-                }
-
                 break;
 
             case MESSAGE_READ_BY_TYPE_RESP:
@@ -269,65 +255,52 @@ final class BluetoothGattProfileHandler {
                 handle = msg.getData().getInt(HANDLE);
                 reqHandle = msg.getData().getInt(REQUEST_HANDLE);
                 errorCode = msg.getData().getInt(ERROR);
+                errorString = errorStatusToString(errorCode);
                 payload = msg.getData().getByteArray(PAYLOAD);
-                if(payload != null) {
+                if(payload != null)
                     payloadLen = payload.length;
-                }
-                else {
+                else
                     payloadLen = 0;
-                }
-                result  = mBluetoothService.readByTypeResponseNative(uuid, handle, payload,
-                                                                     payloadLen,
-                                                                     errorCode, reqHandle);
-
-                if (!result) {
+                result  = mBluetoothService.readByTypeResponseNative(uuid,  errorString,
+                                                                     handle, payload,
+                                                                     payloadLen, reqHandle);
+                if (!result)
                     status = BluetoothGatt.GATT_SUCCESS;
-
-                } else {
+                else
                     status = BluetoothGatt.GATT_FAILURE;
-                }
-
                 break;
 
             case MESSAGE_READ_RESP:
                 uuid = msg.getData().getString(UUID);
                 reqHandle = msg.getData().getInt(REQUEST_HANDLE);
                 errorCode = msg.getData().getInt(ERROR);
+                errorString = errorStatusToString(errorCode);
                 payload = msg.getData().getByteArray(PAYLOAD);
-                if(payload != null) {
+                if(payload != null)
                     payloadLen = payload.length;
-                }
-                else {
+                else
                     payloadLen = 0;
-                }
-                result  = mBluetoothService.readResponseNative(uuid, payload,
-                                                               payloadLen,
-                                                               errorCode,
+                result  = mBluetoothService.readResponseNative(uuid, errorString,
+                                                               payload, payloadLen,
                                                                reqHandle);
-                if (!result) {
+                if (!result)
                     status = BluetoothGatt.GATT_SUCCESS;
-
-                } else {
+                else
                     status = BluetoothGatt.GATT_FAILURE;
-                }
-
                 break;
 
             case MESSAGE_WRITE_RESP:
                 uuid = msg.getData().getString(UUID);
                 reqHandle = msg.getData().getInt(REQUEST_HANDLE);
                 errorCode = msg.getData().getInt(ERROR);
+                errorString = errorStatusToString(errorCode);
 
-                result  = mBluetoothService.writeResponseNative(uuid, errorCode, reqHandle);
-                if (!result) {
+                result  = mBluetoothService.writeResponseNative(uuid, errorString, reqHandle);
+                if (!result)
                     status = BluetoothGatt.GATT_SUCCESS;
-
-                } else {
+                else
                     status = BluetoothGatt.GATT_FAILURE;
-                }
-
                 break;
-
             }
         }
     };
@@ -575,7 +548,8 @@ final class BluetoothGattProfileHandler {
             Log.e(TAG, "readResponse: GATT app not registered");
             return false;
         }
-       Log.d(TAG, " readResponse uuid : " + uuid + " reqHandle : " + reqHandle);
+        Log.d(TAG, " readResponse uuid : " + uuid + " reqHandle : " + reqHandle);
+        Log.d(TAG, "payload " + payload);
 
         Bundle b = new Bundle();
         b.putString(UUID, uuid);
@@ -763,7 +737,7 @@ final class BluetoothGattProfileHandler {
      /*package*/ synchronized void onGattWriteRequest(String gattObjectPath, String auth,
                                                       int attrHandle, byte[] value) {
          BluetoothGattAppConfiguration config = getConfigFromPath(gattObjectPath);
-         Log.d(TAG, "Gatt object path : "  + gattObjectPath + ", config " + config);
+         Log.d(TAG, "Gatt object path : "  + gattObjectPath + ", config " + config + ", auth " + auth);
 
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
@@ -854,6 +828,57 @@ final class BluetoothGattProfileHandler {
             } catch (NullPointerException e) {
                 Log.e(TAG, "Exception:" + e);
             }
+        }
+    }
+
+    private String errorStatusToString(int errorCode) {
+        switch (errorCode) {
+            /* This will be handled as "no error" by  JNI code */
+            case BluetoothGatt.GATT_SUCCESS:
+                return null;
+            /* ATT spec error codes */
+            case BluetoothGatt.ATT_INVALID_HANDLE:
+                return "ATT_INVALID_HANDLE";
+            case BluetoothGatt.ATT_WRITE_NOT_PERM:
+                return "ATT_WRITE_NOT_PERM";
+            case BluetoothGatt.ATT_READ_NOT_PERM:
+                return "ATT_READ_NOT_PERM";
+            case BluetoothGatt.ATT_INVALID_PDU:
+                return "ATT_INVALID_PDU";
+            case BluetoothGatt.ATT_AUTHENTICATION:
+                return "ATT_INSUFF_AUTHENTICATION";
+            case BluetoothGatt.ATT_REQ_NOT_SUPP:
+                return "ATT_REQ_NOT_SUPP";
+            case BluetoothGatt.ATT_INVALID_OFFSET:
+                return "ATT_INVALID_OFFSET";
+            case BluetoothGatt.ATT_AUTHORIZATION:
+                return "ATT_INSUFF_AUTHORIZATION";
+            case BluetoothGatt.ATT_PREP_QUEUE_FULL:
+                return "ATT_PREP_QUEUE_FULL";
+            case BluetoothGatt.ATT_ATTR_NOT_FOUND:
+                return "ATT_ATTR_NOT_FOUND";
+            case BluetoothGatt.ATT_ATTR_NOT_LONG:
+                return "ATT_ATTR_NOT_LONG";
+            case BluetoothGatt.ATT_INSUFF_ENCR_KEY_SIZE:
+                return "ATT_INSUFF_ENCR_KEY_SIZE";
+            case BluetoothGatt.ATT_INVAL_ATTR_VALUE_LEN:
+                return "ATT_INVAL_ATTR_VALUE_LEN";
+            case BluetoothGatt.ATT_UNLIKELY:
+                return "ATT_UNLIKELY";
+            case BluetoothGatt.ATT_INSUFF_ENC:
+                return "ATT_INSUFF_ENCRYPTION";
+            case BluetoothGatt.ATT_UNSUPP_GRP_TYPE:
+                return "ATT_UNSUPP_GRP_TYPE";
+            case BluetoothGatt.ATT_INSUFF_RESOURCES:
+                return "ATT_INSUFF_RESOURCES";
+            default:
+                /* Check if this is an application defined error */
+                if (errorCode >= 0x80 && errorCode <= 0xff) {
+                    String errorString = new String();
+                    errorString = "ATT_0x" + Integer.toHexString(errorCode);
+                    return errorString;
+                }
+                return "ATT_ECODE_UNLIKELY";
         }
     }
 }

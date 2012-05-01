@@ -67,31 +67,30 @@ public final class BluetoothGatt implements BluetoothProfile {
     public static final byte GATT_SUCCESS = 0x0;
 
     /* ATT spec error codes */
-    public static final int ATT_ECODE_INVALID_HANDLE       = 0x01;
-    public static final int ATT_ECODE_READ_NOT_PERM        = 0x02;
-    public static final int ATT_ECODE_WRITE_NOT_PERM       = 0x03;
-    public static final int ATT_ECODE_INVALID_PDU          = 0x04;
-    public static final int ATT_ECODE_AUTHENTICATION       = 0x05;
-    public static final int ATT_ECODE_REQ_NOT_SUPP         = 0x06;
-    public static final int ATT_ECODE_INVALID_OFFSET       = 0x07;
-    public static final int ATT_ECODE_AUTHORIZATION        = 0x08;
-    public static final int ATT_ECODE_PREP_QUEUE_FULL      = 0x09;
-    public static final int ATT_ECODE_ATTR_NOT_FOUND       = 0x0A;
-    public static final int ATT_ECODE_ATTR_NOT_LONG        = 0x0B;
-    public static final int ATT_ECODE_INSUFF_ENCR_KEY_SIZE = 0x0C;
-    public static final int ATT_ECODE_INVAL_ATTR_VALUE_LEN = 0x0D;
-    public static final int ATT_ECODE_UNLIKELY             = 0x0E;
-    public static final int ATT_ECODE_INSUFF_ENC           = 0x0F;
-    public static final int ATT_ECODE_UNSUPP_GRP_TYPE      = 0x10;
-    public static final int ATT_ECODE_INSUFF_RESOURCES     = 0x11;
+    public static final int ATT_INVALID_HANDLE       = 0x01;
+    public static final int ATT_READ_NOT_PERM        = 0x02;
+    public static final int ATT_WRITE_NOT_PERM       = 0x03;
+    public static final int ATT_INVALID_PDU          = 0x04;
+    public static final int ATT_AUTHENTICATION       = 0x05;
+    public static final int ATT_REQ_NOT_SUPP         = 0x06;
+    public static final int ATT_INVALID_OFFSET       = 0x07;
+    public static final int ATT_AUTHORIZATION        = 0x08;
+    public static final int ATT_PREP_QUEUE_FULL      = 0x09;
+    public static final int ATT_ATTR_NOT_FOUND       = 0x0A;
+    public static final int ATT_ATTR_NOT_LONG        = 0x0B;
+    public static final int ATT_INSUFF_ENCR_KEY_SIZE = 0x0C;
+    public static final int ATT_INVAL_ATTR_VALUE_LEN = 0x0D;
+    public static final int ATT_UNLIKELY             = 0x0E;
+    public static final int ATT_INSUFF_ENC           = 0x0F;
+    public static final int ATT_UNSUPP_GRP_TYPE      = 0x10;
+    public static final int ATT_INSUFF_RESOURCES     = 0x11;
 
     /* Reserved   0x12 - 0x7f */
     /* Application error codes  0x80 - 0xff */
-    public static final int ATT_ECODE_IO                   = 0xFF;
 
     /* Local status codes */
-    public static final int GATT_FAILURE                = 0x101;
-    public static final int GATT_INVALID_ARGUMENTS      = 0x102;
+    public static final int GATT_FAILURE             = 0x101;
+    public static final int GATT_INVALID_ARGUMENTS   = 0x102;
     public static final int GATT_CONFIG_REGISTRATION_SUCCESS    = 0x201;
     public static final int GATT_CONFIG_REGISTRATION_FAILURE    = 0x202;
     public static final int GATT_CONFIG_UNREGISTRATION_SUCCESS  = 0x203;
