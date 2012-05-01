@@ -1152,7 +1152,10 @@ public final class BluetoothAdapter {
         }
 
         if (mServiceRecordHandler == null) {
-            mServiceRecordHandler = new Handler(Looper.getMainLooper()) {
+            Looper looper = Looper.getMainLooper();
+            if (looper != null) {
+                if (DBG) Log.d(TAG, "Handler to Remove SDP record:MainLooper");
+                mServiceRecordHandler = new Handler(looper) {
                     public void handleMessage(Message msg) {
                         /* handle socket closing */
                         int handle = msg.what;
@@ -1163,6 +1166,20 @@ public final class BluetoothAdapter {
                         } catch (RemoteException e) {Log.e(TAG, "", e);}
                     }
                 };
+            }else {
+                if (DBG) Log.d(TAG, "Handler to Remove SDP record:myLooper");
+                mServiceRecordHandler = new Handler() {
+                    public void handleMessage(Message msg) {
+                        /* handle socket closing */
+                        int handle = msg.what;
+                        try {
+                            if (DBG) Log.d(TAG, "Removing service record " +
+                                           Integer.toHexString(handle));
+                            mService.removeServiceRecord(handle);
+                        } catch (RemoteException e) {Log.e(TAG, "", e);}
+                    }
+                };
+            }
         }
         socket.setCloseHandler(mServiceRecordHandler, handle);
         return socket;
