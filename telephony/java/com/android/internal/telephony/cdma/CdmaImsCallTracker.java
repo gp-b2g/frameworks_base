@@ -414,7 +414,18 @@ public final class CdmaImsCallTracker extends CallTracker {
 
     public void
     acceptCall(PhoneBase incomingPhone) throws CallStateException {
-        acceptCall(incomingPhone, CallDetails.RIL_CALL_TYPE_VOICE);
+        Call ringingCall = incomingPhone.getRingingCall();
+        Connection conn = ringingCall.getEarliestConnection();
+        int type = CallDetails.RIL_CALL_TYPE_VOICE;
+
+        if (conn != null && conn.getCallDetails() != null) {
+
+            type = conn.getCallDetails().call_type;
+            Log.d(LOG_TAG, "Accepting call with type " + type);
+        } // It is ok to continue here even if conn is null.
+          // Exception will be thrown by acceptCall(PhoneBase, int)
+
+        acceptCall(incomingPhone, type);
     }
 
     public void
