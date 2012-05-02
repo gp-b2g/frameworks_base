@@ -116,7 +116,8 @@ public class DataCallState {
         else
             linkProperties.clear();
 
-        if (status == FailCause.NONE.getErrorCode()) {
+        if (status == FailCause.NONE.getErrorCode() ||
+                status == FailCause.PARTIAL_RETRY_FAILURE.getErrorCode()) {
             String propertyPrefix = "net." + ifname + ".";
 
             try {
