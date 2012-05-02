@@ -91,7 +91,7 @@ class HTML5VideoViewManager
         while (iter.hasNext()) {
             HTML5VideoViewProxy proxy = iter.next();
             if (proxy.getVideoLayerId() == layerId)
-                proxy.enterFullScreenVideo(layerId, url);
+                proxy.prepareEnterFullscreen();
             else
                 proxy.pauseAndDispatch();
         }
