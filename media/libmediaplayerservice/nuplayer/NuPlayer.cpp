@@ -152,9 +152,6 @@ void NuPlayer::resume() {
 
 void NuPlayer::resetAsync() {
     (new AMessage(kWhatReset, id()))->post();
-    if ((mLiveSourceType == kHttpDashSource) && (mSource != NULL)) {
-       mSource->stop();
-    }
 }
 
 void NuPlayer::seekToAsync(int64_t seekTimeUs) {
@@ -467,9 +464,6 @@ void NuPlayer::onMessageReceived(const sp<AMessage> &msg) {
 
                 CHECK(msg->findInt64("videoLateByUs", &mVideoLateByUs));
 
-                if (mSource != NULL && (mLiveSourceType == kHttpDashSource)) {
-                    mSource->notifyRenderingPosition(positionUs);
-                }
 
                 if (mDriver != NULL) {
                     sp<NuPlayerDriver> driver = mDriver.promote();
@@ -578,8 +572,7 @@ void NuPlayer::onMessageReceived(const sp<AMessage> &msg) {
                //newSeekTime = seekTimeUs;
 
                // get the new seeked position
-               mSource->getNewSeekTime(&newSeekTime);
-
+               newSeekTime = seekTimeUs;
                LOGV("newSeekTime %lld", newSeekTime);
             }
             if( (newSeekTime >= 0 ) && (mLiveSourceType != kHttpDashSource)) {
