@@ -1886,7 +1886,7 @@ DBusHandlerResult gatt_event_filter(DBusConnection *conn,
         jbyteArray byteArray = NULL;
 
         if (!dbus_message_get_args(msg, NULL,
-                                   DBUS_TYPE_INT32, &sessionHandle,
+                                   DBUS_TYPE_UINT32, &sessionHandle,
                                    DBUS_TYPE_UINT16, &handle,
                                    DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &value, &vlen,
                                    DBUS_TYPE_INVALID)) {
