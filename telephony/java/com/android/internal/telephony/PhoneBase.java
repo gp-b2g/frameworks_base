@@ -118,8 +118,6 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_ICC_RECORD_EVENTS              = 30;
     protected static final int EVENT_ICC_CHANGED                    = 31;
     protected static final int EVENT_GET_NETWORKS_DONE              = 32;
-    protected static final int EVENT_GET_MDN_DONE                   = 33;
-    protected static final int EVENT_CDMA_PRL_VERSION_CHANGED       = 35;
     protected static final int EVENT_IMS_STATE_CHANGED              = 36;
     protected static final int EVENT_IMS_STATE_DONE                 = 37;
 

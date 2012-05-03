@@ -129,8 +129,6 @@ public class GSMPhone extends PhoneBase {
     protected String mImei;
     protected String mImeiSv;
     private String mVmNumber;
-    private String mMdn;
-    private String mPrlVersion;
     private String mSetCfNumber;
 
     // Key used to read/write voice mail number
@@ -171,10 +169,6 @@ public class GSMPhone extends PhoneBase {
         mCM.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mCM.setOnSS(this, EVENT_SS, null);
-
-        if (SystemProperties.getBoolean("ro.config.multimode_cdma", false)) {
-            mCM.registerForCdmaPrlChanged(this, EVENT_CDMA_PRL_VERSION_CHANGED, null);
-        }
 
         if (false) {
             try {
@@ -783,8 +777,8 @@ public class GSMPhone extends PhoneBase {
             return mCT.dial(newDialString, uusInfo);
         } else if (mmi.isTemporaryModeCLIR()) {
             return mCT.dial(mmi.dialingNumber, mmi.getCLIRMode(), uusInfo);
-        } else if (SystemProperties.getBoolean("ro.config.multimode_cdma", false) &&
-                   mmi.isGlobalDevMmi()) {
+        } else if (SystemProperties.getBoolean(TelephonyProperties.PROPERTY_MULTIMODE_CDMA, false)
+                && mmi.isGlobalDevMmi()) {
             return mCT.dial(mmi.dialingNumber, uusInfo);
         } else {
             mPendingMMIs.add(mmi);
@@ -932,7 +926,7 @@ public class GSMPhone extends PhoneBase {
     }
 
     public String getMdn() {
-        return mMdn;
+        return mSST.getMdnNumber();
     }
 
     public String getLine1AlphaTag() {
@@ -1290,9 +1284,6 @@ public class GSMPhone extends PhoneBase {
             break;
 
             case EVENT_RADIO_ON:
-                if (SystemProperties.getBoolean("ro.config.multimode_cdma", false)) {
-                    mCM.getCDMASubscription(obtainMessage(EVENT_GET_MDN_DONE));
-                }
                 break;
 
             case EVENT_REGISTERED_TO_NETWORK:
@@ -1507,29 +1498,6 @@ public class GSMPhone extends PhoneBase {
                 } else {
                     Log.e(LOG_TAG, "[EONS] In EVENT_GET_NETWORKS_DONE, onComplete is null!");
                 }
-                break;
-
-            case EVENT_GET_MDN_DONE:
-                ar = (AsyncResult)msg.obj;
-                if (ar.exception != null) {
-                    Log.e(LOG_TAG, "Error while fetching Mdn");
-                    break;
-                }
-                String localTemp[] = (String[])ar.result;
-                mMdn = localTemp[0];
-                if (localTemp.length > 4) {
-                    mPrlVersion = localTemp[4];
-                }
-                break;
-
-            case EVENT_CDMA_PRL_VERSION_CHANGED:
-                ar = (AsyncResult) msg.obj;
-                if (ar.exception != null || ar.result == null) {
-                    Log.e(LOG_TAG, "Error while fetching Prl");
-                    break;
-                }
-                int[] prl = (int[]) ar.result;
-                mPrlVersion = Integer.toString(prl[0]);
                 break;
 
             case CHECK_CALLFORWARDING_STATUS:
@@ -1785,7 +1753,7 @@ public class GSMPhone extends PhoneBase {
     }
 
     public String getCdmaPrlVersion(){
-        return mPrlVersion;
+        return mSST.getPrlVersion();
     }
 
     private void registerForSimRecordEvents() {

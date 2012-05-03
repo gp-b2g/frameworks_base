@@ -187,6 +187,9 @@ public class CdmaSubscriptionSourceManager extends Handler {
                         + newSubscriptionSource);
                 mCdmaSubscriptionSource.set(newSubscriptionSource);
 
+                // Save CDMA subscription source
+                saveCdmaSubscriptionSource(newSubscriptionSource);
+
                 // Notify registrants of the new CDMA subscription source
                 mCdmaSubscriptionSourceChangedRegistrants.notifyRegistrants(new AsyncResult(null,
                         null, null));
@@ -199,6 +202,17 @@ public class CdmaSubscriptionSourceManager extends Handler {
             logw("Unable to get CDMA Subscription Source, Exception: " + ar.exception
                     + ", result: " + ar.result);
         }
+    }
+
+    /**
+     * Save current source of cdma subscription
+     *
+     * @param source - 1 for NV, 0 for RUIM
+     */
+    private void saveCdmaSubscriptionSource(int source) {
+        log("Storing cdma subscription source: " + source);
+        Settings.Secure.putInt(mContext.getContentResolver(),
+                Settings.Secure.CDMA_SUBSCRIPTION_MODE, source);
     }
 
     private void log(String s) {

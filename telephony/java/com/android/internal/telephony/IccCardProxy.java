@@ -80,7 +80,7 @@ public class IccCardProxy extends Handler implements IccCard {
     private boolean mRadioOn = false;
     private boolean mCdmaSubscriptionFromNv = false;
     private boolean mIsMultimodeCdmaPhone =
-            SystemProperties.getBoolean("ro.config.multimode_cdma", false);
+            SystemProperties.getBoolean(TelephonyProperties.PROPERTY_MULTIMODE_CDMA, false);
     protected boolean mQuietMode = false; // when set to true IccCardProxy will not broadcast
                                         // ACTION_SIM_STATE_CHANGED intents
     protected boolean mInitialized = false;

@@ -239,4 +239,16 @@ public interface TelephonyProperties
      * Type: boolean ( true = alpha display enabled, false = alpha display disabled)
      */
     static final String PROPERTY_ALPHA_USRCNF = "persist.atel.noalpha.usrcnf";
+
+    /**
+     * Specify if following customization for CDMA Global phone registered on
+     * 3GPP technologies is enabled.
+     *
+     * - Translate MMI codes for CustomerSupport, Voice Mail, CLIP and CLIR to
+     *   the corresponding dialing numbers
+     * - Display CDMA PRL when camped on GSM
+     *
+     * Type: boolean ( true = multimode enabled, false = multimode disabled)
+     */
+    static final String PROPERTY_MULTIMODE_CDMA = "ro.config.multimode_cdma";
 }
