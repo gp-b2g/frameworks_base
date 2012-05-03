@@ -254,6 +254,7 @@ public class UiccManager extends Handler {
             Log.d(LOG_TAG, "Disposing card " + index);
             mUiccCards[index].dispose();
             mUiccCards[index] = null;
+            mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
         }
     }
 
