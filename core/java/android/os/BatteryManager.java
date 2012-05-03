@@ -115,4 +115,6 @@ public class BatteryManager {
     public static final int BATTERY_PLUGGED_AC = 1;
     /** Power source is a USB port. */
     public static final int BATTERY_PLUGGED_USB = 2;
+    /** Power source is a unknown charger, usually non-stanadrd wall */
+    public static final int BATTERY_PLUGGED_UNKNOWN = 4;
 }
