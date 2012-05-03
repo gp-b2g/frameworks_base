@@ -32,6 +32,10 @@ extern bool android_SurfaceTexture_isInstanceOf(JNIEnv* env, jobject thiz);
 /* Gets the underlying SurfaceTexture from a SurfaceTexture Java object. */
 extern sp<SurfaceTexture> SurfaceTexture_getSurfaceTexture(JNIEnv* env, jobject thiz);
 
+/* Sets a new SurfaceTexture */
+extern void SurfaceTexture_setSurfaceTexture(JNIEnv* env, jobject thiz,
+        const sp<SurfaceTexture>& surfaceTexture);
+
 } // namespace android
 
 #endif // _ANDROID_GRAPHICS_SURFACETEXTURE_H

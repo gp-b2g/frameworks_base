@@ -54,7 +54,7 @@ public:
     virtual Region* getRegion();
     virtual GLint getTargetFbo();
 
-    ANDROID_API static Layer* createTextureLayer(bool isOpaque);
+    ANDROID_API static Layer* createTextureLayer(bool isOpaque, int textureName=0);
     ANDROID_API static Layer* createLayer(uint32_t width, uint32_t height, bool isOpaque = false);
     ANDROID_API static bool resizeLayer(Layer* layer, uint32_t width, uint32_t height);
     ANDROID_API static void updateTextureLayer(Layer* layer, uint32_t width, uint32_t height,

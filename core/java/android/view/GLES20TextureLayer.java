@@ -29,8 +29,9 @@ class GLES20TextureLayer extends GLES20Layer {
     private int mTexture;
     private SurfaceTexture mSurface;
 
-    GLES20TextureLayer(boolean isOpaque) {
+    GLES20TextureLayer(boolean isOpaque, int textureName) {
         int[] layerInfo = new int[2];
+        layerInfo[0] = textureName;
         mLayer = GLES20Canvas.nCreateTextureLayer(isOpaque, layerInfo);
 
         if (mLayer != 0) {
@@ -38,7 +39,11 @@ class GLES20TextureLayer extends GLES20Layer {
             mFinalizer = new Finalizer(mLayer);
         } else {
             mFinalizer = null;
-        }        
+        }
+    }
+
+    GLES20TextureLayer(boolean isOpaque) {
+        this(isOpaque, 0);
     }
 
     @Override
@@ -69,6 +74,11 @@ class GLES20TextureLayer extends GLES20Layer {
             mSurface = new SurfaceTexture(mTexture, false);
         }
         return mSurface;
+    }
+
+    void setSurfaceTexture(SurfaceTexture surfaceTexture) {
+        mSurface = surfaceTexture;
+        GLES20Canvas.nSetSurfaceTexture(mSurface);
     }
 
     @Override

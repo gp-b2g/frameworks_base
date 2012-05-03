@@ -298,6 +298,19 @@ public abstract class HardwareRenderer {
     abstract HardwareLayer createHardwareLayer(boolean isOpaque);
     
     /**
+     * Creates a new hardware layer. A hardware layer built by calling this
+     * method will be treated as a texture layer, instead of as a render target.
+     * This API allows the client to supply the texture for the hardware layer.
+     * See {@link VideoTextureView}.
+     *
+     * @param isOpaque Whether the layer should be opaque or not
+     * @param textureName The texture name to use
+     *
+     * @return A hardware layer
+     */
+    abstract HardwareLayer createHardwareLayer(boolean isOpaque, int textureName);
+
+    /**
      * Creates a new hardware layer.
      * 
      * @param width The minimum width of the layer
@@ -318,6 +331,16 @@ public abstract class HardwareRenderer {
      * @return A {@link SurfaceTexture}
      */
     abstract SurfaceTexture createSurfaceTexture(HardwareLayer layer);
+
+    /**
+     * @hide
+     * Specifies a {@link SurfaceTexture} that can be used to render into the
+     * specified hardware layer.
+     *
+     * @param layer The layer to render into using a {@link android.graphics.SurfaceTexture}
+     * @param The {@link android.graphics.SurfaceTexture} to use
+     */
+    abstract void setSurfaceTexture(HardwareLayer layer, SurfaceTexture surfaceTexture);
 
     /**
      * Initializes the hardware renderer for the specified surface and setup the
@@ -1092,6 +1115,11 @@ public abstract class HardwareRenderer {
         }
 
         @Override
+        HardwareLayer createHardwareLayer(boolean isOpaque, int textureName) {
+            return new GLES20TextureLayer(isOpaque, textureName);
+        }
+
+        @Override
         HardwareLayer createHardwareLayer(int width, int height, boolean isOpaque) {
             return new GLES20RenderLayer(width, height, isOpaque);
         }
@@ -1099,6 +1127,12 @@ public abstract class HardwareRenderer {
         @Override
         SurfaceTexture createSurfaceTexture(HardwareLayer layer) {
             return ((GLES20TextureLayer) layer).getSurfaceTexture();
+        }
+
+        @Override
+        void setSurfaceTexture(HardwareLayer layer, SurfaceTexture surfaceTexture) {
+            if (layer instanceof GLES20TextureLayer)
+                ((GLES20TextureLayer) layer).setSurfaceTexture(surfaceTexture);
         }
 
         @Override

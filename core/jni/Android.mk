@@ -58,6 +58,7 @@ LOCAL_SRC_FILES:= \
 	android_view_MotionEvent.cpp \
 	android_view_PointerIcon.cpp \
 	android_view_VelocityTracker.cpp \
+	android_view_VideoTextureView.cpp \
 	android_text_AndroidCharacter.cpp \
 	android_text_AndroidBidi.cpp \
 	android_os_Debug.cpp \

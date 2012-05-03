@@ -51,6 +51,7 @@ struct Layer {
         texture.width = layerWidth;
         texture.height = layerHeight;
         colorFilter = NULL;
+        ownsTexture = false;
     }
 
     ~Layer() {
@@ -185,10 +186,11 @@ struct Layer {
 
     inline void generateTexture() {
         glGenTextures(1, &texture.id);
+        ownsTexture = true;
     }
 
     inline void deleteTexture() {
-        if (texture.id) glDeleteTextures(1, &texture.id);
+        if (texture.id && ownsTexture) glDeleteTextures(1, &texture.id);
     }
 
     inline void deleteFbo() {
@@ -290,6 +292,11 @@ private:
      * Optional transform.
      */
     mat4 transform;
+
+    /**
+     * Indicates whether the texture is owned by the layer
+     */
+    bool ownsTexture;
 
 }; // struct Layer
 
