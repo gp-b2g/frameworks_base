@@ -21,6 +21,7 @@ import android.util.Log;
 
 import com.android.internal.telephony.DataConnection;
 import com.android.internal.telephony.DataProfile;
+import com.android.internal.telephony.DataProfile.DataProfileType;
 import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
@@ -87,14 +88,18 @@ public class CdmaDataConnection extends DataConnection {
             dataProfile = RILConstants.DATA_PROFILE_DEFAULT;
         }
 
-        mApn.setProfileId(dataProfile);
+        if (cp.apn.getDataProfileType() == DataProfileType.PROFILE_TYPE_OMH) {
+            dataProfile = cp.apn.getProfileId() + RILConstants.DATA_PROFILE_OEM_BASE;
+        } else {
+            mApn.setProfileId(dataProfile);
+        }
 
         // msg.obj will be returned in AsyncResult.userObj;
         Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
         msg.obj = cp;
         phone.mCM.setupDataCall(
                 Integer.toString(getRadioTechnology(RILConstants.SETUP_DATA_TECH_CDMA)),
-                Integer.toString(mApn.getProfileId()),
+                Integer.toString(dataProfile),
                 mApn.apn, mApn.user, mApn.password,
                 Integer.toString(mApn.authType),
                 mApn.protocol, msg);
