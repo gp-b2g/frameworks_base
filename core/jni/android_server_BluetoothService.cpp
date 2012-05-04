@@ -1698,6 +1698,7 @@ static jboolean registerGattServerNative(JNIEnv *env, jobject object,
     if (nat) {
         const char *c_name = FRAMEWORKS_BASE_IFC;
         const char *c_obj_path;
+        const char *c_restriction = "None";
         DBusMessage *msg, *reply;
         DBusError err;
         dbus_error_init(&err);
@@ -1719,6 +1720,7 @@ static jboolean registerGattServerNative(JNIEnv *env, jobject object,
                                  DBUS_TYPE_STRING, &c_name,
                                  DBUS_TYPE_OBJECT_PATH, &c_obj_path,
                                  DBUS_TYPE_UINT16, &handleCount,
+                                 DBUS_TYPE_STRING, &c_restriction,
                                  DBUS_TYPE_INVALID);
 
         /* Make the call. */
