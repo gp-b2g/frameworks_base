@@ -8,6 +8,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libaudioflinger \
 	libcameraservice \
 	libmediaplayerservice \
+	libdl      \
 	libutils \
 	libbinder
 

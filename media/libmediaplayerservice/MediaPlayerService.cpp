@@ -28,7 +28,7 @@
 #include <sys/time.h>
 #include <dirent.h>
 #include <unistd.h>
-
+#include <dlfcn.h>
 #include <string.h>
 
 #include <cutils/atomic.h>
@@ -72,7 +72,7 @@
 #include "nuplayer/NuPlayerDriver.h"
 
 #include <OMX.h>
-
+class MPQ_PlayerClient;
 namespace {
 using android::media::Metadata;
 using android::status_t;
@@ -86,7 +86,7 @@ const int kMaxFilterSize = 64;  // I pulled that out of thin air.
 
 // FIXME: Move all the metadata related function in the Metadata.cpp
 
-
+typedef MPQ_PlayerClient* (*CreateMPQ_PlayerClientFunc)(void);
 // Unmarshall a filter from a Parcel.
 // Filter format in a parcel:
 //
@@ -614,12 +614,17 @@ player_type getPlayerType(const char* url)
         }
     }
 
+    if (!strncasecmp("mpq", url, 3))
+            return MPQ_PLAYER;
+
     return getDefaultPlayerType();
 }
 
 static sp<MediaPlayerBase> createPlayer(player_type playerType, void* cookie,
         notify_callback_f notifyFunc)
 {
+    void* handle;
+    CreateMPQ_PlayerClientFunc funcHandle;
     sp<MediaPlayerBase> p;
     switch (playerType) {
         case SONIVOX_PLAYER:
@@ -637,6 +642,12 @@ static sp<MediaPlayerBase> createPlayer(player_type playerType, void* cookie,
         case TEST_PLAYER:
             LOGV("Create Test Player stub");
             p = new TestPlayerStub();
+            break;
+        case MPQ_PLAYER:
+            LOGE("Create MPQ PLAYER");
+            handle = dlopen("libmpqplayerclient.so", RTLD_NOW);
+            funcHandle = (CreateMPQ_PlayerClientFunc)dlsym(handle, "_ZN16MPQ_PlayerClient22CreateMPQ_PlayerClientEv");
+            p = (MediaPlayerBase*)funcHandle();
             break;
         default:
             LOGE("Unknown player type: %d", playerType);

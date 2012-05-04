@@ -29,6 +29,7 @@
 #include <CameraService.h>
 #include <MediaPlayerService.h>
 #include <AudioPolicyService.h>
+#include <dlfcn.h>
 #include <private/android_filesystem_config.h>
 
 using namespace android;
@@ -49,6 +50,8 @@ int waitBeforeAdding( const String16& serviceName ) {
     return -1;
 }
 
+typedef void (*MPQSInstantiateFunc)();
+
 int main(int argc, char** argv)
 {
     sp<ProcessState> proc(ProcessState::self());
@@ -62,6 +65,25 @@ int main(int argc, char** argv)
     CameraService::instantiate();
     waitBeforeAdding( String16("media.audio_policy") );
     AudioPolicyService::instantiate();
+    waitBeforeAdding( String16("media.tvservice.TvService") );
+    {
+        void* pMPQSHandle = NULL;
+        MPQSInstantiateFunc mpqsInstantaite;
+        pMPQSHandle = dlopen("libmpqstobinder.so", RTLD_NOW);
+
+	if (! pMPQSHandle ) {
+		LOGE("Error Loading libmpqstobinder \nError: %s\n", dlerror());
+	} else {
+	    dlerror(); // Clear any existing error
+            mpqsInstantaite = (MPQSInstantiateFunc)dlsym(pMPQSHandle, "_ZN7android12MPQSToBinder11instantiateEv");
+	    if (NULL == pMPQSHandle) {
+	        LOGE("Error Loading symbol libmpqstobinder.instantiate \n Error is : %s\n", dlerror());
+	    } else {
+		LOGE("Loaded symbol libmpqstobinder.instantiate \n");
+            }
+	    mpqsInstantaite();
+	}
+    }
     ProcessState::self()->startThreadPool();
     IPCThreadState::self()->joinThreadPool();
 }
