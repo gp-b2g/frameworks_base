@@ -101,6 +101,7 @@ namespace android {
 extern int register_android_content_AssetManager(JNIEnv* env);
 extern int register_android_util_EventLog(JNIEnv* env);
 extern int register_android_util_Log(JNIEnv* env);
+extern int register_android_util_jTestFramework(JNIEnv* env);
 extern int register_android_content_StringBlock(JNIEnv* env);
 extern int register_android_content_XmlBlock(JNIEnv* env);
 extern int register_android_emoji_EmojiFactory(JNIEnv* env);
@@ -1092,6 +1093,7 @@ static const RegJNIRec gRegJNI[] = {
     REG_JNI(register_android_os_SystemClock),
     REG_JNI(register_android_util_EventLog),
     REG_JNI(register_android_util_Log),
+    REG_JNI(register_android_util_jTestFramework),
     REG_JNI(register_android_util_FloatMath),
     REG_JNI(register_android_text_format_Time),
     REG_JNI(register_android_content_AssetManager),
