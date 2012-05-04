@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -150,6 +150,10 @@ public class AtCrslCmdHandler extends AtCmdBaseHandler implements AtCmdHandler {
                     result = cmd.getAtCmdErrStr(AtCmd.AT_ERR_OP_NOT_ALLOW);
                 }
                 break;
+        }
+
+        if (isAtCmdRespOK) {
+            result = getCommandName() + ": " + result;
         }
 
         return isAtCmdRespOK ? new AtCmdResponse(AtCmdResponse.RESULT_OK, result) :
