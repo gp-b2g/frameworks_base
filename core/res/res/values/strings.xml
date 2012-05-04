@@ -1816,6 +1816,14 @@
          to unlock the keyguard.  Displayed in one line in a large font.  -->
     <string name="keyguard_password_wrong_pin_code">Incorrect PIN code!</string>
 
+    <!-- Instructions telling the user that the operation to unlock the keyguard
+         with PIN failed. Displayed in one line in a large font.  -->
+    <string name="keyguard_password_pin_failed">PIN operation failed!</string>
+
+    <!-- Instructions telling the user that the operation to unlock the keyguard
+         with PUK failed. Displayed in one line in a large font.  -->
+    <string name="keyguard_password_puk_failed">PUK operation failed!</string>
+
     <!-- Instructions telling the user that they entered the wrong puk while trying
          to unlock the keyguard.  Displayed in one line in a large font.  -->
     <string name="keyguard_password_wrong_puk_code">Incorrect PUK code!</string>

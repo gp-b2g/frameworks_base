@@ -166,6 +166,14 @@ public interface Phone {
     static final int QOS_REQUEST_FAILURE = 1;
 
     /**
+     * Return codes for supplyPinReturnResult and
+     * supplyPukReturnResult APIs
+     */
+    static final int PIN_RESULT_SUCCESS = 0;
+    static final int PIN_PASSWORD_INCORRECT = 1;
+    static final int PIN_GENERAL_FAILURE = 2;
+
+    /**
      * Constants for Dual-IP partial retries
      */
     static final int DUALIP_PARTIAL_RETRY = 1;

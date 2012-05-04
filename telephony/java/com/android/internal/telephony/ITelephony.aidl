@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -155,6 +155,24 @@ interface ITelephony {
      * @return whether the operation was a success.
      */
     boolean supplyPuk(String puk, String pin);
+
+    /**
+     * Supply a pin to unlock the SIM.  Blocks until a result is determined.
+     * Returns a specific success/error code.
+     * @param pin The pin to check.
+     * @return Phone.PIN_RESULT_SUCCESS on success. Otherwise error code
+     */
+    int supplyPinReportResult(String pin);
+
+    /**
+     * Supply puk to unlock the SIM and set SIM pin to new pin.
+     * Blocks until a result is determined.
+     * Returns a specific success/error code.
+     * @param puk The puk to check
+     *        pin The pin to check.
+     * @return Phone.PIN_RESULT_SUCCESS on success. Otherwise error code
+     */
+    int supplyPukReportResult(String puk, String pin);
 
     /**
      * Handles PIN MMI commands (PIN/PIN2/PUK/PUK2), which are initiated
