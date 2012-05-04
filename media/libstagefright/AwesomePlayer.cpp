@@ -1967,7 +1967,6 @@ void AwesomePlayer::onVideoEvent() {
                 }
 
                 modifyFlags(VIDEO_AT_EOS, SET);
-                cancelPlayerEvents(false);
                 postStreamDoneEvent_l(err);
                 return;
             }
