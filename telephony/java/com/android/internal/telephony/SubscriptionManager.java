@@ -105,6 +105,8 @@ public class SubscriptionManager extends Handler {
     private static final int EVENT_CLEANUP_DATA_CONNECTION_DONE = 7;
     private static final int EVENT_DISABLE_DATA_CONNECTION_DONE = 8;
     private static final int EVENT_ALL_DATA_DISCONNECTED = 9;
+    private static final int EVENT_RADIO_ON = 10;
+    private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 11;
 
 
     // Set Subscription Return status
@@ -160,6 +162,8 @@ public class SubscriptionManager extends Handler {
     private RegistrantList mSetSubscriptionRegistrants = new RegistrantList();
 
     private String[] mSubResult = new String [NUM_SUBSCRIPTIONS];
+
+    private boolean[] mRadioOn = {false, false};
 
 
     /**
@@ -220,6 +224,9 @@ public class SubscriptionManager extends Handler {
         mCi = ci;
         for (int i = 0; i < mCi.length; i++) {
             mCi[i].registerForSubscriptionStatusChanged(this, EVENT_SUBSCRIPTION_STATUS_CHANGED, new Integer(i));
+            mCi[i].registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE,
+                    new Integer(i));
+            mCi[i].registerForOn(this, EVENT_RADIO_ON, new Integer(i));
         }
 
         mSubDeactivatedRegistrants = new RegistrantList[MSimConstants.RIL_MAX_CARDS];
@@ -249,7 +256,26 @@ public class SubscriptionManager extends Handler {
 
     @Override
     public void handleMessage(Message msg) {
+        AsyncResult ar;
+        Integer subId;
         switch(msg.what) {
+            case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:
+                ar = (AsyncResult)msg.obj;
+                subId = (Integer)ar.userObj;
+                logd("EVENT_RADIO_OFF_OR_NOT_AVAILABLE on SUB: " + subId);
+                mRadioOn[subId] = false;
+                if (!isAllRadioOn()) {
+                    mSetSubscriptionInProgress = false;
+                }
+                break;
+
+            case EVENT_RADIO_ON:
+                ar = (AsyncResult)msg.obj;
+                subId = (Integer)ar.userObj;
+                logd("EVENT_RADIO_ON on SUB: " + subId);
+                mRadioOn[subId] = true;
+                break;
+
             case EVENT_CARD_INFO_AVAILABLE:
                 logd("EVENT_CARD_INFO_AVAILABLE");
                 processCardInfoAvailable((AsyncResult)msg.obj);
@@ -282,7 +308,7 @@ public class SubscriptionManager extends Handler {
 
             case EVENT_CLEANUP_DATA_CONNECTION_DONE:
                 logd("EVENT_CLEANUP_DATA_CONNECTION_DONE");
-                processCleanupDataConnectionDone();
+                processCleanupDataConnectionDone((Integer)msg.obj);
                 break;
 
             case EVENT_DISABLE_DATA_CONNECTION_DONE:
@@ -389,7 +415,12 @@ public class SubscriptionManager extends Handler {
      * Handles the EVENT_CLEANUP_DATA_CONNECTION_DONE.
      * @param ar
      */
-    private void processCleanupDataConnectionDone() {
+    private void processCleanupDataConnectionDone(Integer subId) {
+        if (!mRadioOn[subId]) {
+           logd("processCleanupDataConnectionDone: Radio Not Available on subId = " + subId);
+           return;
+        }
+
         // Cleanup data connection is done!  Start processing the
         // pending deactivate requests now.
         mDataActive = false;
@@ -405,6 +436,11 @@ public class SubscriptionManager extends Handler {
         int actStatus = ((int[])ar.result)[0];
         logd("handleSubscriptionStatusChanged sub = " + subId
                 + " actStatus = " + actStatus);
+
+        if (!mRadioOn[subId]) {
+           logd("processSubscriptionStatusChanged: Radio Not Available on subId = " + subId);
+           return;
+        }
 
         updateSubscriptionReadiness(subId, (actStatus == SUB_STATUS_ACTIVATED));
         if (actStatus == SUB_STATUS_ACTIVATED) { // Subscription Activated
@@ -447,6 +483,12 @@ public class SubscriptionManager extends Handler {
         String cause = null;
         SubscriptionStatus subStatus = SubscriptionStatus.SUB_INVALID;
         Subscription currentSub = null;
+
+        if (!mRadioOn[setSubParam.subId]) {
+           logd("processSetUiccSubscriptionDone: Radio Not Available on subId = "
+                + setSubParam.subId);
+           return;
+        }
 
         if (ar.exception != null) {
             // SET_UICC_SUBSCRIPTION failed
@@ -534,8 +576,11 @@ public class SubscriptionManager extends Handler {
                 currentSub,
                 subStatus,
                 cause);
-        saveUserPreferredSubscription(setSubParam.subId,
-                getCurrentSubscription(SubscriptionId.values()[setSubParam.subId]));
+        // do not saveUserPreferredSubscription in case of failure
+        if (ar.exception == null) {
+            saveUserPreferredSubscription(setSubParam.subId,
+                    getCurrentSubscription(SubscriptionId.values()[setSubParam.subId]));
+        }
 
         mSubResult[setSubParam.subId] = cause;
 
@@ -644,6 +689,11 @@ public class SubscriptionManager extends Handler {
      * Handles EVENT_SET_SUBSCRIPTION_MODE_DONE.
      */
     private void processSetSubscriptionModeDone() {
+        if (!isAllRadioOn()) {
+           logd("processSetSubscriptionModeDone: Radio Not Available");
+           return;
+        }
+
         startNextPendingActivateRequests();
     }
 
@@ -651,6 +701,11 @@ public class SubscriptionManager extends Handler {
      * Handles EVENT_ALL_CARDS_INFO_AVAILABLE.
      */
     private void processAllCardsInfoAvailable() {
+        if (!isAllRadioOn()) {
+           logd("processAllCardsInfoAvailable: Radio Not Available ");
+           return;
+        }
+
         int availableCards = 0;
         mAllCardsStatusAvailable = true;
 
@@ -690,6 +745,12 @@ public class SubscriptionManager extends Handler {
      */
     private void processCardInfoAvailable(AsyncResult ar) {
         Integer cardIndex = (Integer)ar.userObj;
+
+        if (!mRadioOn[cardIndex]) {
+           logd("processCardInfoAvailable: Radio Not Available on cardIndex = " + cardIndex);
+           return;
+        }
+
         mCardInfoAvailable[cardIndex] = true;
 
         // Card info on slot cardIndex is available.
@@ -875,6 +936,14 @@ public class SubscriptionManager extends Handler {
         setSubscriptionIntent.putExtra("NOTIFY_NEW_CARD_AVAILABLE", true);
 
         mContext.startActivity(setSubscriptionIntent);
+    }
+
+    private boolean isAllRadioOn() {
+        boolean result = true;
+        for (boolean radioOn : mRadioOn) {
+            result = result && radioOn;
+        }
+        return result;
     }
 
     private boolean isAllCardsInfoAvailable() {
