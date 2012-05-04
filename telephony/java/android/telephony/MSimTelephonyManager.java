@@ -19,6 +19,8 @@ package android.telephony;
 
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC2_OPERATOR_NUMERIC;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY;
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_OPERATOR2_ISO_COUNTRY;
 import android.annotation.SdkConstant;
 import android.annotation.SdkConstant.SdkConstantType;
 import android.content.Context;
@@ -763,11 +765,28 @@ public class MSimTelephonyManager extends TelephonyManager {
     }
 
     /**
+     * Sets the telephony property separately with the value specified.
+     *
+     * @hide
+     */
+    public static boolean setDualTelephonyProperty(String property, int index, String value) {
+      //now we have two icc operator numeric property,the old method need extend
+        if (property.equals(PROPERTY_OPERATOR_ISO_COUNTRY)){
+            property = index == 0 ? PROPERTY_OPERATOR_ISO_COUNTRY : PROPERTY_OPERATOR2_ISO_COUNTRY;
+            SystemProperties.set(property, value);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Sets the telephony property with the value specified.
      *
      * @hide
      */
     public static void setTelephonyProperty(String property, int index, String value) {
+        if(setDualTelephonyProperty(property,index,value))
+            return;
         String propVal = "";
         String p[] = null;
         String prop = SystemProperties.get(property);
@@ -802,15 +821,21 @@ public class MSimTelephonyManager extends TelephonyManager {
      */
     public static String getTelephonyProperty(String property, int index, String defaultVal) {
         String propVal = null;
+        boolean bDualSet = false;
 
         //now we have two icc operator numeric property,the old method need extend
         if (property.equals(PROPERTY_ICC_OPERATOR_NUMERIC)){
+            bDualSet = true;
             property = index == 0 ? PROPERTY_ICC_OPERATOR_NUMERIC : PROPERTY_ICC2_OPERATOR_NUMERIC;
-            propVal = SystemProperties.get(property);
-            return propVal == null ? defaultVal : propVal;
+        }
+        else if(property.equals(PROPERTY_OPERATOR_ISO_COUNTRY)){
+            bDualSet = true;
+            property = index == 0 ? PROPERTY_OPERATOR_ISO_COUNTRY : PROPERTY_OPERATOR2_ISO_COUNTRY;
         }
 
         String prop = SystemProperties.get(property);
+        if(bDualSet)
+            return prop == null ? defaultVal : prop;
 
         if ((prop != null) && (prop.length() > 0)) {
             String values[] = prop.split(",");

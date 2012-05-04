@@ -72,6 +72,11 @@ public interface TelephonyProperties
      */
     static final String PROPERTY_OPERATOR_ISO_COUNTRY = "gsm.operator.iso-country";
 
+    /** record  the oISO country code in different property,get PROPERTY_OPERATOR_ISO_COUNTRY 
+     *  just return slot 0 operator numeric;
+     */
+    static final String PROPERTY_OPERATOR2_ISO_COUNTRY = "gsm.operator2.iso-country";
+
     /**
      * The contents of this property is the value of the kernel command line
      * product_type variable that corresponds to a product that supports LTE on CDMA.
