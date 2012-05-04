@@ -273,14 +273,11 @@ void LayerBase::validateVisibility(const Transform& planeTransform)
     if (getLayer() != NULL) {
         const sp<GraphicBuffer>& buffer(getLayer()->getActiveBuffer());
         if (buffer != NULL) {
-            if (buffer->getPixelFormat() == HAL_PIXEL_FORMAT_YCbCr_420_SP_TILED)
-            {   // Video layer, no Camera
-                int wRatio = getLayer()->getPARWidth();
-                int hRatio = getLayer()->getPARHeight();
-                if (needsAspectRatio(wRatio, hRatio)) {
-                    applyPixelAspectRatio (wRatio, hRatio, mOrientation, hw.getWidth(),
-                                           hw_h, mTransformedBounds, mVertices);
-                }
+            int wRatio = getLayer()->getPARWidth();
+            int hRatio = getLayer()->getPARHeight();
+            if (needsAspectRatio(wRatio, hRatio)) {
+                applyPixelAspectRatio (wRatio, hRatio, mOrientation, hw.getWidth(),
+                                       hw_h, mTransformedBounds, mVertices);
             }
         }
     }
