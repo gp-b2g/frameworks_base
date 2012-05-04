@@ -28,13 +28,27 @@
 
 package android.webkit;
 
+import android.Manifest.permission;
+import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.SurfaceTexture;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
+import android.media.Metadata;
 import android.net.Uri;
+import android.opengl.GLES20;
+import android.os.PowerManager;
 import android.util.Log;
-import android.view.SurfaceView;
-import android.webkit.HTML5VideoViewProxy;
+import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.Surface;
+import android.view.VideoTextureView;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.MediaController;
+import android.widget.MediaController.MediaPlayerControl;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -44,12 +58,14 @@ import java.util.TimerTask;
 /**
  * @hide This is only used by the browser
  */
-public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
+public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
+    MediaPlayerControl, View.OnTouchListener, VideoTextureView.VideoTextureListener,
+    SurfaceTexture.OnFrameAvailableListener
+{
+    private static final String LOGTAG = "HTML5VideoView";
 
-    protected static final String LOGTAG = "HTML5VideoView";
-
-    protected static final String COOKIE = "Cookie";
-    protected static final String HIDE_URL_LOGS = "x-hide-urls-from-log";
+    private static final String COOKIE = "Cookie";
+    private static final String HIDE_URL_LOGS = "x-hide-urls-from-log";
 
     // For handling the seekTo before prepared, we need to know whether or not
     // the video is prepared. Therefore, we differentiate the state between
@@ -66,41 +82,59 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
     static final int STATE_RELEASED           = 5;
     protected int mCurrentState;
 
-    protected HTML5VideoViewProxy mProxy;
+    private HTML5VideoViewProxy mProxy;
 
     // Save the seek time when not prepared. This can happen when switching
     // video besides initial load.
-    protected int mSaveSeekTime;
+    private int mSaveSeekTime;
 
     // This is used to find the VideoLayer on the native side.
-    protected int mVideoLayerId;
+    private int mVideoLayerId;
 
-    // Every video will have one MediaPlayer. Given the fact we only have one
-    // SurfaceTexture, there is only one MediaPlayer in action. Every time we
-    // switch videos, a new instance of MediaPlayer will be created in reset().
-    // Switching between inline and full screen will also create a new instance.
-    protected MediaPlayer mPlayer;
+    private MediaPlayer mPlayer;
 
-    // This will be set up every time we create the Video View object.
-    // Set to true only when switching into full screen while playing
-    protected boolean mAutostart;
+    // This will be set up every time we create the HTML5VideoView object.
+    // Set to true if video should start upon MediaPlayer prepared.
+    private boolean mAutoStart;
 
     // We need to save such info.
-    protected Uri mUri;
-    protected Map<String, String> mHeaders;
+    private Uri mUri;
+    private Map<String, String> mHeaders;
 
     // The timer for timeupate events.
     // See http://www.whatwg.org/specs/web-apps/current-work/#event-media-timeupdate
-    protected Timer mTimer;
+    private Timer mTimer;
+
+    private boolean mIsFullscreen;
 
     // The spec says the timer should fire every 250 ms or less.
     private static final int TIMEUPDATE_PERIOD = 250;  // ms
 
-    protected boolean mPauseDuringPreparing;
+    private boolean mPauseDuringPreparing;
 
-    protected int mVideoWidth;
-    protected int mVideoHeight;
-    protected int mDuration;
+    private int mVideoWidth;
+    private int mVideoHeight;
+    private int mDuration;
+
+    // The Media Controller only used for full screen mode
+    private MediaController mMediaController;
+
+    // Data only for MediaController
+    private boolean mCanSeekBack;
+    private boolean mCanSeekForward;
+    private boolean mCanPause;
+    private int mCurrentBufferPercentage;
+
+    // The progress view.
+    private View mProgressView;
+    // The container for the progress view and video view
+    private FrameLayout mLayout;
+
+    private SurfaceTexture mSurfaceTexture;
+    private MyVideoTextureView mTextureView;
+    // m_textureNames is the texture bound with this SurfaceTexture.
+    private int[] mTextureNames;
+    private boolean mSurfaceTextureReady;
 
     // common Video control FUNCTIONS:
     public void start() {
@@ -115,8 +149,14 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
             }
             mPlayer.start();
             setPlayerBuffering(false);
+
+            // Notify webkit MediaPlayer that video is playing to make sure
+            // webkit MediaPlayer is always synchronized with the proxy.
+            // This is particularly important when using the fullscreen
+            // MediaController.
+            mProxy.dispatchOnPlaying();
         } else
-            mAutostart = true;
+            mAutoStart = true;
     }
 
     public void pause() {
@@ -125,6 +165,12 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
         } else if (mCurrentState == STATE_NOTPREPARED) {
             mPauseDuringPreparing = true;
         }
+        // Notify webkit MediaPlayer that video is paused to make sure
+        // webkit MediaPlayer is always synchronized with the proxy
+        // This is particularly important when using the fullscreen
+        // MediaController.
+        mProxy.dispatchOnPaused();
+
         // Delete the Timer to stop it since there is no stop call.
         if (mTimer != null) {
             mTimer.purge();
@@ -177,14 +223,6 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
         }
     }
 
-    public boolean getAutostart() {
-        return mAutostart;
-    }
-
-    public boolean getPauseDuringPreparing() {
-        return mPauseDuringPreparing;
-    }
-
     public void setVolume(float volume) {
         if (mCurrentState != STATE_RELEASED) {
             mPlayer.setVolume(volume, volume);
@@ -192,21 +230,20 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
     }
 
     // Every time we start a new Video, we create a VideoView and a MediaPlayer
-    public void init(int videoLayerId, int position, boolean autoStart) {
+    HTML5VideoView(HTML5VideoViewProxy proxy, int videoLayerId, int position, boolean autoStart) {
         mPlayer = new MediaPlayer();
         mCurrentState = STATE_INITIALIZED;
-        mProxy = null;
+        mProxy = proxy;
         mVideoLayerId = videoLayerId;
         mSaveSeekTime = position;
-        mAutostart = autoStart;
+        mAutoStart = autoStart;
         mTimer = null;
         mPauseDuringPreparing = false;
+        mIsFullscreen = false;
+        mSurfaceTextureReady = false;
     }
 
-    protected HTML5VideoView() {
-    }
-
-    protected static Map<String, String> generateHeaders(String url,
+    private static Map<String, String> generateHeaders(String url,
             HTML5VideoViewProxy proxy) {
         boolean isPrivate = proxy.getWebView().isPrivateBrowsingEnabled();
         String cookieValue = CookieManager.getInstance().getCookie(url, isPrivate);
@@ -221,10 +258,18 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
         return headers;
     }
 
-    public void setVideoURI(String uri, HTML5VideoViewProxy proxy) {
-        // When switching players, surface texture will be reused.
+    public void setVideoURI(String uri) {
         mUri = Uri.parse(uri);
-        mHeaders = generateHeaders(uri, proxy);
+        mHeaders = generateHeaders(uri, mProxy);
+    }
+
+    // When there is a frame ready from surface texture, we should tell WebView
+    // to refresh.
+    @Override
+    public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+        // TODO: This should support partial invalidation too.
+        mProxy.getWebView().invalidate();
+        mSurfaceTextureReady = true;
     }
 
     public void retrieveMetadata(HTML5VideoViewProxy proxy) {
@@ -254,29 +299,15 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
         mPlayer.setOnCompletionListener(proxy);
     }
 
-    public void setOnErrorListener(HTML5VideoViewProxy proxy) {
-        mPlayer.setOnErrorListener(proxy);
-    }
-
-    public void setOnPreparedListener(HTML5VideoViewProxy proxy) {
-        mProxy = proxy;
-        mPlayer.setOnPreparedListener(this);
-    }
-
-    public void setOnInfoListener(HTML5VideoViewProxy proxy) {
-        mPlayer.setOnInfoListener(proxy);
-    }
-
-    // Normally called immediately after setVideoURI. But for full screen,
-    // this should be after surface holder created
-    public void prepareDataAndDisplayMode(HTML5VideoViewProxy proxy) {
-        // SurfaceTexture will be created lazily here for inline mode
+    public void prepareDataAndDisplayMode() {
         decideDisplayMode();
 
-        setOnCompletionListener(proxy);
-        setOnPreparedListener(proxy);
-        setOnErrorListener(proxy);
-        setOnInfoListener(proxy);
+        mPlayer.setOnCompletionListener(mProxy);
+        mPlayer.setOnPreparedListener(this);
+        mPlayer.setOnErrorListener(mProxy);
+        mPlayer.setOnInfoListener(mProxy);
+        mPlayer.setOnVideoSizeChangedListener(mProxy);
+
         // When there is exception, we could just bail out silently.
         // No Video will be played though. Write the stack for debug
         try {
@@ -290,14 +321,25 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
             e.printStackTrace();
         }
         mCurrentState = STATE_NOTPREPARED;
+
+        // TODO: This is a workaround, after b/5375681 fixed, we should switch
+        // to the better way.
+        if (mProxy.getContext().checkCallingOrSelfPermission(permission.WAKE_LOCK)
+                == PackageManager.PERMISSION_GRANTED) {
+            mPlayer.setWakeMode(mProxy.getContext(), PowerManager.FULL_WAKE_LOCK);
+        }
+        if (!mIsFullscreen)
+            setInlineFrameAvailableListener();
     }
 
+    // This configures the SurfaceTexture OnFrameAvailableListener in inline mode
+    private void setInlineFrameAvailableListener() {
+        getSurfaceTexture().setOnFrameAvailableListener(this);
+    }
 
-    // Common code
     public int getVideoLayerId() {
         return mVideoLayerId;
     }
-
 
     public int getCurrentState() {
         if (isPlaying()) {
@@ -320,55 +362,63 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
         }
     }
 
-    @Override
     public void onPrepared(MediaPlayer mp) {
         mCurrentState = STATE_PREPARED;
+        mVideoWidth  = mp.getVideoWidth();
+        mVideoHeight = mp.getVideoHeight();
+
         seekTo(mSaveSeekTime);
-        if (mProxy != null) {
+
+        if (mProxy != null)
             mProxy.onPrepared(mp);
-        }
-        if (mPauseDuringPreparing) {
-            pauseAndDispatch(mProxy);
+
+        if (mPauseDuringPreparing || !mAutoStart)
             mPauseDuringPreparing = false;
+        else
+            start();
+
+        if (mIsFullscreen) {
+            attachMediaController();
+            // Request layout now that mVideoWidth and mVideoHeight are known
+            if (mTextureView != null)
+                mTextureView.requestLayout();
+            if (mProgressView != null)
+                mProgressView.setVisibility(View.GONE);
         }
-    }
-
-    // Pause the play and update the play/pause button
-    public void pauseAndDispatch(HTML5VideoViewProxy proxy) {
-        pause();
-        if (proxy != null) {
-            proxy.dispatchOnPaused();
-        }
-    }
-
-    // Below are functions that are different implementation on inline and full-
-    // screen mode. Some are specific to one type, but currently are called
-    // directly from the proxy.
-    public void enterFullScreenVideoState(int layerId,
-            HTML5VideoViewProxy proxy, WebView webView) {
-    }
-
-    public boolean isFullScreenMode() {
-        return false;
     }
 
     public void decideDisplayMode() {
+        SurfaceTexture surfaceTexture = getSurfaceTexture();
+        Surface surface = new Surface(surfaceTexture);
+        mPlayer.setSurface(surface);
+        surface.release();
     }
 
-    public boolean getReadyToUseSurfTex() {
-        return false;
-    }
-
-    public SurfaceTexture getSurfaceTexture(int videoLayerId) {
-        return null;
+    // SurfaceTexture will be created lazily here
+    public SurfaceTexture getSurfaceTexture() {
+        // Create the surface texture.
+        if (mSurfaceTexture == null) {
+            if (mTextureNames == null) {
+                mTextureNames = new int[1];
+                GLES20.glGenTextures(1, mTextureNames, 0);
+            }
+            mTextureNames = new int[1];
+            GLES20.glGenTextures(1, mTextureNames, 0);
+            mSurfaceTexture = new SurfaceTexture(mTextureNames[0]);
+        }
+        return mSurfaceTexture;
     }
 
     public int getTextureName() {
-        return 0;
+        if (mTextureNames != null) {
+            return mTextureNames[0];
+        } else {
+            return 0;
+        }
     }
 
     // This is true only when the player is buffering and paused
-    public boolean mPlayerBuffering = false;
+    private boolean mPlayerBuffering = false;
 
     public boolean getPlayerBuffering() {
         return mPlayerBuffering;
@@ -376,16 +426,226 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener {
 
     public void setPlayerBuffering(boolean playerBuffering) {
         mPlayerBuffering = playerBuffering;
-        switchProgressView(playerBuffering);
+        if (mProgressView != null)
+            switchProgressView(playerBuffering);
     }
 
-    protected void switchProgressView(boolean playerBuffering) {
-        // Only used in HTML5VideoFullScreen
+    private void switchProgressView(boolean playerBuffering) {
+        if (playerBuffering)
+            mProgressView.setVisibility(View.VISIBLE);
+        else
+            mProgressView.setVisibility(View.GONE);
     }
 
-    public boolean fullScreenExited() {
-        // Only meaningful for HTML5VideoFullScreen
-        return true;
+    class MyVideoTextureView extends VideoTextureView {
+        public MyVideoTextureView(Context context, SurfaceTexture surface, int textureName,
+                boolean surfaceTextureReady) {
+            super(context, surface, textureName, surfaceTextureReady);
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            int width = getDefaultSize(mVideoWidth, widthMeasureSpec);
+            int height = getDefaultSize(mVideoHeight, heightMeasureSpec);
+            if (mVideoWidth > 0 && mVideoHeight > 0) {
+                if ( mVideoWidth * height  > width * mVideoHeight ) {
+                    height = width * mVideoHeight / mVideoWidth;
+                } else if ( mVideoWidth * height  < width * mVideoHeight ) {
+                    width = height * mVideoWidth / mVideoHeight;
+                }
+            }
+            setMeasuredDimension(width, height);
+        }
     }
 
+    // Note: Call this for fullscreen mode only
+    // If MediaPlayer is prepared, enable the buttons
+    private void attachMediaController() {
+        if (mMediaController == null) {
+            MediaController mc = new FullScreenMediaController(mProxy.getContext(), mLayout);
+            mc.setSystemUiVisibility(mLayout.getSystemUiVisibility());
+            mMediaController = mc;
+            mMediaController.setMediaPlayer(this);
+            mMediaController.setAnchorView(mTextureView);
+            mMediaController.setEnabled(false);
+        }
+
+        // Get the capabilities of the player for this stream
+        // This should only be called when MediaPlayer is in prepared state
+        // Otherwise data will return invalid values
+        if (mCurrentState == STATE_PREPARED) {
+            Metadata data = mPlayer.getMetadata(MediaPlayer.METADATA_ALL,
+                    MediaPlayer.BYPASS_METADATA_FILTER);
+            if (data != null) {
+                mCanPause = !data.has(Metadata.PAUSE_AVAILABLE)
+                    || data.getBoolean(Metadata.PAUSE_AVAILABLE);
+                mCanSeekBack = !data.has(Metadata.SEEK_BACKWARD_AVAILABLE)
+                    || data.getBoolean(Metadata.SEEK_BACKWARD_AVAILABLE);
+                mCanSeekForward = !data.has(Metadata.SEEK_FORWARD_AVAILABLE)
+                    || data.getBoolean(Metadata.SEEK_FORWARD_AVAILABLE);
+            } else {
+                mCanPause = mCanSeekBack = mCanSeekForward = true;
+            }
+            // mMediaController status depends on the Metadata result, so put it
+            // after reading the MetaData
+            mMediaController.setEnabled(true);
+
+            // If paused, should show the controller for ever!
+            if (mAutoStart || isPlaying())
+                mMediaController.show();
+            else
+                mMediaController.show(0);
+        }
+    }
+
+    private void toggleMediaControlsVisiblity() {
+        if (mMediaController.isShowing())
+            mMediaController.hide();
+        else
+            mMediaController.show();
+    }
+
+    private final WebChromeClient.CustomViewCallback mCallback =
+        new WebChromeClient.CustomViewCallback() {
+            public void onCustomViewHidden() {
+                if (mIsFullscreen == false) {
+                    return;
+                }
+                mIsFullscreen = false;
+                mProxy.dispatchOnStopFullScreen();
+                mLayout.removeView(mTextureView);
+                mTextureView = null;
+
+                // Don't show the controller after exiting the full screen.
+                if (mMediaController != null) {
+                    mMediaController.hide();
+                    mMediaController = null;
+                }
+
+                if (mProgressView != null) {
+                    mLayout.removeView(mProgressView);
+                    mProgressView = null;
+                }
+                mLayout = null;
+                // Re enable plugin views.
+                mProxy.getWebView().getViewManager().showAll();
+
+
+                // Set the frame available listener back to the inline listener
+                setInlineFrameAvailableListener();
+            }
+        };
+
+    public void onVideoTextureUpdated(SurfaceTexture surface) {
+        mSurfaceTextureReady = true;
+    }
+
+    public void enterFullScreenVideoState(int layerId, WebView webView) {
+        if (mIsFullscreen == true)
+            return;
+        mIsFullscreen = true;
+        mCurrentBufferPercentage = 0;
+        mPlayer.setOnBufferingUpdateListener(mBufferingUpdateListener);
+
+        assert(mSurfaceTexture != null);
+        mTextureView = new MyVideoTextureView(mProxy.getContext(), getSurfaceTexture(),
+                getTextureName(), mSurfaceTextureReady);
+        mTextureView.setOnTouchListener(this);
+
+        mLayout = new FrameLayout(mProxy.getContext());
+        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            Gravity.CENTER);
+        mTextureView.setVisibility(View.VISIBLE);
+        mTextureView.setVideoTextureListener(this);
+
+        mLayout.addView(mTextureView, layoutParams);
+
+        mLayout.setVisibility(View.VISIBLE);
+        WebChromeClient client = webView.getWebChromeClient();
+        if (client != null) {
+            client.onShowCustomView(mLayout, mCallback);
+            // Plugins like Flash will draw over the video so hide
+            // them while we're playing.
+            if (webView.getViewManager() != null)
+                webView.getViewManager().hideAll();
+
+            // Add progress view
+            mProgressView = client.getVideoLoadingProgressView();
+            if (mProgressView != null) {
+                mLayout.addView(mProgressView, layoutParams);
+                if (mCurrentState != STATE_PREPARED)
+                    mProgressView.setVisibility(View.VISIBLE);
+                else
+                    mProgressView.setVisibility(View.GONE);
+            }
+        }
+        attachMediaController();
+    }
+
+    // MediaController FUNCTIONS:
+    public boolean canPause() {
+        return mCanPause;
+    }
+
+    public boolean canSeekBackward() {
+        return mCanSeekBack;
+    }
+
+    public boolean canSeekForward() {
+        return mCanSeekForward;
+    }
+
+    public int getBufferPercentage() {
+        if (mPlayer != null) {
+            return mCurrentBufferPercentage;
+        }
+        return 0;
+    }
+
+    // Other listeners functions:
+    private MediaPlayer.OnBufferingUpdateListener mBufferingUpdateListener =
+        new MediaPlayer.OnBufferingUpdateListener() {
+        public void onBufferingUpdate(MediaPlayer mp, int percent) {
+            mCurrentBufferPercentage = percent;
+        }
+    };
+
+    public boolean onTouch(View v, MotionEvent event) {
+        if (mIsFullscreen && mMediaController != null)
+            toggleMediaControlsVisiblity();
+        return false;
+    }
+
+    static class FullScreenMediaController extends MediaController {
+
+        View mVideoView;
+
+        public FullScreenMediaController(Context context, View video) {
+            super(context);
+            mVideoView = video;
+        }
+
+        @Override
+        public void show() {
+            super.show();
+            if (mVideoView != null) {
+                mVideoView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+            }
+        }
+
+        @Override
+        public void hide() {
+            if (mVideoView != null) {
+                mVideoView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
+            }
+            super.hide();
+        }
+    }
 }
+
+
+
+
