@@ -169,7 +169,7 @@ static uint32_t getInputChannelCount(uint32_t channels) {
 AudioFlinger::AudioFlinger()
     : BnAudioFlinger(),
         mPrimaryHardwareDev(0), mLPALeftVol(1.0), mLPARightVol(1.0), mMasterVolume(1.0f), mMasterMute(false), mNextUniqueId(1),
-        mBtNrecIsOff(false)
+        mBtNrecIsOff(false), mAllChainsLocked(false)
 {
 
 }
@@ -6460,9 +6460,13 @@ void AudioFlinger::ThreadBase::lockEffectChains_l(
         Vector<sp <AudioFlinger::EffectChain> >& effectChains)
 {
     effectChains = mEffectChains;
+    mAudioFlinger->mAllChainsLocked = true;
     for (size_t i = 0; i < mEffectChains.size(); i++) {
-        if (mEffectChains[i] != mAudioFlinger->mLPAEffectChain)
+        if (mEffectChains[i] != mAudioFlinger->mLPAEffectChain) {
             mEffectChains[i]->lock();
+        } else {
+            mAudioFlinger-> mAllChainsLocked = false;
+        }
     }
 }
 
@@ -6470,7 +6474,7 @@ void AudioFlinger::ThreadBase::unlockEffectChains(
         Vector<sp <AudioFlinger::EffectChain> >& effectChains)
 {
     for (size_t i = 0; i < effectChains.size(); i++) {
-        if (mEffectChains[i] != mAudioFlinger->mLPAEffectChain)
+        if (mAudioFlinger->mAllChainsLocked || mEffectChains[i] != mAudioFlinger->mLPAEffectChain)
             effectChains[i]->unlock();
     }
 }

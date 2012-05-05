@@ -1469,6 +1469,7 @@ private:
                 sp<EffectChain>                     mLPAEffectChain;
                 int                                 mLPASampleRate;
                 int                                 mLPANumChannels;
+                volatile bool                       mAllChainsLocked;
 };
 
 
