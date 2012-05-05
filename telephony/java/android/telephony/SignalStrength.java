@@ -416,7 +416,11 @@ public class SignalStrength implements Parcelable {
                 dBm = getLteDbm();
             }
         } else {
-            dBm = getCdmaDbm();
+            int cdmaDbm = getCdmaDbm();
+            int evdoDbm = getEvdoDbm();
+
+            return (evdoDbm == -120) ? cdmaDbm : ((cdmaDbm == -120) ? evdoDbm
+                    : (cdmaDbm < evdoDbm ? cdmaDbm : evdoDbm));
         }
         if (DBG) log("getDbm=" + dBm);
         return dBm;
