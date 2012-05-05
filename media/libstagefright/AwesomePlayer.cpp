@@ -928,6 +928,7 @@ status_t AwesomePlayer::play() {
 status_t AwesomePlayer::play_l() {
     int tunnelObjectsAlive = 0;
     int mpqAudioObjetcsAlive = 0;
+    int is_mpq = 0;
     modifyFlags(SEEK_PREVIEW, CLEAR);
 
     if (mFlags & PLAYING) {
@@ -972,9 +973,10 @@ status_t AwesomePlayer::play_l() {
                 format->findInt32(kkeyAacFormatAdif, &isFormatAdif);
 #ifndef NON_QCOM_TARGET
 #ifdef USE_TUNNEL_MODE
-                LOGE("MPQ Audio Player ");
+                LOGD("MPQ Audio Player ");
+                IS_TARGET_MPQ(is_mpq);
                 if(mIsMPQAudio &&  mVideoSource == NULL) {
-                    LOGE("MPQ Audio player created for  mime %s duration %lld\n",\
+                    LOGD("MPQ Audio player created for  mime %s duration %lld\n",\
                             mime, durationUs);
                     bool initCheck =  false;
                     if(mVideoSource != NULL) {
@@ -997,7 +999,7 @@ status_t AwesomePlayer::play_l() {
 
                 // Create tunnel player if tunnel mode is enabled
                 if(mIsTunnelAudio && (mAudioPlayer == NULL) &&
-                        (LPAPlayer::objectsAlive == 0)) {
+                        (LPAPlayer::objectsAlive == 0) && !is_mpq) {
                     LOGD("Tunnel player created for  mime %s duration %lld\n",\
                             mime, durationUs);
                     bool initCheck =  false;
@@ -1022,7 +1024,7 @@ status_t AwesomePlayer::play_l() {
 #endif
                 char lpaDecode[128];
                 property_get("lpa.decode",lpaDecode,"0");
-                if((strcmp("true",lpaDecode) == 0) && (mAudioPlayer == NULL) && (tunnelObjectsAlive == 0))
+                if((strcmp("true",lpaDecode) == 0) && (mAudioPlayer == NULL) && (tunnelObjectsAlive == 0) && !is_mpq)
                 {
                     LOGV("LPAPlayer::getObjectsAlive() %d",LPAPlayer::objectsAlive);
                     int streamType = mAudioSink->getAudioStreamType();

@@ -195,7 +195,7 @@ private:
     bool mStarted;
     volatile bool mAsyncReset;
     bool mHasVideo;
-    bool mFirstBuffer;
+    bool mFirstEncodedBuffer;
 
     //Timestamp variable
     int64_t mPositionTimeMediaUs;
@@ -231,6 +231,10 @@ private:
     //A2DP variables
     bool mA2dpDisconnectPause;
     volatile bool mIsA2DPEnabled;
+
+    bool mIsFirstBuffer;
+    status_t mFirstBufferResult;
+    MediaBuffer *mFirstBuffer;
 
     sp<MediaPlayerBase::AudioSink> mAudioSink;
     AwesomePlayer *mObserver;
@@ -304,6 +308,9 @@ private:
     size_t fillBufferfromSoftwareDecoder(void *data, size_t size);
     size_t fillBufferfromParser(void *data, size_t size);
     size_t fillMS11InputBufferfromParser(void *data, size_t size);
+
+    status_t checkForInfoFormatChanged();
+    status_t updateMetaDataInformation();
 
     MPQAudioPlayer(const MPQAudioPlayer &);
     MPQAudioPlayer &operator=(const MPQAudioPlayer &);

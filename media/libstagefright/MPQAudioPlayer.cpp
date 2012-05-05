@@ -105,6 +105,9 @@ mSourcePaused(false),
 mAudioSinkOpen(false),
 mIsAudioRouted(false),
 mIsA2DPEnabled(false),
+mIsFirstBuffer(false),
+mFirstBufferResult(OK),
+mFirstBuffer(NULL),
 mAudioSink(audioSink),
 mObserver(observer) {
     LOGV("MPQAudioPlayer::MPQAudioPlayer()");
@@ -141,7 +144,7 @@ mObserver(observer) {
     LOGV("mInputBufferSize = %d, mInputBufferCount = %d",\
             mInputBufferSize ,mInputBufferCount);
     mPCMStream = NULL;
-    mFirstBuffer = false;
+    mFirstEncodedBuffer = false;
     mHasVideo = hasVideo;
     initCheck = true;
 }
@@ -281,30 +284,11 @@ status_t MPQAudioPlayer::start(bool sourceAlreadyStarted) {
         }
     }
 
-    /*TO DO  : Need to check if first buffer has to be read and
-    INFO_FORMAT_CHANGED honoured*/
-
-    sp<MetaData> format = mSource->getFormat();
-    const char *mime;
-    bool success = format->findCString(kKeyMIMEType, &mime);
-    mMimeType = mime;
-    CHECK(success);
-
-    success = format->findInt32(kKeySampleRate, &mSampleRate);
-    CHECK(success);
-
-    success = format->findInt32(kKeyChannelCount, &mNumChannels);
-    CHECK(success);
-    //TODO : Snding some dumb channel value to avoid crash- at ALSA HW params.
-    if(!mNumChannels)
-        mNumChannels = 2;
-
-    format->findInt32(kkeyAacFormatAdif, &mIsAACFormatAdif);
-
-    int64_t durationUs;
-    success = format->findInt64(kKeyDuration, &mDurationUs);
-
-    LOGV("mDurationUs = %lld, %s",mDurationUs,mMimeType.string());
+    err = updateMetaDataInformation();
+    if(err != OK) {
+        LOGE("updateMetaDataInformation = %d", err);
+        return err;
+    }
 
     err = getDecoderAndFormat();
     if(err != OK) {
@@ -319,7 +303,7 @@ status_t MPQAudioPlayer::start(bool sourceAlreadyStarted) {
     LOGV("All Threads Created.");
 
     int sessionId = 1;
-    if(((!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG)))) {
+    if(((!strcasecmp(mMimeType.string(), MEDIA_MIMETYPE_AUDIO_MPEG)))) {
         LOGD("TUNNEL_SESSION_ID");
         sessionId = TUNNEL_SESSION_ID;
     }
@@ -863,6 +847,11 @@ void MPQAudioPlayer::reset() {
         }
     }
     mAudioSink.clear();
+
+    if (mFirstBuffer != NULL) {
+        mFirstBuffer->release();
+        mFirstBuffer = NULL;
+    }
 
     if (mInputBuffer != NULL) {
         LOGV("MPQ Audio Player releasing input buffer.");
@@ -1531,7 +1520,15 @@ size_t MPQAudioPlayer::fillBufferfromSoftwareDecoder(void *data, size_t size) {
         {
             Mutex::Autolock autoLock(mLock);
 
-            if (mSeeking || mInternalSeeking) {
+            if (mSeeking) {
+
+                if (mIsFirstBuffer) {
+                    if (mFirstBuffer != NULL) {
+                        mFirstBuffer->release();
+                        mFirstBuffer = NULL;
+                    }
+                    mIsFirstBuffer = false;
+                }
 
                 MediaSource::ReadOptions::SeekMode seekMode;
                 seekMode = MediaSource::ReadOptions::SEEK_CLOSEST_SYNC;
@@ -1550,12 +1547,20 @@ size_t MPQAudioPlayer::fillBufferfromSoftwareDecoder(void *data, size_t size) {
                     LOGD("fillBuffer: Posting audio seek complete event");
                     mObserver->postAudioSeekComplete();
                 }
-                mInternalSeeking = false;
             }
         }
         if (mInputBuffer == NULL) {
             status_t err;
-            err = mSource->read(&mInputBuffer, &options);
+
+            if (mIsFirstBuffer) {
+                mInputBuffer = mFirstBuffer;
+                mFirstBuffer = NULL;
+                err = mFirstBufferResult;
+
+                mIsFirstBuffer = false;
+            } else {
+                err = mSource->read(&mInputBuffer, &options);
+            }
 
             CHECK((err == OK && mInputBuffer != NULL)
                   || (err != OK && mInputBuffer == NULL));
@@ -1666,7 +1671,7 @@ size_t MPQAudioPlayer::fillMS11InputBufferfromParser(void *data, size_t size) {
 
             status_t err = OK;
 
-            if(!mFirstBuffer && ((mAudioFormat == AUDIO_FORMAT_AAC) || (mAudioFormat == AUDIO_FORMAT_AAC_ADIF))) {
+            if(!mFirstEncodedBuffer && ((mAudioFormat == AUDIO_FORMAT_AAC) || (mAudioFormat == AUDIO_FORMAT_AAC_ADIF))) {
                 uint32_t type;
                 const void *configData;
                 size_t configSize = 0;
@@ -1700,7 +1705,7 @@ size_t MPQAudioPlayer::fillMS11InputBufferfromParser(void *data, size_t size) {
                 }
 
                 }
-                mFirstBuffer = true;
+                mFirstEncodedBuffer = true;
                 //TODO: Handle Error case if config data is zero
                 break;
             }
@@ -2357,10 +2362,16 @@ status_t MPQAudioPlayer::getDecoderAndFormat() {
            !strcasecmp(mMimeType.string(), MEDIA_MIMETYPE_AUDIO_EVRC) ||
            !strcasecmp(mMimeType.string(), MEDIA_MIMETYPE_AUDIO_AMR_NB) ||
            !strcasecmp(mMimeType.string(), MEDIA_MIMETYPE_AUDIO_AMR_WB) ||
-           !strcasecmp(mMimeType.string(),  MEDIA_MIMETYPE_AUDIO_VORBIS)) {
+           !strcasecmp(mMimeType.string(),  MEDIA_MIMETYPE_AUDIO_VORBIS) ||
+           !strcasecmp(mMimeType.string(),  MEDIA_MIMETYPE_AUDIO_FLAC)) {
         LOGW("Sw Decoder");
         mAudioFormat = AUDIO_FORMAT_PCM_16_BIT;
         mDecoderType = ESoftwareDecoder;
+        err = checkForInfoFormatChanged();
+        if(err != OK) {
+           LOGE("checkForInfoFormatChanged err = %d", err);
+           return err;
+        }
     }
     else if (!strcasecmp(mMimeType.string(), MEDIA_MIMETYPE_AUDIO_AC3)) {
         LOGW("MS11 AC3");
@@ -2442,6 +2453,65 @@ status_t MPQAudioPlayer::openAndConfigureCaptureDevice() {
         mCaptureHandle = (void *)capture_handle;
         return err;
 
+}
+
+status_t MPQAudioPlayer::checkForInfoFormatChanged() {
+
+    /* Check for an INFO format change for formats
+    *  that use software decoder. Update the format
+    *  accordingly
+    */
+    status_t err = OK;
+    CHECK(mFirstBuffer == NULL);
+    MediaSource::ReadOptions options;
+    if (mSeeking) {
+        options.setSeekTo(mSeekTimeUs);
+        mSeeking = false;
+    }
+    mFirstBufferResult = mSource->read(&mFirstBuffer, &options);
+    if (mFirstBufferResult == INFO_FORMAT_CHANGED) {
+        LOGV("INFO_FORMAT_CHANGED!!!");
+        CHECK(mFirstBuffer == NULL);
+        mFirstBufferResult = OK;
+        mIsFirstBuffer = false;
+    } else if(mFirstBufferResult != OK) {
+        mReachedExtractorEOS = true;
+        mFinalStatus = mFirstBufferResult;
+        return mFirstBufferResult;
+    } else {
+        mIsFirstBuffer = true;
+    }
+
+    err = updateMetaDataInformation();
+    if(err != OK) {
+        LOGE("updateMetaDataInformation = %d", err);
+    }
+    return err;
+}
+
+status_t MPQAudioPlayer::updateMetaDataInformation() {
+
+    sp<MetaData> format = mSource->getFormat();
+    const char *mime;
+    bool success = format->findCString(kKeyMIMEType, &mime);
+    mMimeType = mime;
+    CHECK(success);
+
+    success = format->findInt32(kKeySampleRate, &mSampleRate);
+    CHECK(success);
+
+    success = format->findInt32(kKeyChannelCount, &mNumChannels);
+    CHECK(success);
+
+    if(!mNumChannels)
+        mNumChannels = 2;
+
+    success = format->findInt32(kkeyAacFormatAdif, &mIsAACFormatAdif);
+    //CHECK(success);
+
+    success = format->findInt64(kKeyDuration, &mDurationUs);
+    LOGV("mDurationUs = %lld, %s",mDurationUs,mMimeType.string());
+    return OK;
 }
 
 } //namespace android
