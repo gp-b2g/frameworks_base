@@ -135,6 +135,8 @@ public:
     //External display specific functions
     virtual void enableExternalDisplay(int disp_type, int enable) = 0;
 
+    virtual void perform(int event, int info) = 0;
+
 };
 
 // ----------------------------------------------------------------------------
@@ -156,6 +158,14 @@ public:
         TURN_ELECTRON_BEAM_ON,
         AUTHENTICATE_SURFACE,
         EXTERNAL_DISPLAY,
+        PERFORM,
+    };
+
+    enum { //EVENTS for PERFORM
+        EVENT_SC_OPEN_SECURE_START,
+        EVENT_SC_OPEN_SECURE_END,
+        EVENT_SC_CLOSE_SECURE_START,
+        EVENT_SC_CLOSE_SECURE_END,
     };
 
     virtual status_t    onTransact( uint32_t code,

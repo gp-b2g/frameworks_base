@@ -511,7 +511,7 @@ void SurfaceFlinger::postFramebuffer()
     //If orientation has changed, inform gralloc for HDMI mirroring
     if(mOrientationChanged) {
         mOrientationChanged = false;
-        hw.orientationChanged(planeTransform.getOrientation());
+        hw.perform(EVENT_ORIENTATION_CHANGE, planeTransform.getOrientation());
     }
     hw.flip(mSwapRegion);
     mLastSwapBufferTime = systemTime() - now;
@@ -1403,6 +1403,31 @@ void SurfaceFlinger::enableExternalDisplay(int disp_type, int value)
         mExtDispOutput = (int) newType;
         updateHwcExternalDisplay(mExtDispOutput);
         signalEvent();
+    }
+}
+
+/*
+ * Qcom specific. Handles events from clients.
+ */
+void SurfaceFlinger::perform(int event, int info)
+{
+    const DisplayHardware& hw(graphicPlane(0).displayHardware());
+    switch(event) {
+        case EVENT_SC_OPEN_SECURE_START:
+            hw.perform(EVENT_OPEN_SECURE_START, info);
+            break;
+        case EVENT_SC_OPEN_SECURE_END:
+            hw.perform(EVENT_OPEN_SECURE_END, info);
+            break;
+        case EVENT_SC_CLOSE_SECURE_START:
+            hw.perform(EVENT_CLOSE_SECURE_START, info);
+            break;
+        case EVENT_SC_CLOSE_SECURE_END:
+            hw.perform(EVENT_CLOSE_SECURE_END, info);
+            break;
+        default:
+            LOGE("%s: Unsupported event received", __func__);
+            break;
     }
 }
 

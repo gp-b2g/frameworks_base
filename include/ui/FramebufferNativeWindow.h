@@ -54,11 +54,6 @@ public:
 
     framebuffer_device_t const * getDevice() const { return fbDev; } 
 
-    void orientationChanged(int event, int orientation) {
-        if (fbDev->perform)
-            fbDev->perform(fbDev, event, orientation);
-    }
-
     bool isUpdateOnDemand() const { return mUpdateOnDemand; }
     status_t setUpdateRectangle(const Rect& updateRect);
     status_t compositionComplete();
@@ -67,6 +62,10 @@ public:
 
     // for debugging only
     int getCurrentBufferIndex() const;
+    void perform(int event, int info) {
+        if (fbDev->perform)
+            fbDev->perform(fbDev, event, info);
+    }
 
 private:
     friend class LightRefBase<FramebufferNativeWindow>;    
