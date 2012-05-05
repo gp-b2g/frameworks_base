@@ -3587,10 +3587,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 dc.callDetails.extras = p.createStringArray();
                 riljLogv(String.format("Call Details : type=%d, domain=%d",
                         dc.callDetails.call_type, dc.callDetails.call_domain));
-                for (i = 0; i < dc.callDetails.extras.length; i++)
-                {
-                    riljLogv("Call Details : extras" + new String(dc.callDetails.extras[i]));
-                }
             } else {
                 riljLogv("Call Details : NOT present!");
             }
