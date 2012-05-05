@@ -1005,6 +1005,10 @@ public final class CdmaCallTracker extends CallTracker {
         // Finally notify application
         notifyCallWaitingInfo(cw);
     }
+
+    private boolean isRilUpdatesConnInfoAfterFlash() {
+        return !SystemProperties.getBoolean("persist.radio.call_type", false);
+    }
     //****** Overridden from Handler
 
     public void
@@ -1105,7 +1109,8 @@ public final class CdmaCallTracker extends CallTracker {
                 if (ar.exception == null && pendingMO != null) {
                     // Assume 3 way call is connected
                     pendingMO.onConnectedInOrOut();
-                    if(!PhoneNumberUtils.isEmergencyNumber(pendingMO.address)) {
+                    if(!isRilUpdatesConnInfoAfterFlash() ||
+                        !PhoneNumberUtils.isEmergencyNumber(pendingMO.address)) {
                         pendingMO = null;
                     }
                 }
