@@ -975,7 +975,7 @@ status_t AwesomePlayer::play_l() {
 #ifdef USE_TUNNEL_MODE
                 LOGD("MPQ Audio Player ");
                 IS_TARGET_MPQ(is_mpq);
-                if(mIsMPQAudio &&  mVideoSource == NULL) {
+                if(mIsMPQAudio) {
                     LOGD("MPQ Audio player created for  mime %s duration %lld\n",\
                             mime, durationUs);
                     bool initCheck =  false;
@@ -1042,7 +1042,7 @@ status_t AwesomePlayer::play_l() {
                 }
 #endif
                 if(mAudioPlayer == NULL) {
-                    LOGE("AudioPlayer created, Non-LPA mode mime %s duration %lld\n", mime, durationUs);
+                    LOGV("AudioPlayer created, Non-LPA mode mime %s duration %lld\n", mime, durationUs);
                     mAudioPlayer = new AudioPlayer(mAudioSink, this);
                 }
 
@@ -1600,7 +1600,6 @@ status_t AwesomePlayer::initAudioDecoder() {
 
     if((is_mpq)&&((strcmp("true",mpqAudioDecode) == 0)||(atoi(mpqAudioDecode))) &&
             (MPQAudioPlayer::getMPQAudioObjectsAlive() == 0) &&
-            (mVideoSource == NULL) &&
             (property_get("ro.product.device", value, "0") &&
             (!strncmp(value, "msm8960", sizeof("msm8960") - 1)))) {
 
