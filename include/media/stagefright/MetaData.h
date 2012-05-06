@@ -128,6 +128,7 @@ enum {
     kKeyWMAFormatTag      = 'fmtt',  // int64_t
     kKeyWMABitspersample  = 'bsps',  // int64_t
     kKeyWMAVirPktSize     = 'vpks',  // int64_t
+    kKeyWMAChannelMask    = 'chmk',  // int32_t
 
     kKeyFileFormat        = 'ffmt',  // cstring
 
