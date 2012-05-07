@@ -1163,8 +1163,12 @@ public class SpnProvider {
              **** China ****
              ***************/
             new SPNObject(460, 0, "China Mobile", "China Mobile"),
+            new SPNObject(460, 2, "China Mobile", "China Mobile"),
+            new SPNObject(460, 7, "China Mobile", "China Mobile"),
             new SPNObject(460, 1, "China Unicom", "China Unicom"),
+            new SPNObject(460, 6, "China Unicom", "China Unicom"),
             new SPNObject(460, 3, "China Telecom", "China Telecom"),
+            new SPNObject(460, 5, "China Telecom", "China Telecom"),
             /****************
              **** Taiwan ****
              ****************/
