@@ -1753,6 +1753,14 @@ public final class Settings {
         public static final String AUTO_ANSWER_TIMEOUT = "auto_answer";
 
         /**
+         * display duration info after end call.
+         *                 0 = Off
+         *                 1 = On
+         * @hide
+         */
+        public static final String SHOW_DURATION = "show_duration";
+
+        /**
           * Subscription to be used for voice call on a multi sim device. The supported values
           * are 0 = SUB1, 1 = SUB2.
           */
