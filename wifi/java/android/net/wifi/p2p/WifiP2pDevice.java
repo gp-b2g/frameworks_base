@@ -42,6 +42,12 @@ public class WifiP2pDevice implements Parcelable {
     public String deviceAddress;
 
     /**
+     * PD Status incase of P2P-PROV-DISC-FAILURE
+     * @hide
+     */
+    public int discStatus;
+
+    /**
      * interfaceAddress
      *
      * This address is used during group owner negotiation as the Intended
@@ -200,6 +206,21 @@ public class WifiP2pDevice implements Parcelable {
         if (tokens[0].startsWith("P2P-DEVICE-FOUND")) {
             status = AVAILABLE;
         }
+
+        if (tokens[0].startsWith("P2P-PROV-DISC-FAILURE")) {
+            for (String token : tokens) {
+                String[] nameValue = token.split("=");
+                if (nameValue.length != 2) continue;
+                if (nameValue[0].equals("p2p_dev_addr")) {
+                   deviceAddress = nameValue[1];
+                   continue;
+                 }
+                if (nameValue[0].equals("status")) {
+                   discStatus = Integer.parseInt(nameValue[1]);
+                   continue;
+                }
+           }
+       }
 
         /** Look for WFD information in device information string */
         wfdInfo = new WfdInfo(string);

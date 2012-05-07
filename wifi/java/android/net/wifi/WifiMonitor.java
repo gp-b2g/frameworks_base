@@ -191,6 +191,8 @@ public class WifiMonitor {
        group_capab=0x0 */
     private static final String P2P_PROV_DISC_SHOW_PIN_STR = "P2P-PROV-DISC-SHOW-PIN";
 
+    private static final String P2P_PROV_DISC_FAILURE_STR ="P2P-PROV-DISC-FAILURE";
+
     private static final String HOST_AP_EVENT_PREFIX_STR = "AP";
     /* AP-STA-CONNECTED 42:fc:89:a8:96:09 */
     private static final String AP_STA_CONNECTED_STR = "AP-STA-CONNECTED";
@@ -236,6 +238,7 @@ public class WifiMonitor {
     public static final int P2P_PROV_DISC_PBC_REQ_EVENT          = BASE + 33;
     public static final int P2P_PROV_DISC_ENTER_PIN_EVENT        = BASE + 34;
     public static final int P2P_PROV_DISC_SHOW_PIN_EVENT         = BASE + 35;
+    public static final int P2P_PROV_DISC_FAILURE_EVENT          = BASE + 36;
 
     /* hostap events */
     public static final int AP_STA_DISCONNECTED_EVENT            = BASE + 41;
@@ -516,6 +519,9 @@ public class WifiMonitor {
                 }
                 mStateMachine.sendMessage(P2P_PROV_DISC_ENTER_PIN_EVENT, wifiP2pDevice);
 
+            } else if (dataString.startsWith(P2P_PROV_DISC_FAILURE_STR)) {
+                  mStateMachine.sendMessage(P2P_PROV_DISC_FAILURE_EVENT,
+                        new WifiP2pDevice(dataString));
             }
         }
 
