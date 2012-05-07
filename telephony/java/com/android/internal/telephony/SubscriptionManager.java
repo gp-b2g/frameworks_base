@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.regex.PatternSyntaxException;
 import android.content.ActivityNotFoundException;
 
+import com.android.internal.telephony.CallManager;
 import com.android.internal.telephony.MSimConstants.CardUnavailableReason;
 import com.android.internal.telephony.Subscription.SubscriptionStatus;
 import android.telephony.TelephonyManager;
@@ -107,7 +108,7 @@ public class SubscriptionManager extends Handler {
     private static final int EVENT_ALL_DATA_DISCONNECTED = 9;
     private static final int EVENT_RADIO_ON = 10;
     private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 11;
-
+    private static final int EVENT_EMER_CALL_END = 12;
 
     // Set Subscription Return status
     public static final String SUB_ACTIVATE_SUCCESS = "ACTIVATE SUCCESS";
@@ -325,6 +326,13 @@ public class SubscriptionManager extends Handler {
                 Log.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED");
                 processAllDataDisconnected((AsyncResult)msg.obj);
                 break;
+
+            case EVENT_EMER_CALL_END:
+                Log.d(LOG_TAG, "EVENT_EMER_CALL_END, set uicc subscription");
+                CallManager.getInstance().unregisterForDisconnect(this);
+                if (!mSetSubscriptionInProgress) {
+                    processActivateRequests();
+                }
 
             default:
                 break;
@@ -709,6 +717,12 @@ public class SubscriptionManager extends Handler {
         int availableCards = 0;
         mAllCardsStatusAvailable = true;
 
+        if (CallManager.getInstance().getState() != Phone.State.IDLE) {
+            logd("processAllCardsInfoAvailable: has an emergency call, wait until it is over");
+            CallManager.getInstance().registerForDisconnect(this, EVENT_EMER_CALL_END, null);
+            return;
+        }
+
         for (int i = 0; i < MSimConstants.RIL_MAX_CARDS; i++) {
             if (mCardInfoAvailable[i] || mCardSubMgr.isCardAbsentOrError(i)) {
                 availableCards++;
@@ -829,6 +843,12 @@ public class SubscriptionManager extends Handler {
 
         if (!isAllCardsInfoAvailable()) {
             logd("All cards info not available!! Waiting for all info before processing");
+            return;
+        }
+         //Airplane mode emergency call, need to wait until call is over,
+        if (CallManager.getInstance().getState() != Phone.State.IDLE) {
+            logd("processCardInfoAvailable: has an emergency call, wait until it is over");
+            CallManager.getInstance().registerForDisconnect(this, EVENT_EMER_CALL_END, null);
             return;
         }
 
