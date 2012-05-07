@@ -59,7 +59,7 @@ import com.qrd.plugin.feature_query.FeatureQuery;
 public class MSimNetworkController extends NetworkController {
     // debug
     static final String TAG = "StatusBar.MSimNetworkController";
-    static final boolean DEBUG = true;
+    static final boolean DEBUG = false;
     static final boolean CHATTY = false; // additional diagnostics, but not logspew
 
     // telephony
@@ -154,7 +154,6 @@ public class MSimNetworkController extends NetworkController {
             // phone_signal
             mMSimPhoneSignalIconId[i] = R.drawable.stat_sys_signal_null;
             mNoMSimIconId[i] = R.drawable.stat_sys_no_sim;
-            Log.d(TAG, "Construct, no feature, set mNoMSimIconId[" + i + "]=R.drawable.stat_sys_no_sim");
 
             mMSimLastPhoneSignalIconId[i] = -1;
             mMSimLastDataTypeIconId[i] = -1;
@@ -263,7 +262,7 @@ public class MSimNetworkController extends NetworkController {
                 mMSimContentDescriptionPhoneSignal[subscription],
                 mMSimContentDescriptionDataType[subscription],
                 mNoMSimIconId[subscription], subscription, mMSimServiceState);
-        Log.d(TAG, "refreshSignalCluster, setMobileDataIndicators mNoMSimIconId[" + subscription + "]=" + mNoMSimIconId[subscription]);
+
         if (mIsWimaxEnabled && mWimaxConnected) {
             // wimax is special
             cluster.setMobileDataIndicators(
@@ -435,7 +434,6 @@ public class MSimNetworkController extends NetworkController {
         String stateExtra = intent.getStringExtra(IccCard.INTENT_KEY_ICC_STATE);
         // Obtain the subscription info from intent.
         int sub = intent.getIntExtra(MSimConstants.SUBSCRIPTION_KEY, 0);
-        Slog.d(TAG, "updateSimState for subscription :" + sub);
         if (IccCard.INTENT_VALUE_ICC_ABSENT.equals(stateExtra)) {
             simState = IccCard.State.ABSENT;
         }
@@ -463,7 +461,7 @@ public class MSimNetworkController extends NetworkController {
             simState = IccCard.State.UNKNOWN;
         }
         mMSimState[sub] = simState;
-        Slog.d(TAG, "updateSimState simState =" + mMSimState[sub]);
+        Slog.d(TAG, "updateSimState " + sub + " simState =" + mMSimState[sub]);
         updateSimIcon(sub);
         updateDataIcon(sub);
     }
@@ -489,7 +487,6 @@ public class MSimNetworkController extends NetworkController {
     }
 
     private final void updateTelephonySignalStrength(int subscription) {
-        Slog.d(TAG, "updateTelephonySignalStrength: subscription =" + subscription);
         if (!hasService(subscription) &&
                 mDataServiceState[subscription] != ServiceState.STATE_IN_SERVICE) {
             if (DEBUG) Slog.d(TAG, "No service ");
@@ -541,8 +538,8 @@ public class MSimNetworkController extends NetworkController {
     }
 
     private final void updateDataNetType(int subscription) {
-        Slog.d(TAG,"updateDataNetType subscription =" + subscription +
-                "mDataNetType =" + mDataNetType);
+        Slog.d(TAG,"updateDataNetType " + subscription +
+                " mDataNetType =" + mDataNetType);
         switch (mDataNetType) {
             case TelephonyManager.NETWORK_TYPE_UNKNOWN:
                 mDataIconList = TelephonyIcons.DATA_G[mInetCondition];
@@ -644,7 +641,6 @@ public class MSimNetworkController extends NetworkController {
 
     private final void updateSimIcon(int cardIndex) {
         Slog.d(TAG,"In updateSimIcon card =" + cardIndex + ", simState= " + mMSimState[cardIndex]);
-        Log.i(TAG,"In updateSimIcon card =" + cardIndex + ", simState= " + mMSimState[cardIndex]);
         if (mMSimState[cardIndex] ==  IccCard.State.ABSENT) {
             mNoMSimIconId[cardIndex] = R.drawable.stat_sys_no_sim;
             Log.d(TAG, "updateSimIcon, no feature mNoMSimIconId[" + cardIndex + "]=R.drawable.stat_sys_no_sim");
@@ -805,9 +801,7 @@ public class MSimNetworkController extends NetworkController {
         String mobileLabel = "";
         int N;
 
-        Slog.d(TAG,"refreshViews subscription =" + subscription + "mMSimDataConnected ="
-                + mMSimDataConnected[subscription]);
-        Slog.d(TAG,"refreshViews mMSimDataActivity =" + mMSimDataActivity[subscription]);
+        Slog.d(TAG,"refreshViews[" + subscription + "] " + mMSimDataConnected[subscription] + ", " + mMSimDataActivity[subscription]);
 
         if (!mHasMobileDataFeature) {
             mMSimDataSignalIconId[subscription] = mMSimPhoneSignalIconId[subscription] = 0;
