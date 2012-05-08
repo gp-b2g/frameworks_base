@@ -64,6 +64,9 @@ import android.os.SystemProperties;
 import android.provider.Settings;
 import android.util.Log;
 import android.util.Pair;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.os.SystemClock;
 
 import com.android.internal.app.IBatteryStats;
 
@@ -228,6 +231,12 @@ public class BluetoothService extends IBluetooth.Stub {
     private boolean mSAPEnabled = false;
     private int[] mMAPRecordHandle;
     private boolean mMAPEnabled = false;
+
+    private AlarmManager mAlarmManager;
+    private Intent mDiscoverableTimeoutIntent;
+    private PendingIntent mPendingDiscoverableTimeout;
+    private static final String ACTION_BT_DISCOVERABLE_TIMEOUT =
+             "android.bluetooth.service.action.DISCOVERABLE_TIMEOUT";
 
     private static class RemoteService {
         public String address;
@@ -398,6 +407,12 @@ public class BluetoothService extends IBluetooth.Stub {
 
         IntentFilter filter = new IntentFilter();
         registerForAirplaneMode(filter);
+
+        mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
+        mDiscoverableTimeoutIntent = new Intent(ACTION_BT_DISCOVERABLE_TIMEOUT, null);
+        mPendingDiscoverableTimeout =
+                PendingIntent.getBroadcast(mContext, 0, mDiscoverableTimeoutIntent, 0);
+        filter.addAction(ACTION_BT_DISCOVERABLE_TIMEOUT);
 
         // Register for connection-oriented notifications
         filter.addAction(BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED);
@@ -1367,6 +1382,15 @@ public class BluetoothService extends IBluetooth.Stub {
         boolean pairable;
         boolean discoverable;
 
+        //Cancel pending alarm before setting the scan mode.
+        if (mAlarmManager != null) {
+            try {
+                mAlarmManager.cancel(mPendingDiscoverableTimeout);
+            } catch (NullPointerException e) {
+                Log.e(TAG, "mAlarmManager Exception with " + e);
+            }
+        }
+
         switch (mode) {
         case BluetoothAdapter.SCAN_MODE_NONE:
             pairable = false;
@@ -1380,6 +1404,21 @@ public class BluetoothService extends IBluetooth.Stub {
             pairable = true;
             discoverable = true;
             if (DBG) Log.d(TAG, "BT Discoverable for " + duration + " seconds");
+            long mWakeupTime = SystemClock.elapsedRealtime() + (duration * 1000);
+            if (DBG) Log.d(TAG, "System Wakes up at " + mWakeupTime + " milliseconds");
+
+            if (mAlarmManager != null) {
+                try {
+                    mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, mWakeupTime,
+                                      mPendingDiscoverableTimeout);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "mAlarmManager Exception with " + e);
+                }
+            }
+            else {
+                Log.e(TAG, "Not able to get the AlarmManager Service");
+                Log.e(TAG, "BT Discoverable timeout may or maynot occur");
+            }
             break;
         default:
             Log.w(TAG, "Requested invalid scan mode " + mode);
@@ -2656,6 +2695,9 @@ public class BluetoothService extends IBluetooth.Stub {
                     mBluetoothState.sendMessage(
                         BluetoothAdapterStateMachine.ALL_DEVICES_DISCONNECTED);
                 }
+            } else if (ACTION_BT_DISCOVERABLE_TIMEOUT.equals(action)) {
+                Log.i(TAG, "ACTION_BT_DISCOVERABLE_TIMEOUT");
+                setScanMode(BluetoothAdapter.SCAN_MODE_CONNECTABLE, 0);
             }
         }
     };
