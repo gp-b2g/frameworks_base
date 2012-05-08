@@ -1403,6 +1403,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             loadIntegerSetting(stmt, Settings.System.POINTER_SPEED,
                     R.integer.def_pointer_speed);
 
+            loadSetting(stmt, Settings.System.SHOW_DURATION, 0);
+
         } finally {
             if (stmt != null) stmt.close();
         }
