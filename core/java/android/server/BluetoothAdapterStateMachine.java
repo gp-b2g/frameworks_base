@@ -820,9 +820,10 @@ final class BluetoothAdapterStateMachine extends StateMachine {
     *Return if HOT OFF is enabled.
     */
     boolean is_hot_off_enabled() {
-        if (("msm7630_surf".equals(SystemProperties.get("ro.product.device"))) ||
-            ("msm7630_fusion".equals(SystemProperties.get("ro.product.device"))) ||
-            ("msm7627a".equals(SystemProperties.get("ro.product.device")))) {
+        if (("msm7630_surf".equals(SystemProperties.get("ro.board.platform"))) ||
+            ("msm7630_fusion".equals(SystemProperties.get("ro.board.platform"))) ||
+            ("msm8660".equals(SystemProperties.get("ro.board.platform"))) ||
+            ("msm7627a".equals(SystemProperties.get("ro.board.platform")))) {
             return false;
         } else {
             return true;
