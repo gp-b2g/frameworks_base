@@ -556,6 +556,7 @@ public class WifiP2pManager {
      */
     public void connect(Channel c, WifiP2pConfig config, ActionListener listener) {
         if (c == null) return;
+        config.mInitiator = 1;
         c.mAsyncChannel.sendMessage(CONNECT, 0, c.putListener(listener), config);
     }
 

@@ -49,6 +49,7 @@ public class WifiNative {
     static final int BLUETOOTH_COEXISTENCE_MODE_ENABLED = 0;
     static final int BLUETOOTH_COEXISTENCE_MODE_DISABLED = 1;
     static final int BLUETOOTH_COEXISTENCE_MODE_SENSE = 2;
+    private static final String TAG = "WifiNative";
 
     public native static String getErrorString(int errorCode);
 
@@ -266,7 +267,7 @@ public class WifiNative {
 
     /* p2p_connect <peer device address> <pbc|pin|PIN#> [label|display|keypad]
         [persistent] [join|auth] [go_intent=<0..15>] [freq=<in MHz>] */
-    public static String p2pConnect(WifiP2pConfig config, boolean joinExistingGroup) {
+    public static String p2pConnect(WifiP2pConfig config, boolean joinExistingGroup, boolean autoconnect, boolean provdisc) {
         if (config == null) return null;
         List<String> args = new ArrayList<String>();
         WpsInfo wps = config.wps;
@@ -298,6 +299,8 @@ public class WifiNative {
         //if (config.persist != WifiP2pConfig.Persist.NO) args.add("persistent");
 
         if (joinExistingGroup) args.add("join");
+        if (autoconnect) args.add("auto");
+        if (provdisc) args.add("provdisc");
 
         int groupOwnerIntent = config.groupOwnerIntent;
         if (groupOwnerIntent < 0 || groupOwnerIntent > 15) {
@@ -399,5 +402,18 @@ public class WifiNative {
         return WifiNative.doBooleanCommand("SET config_methods " + config_method);
     }
 
+    public static String p2pConnectDisplay(String deviceAddress, String pin, boolean join) {
+        if (join)
+            return doStringCommand("P2P_CONNECT " + deviceAddress + " " + pin + " display" + " join");
+        else
+            return doStringCommand("P2P_CONNECT " + deviceAddress + " " + pin + " display");
+    }
+
+    public static String p2pConnectKeypad(String deviceAddress, String pin, boolean join) {
+        if(join)
+            return doStringCommand("P2P_CONNECT " + deviceAddress + " " + pin + " keypad" + " join");
+        else
+            return doStringCommand("P2P_CONNECT " + deviceAddress + " " + pin + " keypad");
+    }
 
 }

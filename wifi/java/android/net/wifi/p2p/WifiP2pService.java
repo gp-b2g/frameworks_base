@@ -785,20 +785,12 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                     break;
                 case WifiP2pManager.CONNECT:
                     boolean join = false;
+                    boolean  automatic = false;
+                    boolean provdisc = true;
                     if (DBG) logd(getName() + " sending connect");
                     mSavedConnectConfig = (WifiP2pConfig) message.obj;
                     WifiP2pConfig mTempConnectConfig = new WifiP2pConfig(mSavedConnectConfig);
                     mPersistGroup = false;
-                    String bssInfo = WifiNative.bssInfo(mSavedConnectConfig.deviceAddress);
-                    String[] tokens = bssInfo.split("\n");
-                    for (String token : tokens) {
-                        if (token.startsWith("bssid=")) {
-                            String[] nameValue = token.split("=");
-                            if (nameValue.length != 2) break;
-                            mTempConnectConfig.deviceAddress = nameValue[1];
-                            join = true;
-                        }
-                    }
                     int netId = configuredNetworkId(mSavedConnectConfig.deviceAddress);
                     if (netId >= 0) {
                         //TODO: if failure, remove config and do a regular p2pConnect()
@@ -810,18 +802,42 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                          else
                              mConnectConfig = mSavedConnectConfig;
 
-                            String pin = WifiNative.p2pConnect(mConnectConfig, join);
-                        try {
-                            Integer.parseInt(pin);
-                            notifyWpsPin(pin, mSavedConnectConfig.deviceAddress);
-                        } catch (NumberFormatException ignore) {
-                            // do nothing if p2pConnect did not return a pin
-                        }
+                          if (mConnectConfig.mInitiator == 1) {
+                              automatic = true;
+                              provdisc = true;
+                              String pin = WifiNative.p2pConnect(mConnectConfig, join, automatic, provdisc);
+                              Slog.e(TAG, "Work Around to send PD before GO negotiation request");
+                              try {
+                                   Integer.parseInt(pin);
+                                   notifyWpsPin(pin, mSavedConnectConfig.deviceAddress);
+                              } catch (NumberFormatException ignore) {
+                                    // do nothing if p2pConnect did not return a pin
+                              }
+                         } else {
+                               String bssInfo = WifiNative.bssInfo(mSavedConnectConfig.deviceAddress);
+                               String[] tokens = bssInfo.split("\n");
+                               for (String token : tokens) {
+                                   if (token.startsWith("bssid=")) {
+                                        String[] nameValue = token.split("=");
+                                        if (nameValue.length != 2) break;
+                                             mTempConnectConfig.deviceAddress = nameValue[1];
+                                             join = true;
+                                   }
+                               }
+                              String pin = WifiNative.p2pConnect(mConnectConfig, join, automatic, provdisc);
+                              Slog.e(TAG, "Work Around to send PD before GO negotiation request");
+                              try {
+                                   Integer.parseInt(pin);
+                                   notifyWpsPin(pin, mSavedConnectConfig.deviceAddress);
+                              } catch (NumberFormatException ignore) {
+                                    // do nothing if p2pConnect did not return a pin
+                              }
+                              transitionTo(mGroupNegotiationState);
+                         }
                     }
                     updateDeviceStatus(mSavedConnectConfig.deviceAddress, WifiP2pDevice.INVITED);
                     sendP2pPeersChangedBroadcast();
                     replyToMessage(message, WifiP2pManager.CONNECT_SUCCEEDED);
-                    transitionTo(mGroupNegotiationState);
                     break;
                 case WifiMonitor.SUP_DISCONNECTION_EVENT:  /* Supplicant died */
                     if (mGroup.isGroupOwner()) {
@@ -902,6 +918,14 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                     notifyP2pInvitationReceived(group);
                     transitionTo(mUserAuthorizingGroupInvitationState);
                     break;
+                 case WifiMonitor.P2P_PROV_DISC_FAILURE_EVENT:
+                      WifiP2pDevice device = (WifiP2pDevice) message.obj;
+                      mSavedConnectConfig.deviceAddress = device.deviceAddress;
+                      updateDeviceStatus(mSavedConnectConfig.deviceAddress, WifiP2pDevice.FAILED);
+                      mSavedConnectConfig = null;
+                      sendP2pPeersChangedBroadcast();
+                     // transitionTo(mInactiveState);
+                     break;
                 default:
                     return NOT_HANDLED;
             }
