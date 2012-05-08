@@ -148,4 +148,8 @@ interface IConnectivityManager
     boolean stopFmc(IBinder listener);
 
     int getFmcStatus(IBinder listener);
+
+    /* CNE */
+
+    boolean updateOperatorPolicy(String filePath);
 }

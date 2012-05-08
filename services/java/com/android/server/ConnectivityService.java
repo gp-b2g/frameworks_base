@@ -84,6 +84,7 @@ import com.android.internal.telephony.Phone;
 import com.android.server.am.BatteryStatsService;
 import com.android.server.connectivity.Tethering;
 import com.android.server.connectivity.Vpn;
+
 import com.google.android.collect.Lists;
 import com.google.android.collect.Sets;
 import dalvik.system.DexClassLoader;
@@ -3424,6 +3425,54 @@ private NetworkStateTracker makeWimaxStateTracker() {
             Slog.d(TAG, "network Obj is Null" + e);
             e.printStackTrace();
         }
+        return false;
+    }
+
+    /**
+     * This function will be used by apps to request to start the ANDSF parser
+     *
+     * @hide
+     * @param filePath
+     *            location of ANDSF file
+     */
+    public boolean updateOperatorPolicy(String filePath)
+    {
+        Slog.d(TAG, "Updating Operator Policy");
+        Object andsfParser;
+        if ( mContext != null ) {
+            try {
+                PathClassLoader andsfClassLoader = new PathClassLoader(
+                        "/system/framework/com.quicinc.cne.jar",
+                        ClassLoader.getSystemClassLoader());
+                Class andsfClass = andsfClassLoader
+                        .loadClass("com.quicinc.cne.andsf.AndsfParser");
+
+                Constructor andsfConstructor = andsfClass
+                        .getConstructor(new Class[] { Context.class });
+                Slog.d("ANDSF", "Updating Operator Policy");
+                andsfParser = andsfConstructor.newInstance(mContext);
+
+                Method myMethod = andsfClass.getMethod("updateAndsf",
+                        new Class[] { String.class });
+
+                Boolean passed = (Boolean) myMethod.invoke(andsfParser,
+                        new Object[] { "data/connectivity/andsfCne.xml" });
+
+                return passed;
+
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+            }
+        }
+        Slog.d(TAG, "Updating Operator Policy failed");
         return false;
     }
 }
