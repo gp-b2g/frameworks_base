@@ -230,7 +230,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
     private void readAnrFileAndWait(int recNum) {
         Map <Integer,Integer> fileIds;
         fileIds = mPbrFile.mFileIds.get(recNum);
-        if (fileIds == null) return;
+        if (fileIds == null || fileIds.isEmpty()) return;
         if (fileIds.containsKey(USIM_EFANR_TAG)) {
             int efid = fileIds.get(USIM_EFANR_TAG);
             if (mAnrPresentInIap) {
