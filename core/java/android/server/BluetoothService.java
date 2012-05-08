@@ -313,7 +313,8 @@ public class BluetoothService extends IBluetooth.Stub {
             case BluetoothAdapter.HOST_PATCH_DONT_REMOVE_SERVICE:
                 if (mDontRemoveServiceBlackList != null) {
                     for (String blacklistAddress : mDontRemoveServiceBlackList) {
-                        if (address.startsWith(blacklistAddress)) {
+                        if (address.regionMatches(true, 0,
+                             blacklistAddress, 0, blacklistAddress.length())) {
                             if(DBG) Log.d(TAG, " HostPatchForIOT: Apply DontRemoveService");
                             return true;
                         }
@@ -323,7 +324,8 @@ public class BluetoothService extends IBluetooth.Stub {
             case BluetoothAdapter.HOST_PATCH_AVOID_CONNECT_ON_PAIR:
                 if (mAvoidConnectOnPairBlackList != null) {
                     for (String blacklistAddress : mAvoidConnectOnPairBlackList) {
-                        if (address.startsWith(blacklistAddress)) {
+                        if (address.regionMatches(true, 0,
+                             blacklistAddress, 0, blacklistAddress.length())) {
                             if(DBG) Log.d(TAG, " HostPatchForIOT: Apply DontGoforConnect");
                             return true;
                         }
@@ -333,7 +335,8 @@ public class BluetoothService extends IBluetooth.Stub {
             case BluetoothAdapter.HOST_PATCH_AVOID_AUTO_CONNECT:
                 if (mAvoidAutoConnectBlackList != null) {
                     for (String blacklistAddress : mAvoidAutoConnectBlackList) {
-                        if (address.startsWith(blacklistAddress)) {
+                        if (address.regionMatches(true, 0,
+                            blacklistAddress, 0, blacklistAddress.length())) {
                             if(DBG) Log.d(TAG, " HostPatchForIOT: Apply DontAutoConnect");
                             return true;
                         }
