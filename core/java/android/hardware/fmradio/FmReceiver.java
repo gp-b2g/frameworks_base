@@ -40,6 +40,8 @@ public class FmReceiver extends FmTransceiver
 
    public static int mSearchState = 0;
 
+   static final int STD_BUF_SIZE = 128;
+
    private static final String TAG = "FMRadio";
 
    /**
@@ -1346,7 +1348,7 @@ public class FmReceiver extends FmTransceiver
    */
    public FmRxRdsData  getPSInfo() {
 
-      byte [] buff = new byte[64];
+      byte [] buff = new byte[STD_BUF_SIZE];
       int piLower = 0;
       int piHigher = 0;
 
@@ -1396,7 +1398,7 @@ public class FmReceiver extends FmTransceiver
    */
    public FmRxRdsData getRTInfo () {
 
-      byte [] buff = new byte[120];
+      byte [] buff = new byte[STD_BUF_SIZE];
       int piLower = 0;
       int piHigher = 0;
 
@@ -1446,7 +1448,7 @@ public class FmReceiver extends FmTransceiver
    */
    public int[] getAFInfo() {
 
-      byte [] buff = new byte[40];
+      byte [] buff = new byte[STD_BUF_SIZE];
       int  [] AfList = new int [40];
       int lowerBand;
 

@@ -29,13 +29,15 @@
 package android.hardware.fmradio;
 import android.hardware.fmradio.FmReceiver;
 import android.hardware.fmradio.FmTransceiver;
-
+import java.util.Arrays;
 import android.util.Log;
 
 
 class FmRxEventListner {
 
     private final int EVENT_LISTEN = 1;
+
+    private final int STD_BUF_SIZE = 128;
 
     private enum FmRxEvents {
       READY_EVENT,
@@ -63,7 +65,7 @@ class FmRxEventListner {
         /* start a thread and listen for messages */
         mThread = new Thread(){
             public void run(){
-
+                byte [] buff = new byte[STD_BUF_SIZE];
                 Log.d(TAG, "Starting listener " + fd);
 
                 while ((!Thread.currentThread().isInterrupted())) {
@@ -71,7 +73,7 @@ class FmRxEventListner {
                     try {
                         int index = 0;
                         int state = 0;
-                        byte []buff = new byte[64];
+                        Arrays.fill(buff, (byte)0x00);
                         int eventCount = FmReceiverJNI.getBufferNative (fd, buff, EVENT_LISTEN);
 
                         if (eventCount >= 0)
