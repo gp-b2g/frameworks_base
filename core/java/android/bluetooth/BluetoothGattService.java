@@ -75,6 +75,25 @@ public class BluetoothGattService {
         mHelper.startRemoteGattService();
     }
 
+    public boolean gattConnect(byte prohibitRemoteChg,
+                               byte filterPolicy,
+                               int scanInterval,
+                               int scanWindow,
+                               int intervalMin,
+                               int intervalMax,
+                               int latency,
+                               int superVisionTimeout,
+                               int minCeLen,
+                               int maxCeLen, int connTimeout) {
+        return mHelper.gattConnect(prohibitRemoteChg, filterPolicy, scanInterval,
+                                 scanWindow, intervalMin, intervalMax, latency,
+                                 superVisionTimeout, minCeLen, maxCeLen, connTimeout);
+    }
+
+    public boolean gattConnectCancel() {
+        return mHelper.gattConnectCancel();
+    }
+
     public ParcelUuid getServiceUuid() {
         return mUuid;
     }
@@ -492,6 +511,35 @@ public class BluetoothGattService {
             }
 
             this.notify();
+        }
+
+        public synchronized boolean gattConnect(byte prohibitRemoteChg,
+                                          byte filterPolicy,
+                                          int scanInterval,
+                                          int scanWindow,
+                                          int intervalMin,
+                                          int intervalMax,
+                                          int latency,
+                                          int superVisionTimeout,
+                                          int minCeLen,
+                                          int maxCeLen, int connTimeout) {
+             Log.d(TAG, "gattConnect");
+             try {
+                 return mService.gattConnect(mObjPath, prohibitRemoteChg, filterPolicy, scanInterval,
+                                  scanWindow, intervalMin, intervalMax, latency,
+                                  superVisionTimeout, minCeLen, maxCeLen, connTimeout);
+             } catch (RemoteException e) {Log.e(TAG, "", e);}
+
+             return false;
+        }
+
+        public synchronized boolean gattConnectCancel() {
+             Log.d(TAG, "gattConnectCancel");
+             try {
+                 return mService.gattConnectCancel(mObjPath);
+             } catch (RemoteException e) {Log.e(TAG, "", e);}
+
+             return false;
         }
 
         public synchronized void onSetCharacteristicProperty(String path, String property, boolean result)

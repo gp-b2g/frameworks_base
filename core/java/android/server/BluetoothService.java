@@ -4278,6 +4278,32 @@ public class BluetoothService extends IBluetooth.Stub {
 
         return ret;
    }
+    public synchronized boolean gattConnect(String path, byte prohibitRemoteChg,
+                               byte filterPolicy, int scanInterval,
+                               int scanWindow, int intervalMin,
+                               int intervalMax, int latency,
+                               int superVisionTimeout, int minCeLen,
+                               int maxCeLen, int connTimeOut) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
+        if (!isEnabledInternal()) return false;
+
+        Log.d(TAG, "gattConnect");
+
+        return gattConnectNative(path, (int) prohibitRemoteChg, (int) filterPolicy,
+                                          scanInterval, scanWindow,
+                                          intervalMin, intervalMax,
+                                          latency, superVisionTimeout,
+                                          minCeLen, maxCeLen, connTimeOut);
+    }
+
+    public synchronized boolean gattConnectCancel(String path) {
+        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
+        if (!isEnabledInternal()) return false;
+
+        Log.d(TAG, "gattConnectCancel");
+
+        return gattConnectCancelNative(path);
+    }
 
     public synchronized String[] getCharacteristicProperties(String path) {
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
@@ -4859,6 +4885,11 @@ public class BluetoothService extends IBluetooth.Stub {
     native boolean setAuthorizationNative(String address, boolean value, int data);
     private native Object[] getGattServicePropertiesNative(String path);
     private native boolean discoverCharacteristicsNative(String path);
+    private native boolean gattConnectNative(String path, int prohibitRemoteChg, int filterPolicy,
+                                             int scanInterval, int scanWindow, int intervalMin,
+                                             int intervalMax, int latency, int superVisionTimeout,
+                                             int minCeLen, int maxCeLen, int connTimeOut);
+    private native boolean gattConnectCancelNative(String path);
     private native Object[] getCharacteristicPropertiesNative(String path);
     private native boolean setCharacteristicPropertyNative(String path, String key, byte[] value, int length, boolean reliable);
     private native boolean updateCharacteristicValueNative(String path);
