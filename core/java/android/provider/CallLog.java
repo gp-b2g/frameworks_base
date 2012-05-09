@@ -254,6 +254,13 @@ public class CallLog {
         public static final String SUBSCRIPTION = "sub_id";
 
         /**
+         * The network type
+         * <P>Type: Integer</P>
+         * @hide
+         */
+        public static final String NETWORK_TYPE = "network_type";
+
+        /**
          * Adds a call to the call log for SINGLE SIM.
          *
          * @param ci the CallerInfo object to get the target contact from.  Can be null
@@ -293,6 +300,34 @@ public class CallLog {
          */
         public static Uri addCall(CallerInfo ci, Context context, String number,
                 int presentation, int callType, long start, int duration, int subscription) {
+            return addCall(ci, context, number,
+                    presentation, callType, start, duration, subscription, -1);
+        }
+
+        /**
+         * Adds a call to the call log for dual SIM.
+         *
+         * @param ci the CallerInfo object to get the target contact from.  Can be null
+         * if the contact is unknown.
+         * @param context the context used to get the ContentResolver
+         * @param number the phone number to be added to the calls db
+         * @param presentation the number presenting rules set by the network for
+         *        "allowed", "payphone", "restricted" or "unknown"
+         * @param callType enumerated values for "incoming", "outgoing", or "missed"
+         * @param start time stamp for the call in milliseconds
+         * @param duration call duration in seconds
+         * @param subscription valid value is 0 or 1
+         * @param networkType:
+         *  NO_PHONE = 0;
+         *  GSM_PHONE = 1;
+         *  CDMA_PHONE = 2;
+         *  SIP_PHONE  = 3;
+         *  RIL_IMS_PHONE = 4;
+         *
+         * {@hide}
+         */
+        public static Uri addCall(CallerInfo ci, Context context, String number,
+                int presentation, int callType, long start, int duration, int subscription, int networkType) {
             final ContentResolver resolver = context.getContentResolver();
 
             // If this is a private number then set the number to Private, otherwise check
@@ -317,6 +352,7 @@ public class CallLog {
             values.put(DURATION, Long.valueOf(duration));
             values.put(NEW, Integer.valueOf(1));
             values.put(SUBSCRIPTION, Integer.valueOf(subscription));
+            values.put(NETWORK_TYPE, Integer.valueOf(networkType));
             if (callType == MISSED_TYPE) {
                 values.put(IS_READ, Integer.valueOf(0));
             }
