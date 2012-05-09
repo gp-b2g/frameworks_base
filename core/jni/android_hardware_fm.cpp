@@ -55,6 +55,7 @@
 #define V4L2_CID_PRIVATE_TAVARUA_OFF_CHANNEL_THRESHOLD  (V4L2_CTRL_CLASS_USER + 0x92C)
 #define TX_RT_LENGTH       63
 #define WAIT_TIMEOUT 200000 /* 200*1000us */
+#define TX_RT_DELIMITER    0x0d
 enum search_dir_t {
     SEEK_UP,
     SEEK_DN,
@@ -539,18 +540,28 @@ static jint android_hardware_fmradio_FmReceiverJNI_startRTNative
 
     int err = 0;
     jboolean isCopy = false;
+    char* rt_string1 = NULL;
     char* rt_string = (char*)env->GetStringUTFChars(radio_text, &isCopy);
     if(rt_string == NULL ){
+        LOGE("RT string is not valid \n");
         return FM_JNI_FAILURE;
     }
 
-    if(count < TX_RT_LENGTH)
-       rt_string[count++] = 0x0d;
-    rt_string[count++] = 0x00;
-    ext_ctl.id     = V4L2_CID_RDS_TX_RADIO_TEXT;
-    ext_ctl.string = rt_string;
-    ext_ctl.size   = count;
+    rt_string1 = (char*) malloc(TX_RT_LENGTH + 1);
+    if (rt_string1 == NULL) {
+       LOGE("out of memory \n");
+       env->ReleaseStringUTFChars(radio_text, rt_string);
+       return FM_JNI_FAILURE;
+    }
+    memset (rt_string1, 0, TX_RT_LENGTH + 1);
+    memcpy(rt_string1, rt_string, count);
 
+    if(count < TX_RT_LENGTH)
+       rt_string1[count] = TX_RT_DELIMITER;
+
+    ext_ctl.id     = V4L2_CID_RDS_TX_RADIO_TEXT;
+    ext_ctl.string = rt_string1;
+    ext_ctl.size   = strlen(rt_string1) + 1;
 
     /* form the ctrls data struct */
     v4l2_ctls.ctrl_class = V4L2_CTRL_CLASS_FM_TX,
@@ -559,15 +570,17 @@ static jint android_hardware_fmradio_FmReceiverJNI_startRTNative
 
 
     err = ioctl(fd, VIDIOC_S_EXT_CTRLS, &v4l2_ctls );
+    env->ReleaseStringUTFChars(radio_text, rt_string);
+    if (rt_string1 != NULL) {
+        free(rt_string1);
+        rt_string1 = NULL;
+    }
     if(err < 0){
         LOGE("VIDIOC_S_EXT_CTRLS for start RT returned : %d\n", err);
-        env->ReleaseStringUTFChars(radio_text, rt_string);
         return FM_JNI_FAILURE;
     }
 
     LOGD("->android_hardware_fmradio_FmReceiverJNI_startRTNative is SUCCESS\n");
-    env->ReleaseStringUTFChars(radio_text, rt_string);
-
     return FM_JNI_SUCCESS;
 }
 
