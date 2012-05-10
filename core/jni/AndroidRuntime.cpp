@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2006,2012 The Android Open Source Project
+ * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,6 +92,7 @@ extern int register_android_util_FloatMath(JNIEnv* env);
 #ifndef NON_QCOM_TARGET
 extern int register_android_hardware_fm_fmradio(JNIEnv* env);
 #endif
+extern int register_org_codeaurora_qrdinside(JNIEnv *env);
 
 namespace android {
 
@@ -1219,6 +1221,7 @@ static const RegJNIRec gRegJNI[] = {
 #ifndef NON_QCOM_TARGET
     REG_JNI(register_android_hardware_fm_fmradio),
 #endif
+    REG_JNI(register_org_codeaurora_qrdinside),
 };
 
 /*

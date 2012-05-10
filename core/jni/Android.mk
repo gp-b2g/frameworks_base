@@ -246,6 +246,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libusbhost \
 	libharfbuzz \
 	libz \
+	libqrdinside \
 
 ifeq ($(TARGET_USES_TESTFRAMEWORK),true)
 	LOCAL_CFLAGS += -DCUSTOM_EVENTS_TESTFRAMEWORK

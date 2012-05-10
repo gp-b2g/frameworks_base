@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (C) 2007-2012 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +17,7 @@
 
 package com.android.internal.os;
 
+import org.codeaurora.qrdinside.ZygoteMemPolicy;
 import android.net.Credentials;
 import android.net.LocalSocket;
 import android.os.Build;
@@ -86,6 +88,7 @@ class ZygoteConnection {
      */
     private static LocalSocket sPeerWaitSocket = null;
 
+    static final  ZygoteMemPolicy mZygoteMemPolicy = new ZygoteMemPolicy();
     /**
      * Constructs instance from connected socket.
      *
@@ -891,6 +894,7 @@ class ZygoteConnection {
             FileDescriptor[] descriptors, FileDescriptor pipeFd, Arguments parsedArgs) {
 
         if (pid > 0) {
+            mZygoteMemPolicy.updateMemPolicy(parsedArgs.niceName, pid);
             setChildPgid(pid);
         }
 

@@ -58,6 +58,7 @@ import android.util.EventLog;
 import android.util.Log;
 import android.util.Slog;
 import android.view.WindowManagerPolicy;
+import org.codeaurora.qrdinside.QIComponent;
 import static android.provider.Settings.System.DIM_SCREEN;
 import static android.provider.Settings.System.SCREEN_BRIGHTNESS;
 import static android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE;
@@ -264,6 +265,7 @@ public class PowerManagerService extends IPowerManager.Stub
     private long mTotalTouchDownTime;
     private long mLastTouchDown;
     private int mTouchCycles;
+    private QIComponent mPowerSaver = null;
 
     // could be either static or controllable at runtime
     private static final boolean mSpew = false;
@@ -397,6 +399,57 @@ public class PowerManagerService extends IPowerManager.Stub
         @Override
         public void onReceive(Context context, Intent intent) {
             bootCompleted();
+        }
+    }
+
+    private final class PowerSaverReceiver extends BroadcastReceiver {
+        private String packageName;
+        private int interval;
+        private String msg;
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (Intent.ACTION_ONLINE_APP_REGISTER.equals(intent.getAction())) {
+                packageName = intent.getStringExtra("package");
+                interval = intent.getIntExtra("interval", 20);
+                msg = intent.getStringExtra("message");
+
+                android.util.Log.e(TAG, "p:" + packageName + " i:" + interval
+                    + " m:" + msg);
+                android.util.Log.e(TAG, "==== New power saver Daemon 1");
+                startPowerDaemon(context, packageName, interval, msg);
+            } else if (Intent.ACTION_ONLINE_APP_UNREGISTER.equals(intent.getAction())) {
+                packageName = intent.getStringExtra("package");
+                interval = intent.getIntExtra("interval", 20);
+                msg = intent.getStringExtra("message");
+                stopPowerDaemon(context, packageName, msg);
+            }
+        }
+    }
+
+    private void startPowerDaemon(Context context, String packageName, int interval, String msg) {
+        if (mPowerSaver == null) {
+		        android.util.Log.e(TAG, "==== New power saver Daemon");
+            Object[] consArg = {context};
+            Class[] argTypes = {Context.class};
+            mPowerSaver = new QIComponent("org.codeaurora.qrdinside.PowerSaverDaemon", consArg, argTypes);
+		    }
+        if(mPowerSaver != null) {
+            Object[] invokeArgs = {packageName, interval, msg};
+            Class[] argTypes = {String.class, int.class, String.class};
+            mPowerSaver.CallMethod("register", invokeArgs, argTypes);
+        }
+
+    }
+
+    private void stopPowerDaemon(Context context, String packageName, String msg) {
+        if (mPowerSaver == null) {
+            android.util.Log.e(TAG, "==== failed!!!");
+            //exception here!!!
+        } else {
+            Object[] invokeArgs = {packageName, msg};
+            Class[] argTypes = {String.class, String.class};
+            mPowerSaver.CallMethod("unregister", invokeArgs, argTypes);
         }
     }
 
@@ -646,6 +699,11 @@ public class PowerManagerService extends IPowerManager.Stub
         filter = new IntentFilter();
         filter.addAction(Intent.ACTION_DOCK_EVENT);
         mContext.registerReceiver(new DockReceiver(), filter);
+
+        filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_ONLINE_APP_REGISTER);
+        filter.addAction(Intent.ACTION_ONLINE_APP_UNREGISTER);
+        mContext.registerReceiver(new PowerSaverReceiver(), filter);
 
         // Listen for secure settings changes
         mContext.getContentResolver().registerContentObserver(
