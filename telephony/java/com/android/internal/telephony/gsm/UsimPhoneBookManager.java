@@ -786,7 +786,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         //Need to read at least one record to inint
         //variable mIapFileRecord, mEmailFileRecord,mAnrFileRecord
         if (recordNums.size() == 0) {
-            recordNums.add(0);
+            recordNums.add(1);
         }
         mRecordNums.put(pbrIndex, recordNums);
     }
