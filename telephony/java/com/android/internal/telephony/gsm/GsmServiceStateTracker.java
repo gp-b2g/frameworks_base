@@ -36,6 +36,8 @@ import com.android.internal.telephony.CommandsInterface.RadioState;
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
+import com.android.internal.telephony.IccCardStatus;
+
 
 import android.app.AlarmManager;
 import android.app.AlertDialog;
@@ -132,6 +134,9 @@ class GsmServiceStateTracker extends ServiceStateTracker {
     String mSavedTimeZone;
     long mSavedTime;
     long mSavedAtTime;
+
+    //UE is in Manual search mode and first time into limited service from normal service or from no service.
+    AlertDialog managedRoamingDialog;
 
     /** Started the recheck process after finding gprs should registered but not. */
     private boolean mStartedGprsRegCheck = false;
@@ -719,7 +724,7 @@ class GsmServiceStateTracker extends ServiceStateTracker {
                     }
 
                     mGsmRoaming = regCodeIsRoaming(regState);
-
+                   /*
                     if ((regState == 3 || regState == 13) && (states.length >= 14)) {
                         try {
                             int rejCode = Integer.parseInt(states[13]);
@@ -730,6 +735,10 @@ class GsmServiceStateTracker extends ServiceStateTracker {
                         } catch (NumberFormatException ex) {
                             Log.w(LOG_TAG, "error parsing regCode: " + ex);
                         }
+                    }*/
+
+                    if (regState == 3 || regState == 13 || regState == 4) {
+                        createManagedRoamingDialog();
                     }
 
                     newSS.setState (regCodeToServiceState(regState));
@@ -985,6 +994,11 @@ class GsmServiceStateTracker extends ServiceStateTracker {
         }
 
         if (hasRegistered) {
+            //UE get normal service
+            if (isManagedRoamingDialogDisplayed && null != managedRoamingDialog) {
+                managedRoamingDialog.dismiss();
+                isManagedRoamingDialogDisplayed = false;
+            }
             mNetworkAttachedRegistrants.notifyRegistrants();
         }
 
@@ -1771,11 +1785,20 @@ class GsmServiceStateTracker extends ServiceStateTracker {
         String networkSelection = PreferenceManager.getDefaultSharedPreferences(phone.getContext())
             .getString(NETWORK_SELECTION_KEY, "");
 
-        Log.i(LOG_TAG, "Managed Roaming case, networkSelection " + networkSelection);
+        IccCardStatus.CardState cs = phone.getUiccCard().getCardState();
+        boolean bForground = PreferenceManager.getDefaultSharedPreferences(phone.getContext())
+                    .getBoolean("networksettting_foreground",false);
+
+        Log.i(LOG_TAG, "Managed Roaming case, networkSelection " + networkSelection
+                    +" cardstate="+cs+" bForground:"+bForground);
+
+        if (cs == IccCardStatus.CardState.CARDSTATE_ABSENT || bForground)
+            return;
+
         // networkSelection will be empty for 'Automatic' mode.
         if (!TextUtils.isEmpty(networkSelection) && !isManagedRoamingDialogDisplayed) {
             Log.i(LOG_TAG, "Show Managed Roaming Dialog");
-            AlertDialog managedRoamingDialog = new AlertDialog.Builder(phone.getContext())
+            managedRoamingDialog = new AlertDialog.Builder(phone.getContext())
                     .setTitle(r.getString(R.string.managed_roaming_title))
                     .setMessage(r.getString(R.string.managed_roaming_dialog_content))
                     .setPositiveButton(r.getString(R.string.managed_roaming_dialog_ok_button),
