@@ -814,16 +814,20 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                                     // do nothing if p2pConnect did not return a pin
                               }
                          } else {
-                               String bssInfo = WifiNative.bssInfo(mSavedConnectConfig.deviceAddress);
-                               String[] tokens = bssInfo.split("\n");
-                               for (String token : tokens) {
-                                   if (token.startsWith("bssid=")) {
-                                        String[] nameValue = token.split("=");
-                                        if (nameValue.length != 2) break;
-                                             mTempConnectConfig.deviceAddress = nameValue[1];
-                                             join = true;
-                                   }
-                               }
+                              // To Handle the Concurrency Cases : Two interface
+                              // addresses for a device address
+                              if (mSavedConnectConfig.mInvite == 1) {
+                                  String bssInfo = WifiNative.bssInfo(mSavedConnectConfig.deviceAddress);
+                                  String[] tokens = bssInfo.split("\n");
+                                  for (String token : tokens) {
+                                      if (token.startsWith("bssid=")) {
+                                          String[] nameValue = token.split("=");
+                                          if (nameValue.length != 2) break;
+                                              mTempConnectConfig.deviceAddress = nameValue[1];
+                                          join = true;
+                                      }
+                                  }
+                              }
                               String pin = WifiNative.p2pConnect(mConnectConfig, join, automatic, provdisc);
                               Slog.e(TAG, "Work Around to send PD before GO negotiation request");
                               try {
@@ -981,6 +985,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                     if (DBG) logd(getName() + " connect to invited group");
                     WifiP2pConfig config = new WifiP2pConfig();
                     config.deviceAddress = mSavedP2pGroup.getOwner().deviceAddress;
+		    config.mInvite = 1 ;
                     sendMessage(WifiP2pManager.CONNECT, config);
                     mSavedP2pGroup = null;
                     break;
