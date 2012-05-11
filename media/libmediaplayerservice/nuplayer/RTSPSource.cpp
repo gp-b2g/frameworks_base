@@ -156,7 +156,13 @@ status_t NuPlayer::RTSPSource::seekTo(int64_t seekTimeUs) {
 }
 
 void NuPlayer::RTSPSource::performSeek(int64_t seekTimeUs) {
-    if (mState != CONNECTED) {
+    if (mState == CONNECTING) {
+        sp<AMessage> msg = new AMessage(kWhatPerformSeek, mReflector->id());
+        msg->setInt32("generation", mSeekGeneration);
+        msg->setInt64("timeUs", seekTimeUs);
+        msg->post(100000ll);
+        return;
+    } else if (mState != CONNECTED) {
         return;
     }
 
