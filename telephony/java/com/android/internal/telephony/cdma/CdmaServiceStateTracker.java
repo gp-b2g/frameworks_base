@@ -603,6 +603,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             newSS.setState (regCodeToServiceState(registrationState));
 
             setCdmaTechnology(radioTechnology);
+            newSS.setDataState(mNewDataConnectionState);
 
             newSS.setCssIndicator(cssIndicator);
             newSS.setSystemAndNetworkId(systemId, networkId);
