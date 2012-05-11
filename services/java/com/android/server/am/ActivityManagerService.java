@@ -150,6 +150,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import org.codeaurora.qrdinside.Perfman;
 
 public final class ActivityManagerService extends ActivityManagerNative
         implements Watchdog.Monitor, BatteryStatsImpl.BatteryCallback {
@@ -11208,6 +11209,9 @@ public final class ActivityManagerService extends ActivityManagerNative
         if (service != null && service.hasFileDescriptors() == true) {
             throw new IllegalArgumentException("File descriptors passed in Intent");
         }
+        if (Perfman.InitPerfman()) {
+            Perfman.NotifyPerfman(1, Process.myPid());
+        }
 
         synchronized(this) {
             final int callingPid = Binder.getCallingPid();
@@ -14478,7 +14482,12 @@ public final class ActivityManagerService extends ActivityManagerNative
                 if (true) {
                     long oldId = Binder.clearCallingIdentity();
                     try {
-                        Process.setProcessGroup(app.pid, app.curSchedGroup);
+                        if (TOP_APP.pid == app.pid) {
+                            Log.e("Perfman", "app.curSchedGroup = "+app.curSchedGroup);
+                            Perfman.NotifyPerfman(2, app.pid);
+                        } else {
+                            Process.setProcessGroup(app.pid, app.curSchedGroup);
+                    }
                     } catch (Exception e) {
                         Slog.w(TAG, "Failed setting process group of " + app.pid
                                 + " to " + app.curSchedGroup);

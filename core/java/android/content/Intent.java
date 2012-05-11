@@ -2177,6 +2177,18 @@ public class Intent implements Parcelable, Cloneable {
     public static final String ACTION_PRE_BOOT_COMPLETED =
             "android.intent.action.PRE_BOOT_COMPLETED";
 
+    /**
+        * @hide
+    */
+    public static final String ACTION_ONLINE_APP_REGISTER =
+            "android.intent.action.REG_ONLINE_APP";
+
+    /**
+        * @hide
+        */
+     public static final String ACTION_ONLINE_APP_UNREGISTER =
+            "android.intent.action.UNREG_ONLINE_APP";
+
     // ---------------------------------------------------------------------
     // ---------------------------------------------------------------------
     // Standard intent categories (see addCategory()).

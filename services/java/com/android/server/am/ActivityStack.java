@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,6 +72,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import org.codeaurora.qrdinside.Perfman;
 
 /**
  * State and management of a single stack of activities.
@@ -735,8 +737,12 @@ final class ActivityStack {
             // restart the application.
         }
 
-        mService.startProcessLocked(r.processName, r.info.applicationInfo, true, 0,
+        app = mService.startProcessLocked(r.processName, r.info.applicationInfo, true, 0,
                 "activity", r.intent.getComponent(), false);
+
+        if (app != null && app.pid > 0) {
+            Perfman.NotifyPerfman(2, app.pid);
+		}
     }
     
     void stopIfSleepingLocked() {
@@ -1287,6 +1293,18 @@ final class ActivityStack {
      * nothing happened.
      */
     final boolean resumeTopActivityLocked(ActivityRecord prev) {
+        boolean res = resumeTopActivityLocked_childFunc(prev);
+
+        ActivityRecord top = topRunningActivityLocked(null);
+        if (top != null && top.app != null && top.app.pid != 0) {
+            int pid = top.app.pid;
+            Perfman.NotifyPerfman(2, pid);
+        }
+
+        return res;
+    }
+
+    final boolean resumeTopActivityLocked_childFunc(ActivityRecord prev) {
         // Find the first activity that is not finishing.
         ActivityRecord next = topRunningActivityLocked(null);
 
