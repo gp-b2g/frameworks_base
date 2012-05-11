@@ -1,7 +1,7 @@
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
-ifeq ($(call is-board-platform-in-list,msm7627_surf),true)
+ifeq ($(call is-board-platform-in-list,msm7627a msm7627_surf),true)
     LOCAL_CFLAGS += -DUSE_AAC_HW_DEC
 endif
 
