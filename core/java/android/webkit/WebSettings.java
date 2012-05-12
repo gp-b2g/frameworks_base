@@ -235,7 +235,7 @@ public class WebSettings {
     private boolean         mEnableSmoothTransition = false;
     private boolean         mForceUserScalable = false;
     private boolean         mWOFFEnabled = true;
-    private boolean         mWebGLEnabled = true;
+    private boolean         mWebGLEnabled = false;
 
     // AutoFill Profile data
     /**
