@@ -102,14 +102,23 @@ public final class CdmaImsCallTracker extends CallTracker {
         cm.registerForNotAvailable(this, EVENT_RADIO_NOT_AVAILABLE, null);
         cm.registerForCallWaitingInfo(this, EVENT_CALL_WAITING_INFO_CDMA, null);
 
-        ringingCall = new CallBase(phone, this);
+        ringingCall = new CallBase(phone);
         // A call that is ringing or (call) waiting -
         // These are calls of CdmaPhone
-        // Ims Calls are owned by RilImsPhone
 
-        foregroundCall = new CallBase(phone, this);
-        backgroundCall = new CallBase(phone, this);
+        foregroundCall = new CallBase(phone);
+        backgroundCall = new CallBase(phone);
         foregroundCall.setGeneric(false);
+    }
+
+    public void createImsCalls() {
+        // These are calls of ImsPhone..move this to createimsphone
+        if (imsPhone != null) {
+            ringingCallIms = new CallBase(imsPhone);
+            foregroundCallIms = new CallBase(imsPhone);
+            backgroundCallIms = new CallBase(imsPhone);
+            foregroundCallIms.setGeneric(false);
+        }
     }
 
     public void dispose() {
@@ -311,12 +320,16 @@ public final class CdmaImsCallTracker extends CallTracker {
         boolean isEmergencyCall =
                 PhoneNumberUtils.isLocalEmergencyNumber(dialString, phone.getContext());
 
+        if (callDetails == null) {
+            throw new CallStateException("Null call details not expected in dial ");
+        }
+
         // Cancel Ecm timer if a second emergency call is originating in Ecm
         // mode
         if (isPhoneInEcmMode && isEmergencyCall) {
             // Force domain to CS
             if (callDetails.call_domain != CallDetails.RIL_CALL_DOMAIN_CS) {
-                // Log.i("Emergency call forced on CS");
+                Log.i(LOG_TAG, "Emergency call forced on CS");
                 callDetails.call_domain = CallDetails.RIL_CALL_DOMAIN_CS;
             }
             dialPhone = getPhoneForDomain(callDetails.call_domain);
@@ -330,16 +343,16 @@ public final class CdmaImsCallTracker extends CallTracker {
             throw new CallStateException("Unable to find phone for domain "
                     + callDetails.call_domain);
         }
-
-        Call foregroundCall = dialPhone.getForegroundCall();
-
-        // note that this triggers call state changed notify
-        clearDisconnected(dialPhone);
+        Log.d(LOG_TAG, "dialphone is " + dialPhone + "call details" + callDetails );
 
         if (!canDial(dialPhone)) {
             throw new CallStateException("cannot dial in current state");
         }
 
+        Call foregroundCall = dialPhone.getForegroundCall();
+
+        // note that this triggers call state changed notify
+        clearDisconnected(dialPhone);
         // We are initiating a call therefore even if we previously
         // didn't know the state (i.e. Generic was true) we now know
         // and therefore can set Generic to false.
@@ -348,7 +361,10 @@ public final class CdmaImsCallTracker extends CallTracker {
         // The new call must be assigned to the foreground call.
         // That call must be idle, so place anything that's
         // there on hold
+
         if (foregroundCall.getState() == Call.State.ACTIVE) {
+            //This is a cdma 1x Conference calling/3way
+            //Conference calling/3way not supported for HD
             return dialThreeWay(dialString, phone);
         }
 
@@ -430,9 +446,9 @@ public final class CdmaImsCallTracker extends CallTracker {
 
     public void
     acceptCall(PhoneBase incomingPhone, int callType) throws CallStateException {
-        if (incomingPhone != phone && (imsPhone != null && incomingPhone != imsPhone))
-        {
-            throw new CallStateException("unknown phone in acceptcall");
+
+        if (incomingPhone != phone && (imsPhone != null && incomingPhone != imsPhone)) {
+            throw new CallStateException("incoming call rejected in canAccept");
         }
         Call ringingCall=incomingPhone.getRingingCall();
         Call foregroundCall=incomingPhone.getForegroundCall();
@@ -443,19 +459,25 @@ public final class CdmaImsCallTracker extends CallTracker {
             setMute(false);
             cm.acceptCall(obtainCompleteMessage(), callType );
         } else if (ringingCall.getState() == Call.State.WAITING) {
-            ConnectionBase cwConn = (ConnectionBase)(ringingCall.getLatestConnection());
+            if (incomingPhone == phone) {
+                ConnectionBase cwConn = (ConnectionBase) (ringingCall.getLatestConnection());
 
-            // Since there is no network response for supplimentary
-            // service for CDMA, we assume call waiting is answered.
-            // ringing Call state change to idle is in CallBase.detach
-            // triggered by updateParent.
-            cwConn.updateParent(ringingCall, foregroundCall);
-            cwConn.onConnectedInOrOut();
-            updatePhoneState(incomingPhone);
-            switchWaitingOrHoldingAndActive();//TBD check callwaiting requirements
+                // Since there is no network response for supplimentary
+                // service for CDMA, we assume call waiting is answered.
+                // ringing Call state change to idle is in CallBase.detach
+                // triggered by updateParent.
+                cwConn.updateParent(ringingCall, foregroundCall);
+                cwConn.onConnectedInOrOut();
+                updatePhoneState(incomingPhone);
+                switchWaitingOrHoldingAndActive();
+            } else {
+                updatePhoneState(incomingPhone);
+                switchWaitingOrHoldingAndActiveIms();
+            }
         } else {
             throw new CallStateException("phone not ringing");
         }
+
     }
     public void
     rejectCall () throws CallStateException {
@@ -473,7 +495,8 @@ public final class CdmaImsCallTracker extends CallTracker {
         }
     }
 
-    //TBD phase 2 requirements
+    //CDMA 1x call switching will send flash request
+    // Call switching is handled by network
     public void
     switchWaitingOrHoldingAndActive() throws CallStateException {
         // Should we bother with this check?
@@ -490,11 +513,24 @@ public final class CdmaImsCallTracker extends CallTracker {
         }
     }
 
-    //TBD phase 2 requirements
+    // Call switching for IMS calls
+    public void
+    switchWaitingOrHoldingAndActiveIms () throws CallStateException {
+        if (imsPhone.getRingingCall().getState() == Call.State.INCOMING) {
+            throw new CallStateException("cannot be in the incoming state");
+        } else if (callSwitchPending == false) {
+            cm.switchWaitingOrHoldingAndActive(
+                    obtainCompleteMessage(EVENT_SWITCH_RESULT_IMS));
+            callSwitchPending = true;
+        } else {
+            Log.w(LOG_TAG, "Call Switch request ignored due to pending response");
+        }
+    }
+
+    //Conference calls not supported
     public void
     conference() throws CallStateException {
-        // Should we be checking state?
-        flashAndSetGenericTrue();
+        Log.w(LOG_TAG, "Conference not supported in CDMA");
     }
 
     public void
@@ -531,22 +567,18 @@ public final class CdmaImsCallTracker extends CallTracker {
     }
 
     public boolean
-    canDial(PhoneBase phone) {
+    canDial(PhoneBase dialPhone) {
         boolean ret;
-        int serviceState = phone.getServiceState().getState();
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
-        ret = (serviceState != ServiceState.STATE_POWER_OFF)
-                    && pendingMO == null
-                    && !disableCall.equals("true");
 
         /*
-         * TBD - check all requirements pertaining to call combinations
-         * for now this method is a nop. Call Manager
-         * is expected to do the can dial cheeck based on
-         * calls from the different phones
+         * Call Manager does the can dial check based on calls from both CDMA &
+         * IMS phones if 1x has both foreground & back ground calls , new calls
+         * cannot be originated
          */
-        return ret;
+        return ret = (pendingMO == null
+                && disableCall.equals("false"));
     }
 
     public boolean
@@ -1099,7 +1131,7 @@ public final class CdmaImsCallTracker extends CallTracker {
                 hangupWaitingOrBackground();
             }
         } else {
-            throw new RuntimeException ("CallBase " + call +
+            throw new RuntimeException ("Call " + call +
                     "does not belong to ImsCallTracker " + this);
         }
 
@@ -1166,6 +1198,7 @@ public final class CdmaImsCallTracker extends CallTracker {
     private Phone.SuppService getFailedService(int what) {
         switch (what) {
             case EVENT_SWITCH_RESULT:
+            case EVENT_SWITCH_RESULT_IMS:
                 return Phone.SuppService.SWITCH;
             case EVENT_CONFERENCE_RESULT:
                 return Phone.SuppService.CONFERENCE;
@@ -1244,7 +1277,27 @@ public final class CdmaImsCallTracker extends CallTracker {
                 // current call list. But in CDMA there is no list so
                 // there is nothing to do.
                 break;
-
+            case EVENT_SWITCH_RESULT_IMS:
+                // operationComplete() here  gets the
+                // current call list.
+                // This event will also be called when the call is placed
+                // on hold while there is another dialed call. If Hold succeeds,
+                // dialPendingCall would be invoked.Else getCurrentCalls is anyways
+                // invoked through operationComplete,which will get the new
+                // call states depending on which UI would be updated.
+                    callSwitchPending = false;
+                    ar = (AsyncResult)msg.obj;
+                    if (ar.exception != null) {
+                        Log.i(LOG_TAG,
+                                "Exception during IMS call switching");
+                        //phone.notifySuppServiceFailed(getFailedService(msg.what));
+                    } else {
+                        if (ar.userObj != null) {
+                            dialPendingCall();
+                        }
+                    }
+                    operationComplete();
+                break;
             case EVENT_GET_LAST_CALL_FAIL_CAUSE: {
                 int causeCode;
                 PhoneBase connPhone;
@@ -1327,6 +1380,28 @@ public final class CdmaImsCallTracker extends CallTracker {
         }
     }
 
+    void dialPendingCall() {
+        if (pendingMO.address == null || pendingMO.address.length() == 0
+            || pendingMO.address.indexOf(PhoneNumberUtils.WILD) >= 0) {
+            // Phone number is invalid
+            pendingMO.cause = Connection.DisconnectCause.INVALID_NUMBER;
+
+            // handlePollCalls() will notice this call not present
+            // and will mark it as dropped.
+            pollCallsWhenSafe();
+        } else {
+            // Always unmute when initiating a new call
+            setMute(false);
+            // uusinfo is null as it is not applicable to cdma
+            // TODO but they may be applicable to IMS - need to check
+            cm.dial(pendingMO.address, pendingCallClirMode, null, pendingMO.callDetails,
+                    obtainCompleteMessage());
+        }
+        PhoneBase phone = pendingMO.getPhoneFromConnection();
+        updatePhoneState(phone);
+        phone.notifyPreciseCallStateChanged();
+    }
+
     /**
      * Handle Ecm timer to be canceled or re-started
      */
@@ -1376,14 +1451,19 @@ public final class CdmaImsCallTracker extends CallTracker {
     private Connection checkMtFindNewRinging( DriverCall dc, int i) {
 
         Connection newRinging = null;
+        Call ringingCall = null;
 
         connections[i] = new ConnectionBase(phone.getContext(), dc, this, i);
 
-        PhoneBase phone = connections[i].getPhoneFromConnection();
+        if (connections[i].getCall() != null) {
+            PhoneBase phone = connections[i].getPhoneFromConnection();
+            ringingCall = phone.getRingingCall();
+        }
         // it's a ringing call
-        if (connections[i].getCall() == phone.getRingingCall()) {
+        if ((ringingCall != null) && (connections[i].getCall() == ringingCall)) {
             newRinging = connections[i];
-            if (Phone.DEBUG_PHONE) log("Notify new ring " + dc);
+            if (Phone.DEBUG_PHONE)
+                log("Notify new ring " + dc);
         } else {
             // Something strange happened: a call which is neither
             // a ringing call nor the one we created. It could be the
@@ -1411,8 +1491,10 @@ public final class CdmaImsCallTracker extends CallTracker {
     }
 
     @Override
-    protected void hangupAllCallsP(int callDomain) throws CallStateException {
+    protected void hangupAllCallsP(PhoneBase phone) throws CallStateException {
+        // TODO implEMENT THIS
     }
+
     @Override
     protected void log(String msg) {
         Log.d(LOG_TAG, "[ImsCallTracker] " + msg);

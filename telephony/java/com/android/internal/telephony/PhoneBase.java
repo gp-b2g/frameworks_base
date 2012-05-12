@@ -1279,10 +1279,6 @@ public abstract class PhoneBase extends Handler implements Phone {
          return false;
     }
 
-     public int getSupportedDomain() {
-         return CallDetails.RIL_CALL_DOMAIN_CS;
-     }
-
      public int getMaxConnectionsPerCall() { return 0; }
 
      public int getMaxConnections() { return 0; }

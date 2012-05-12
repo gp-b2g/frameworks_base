@@ -102,20 +102,6 @@ public final class CdmaCall extends Call {
 
     //***** Called from CdmaConnection
 
-    /*package*/ void
-    attach(Connection conn, DriverCall dc) {
-        connections.add(conn);
-
-        state = stateFromDCState (dc.state);
-    }
-
-    /*package*/ void
-    attachFake(Connection conn, State state) {
-        connections.add(conn);
-
-        this.state = state;
-    }
-
     /**
      * Called by CdmaConnection when it has disconnected
      */

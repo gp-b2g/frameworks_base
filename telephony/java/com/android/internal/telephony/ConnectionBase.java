@@ -35,6 +35,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.Connection.DisconnectCause;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 
@@ -42,7 +43,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
  * {@hide}
  */
 public class ConnectionBase extends Connection {
-    static final String LOG_TAG = "RILCONNECTION";
+    static final String LOG_TAG = "CONNECTIONBASE";
 
     //***** Instance Variables
 
@@ -530,16 +531,73 @@ public class ConnectionBase extends Connection {
         }
     }
 
+    public DisconnectCause
+    disconnectCauseFromCode(int causeCode, PhoneBase phone) {
+        /**
+         * See 22.001 Annex F.4 for mapping of cause codes to local tones
+         */
+
+        switch (causeCode) {
+            case CallFailCause.NO_CIRCUIT_AVAIL:
+            case CallFailCause.TEMPORARY_FAILURE:
+            case CallFailCause.SWITCHING_CONGESTION:
+            case CallFailCause.CHANNEL_NOT_AVAIL:
+            case CallFailCause.QOS_NOT_AVAIL:
+            case CallFailCause.BEARER_NOT_AVAIL:
+                return DisconnectCause.CONGESTION;
+            case CallFailCause.ACM_LIMIT_EXCEEDED:
+                return DisconnectCause.LIMIT_EXCEEDED;
+            case CallFailCause.CALL_BARRED:
+                return DisconnectCause.CALL_BARRED;
+            case CallFailCause.FDN_BLOCKED:
+                return DisconnectCause.FDN_BLOCKED;
+            case CallFailCause.UNOBTAINABLE_NUMBER:
+                return DisconnectCause.UNOBTAINABLE_NUMBER;
+            case CallFailCause.DIAL_MODIFIED_TO_USSD:
+                return DisconnectCause.DIAL_MODIFIED_TO_USSD;
+            case CallFailCause.DIAL_MODIFIED_TO_SS:
+                return DisconnectCause.DIAL_MODIFIED_TO_SS;
+            case CallFailCause.DIAL_MODIFIED_TO_DIAL:
+                return DisconnectCause.DIAL_MODIFIED_TO_DIAL;
+            case CallFailCause.USER_BUSY:
+                return DisconnectCause.BUSY;
+            case CallFailCause.CDMA_LOCKED_UNTIL_POWER_CYCLE:
+                return DisconnectCause.CDMA_LOCKED_UNTIL_POWER_CYCLE;
+            case CallFailCause.CDMA_DROP:
+                return DisconnectCause.CDMA_DROP;
+            case CallFailCause.CDMA_INTERCEPT:
+                return DisconnectCause.CDMA_INTERCEPT;
+            case CallFailCause.CDMA_REORDER:
+                return DisconnectCause.CDMA_REORDER;
+            case CallFailCause.CDMA_SO_REJECT:
+                return DisconnectCause.CDMA_SO_REJECT;
+            case CallFailCause.CDMA_RETRY_ORDER:
+                return DisconnectCause.CDMA_RETRY_ORDER;
+            case CallFailCause.CDMA_ACCESS_FAILURE:
+                return DisconnectCause.CDMA_ACCESS_FAILURE;
+            case CallFailCause.CDMA_PREEMPTED:
+                return DisconnectCause.CDMA_PREEMPTED;
+            case CallFailCause.CDMA_NOT_EMERGENCY:
+                return DisconnectCause.CDMA_NOT_EMERGENCY;
+            case CallFailCause.CDMA_ACCESS_BLOCKED:
+                return DisconnectCause.CDMA_ACCESS_BLOCKED;
+            case CallFailCause.ERROR_UNSPECIFIED:
+            case CallFailCause.NORMAL_CLEARING:
+            default: {
+                return phone.disconnectCauseFromCode(causeCode);
+            }
+        }
+    }
 
     public void
     onRemoteDisconnect(int causeCode) {
-        onDisconnect(owner.phone.disconnectCauseFromCode(causeCode));
+        onDisconnect(disconnectCauseFromCode(causeCode, owner.phone));
     }
 
 
     public void
     onRemoteDisconnect(PhoneBase phone, int causeCode) {
-        onDisconnect(phone.disconnectCauseFromCode(causeCode));
+        onDisconnect(disconnectCauseFromCode(causeCode, phone));
     }
 
     /** Called when the radio indicates the connection has been disconnected */
@@ -550,7 +608,7 @@ public class ConnectionBase extends Connection {
         if (!disconnected) {
             doDisconnect();
             if (false) Log.d(LOG_TAG,
-                    "[CDMAConn] onDisconnect: cause=" + cause);
+                    "onDisconnect: cause=" + cause);
             owner.phone.notifyDisconnect(this);
 
             if (parent != null) {
@@ -566,7 +624,7 @@ public class ConnectionBase extends Connection {
         if (!disconnected) {
             doDisconnect();
             if (false) Log.d(LOG_TAG,
-                    "[CDMAConn] onLoalDisconnect" );
+                    "onLoalDisconnect" );
 
             if (parent != null) {
                 parent.detach(this);
@@ -793,7 +851,7 @@ public class ConnectionBase extends Connection {
          * and or onConnectedInOrOut.
          */
         if (mPartialWakeLock.isHeld()) {
-            Log.e(LOG_TAG, "[CdmaConn] UNEXPECTED; mPartialWakeLock is held when finalizing.");
+            Log.e(LOG_TAG, "UNEXPECTED; mPartialWakeLock is held when finalizing.");
         }
         releaseWakeLock();
     }
@@ -955,7 +1013,7 @@ public class ConnectionBase extends Connection {
     }
 
     private void log(String msg) {
-        Log.d(LOG_TAG, "[CDMAConn] " + msg);
+        Log.d(LOG_TAG, "" + msg);
     }
 
     @Override

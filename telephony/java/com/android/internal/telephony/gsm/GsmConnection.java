@@ -46,9 +46,6 @@ public class GsmConnection extends Connection {
     boolean isIncoming;
     boolean disconnected;
 
-    int index;          // index in GsmCallTracker.connections[], -1 if unassigned
-                        // The GSM index is 1 + this
-
     /*
      * These time/timespan values are based on System.currentTimeMillis(),
      * i.e., "wall clock" time.

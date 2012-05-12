@@ -82,8 +82,6 @@ public final class GsmCallTracker extends CallTracker {
     GsmConnection pendingMO;
     boolean hangupPendingMO;
 
-    boolean callSwitchPending = false;
-
     GSMPhone phone;
 
     boolean desiredMute = false;    // false = mute off
@@ -783,6 +781,17 @@ public final class GsmCallTracker extends CallTracker {
         }
     }
 
+    public void separate (Connection conn) throws CallStateException {
+        try {
+            cm.separateConnection (conn.getIndex(),
+                obtainCompleteMessage(EVENT_SEPARATE_RESULT));
+        } catch (CallStateException ex) {
+            // Ignore "connection not found"
+            // Call may have hung up already
+            Log.w(LOG_TAG,"GsmCallTracker WARN: separate() on absent connection "
+                          + conn);
+        }
+    }
     //***** Called from GSMPhone
 
     public void
@@ -902,20 +911,6 @@ public final class GsmCallTracker extends CallTracker {
         } catch (CallStateException ex) {
             Log.e(LOG_TAG, "hangupConnectionByIndex caught " + ex);
         }
-    }
-
-    /* package */
-    GsmConnection getConnectionByIndex(GsmCall call, int index)
-            throws CallStateException {
-        int count = call.connections.size();
-        for (int i = 0; i < count; i++) {
-            GsmConnection cn = (GsmConnection)call.connections.get(i);
-            if (cn.getIndex() == index) {
-                return cn;
-            }
-        }
-
-        return null;
     }
 
     private Phone.SuppService getFailedService(int what) {

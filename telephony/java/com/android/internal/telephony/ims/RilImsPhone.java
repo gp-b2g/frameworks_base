@@ -63,22 +63,14 @@ public class RilImsPhone extends PhoneBase {
     static final int MAX_CONNECTIONS_PER_CALL = 5;
 
     private State state = Phone.State.IDLE; // phone state for IMS phone
-    private CallTracker mTracker;
-    // A call that is ringing or (call) waiting
-    private CallBase ringingCall;
-    private CallBase foregroundCall;
-    private CallBase backgroundCall;
 
     public RilImsPhone(Context context, PhoneNotifier notifier, CallTracker tracker,
             CommandsInterface cm) {
         super(notifier, context, cm);
 
-        ringingCall = new CallBase(this, tracker);
-        foregroundCall = new CallBase(this, tracker);
-        backgroundCall = new CallBase(this, tracker);
-        mTracker = tracker; // Fix this change name to mCT or check all PhoneBase methods using mCT
-        mCT= tracker;//hack
-        tracker.imsPhone = this;
+        mCT= tracker;
+        mCT.imsPhone = this;
+        mCT.createImsCalls();
     }
 
     @Override
@@ -97,31 +89,15 @@ public class RilImsPhone extends PhoneBase {
 
     @Override
     public void acceptCall(int callType) throws CallStateException {
-        mTracker.acceptCall(this, callType);
+        mCT.acceptCall(this, callType);
     }
 
     public void acceptCall() throws CallStateException {
-        synchronized (RilImsPhone.class) {
-            if ((ringingCall.getState() == Call.State.INCOMING) ||
-                    (ringingCall.getState() == Call.State.WAITING)) {
-                if (DEBUG) Log.d(LOG_TAG, "acceptCall");
-                // Always unmute when answering a new call
-                mTracker.acceptCall(this);
-            } else {
-                throw new CallStateException("phone not ringing");
-            }
-        }
+        mCT.acceptCall(this);
     }
 
     public void rejectCall() throws CallStateException {
-        synchronized (RilImsPhone.class) {
-            if (ringingCall.getState().isRinging()) {
-                if (DEBUG) Log.d(LOG_TAG, "rejectCall");
-                mTracker.rejectCall(this);
-            } else {
-                throw new CallStateException("phone not ringing");
-            }
-        }
+        mCT.rejectCall(this);
     }
 
     public boolean canDial() {
@@ -145,62 +121,53 @@ public class RilImsPhone extends PhoneBase {
 
     public Connection dial(String dialString) throws CallStateException {
         synchronized (RilImsPhone.class) {
-            // Need to make sure dialString gets parsed properly
-            // dialString = PhoneNumberUtils.stripSeparators(dialString);
             return dialInternal(dialString, null);
         }
     }
 
     private Connection dialInternal(String dialString, CallDetails det)
             throws CallStateException {
-        clearDisconnected();
 
         if (!canDial()) {
-            throw new CallStateException("cannot dial in current state");
-        }
-        if (foregroundCall.getState() == Call.State.ACTIVE) {
-            // This is currently not supported
-            switchHoldingAndActive();
-        }
-        if (foregroundCall.getState() != Call.State.IDLE) {
-            // we should have failed in !canDial() above before we get here
             throw new CallStateException("cannot dial in current state");
         }
 
         // foregroundCall.setMute(false);
         if (det != null) {
+            if (DEBUG) Log.d(LOG_TAG, " PS call dial");
             det.call_domain = CallDetails.RIL_CALL_DOMAIN_PS;
         } else {
+            if (DEBUG) Log.d(LOG_TAG, " CS call dial, dorcing domain change");
             det = new CallDetails(CallDetails.RIL_CALL_TYPE_VOICE, CallDetails.RIL_CALL_DOMAIN_CS,
                     null);// CS voice
         }
-        Connection c = mTracker.dial(dialString, det);
+        Connection c = mCT.dial(dialString, det);
         return c;
     }
 
     public void switchHoldingAndActive() throws CallStateException {
         if (DEBUG) Log.d(LOG_TAG, " ~~~~~~  switch fg and bg");
         synchronized (RilImsPhone.class) {
-            mTracker.switchWaitingOrHoldingAndActive();
+            mCT.switchWaitingOrHoldingAndActiveIms();
         }
     }
 
     public boolean canConference() {
-        logUnexpectedCdmaMethodCall("canConference");
+        logUnexpectedMethodCall("canConference");
         return false;
     }
 
     public void conference() throws CallStateException {
-        logUnexpectedCdmaMethodCall("conference");
+        logUnexpectedMethodCall("conference");
     }
 
     public boolean canTransfer() {
-        logUnexpectedCdmaMethodCall("canTransfer");
+        logUnexpectedMethodCall("canTransfer");
         return false;
     }
 
     public void explicitCallTransfer() throws CallStateException {
-        logUnexpectedCdmaMethodCall("explicitCallTransfer");
+        logUnexpectedMethodCall("explicitCallTransfer");
     }
 
     /**
@@ -238,6 +205,8 @@ public class RilImsPhone extends PhoneBase {
     }
 
     public void clearDisconnected() {
+        mCT.clearDisconnected(this);
+        /*
         synchronized (RilImsPhone.class) {
             ringingCall.clearDisconnected();
             foregroundCall.clearDisconnected();
@@ -246,18 +215,19 @@ public class RilImsPhone extends PhoneBase {
             updatePhoneState();
             notifyPreciseCallStateChanged();
         }
+        */
     }
 
     public void sendDtmf(char c) {
-        logUnexpectedCdmaMethodCall("sendDtmf");
+        logUnexpectedMethodCall("sendDtmf");
     }
 
     public void startDtmf(char c) {
-        logUnexpectedCdmaMethodCall("startDtmf");
+        logUnexpectedMethodCall("startDtmf");
     }
 
     public void stopDtmf() {
-        logUnexpectedCdmaMethodCall("stopDtmf");
+        logUnexpectedMethodCall("stopDtmf");
     }
 
     public void getOutgoingCallerIdDisplay(Message onComplete) {
@@ -278,29 +248,29 @@ public class RilImsPhone extends PhoneBase {
     }
 
     public void setCallWaiting(boolean enable, Message onComplete) {
-        logUnexpectedCdmaMethodCall("setCallWaiting");
+        logUnexpectedMethodCall("setCallWaiting");
     }
 
     public void setMute(boolean muted) {
         synchronized (RilImsPhone.class) {
-            mTracker.setMute(muted);
+            mCT.setMute(muted);
         }
     }
 
     public boolean getMute() {
-        return mTracker.getMute();
+        return mCT.getMute();
     }
 
     public Call getForegroundCall() {
-        return foregroundCall;
+        return mCT.foregroundCallIms;
     }
 
     public Call getBackgroundCall() {
-        return backgroundCall;
+        return mCT.backgroundCallIms;
     }
 
     public Call getRingingCall() {
-        return ringingCall;
+        return mCT.ringingCallIms;
     }
 
     public ServiceState getServiceState() {
@@ -312,233 +282,233 @@ public class RilImsPhone extends PhoneBase {
 
     @Override
     public CellLocation getCellLocation() {
-        logUnexpectedCdmaMethodCall("getCellLocation");
+        logUnexpectedMethodCall("getCellLocation");
         return null;
     }
 
     @Override
     public DataState getDataConnectionState(String apnType) {
-        logUnexpectedCdmaMethodCall("getDataConnectionState");
+        logUnexpectedMethodCall("getDataConnectionState");
         return null;
     }
 
     @Override
     public DataActivityState getDataActivityState() {
-        logUnexpectedCdmaMethodCall("getDataActivityState");
+        logUnexpectedMethodCall("getDataActivityState");
         return null;
     }
 
     @Override
     public SignalStrength getSignalStrength() {
-        logUnexpectedCdmaMethodCall("getSignalStrength");
+        logUnexpectedMethodCall("getSignalStrength");
         return null;
     }
 
     @Override
     public List<? extends MmiCode> getPendingMmiCodes() {
-        logUnexpectedCdmaMethodCall("getPendingMmiCodes");
+        logUnexpectedMethodCall("getPendingMmiCodes");
         return null;
     }
 
     @Override
     public void sendUssdResponse(String ussdMessge) {
-        logUnexpectedCdmaMethodCall("sendUssdResponse");
+        logUnexpectedMethodCall("sendUssdResponse");
     }
 
     @Override
     public void registerForSuppServiceNotification(Handler h, int what, Object obj) {
-        logUnexpectedCdmaMethodCall("registerForSuppServiceNotification");
+        logUnexpectedMethodCall("registerForSuppServiceNotification");
     }
 
     @Override
     public void unregisterForSuppServiceNotification(Handler h) {
-        logUnexpectedCdmaMethodCall("unregisterForSuppServiceNotification");
+        logUnexpectedMethodCall("unregisterForSuppServiceNotification");
     }
 
     @Override
     public boolean handlePinMmi(String dialString) {
-        logUnexpectedCdmaMethodCall("handlePinMmi");
+        logUnexpectedMethodCall("handlePinMmi");
         return false;
     }
 
     @Override
     public boolean handleInCallMmiCommands(String command) throws CallStateException {
-        logUnexpectedCdmaMethodCall("handleInCallMmiCommands");
+        logUnexpectedMethodCall("handleInCallMmiCommands");
         return false;
     }
 
     @Override
     public void setRadioPower(boolean power) {
-        logUnexpectedCdmaMethodCall("setRadioPower");
+        logUnexpectedMethodCall("setRadioPower");
     }
 
     @Override
     public String getLine1Number() {
-        logUnexpectedCdmaMethodCall("getLine1Number");
+        logUnexpectedMethodCall("getLine1Number");
         return null;
     }
 
     @Override
     public String getLine1AlphaTag() {
-        logUnexpectedCdmaMethodCall("getLine1AlphaTag");
+        logUnexpectedMethodCall("getLine1AlphaTag");
         return null;
     }
 
     @Override
     public void setLine1Number(String alphaTag, String number, Message onComplete) {
-        logUnexpectedCdmaMethodCall("setLine1Number");
+        logUnexpectedMethodCall("setLine1Number");
     }
 
     @Override
     public String getVoiceMailNumber() {
-        logUnexpectedCdmaMethodCall("getVoiceMailNumber");
+        logUnexpectedMethodCall("getVoiceMailNumber");
         return null;
     }
 
     @Override
     public String getVoiceMailAlphaTag() {
-        logUnexpectedCdmaMethodCall("getVoiceMailAlphaTag");
+        logUnexpectedMethodCall("getVoiceMailAlphaTag");
         return null;
     }
 
     @Override
     public void setVoiceMailNumber(String alphaTag, String voiceMailNumber, Message onComplete) {
-        logUnexpectedCdmaMethodCall("setVoiceMailNumber");
+        logUnexpectedMethodCall("setVoiceMailNumber");
     }
 
     @Override
     public void getCallForwardingOption(int commandInterfaceCFReason, Message onComplete) {
-        logUnexpectedCdmaMethodCall("getCallForwardingOption");
+        logUnexpectedMethodCall("getCallForwardingOption");
     }
 
     @Override
     public void setCallForwardingOption(int commandInterfaceCFReason, int commandInterfaceCFAction,
             String dialingNumber, int timerSeconds, Message onComplete) {
-        logUnexpectedCdmaMethodCall("setCallForwardingOption");
+        logUnexpectedMethodCall("setCallForwardingOption");
     }
 
     @Override
     public void getAvailableNetworks(Message response) {
-        logUnexpectedCdmaMethodCall("getAvailableNetworks");
+        logUnexpectedMethodCall("getAvailableNetworks");
     }
 
     @Override
     public void setNetworkSelectionModeAutomatic(Message response) {
-        logUnexpectedCdmaMethodCall("setNetworkSelectionModeAutomatic");
+        logUnexpectedMethodCall("setNetworkSelectionModeAutomatic");
     }
 
     @Override
     public void selectNetworkManually(OperatorInfo network, Message response) {
-        logUnexpectedCdmaMethodCall("selectNetworkManually");
+        logUnexpectedMethodCall("selectNetworkManually");
     }
 
     @Override
     public void getNeighboringCids(Message response) {
-        logUnexpectedCdmaMethodCall("getNeighboringCids");
+        logUnexpectedMethodCall("getNeighboringCids");
     }
 
     @Override
     public void setOnPostDialCharacter(Handler h, int what, Object obj) {
-        logUnexpectedCdmaMethodCall("setOnPostDialCharacter");
+        logUnexpectedMethodCall("setOnPostDialCharacter");
     }
 
     @Override
     public void getDataCallList(Message response) {
-        logUnexpectedCdmaMethodCall("getDataCallList");
+        logUnexpectedMethodCall("getDataCallList");
     }
 
     @Override
     public void updateServiceLocation() {
-        logUnexpectedCdmaMethodCall("updateServiceLocation");
+        logUnexpectedMethodCall("updateServiceLocation");
     }
 
     @Override
     public void enableLocationUpdates() {
-        logUnexpectedCdmaMethodCall("enableLocationUpdates");
+        logUnexpectedMethodCall("enableLocationUpdates");
     }
 
     @Override
     public void disableLocationUpdates() {
-        logUnexpectedCdmaMethodCall("disableLocationUpdates");
+        logUnexpectedMethodCall("disableLocationUpdates");
     }
 
     @Override
     public boolean getDataRoamingEnabled() {
-        logUnexpectedCdmaMethodCall("getDataRoamingEnabled");
+        logUnexpectedMethodCall("getDataRoamingEnabled");
         return false;
     }
 
     @Override
     public void setDataRoamingEnabled(boolean enable) {
-        logUnexpectedCdmaMethodCall("setDataRoamingEnabled");
+        logUnexpectedMethodCall("setDataRoamingEnabled");
     }
 
     @Override
     public String getDeviceId() {
-        logUnexpectedCdmaMethodCall("getDeviceId");
+        logUnexpectedMethodCall("getDeviceId");
         return null;
     }
 
     @Override
     public String getDeviceSvn() {
-        logUnexpectedCdmaMethodCall("getDeviceSvn");
+        logUnexpectedMethodCall("getDeviceSvn");
         return null;
     }
 
     @Override
     public String getSubscriberId() {
-        logUnexpectedCdmaMethodCall("getSubscriberId");
+        logUnexpectedMethodCall("getSubscriberId");
         return null;
     }
 
     @Override
     public String getEsn() {
-        logUnexpectedCdmaMethodCall("getEsn");
+        logUnexpectedMethodCall("getEsn");
         return null;
     }
 
     @Override
     public String getMeid() {
-        logUnexpectedCdmaMethodCall("getMeid");
+        logUnexpectedMethodCall("getMeid");
         return null;
     }
 
     @Override
     public String getImei() {
-        logUnexpectedCdmaMethodCall("getImei");
+        logUnexpectedMethodCall("getImei");
         return null;
     }
 
     @Override
     public PhoneSubInfo getPhoneSubInfo() {
-        logUnexpectedCdmaMethodCall("getPhoneSubInfo");
+        logUnexpectedMethodCall("getPhoneSubInfo");
         return null;
     }
 
     @Override
     public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager() {
-        logUnexpectedCdmaMethodCall("getIccPhoneBookInterfaceManager");
+        logUnexpectedMethodCall("getIccPhoneBookInterfaceManager");
         return null;
     }
 
     @Override
     public void activateCellBroadcastSms(int activate, Message response) {
-        logUnexpectedCdmaMethodCall("activateCellBroadcastSms");
+        logUnexpectedMethodCall("activateCellBroadcastSms");
     }
 
     @Override
     public void getCellBroadcastSmsConfig(Message response) {
-        logUnexpectedCdmaMethodCall("getCellBroadcastSmsConfig");
+        logUnexpectedMethodCall("getCellBroadcastSmsConfig");
     }
 
     @Override
     public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response) {
-        logUnexpectedCdmaMethodCall("setCellBroadcastSmsConfig");
+        logUnexpectedMethodCall("setCellBroadcastSmsConfig");
     }
 
     @Override
     protected void updateIccAvailability() {
-        logUnexpectedCdmaMethodCall("updateIccAvailability");
+        logUnexpectedMethodCall("updateIccAvailability");
     }
 
     @Override
@@ -562,16 +532,12 @@ public class RilImsPhone extends PhoneBase {
 
     @Override
     public void notifyDisconnect(Connection cn) {
-        logUnexpectedCdmaMethodCall("notifyDisconnect");
+        logUnexpectedMethodCall("notifyDisconnect");
     }
 
     public Registrant getPostDialHandler() {
-        logUnexpectedCdmaMethodCall("getPostDialHandler");
+        logUnexpectedMethodCall("getPostDialHandler");
         return null;
-    }
-
-    public int getSupportedDomain() {
-        return CallDetails.RIL_CALL_DOMAIN_PS;
     }
 
     public int getMaxConnectionsPerCall() {
@@ -583,7 +549,7 @@ public class RilImsPhone extends PhoneBase {
     }
 
     public CallTracker getCallTracker() {
-        return mTracker;
+        return mCT;
     }
 
     public DisconnectCause
@@ -591,66 +557,16 @@ public class RilImsPhone extends PhoneBase {
         /**
          * See 22.001 Annex F.4 for mapping of cause codes to local tones
          */
-
-        switch (causeCode) {
-            case CallFailCause.NO_CIRCUIT_AVAIL:
-            case CallFailCause.TEMPORARY_FAILURE:
-            case CallFailCause.SWITCHING_CONGESTION:
-            case CallFailCause.CHANNEL_NOT_AVAIL:
-            case CallFailCause.QOS_NOT_AVAIL:
-            case CallFailCause.BEARER_NOT_AVAIL:
-                return DisconnectCause.CONGESTION;
-            case CallFailCause.ACM_LIMIT_EXCEEDED:
-                return DisconnectCause.LIMIT_EXCEEDED;
-            case CallFailCause.CALL_BARRED:
-                return DisconnectCause.CALL_BARRED;
-            case CallFailCause.FDN_BLOCKED:
-                return DisconnectCause.FDN_BLOCKED;
-            case CallFailCause.UNOBTAINABLE_NUMBER:
-                return DisconnectCause.UNOBTAINABLE_NUMBER;
-            case CallFailCause.DIAL_MODIFIED_TO_USSD:
-                return DisconnectCause.DIAL_MODIFIED_TO_USSD;
-            case CallFailCause.DIAL_MODIFIED_TO_SS:
-                return DisconnectCause.DIAL_MODIFIED_TO_SS;
-            case CallFailCause.DIAL_MODIFIED_TO_DIAL:
-                return DisconnectCause.DIAL_MODIFIED_TO_DIAL;
-            case CallFailCause.USER_BUSY:
-                return DisconnectCause.BUSY;
-            case CallFailCause.CDMA_LOCKED_UNTIL_POWER_CYCLE:
-                return DisconnectCause.CDMA_LOCKED_UNTIL_POWER_CYCLE;
-            case CallFailCause.CDMA_DROP:
-                return DisconnectCause.CDMA_DROP;
-            case CallFailCause.CDMA_INTERCEPT:
-                return DisconnectCause.CDMA_INTERCEPT;
-            case CallFailCause.CDMA_REORDER:
-                return DisconnectCause.CDMA_REORDER;
-            case CallFailCause.CDMA_SO_REJECT:
-                return DisconnectCause.CDMA_SO_REJECT;
-            case CallFailCause.CDMA_RETRY_ORDER:
-                return DisconnectCause.CDMA_RETRY_ORDER;
-            case CallFailCause.CDMA_ACCESS_FAILURE:
-                return DisconnectCause.CDMA_ACCESS_FAILURE;
-            case CallFailCause.CDMA_PREEMPTED:
-                return DisconnectCause.CDMA_PREEMPTED;
-            case CallFailCause.CDMA_NOT_EMERGENCY:
-                return DisconnectCause.CDMA_NOT_EMERGENCY;
-            case CallFailCause.CDMA_ACCESS_BLOCKED:
-                return DisconnectCause.CDMA_ACCESS_BLOCKED;
-            case CallFailCause.ERROR_UNSPECIFIED:
-            case CallFailCause.NORMAL_CLEARING:
-            default: {
-                int serviceState = getServiceState().getState();
-                if (serviceState == ServiceState.STATE_POWER_OFF) {
-                    return DisconnectCause.POWER_OFF;
-                } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
-                        || serviceState == ServiceState.STATE_EMERGENCY_ONLY) {
-                    return DisconnectCause.OUT_OF_SERVICE;
-                } else if (causeCode == CallFailCause.NORMAL_CLEARING) {
-                    return DisconnectCause.NORMAL;
-                } else {
-                    return DisconnectCause.ERROR_UNSPECIFIED;
-                }
-            }
+        int serviceState = getServiceState().getState();
+        if (serviceState == ServiceState.STATE_POWER_OFF) {
+            return DisconnectCause.POWER_OFF;
+        } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
+                || serviceState == ServiceState.STATE_EMERGENCY_ONLY) {
+            return DisconnectCause.OUT_OF_SERVICE;
+        } else if (causeCode == CallFailCause.NORMAL_CLEARING) {
+            return DisconnectCause.NORMAL;
+        } else {
+            return DisconnectCause.ERROR_UNSPECIFIED;
         }
     }
 
@@ -658,56 +574,15 @@ public class RilImsPhone extends PhoneBase {
     public void dispose() {
         synchronized (PhoneProxy.lockForRadioTechnologyChange) {
             Log.d(LOG_TAG, "dispose ");
-
-            // Unregister from all former registered events
-
-            // hangup ims connections
-            // if any handover to CS domain , it has to be done before this
-            for (Connection c : foregroundCall.connections) {
-                try {
-                    if (c != null)
-                        mCT.hangup(c);
-                } catch (CallStateException ex) {
-                    Log.e(LOG_TAG,
-                            "unexpected error on forground call hangup during imsphone dispose");
-                }
-            }
-
-            for (Connection c : backgroundCall.connections) {
-                try {
-                    if (c != null)
-                        mCT.hangup(c);
-                } catch (CallStateException ex) {
-                    Log.e(LOG_TAG,
-                            "unexpected error on forground call hangup during imsphone dispose");
-                }
-            }
-
-            for (Connection c : ringingCall.connections) {
-                try {
-                    if (c != null)
-                        mCT.hangup(c);
-                } catch (CallStateException ex) {
-                    Log.e(LOG_TAG,
-                            "unexpected error on forground call hangup during imsphone dispose");
-                }
-            }
-
-            /*
-             * TODO try { if(mCT.pendingMO != null) hangup(pendingMO); } catch
-             * (CallStateException ex) { Log.e(LOG_TAG,
-             * "unexpected error on hangup during dispose"); }
-             */
             clearDisconnected();
-
             mCT.imsPhone = null;
         }
     }
 
     /**
-     * Common error logger method for unexpected calls to CDMA-only methods.
+     * Common error logger method for unexpected calls to RilImsPhone methods.
      */
-    private void logUnexpectedCdmaMethodCall(String name)
+    private void logUnexpectedMethodCall(String name)
     {
         Log.e(LOG_TAG, "Error! " + name + "() is not supported by " + getPhoneName());
     }

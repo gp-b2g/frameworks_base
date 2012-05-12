@@ -169,7 +169,6 @@ public class CDMALTEImsPhone extends CDMALTEPhone {
 
     public Connection
     dial (String dialString) throws CallStateException {
-        // Need to make sure dialString gets parsed properly
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
         Log.d(LOG_TAG, "dialString=" + newDialString);
         newDialString = PhoneNumberUtils.formatDialString(newDialString); // only for cdma
@@ -210,68 +209,25 @@ public class CDMALTEImsPhone extends CDMALTEPhone {
     public DisconnectCause
     disconnectCauseFromCode(int causeCode) {
         /**
-         * See 22.001 Annex F.4 for mapping of cause codes
-         * to local tones
+         * See 22.001 Annex F.4 for mapping of cause codes to local tones
          */
 
-        switch (causeCode) {
-            case CallFailCause.USER_BUSY:
-                return DisconnectCause.BUSY;
-            case CallFailCause.NO_CIRCUIT_AVAIL:
-                return DisconnectCause.CONGESTION;
-            case CallFailCause.ACM_LIMIT_EXCEEDED:
-                return DisconnectCause.LIMIT_EXCEEDED;
-            case CallFailCause.CALL_BARRED:
-                return DisconnectCause.CALL_BARRED;
-            case CallFailCause.FDN_BLOCKED:
-                return DisconnectCause.FDN_BLOCKED;
-            case CallFailCause.DIAL_MODIFIED_TO_USSD:
-                return DisconnectCause.DIAL_MODIFIED_TO_USSD;
-            case CallFailCause.DIAL_MODIFIED_TO_SS:
-                return DisconnectCause.DIAL_MODIFIED_TO_SS;
-            case CallFailCause.DIAL_MODIFIED_TO_DIAL:
-                return DisconnectCause.DIAL_MODIFIED_TO_DIAL;
-            case CallFailCause.CDMA_LOCKED_UNTIL_POWER_CYCLE:
-                return DisconnectCause.CDMA_LOCKED_UNTIL_POWER_CYCLE;
-            case CallFailCause.CDMA_DROP:
-                return DisconnectCause.CDMA_DROP;
-            case CallFailCause.CDMA_INTERCEPT:
-                return DisconnectCause.CDMA_INTERCEPT;
-            case CallFailCause.CDMA_REORDER:
-                return DisconnectCause.CDMA_REORDER;
-            case CallFailCause.CDMA_SO_REJECT:
-                return DisconnectCause.CDMA_SO_REJECT;
-            case CallFailCause.CDMA_RETRY_ORDER:
-                return DisconnectCause.CDMA_RETRY_ORDER;
-            case CallFailCause.CDMA_ACCESS_FAILURE:
-                return DisconnectCause.CDMA_ACCESS_FAILURE;
-            case CallFailCause.CDMA_PREEMPTED:
-                return DisconnectCause.CDMA_PREEMPTED;
-            case CallFailCause.CDMA_NOT_EMERGENCY:
-                return DisconnectCause.CDMA_NOT_EMERGENCY;
-            case CallFailCause.CDMA_ACCESS_BLOCKED:
-                return DisconnectCause.CDMA_ACCESS_BLOCKED;
-            case CallFailCause.ERROR_UNSPECIFIED:
-            case CallFailCause.NORMAL_CLEARING:
-            default:
-                int serviceState = getServiceState().getState();
-                if (serviceState == ServiceState.STATE_POWER_OFF) {
-                    return DisconnectCause.POWER_OFF;
-                } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
-                        || serviceState == ServiceState.STATE_EMERGENCY_ONLY) {
-                    return DisconnectCause.OUT_OF_SERVICE;
-                } else if (mCdmaSubscriptionSource ==
-                               CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM
-                           && (getUiccApplication() == null ||
-                               getUiccApplication().getState() !=
-                                    IccCardApplicationStatus.AppState.APPSTATE_READY)) {
-                    return DisconnectCause.ICC_ERROR;
-                } else if (causeCode==CallFailCause.NORMAL_CLEARING) {
-                    return DisconnectCause.NORMAL;
-                } else {
-                    return DisconnectCause.ERROR_UNSPECIFIED;
-                }
+        int serviceState = getServiceState().getState();
+        if (serviceState == ServiceState.STATE_POWER_OFF) {
+            return DisconnectCause.POWER_OFF;
+        } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
+                || serviceState == ServiceState.STATE_EMERGENCY_ONLY) {
+            return DisconnectCause.OUT_OF_SERVICE;
+        } else if (mCdmaSubscriptionSource ==
+                CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM
+                && (getUiccApplication() == null ||
+                getUiccApplication().getState() !=
+                IccCardApplicationStatus.AppState.APPSTATE_READY)) {
+            return DisconnectCause.ICC_ERROR;
+        } else if (causeCode == CallFailCause.NORMAL_CLEARING) {
+            return DisconnectCause.NORMAL;
+        } else {
+            return DisconnectCause.ERROR_UNSPECIFIED;
         }
     }
-
 }
