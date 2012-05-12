@@ -181,7 +181,7 @@ void LPAPlayer::AudioFlingerLPAdecodeClient::ioConfigChanged(int event, int ioHa
                 if ( !pBaseClass->bIsA2DPEnabled ) {
 
                     pBaseClass->bIsA2DPEnabled = true;
-                    if (pBaseClass->mStarted) {
+                    if (pBaseClass->mStarted || pBaseClass->afd >= 0) {
                         pBaseClass->handleA2DPSwitch();
                     }
 
@@ -212,7 +212,21 @@ void LPAPlayer::handleA2DPSwitch() {
     Mutex::Autolock autoLock(mLock);
 
     LOGV("handleA2dpSwitch()");
-    if (bIsA2DPEnabled) {
+
+    if(bIsA2DPEnabled && afd >= 0 && !mIsDriverStarted) {
+        /*
+         *If LPA playback starts on a BT device and if that playback is paused
+         *LPAplayer doenst relinquish the DSP resources it reserved in LPAPlayer()
+         *this if block is to relinquish the DSP resources in that case.
+         */
+        LOGW("Start Stop LPA Driver");
+        if (ioctl(afd, AUDIO_START,0) < 0) {
+            LOGE("Driver start failed!");
+        }
+        if (ioctl(afd, AUDIO_STOP, 0) < 0) {
+            LOGE("%s: Audio stop event failed", __func__);
+        }
+    } else if (bIsA2DPEnabled) {
         if (!isPaused) {
             if(mIsDriverStarted) {
                 if (ioctl(afd, AUDIO_PAUSE, 1) < 0) {
