@@ -131,6 +131,13 @@ public abstract class GeoFencerBase {
         }
     }
 
+    public void transferService(GeoFencerBase geofencer) {
+        for (GeoFenceParams alert : geofencer.mGeoFences.values()) {
+            geofencer.stop(alert.mIntent);
+            add(alert);
+        }
+    }
+
     public void dump(PrintWriter pw, String prefix) {
         if (mGeoFences.size() > 0) {
             pw.println(prefix + "  GeoFences:");

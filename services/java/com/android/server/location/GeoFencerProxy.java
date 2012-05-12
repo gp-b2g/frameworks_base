@@ -79,7 +79,15 @@ public class GeoFencerProxy extends GeoFencerBase {
         }
     };
 
-    public GeoFencerProxy(Context context, String serviceName) {
+    private static GeoFencerProxy mGeoFencerProxy;
+    public static GeoFencerProxy getGeoFencerProxy(Context context, String serviceName) {
+        if (mGeoFencerProxy == null) {
+            mGeoFencerProxy = new GeoFencerProxy(context, serviceName);
+        }
+        return mGeoFencerProxy;
+    }
+
+    private GeoFencerProxy(Context context, String serviceName) {
         mContext = context;
         mIntent = new Intent(serviceName);
         mContext.bindService(mIntent, mServiceConnection,
