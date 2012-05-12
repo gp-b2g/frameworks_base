@@ -573,5 +573,11 @@ public final class BluetoothGatt implements BluetoothProfile {
             mCallback.onGattSetClientConfigDescriptor(config, handle, value, sessionHandle);
         }
 
+        @Override
+        public void onGattIndicateResponse(BluetoothGattAppConfiguration config, boolean result) {
+            Log.d(TAG, "onGattIndicateResponse: " + config + " result " + result);
+            mCallback.onGattIndicateResponse(config, result);
+        }
+
     }
 }

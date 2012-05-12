@@ -605,6 +605,22 @@ final class BluetoothGattProfileHandler {
          }
      }
 
+    /*package*/ synchronized void onIndicateResponse(String gattObjPath, boolean result) {
+         Log.d(TAG, "Indicate response object path : "  + gattObjPath + "result :" + result );
+         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjPath);
+         Log.d(TAG, "Config " + config);
+         if (config != null) {
+             IBluetoothGattCallback callback = mCallbacks.get(config);
+             if (callback != null) {
+                try {
+                    callback.onGattIndicateResponse(config, result);
+                } catch (RemoteException e) {
+                    Log.e(TAG, "Remote Exception:" + e);
+                }
+             }
+         }
+     }
+
      /*package*/ synchronized void onGattDiscoverPrimaryByUuidRequest(String gattObjPath,
                                                                       int start, int end,
                                                                       String uuidStr,

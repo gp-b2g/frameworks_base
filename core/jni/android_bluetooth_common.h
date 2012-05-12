@@ -119,6 +119,10 @@ struct set_characteristic_property_t {
     char * property;
 };
 
+struct set_indicate_info_t {
+    char *path;
+};
+
 dbus_bool_t dbus_func_args_async(JNIEnv *env,
                                  DBusConnection *conn,
                                  int timeout_ms,

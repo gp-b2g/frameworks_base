@@ -75,6 +75,7 @@ static jmethodID method_onGattReadRequest;
 static jmethodID method_onGattWriteRequest;
 static jmethodID method_onGattReliableWriteRequest;
 static jmethodID method_onGattSetClientConfigDescriptor;
+static jmethodID method_onIndicateResponse;
 
 static jmethodID method_onRequestPinCode;
 static jmethodID method_onRequestPasskey;
@@ -145,6 +146,8 @@ static void classInitNative(JNIEnv* env, jclass clazz) {
     method_onSetCharacteristicPropertyResult = env->GetMethodID(clazz, "onSetCharacteristicPropertyResult",
                                                          "(Ljava/lang/String;Ljava/lang/String;Z)V");
     method_onUpdateCharacteristicValueResult = env->GetMethodID(clazz, "onUpdateCharacteristicValueResult",
+                                                         "(Ljava/lang/String;Z)V");
+    method_onIndicateResponse = env->GetMethodID(clazz, "onIndicateResponse",
                                                          "(Ljava/lang/String;Z)V");
 
     method_onWatcherValueChanged = env->GetMethodID(clazz, "onWatcherValueChanged",
@@ -2258,6 +2261,32 @@ void onSetCharacteristicPropertyResult(DBusMessage *msg, void *user, void *n) {
 
     free(prop->path);
     free(prop->property);
+    free(user);
+}
+
+void onIndicateResponse(DBusMessage *msg, void *user, void *n) {
+    native_data_t *nat = (native_data_t *)n;
+    DBusError err;
+    dbus_error_init(&err);
+    JNIEnv *env;
+    nat->vm->GetEnv((void**)&env, nat->envVer);
+    LOGE("%s", __FUNCTION__);
+
+    struct set_indicate_info_t *prop = (set_indicate_info_t *)user;
+    bool result = JNI_TRUE;
+    if (dbus_set_error_from_message(&err, msg)) {
+        LOG_AND_FREE_DBUS_ERROR(&err);
+        result = JNI_FALSE;
+    }
+
+    jstring jPath = env->NewStringUTF(prop->path);
+    env->CallVoidMethod(nat->me,
+                        method_onIndicateResponse,
+                        jPath,
+                        result);
+    env->DeleteLocalRef(jPath);
+
+    free(prop->path);
     free(user);
 }
 

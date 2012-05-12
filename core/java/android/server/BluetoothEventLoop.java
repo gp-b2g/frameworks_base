@@ -1266,6 +1266,13 @@ class BluetoothEventLoop {
         mBluetoothService.makeSetCharacteristicPropertyCallback(path, property, result);
     }
 
+    private void onIndicateResponse(String path, boolean result) {
+        Log.d(TAG, "onIndicateResponse path = " + path + " result : " + result);
+        BluetoothGattProfileHandler gattProfileHandler =
+            BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
+        gattProfileHandler.onIndicateResponse(path, result);
+    }
+
     private void onWatcherValueChanged(String characteristicPath, String value) {
         // TODO: Send this to upper layer
         mBluetoothService.makeWatcherValueChangedCallback(characteristicPath, value);

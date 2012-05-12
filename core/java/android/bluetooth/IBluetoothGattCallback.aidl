@@ -58,4 +58,5 @@ interface IBluetoothGattCallback
                                     in String authentication, in int sessionHandle, in int requestHandle);
     void onGattSetClientConfigDescriptor(in BluetoothGattAppConfiguration config, in int handle, in byte[] value,
                                      in int sessionHandle);
+    void onGattIndicateResponse(in BluetoothGattAppConfiguration config, in boolean result);
 }

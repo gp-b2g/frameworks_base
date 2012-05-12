@@ -94,6 +94,7 @@ void onHealthDeviceConnectionResult(DBusMessage *msg, void *user, void *nat);
 void onDiscoverCharacteristicsResult(DBusMessage *msg, void *user, void *nat);
 void onSetCharacteristicPropertyResult(DBusMessage *msg, void *user, void *nat);
 void onUpdateCharacteristicValueResult(DBusMessage *msg, void *user, void *nat);
+void onIndicateResponse(DBusMessage *msg, void *user, void *nat);
 
 
 /** Get native data stored in the opaque (Java code maintained) pointer mNativeData
@@ -1861,10 +1862,21 @@ static jboolean indicateNative(JNIEnv *env, jobject object,
     jboolean result = JNI_FALSE;
 #ifdef HAVE_BLUETOOTH
     native_data_t *nat = get_native_data(env, object);
-    if (nat) {
-        const char *c_obj_path = env->GetStringUTFChars(objPath, NULL);
+    jobject eventLoop = env->GetObjectField(object, field_mEventLoop);
+    struct event_loop_native_data_t *eventLoopNat =
+            get_EventLoop_native_data(env, eventLoop);
+
+    if (nat && eventLoopNat) {
         DBusMessage *msg, *reply;
         DBusError err;
+        dbus_async_call_t *pending;
+        dbus_bool_t ret = FALSE;
+
+        const char *c_obj_path = env->GetStringUTFChars(objPath, NULL);
+
+        int len = env->GetStringLength(objPath) + 1;
+        char *context_path = (char *)calloc(len, sizeof(char));
+        strlcpy(context_path, c_obj_path, len);  // for callback
 
         jbyte *payload_ptr = env->GetByteArrayElements(payload, NULL);
         dbus_error_init(&err);
@@ -1886,23 +1898,51 @@ static jboolean indicateNative(JNIEnv *env, jobject object,
                                  DBUS_TYPE_UINT16, &handle,
                                  DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &payload_ptr, cnt,
                                  DBUS_TYPE_INVALID);
+        // Setup the callback info
+        struct set_indicate_info_t *prop;
+        prop = (set_indicate_info_t *) calloc(1, sizeof(struct set_indicate_info_t));
+
+        prop->path = (char *)calloc(strlen(c_obj_path) + 1, sizeof(char));
+        strlcpy(prop->path, c_obj_path, strlen(c_obj_path) + 1);
 
         /* Make the call. */
-        reply = dbus_connection_send_with_reply_and_block(nat->conn, msg, -1, &err);
+        pending = (dbus_async_call_t *)malloc(sizeof(dbus_async_call_t));
 
-        env->ReleaseStringUTFChars(objPath, c_obj_path);
-        env->ReleaseByteArrayElements(payload, payload_ptr, 0);
-
-        if (!reply) {
-            if (dbus_error_is_set(&err)) {
-                LOG_AND_FREE_DBUS_ERROR(&err);
-            }
-        } else {
-            result = JNI_TRUE;
+        if (!pending) {
+            LOGE("!pending");
+            return JNI_FALSE;
         }
+
+        DBusPendingCall *call;
+
+        pending->env = env;
+        pending->user_cb = onIndicateResponse;
+        pending->user = prop;
+        pending->nat = eventLoopNat;
+
+        ret = dbus_connection_send_with_reply(nat->conn, msg,
+                                                    &call,
+                                                    -1);
+
+       if (ret == TRUE)
+            dbus_pending_call_set_notify(call,
+                                         dbus_func_args_async_callback,
+                                         pending,
+                                         NULL);
+
+       if (!ret) {
+           if (dbus_error_is_set(&err)) {
+           LOG_AND_FREE_DBUS_ERROR(&err);
+           }
+       }
+
+       env->ReleaseStringUTFChars(objPath, c_obj_path);
+       env->ReleaseByteArrayElements(payload, payload_ptr, 0);
+
+       return ret ? JNI_TRUE : JNI_FALSE;
     }
 #endif
-    return result;
+   return JNI_FALSE;
 }
 
 static jboolean discoverPrimaryResponseNative(JNIEnv *env, jobject object,

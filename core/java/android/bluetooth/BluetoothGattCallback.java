@@ -127,4 +127,8 @@ public abstract class BluetoothGattCallback {
                                             int sessionHandle) {
         Log.d(TAG, "onGattSetClientConfigDescriptor: " + config + " handle " + handle + " session " + sessionHandle);
     }
+
+    public void onGattIndicateResponse(BluetoothGattAppConfiguration config, boolean result) {
+        Log.d(TAG, "onGattIndicateResponse: " + config + " result " + result);
+    }
 }
