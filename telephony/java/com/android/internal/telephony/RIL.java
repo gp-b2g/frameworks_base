@@ -1604,6 +1604,91 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         send(rr);
     }
 
+    private void constructCdmaWriteSmsRilRequest(RILRequest rr, byte[] pdu) {
+        int address_nbr_of_digits;
+        int subaddr_nbr_of_digits;
+        int bearerDataLength;
+        ByteArrayInputStream bais = new ByteArrayInputStream(pdu);
+        DataInputStream dis = new DataInputStream(bais);
+
+        try {
+            int teleServiceId = 0;
+            byte servicePresent = 0;
+            int serviceCategory = 0;
+
+            int address_digit_mode = 0;
+            int address_nbr_mode = 0;
+            int address_ton = 0;
+            int address_nbr_plan = 0;
+
+            int subaddressType = 0;
+            byte subaddr_odd = 0;
+
+
+
+            teleServiceId = dis.readInt();
+            rr.mp.writeInt(teleServiceId);
+            servicePresent = (byte) dis.readInt();
+            rr.mp.writeByte(servicePresent);
+            serviceCategory = dis.readInt();
+            rr.mp.writeInt(serviceCategory);
+
+            address_digit_mode = dis.readByte();
+            rr.mp.writeInt(address_digit_mode);
+            address_nbr_mode = dis.readByte();
+            rr.mp.writeInt(address_nbr_mode);
+            address_ton = dis.readByte();
+            rr.mp.writeInt(address_ton);
+            address_nbr_plan = dis.readByte();
+            rr.mp.writeInt(address_nbr_plan);
+
+            address_nbr_of_digits = dis.readByte();
+            rr.mp.writeByte((byte) address_nbr_of_digits);
+            for (int i = 0; i < address_nbr_of_digits; i++) {
+                rr.mp.writeByte(dis.readByte()); // address_orig_bytes[i]
+            }
+
+            // int
+            subaddressType = dis.readByte();
+            rr.mp.writeInt(subaddressType); // subaddressType
+            subaddr_odd = (byte) dis.readByte();
+            rr.mp.writeByte(subaddr_odd); // subaddr_odd
+            subaddr_nbr_of_digits = (byte) dis.readByte();
+            rr.mp.writeByte((byte) subaddr_nbr_of_digits);
+            for (int i = 0; i < subaddr_nbr_of_digits; i++) {
+                rr.mp.writeByte(dis.readByte()); // subaddr_orig_bytes[i]
+            }
+
+            bearerDataLength = dis.readByte() & 0xff;
+            rr.mp.writeInt(bearerDataLength);
+            for (int i = 0; i < bearerDataLength; i++) {
+                rr.mp.writeByte(dis.readByte()); // bearerData[i]
+            }
+
+            riljLog(" teleServiceId="+ teleServiceId + " servicePresent=" + servicePresent
+                + " serviceCategory=" + serviceCategory +" address_digit_mode=" + address_digit_mode+ " address_nbr_mode="
+                + address_nbr_mode + " address_ton=" + address_ton + " address_nbr_plan=" + address_nbr_plan + " address_nbr_of_digits="
+                 + address_nbr_of_digits + " subaddressType=" + subaddressType + " subaddr_odd= " + subaddr_odd + " subaddr_nbr_of_digits="
+                + subaddr_nbr_of_digits + " bearerDataLength=" + bearerDataLength);
+        }catch (IOException ex){
+            if (RILJ_LOGD) riljLog("sendSmsCdma: conversion from input stream to object failed: "
+                    + ex);
+        }finally{
+            try{
+                if(null != bais){
+                    bais.close();
+                }
+
+                if(null != dis){
+                    dis.close();
+                }
+            }catch(IOException e){
+
+            }
+
+        }
+    }
+
     public void writeSmsToRuim(int status, String pdu, Message response) {
         status = translateStatus(status);
 
@@ -1611,7 +1696,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 response);
 
         rr.mp.writeInt(status);
-        rr.mp.writeString(pdu);
+        constructCdmaWriteSmsRilRequest(rr,IccUtils.hexStringToBytes(pdu));
 
         if (false) {
             if (RILJ_LOGD) riljLog(rr.serialString() + "> "

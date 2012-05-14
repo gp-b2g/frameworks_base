@@ -418,7 +418,7 @@ public class SmsMessage extends SmsMessageBase {
      * shifted to the bits 31-16.
      */
     public int getStatus() {
-        return (status << 16);
+        return status;
     }
 
     /** Return true iff the bearer data message type is DELIVERY_ACK. */
@@ -768,7 +768,7 @@ public class SmsMessage extends SmsMessageBase {
                 status = mBearerData.errorClass << 8;
                 status |= mBearerData.messageStatus;
             }
-        } else if (mBearerData.messageType != BearerData.MESSAGE_TYPE_DELIVER) {
+        } else if ((mBearerData.messageType != BearerData.MESSAGE_TYPE_DELIVER) && (mBearerData.messageType != BearerData.MESSAGE_TYPE_SUBMIT)) {
             throw new RuntimeException("Unsupported message type: " + mBearerData.messageType);
         }
 
