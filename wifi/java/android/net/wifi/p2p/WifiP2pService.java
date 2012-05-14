@@ -196,6 +196,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
         filter.addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED);
         filter.addAction(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         filter.addAction(WifiManager.WIFI_AP_STATE_CHANGED_ACTION);
+        filter.addAction(TelephonyIntents.ACTION_SAFE_WIFI_CHANNELS_CHANGED);
         mContext.registerReceiver(new WifiStateReceiver(), filter);
 
     }
@@ -221,6 +222,34 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
                 if (intent.getBooleanExtra("phoneinECMState", false) == true) {
                     mP2pStateMachine.sendMessage(EMERGENCY_CALLBACK_MODE);
                 }
+            } else if (intent.getAction().equals(TelephonyIntents.ACTION_SAFE_WIFI_CHANNELS_CHANGED)) {
+                    Slog.d(TAG, "Received WIFI_CHANNELS_CHANGED broadcast");
+
+                    int startSafeChannel = intent.getIntExtra("start_safe_channel", -1);
+                    int endSafeChannel = intent.getIntExtra("end_safe_channel", -1);
+
+                    if ((mIsWifiP2pEnabled) && (mP2pStateMachine.mWifiP2pInfo.groupFormed)) {
+                        int currentChannel = 0;
+                        currentChannel = frequencyToChannel(mP2pStateMachine.mGroup.getGoOperatingFrequency());
+                        Slog.d(TAG, "GO operating frequency=" + mP2pStateMachine.mGroup.getGoOperatingFrequency());
+                        Slog.d(TAG, "current channel of P2P GO=" + currentChannel);
+
+                        if (currentChannel >= 0 &&
+                            (currentChannel < startSafeChannel ||
+                             currentChannel > endSafeChannel)) {
+                             Slog.d(TAG, "P2P GO is operating on restricted channel.Terminate P2P Group");
+                             WifiNative.p2pGroupRemove(mP2pStateMachine.mGroup.getInterface());
+                             Slog.d(TAG, "Set Preferred channel list for P2P GO");
+                             WifiNative.setPreferredChannel(startSafeChannel, endSafeChannel);
+                             WifiNative.setP2pOperRegClass();
+                             WifiNative.setP2pOperChannel(startSafeChannel);
+                             Slog.d(TAG, "channelToFrequency(startSafeChannel)" + channelToFrequency(startSafeChannel));
+                             //Restart the p2p group with preferred safe channel only in case of auto GO
+                             if (mPersistGroup)
+                             WifiNative.p2pGroupAddOnSpecifiedFreq(channelToFrequency(startSafeChannel));
+                         }
+
+                  }
             }
         }
     }
@@ -264,6 +293,32 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
         }
     }
 
+    /**
+     * Convert frequency to Channel
+     */
+    private int frequencyToChannel(int freq) {
+        /* see 802.11 17.3.8.3.2 and Annex J */
+        if (freq == 2484)
+                return 14;
+        else if (freq < 2484)
+                return (freq - 2407) / 5;
+        else if (freq >= 4910 && freq <= 4980)
+                return (freq - 4000) / 5;
+        else
+                return (freq - 5000) / 5;
+    }
+
+    /**
+     * Convert Channel to frequency
+     */
+    private int channelToFrequency(int chan) {
+         if (chan == 14)
+             return 2484;
+         else if (chan < 14)
+             return 2407 + chan * 5;
+         else
+             return 0; /* not supported */
+    }
 
     /**
      * Handles interaction with WifiStateMachine

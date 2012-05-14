@@ -43,6 +43,9 @@ public class WifiP2pGroup implements Parcelable {
     /** Group clients */
     private List<WifiP2pDevice> mClients = new ArrayList<WifiP2pDevice>();
 
+     /** GO operating Frequency*/
+     private int mGoOperFreq;
+
     /** The passphrase used for WPA2-PSK */
     private String mPassphrase;
 
@@ -84,6 +87,11 @@ public class WifiP2pGroup implements Parcelable {
 
                 if (nameValue[0].equals("ssid")) {
                     mNetworkName = nameValue[1];
+                    continue;
+                }
+
+                if (nameValue[0].equals("freq")) {
+                    mGoOperFreq = Integer.parseInt(nameValue[1]);
                     continue;
                 }
 
@@ -178,6 +186,18 @@ public class WifiP2pGroup implements Parcelable {
     }
 
     /** @hide */
+    public int setGoOperatingFrequency(int GoOperFreq) {
+        return mGoOperFreq = GoOperFreq;
+    }
+
+    /** @hide
+    * This is used to fetch the GO operating frequency
+    */
+    public int getGoOperatingFrequency() {
+        return mGoOperFreq;
+    }
+
+    /** @hide */
     public void setPassphrase(String passphrase) {
         mPassphrase = passphrase;
     }
@@ -227,6 +247,7 @@ public class WifiP2pGroup implements Parcelable {
             for (WifiP2pDevice d : source.getClientList()) mClients.add(d);
             mPassphrase = source.getPassphrase();
             mInterface = source.getInterface();
+            mGoOperFreq = source.getGoOperatingFrequency();
         }
     }
 
@@ -241,6 +262,7 @@ public class WifiP2pGroup implements Parcelable {
         }
         dest.writeString(mPassphrase);
         dest.writeString(mInterface);
+        dest.writeInt(mGoOperFreq);
     }
 
     /** Implement the Parcelable interface */
@@ -257,6 +279,7 @@ public class WifiP2pGroup implements Parcelable {
                 }
                 group.setPassphrase(in.readString());
                 group.setInterface(in.readString());
+                group.setGoOperatingFrequency(in.readInt());
                 return group;
             }
 
