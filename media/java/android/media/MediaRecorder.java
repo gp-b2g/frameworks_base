@@ -85,6 +85,8 @@ public class MediaRecorder
     private final static String TAG = "MediaRecorder";
     private final static String IOBUSY_VOTE = "com.android.server.CpuGovernorService.action.IOBUSY_VOTE";
     private final static String IOBUSY_UNVOTE = "com.android.server.CpuGovernorService.action.IOBUSY_UNVOTE";
+    private static final String DOWN_FACTOR_DECREASE = "com.android.server.CpuGovernorService.action.DOWN_FACTOR_DECREASE";
+    private static final String DOWN_FACTOR_RESTORE = "com.android.server.CpuGovernorService.action.DOWN_FACTOR_RESTORE";
     // The two fields below are accessed by native methods
     @SuppressWarnings("unused")
     private int mNativeContext;
@@ -697,9 +699,12 @@ public class MediaRecorder
             Application application = ActivityThread.currentApplication();
             if (application != null) {
                 Intent ioBusyVoteIntent = new Intent(IOBUSY_VOTE);
+                Intent downFactorVoteIntent = new Intent(DOWN_FACTOR_DECREASE);
                 // Vote for io_is_busy to be turned off.
                 ioBusyVoteIntent.putExtra("com.android.server.CpuGovernorService.voteType", 0);
                 application.sendBroadcast(ioBusyVoteIntent);
+                // Vote for sampling down factor to be decreased to 1
+                application.sendBroadcast(downFactorVoteIntent);
             }
         } catch (Exception exception) {
             Log.e(TAG, "Unable to vote to turn io_is_busy off.");
@@ -713,9 +718,12 @@ public class MediaRecorder
             Application application = ActivityThread.currentApplication();
             if (application != null) {
                 Intent ioBusyUnVoteIntent = new Intent(IOBUSY_UNVOTE);
+                Intent downFactorVoteIntent = new Intent(DOWN_FACTOR_RESTORE);
                 // Remove vote for io_is_busy to be turned off.
                 ioBusyUnVoteIntent.putExtra("com.android.server.CpuGovernorService.voteType", 0);
                 application.sendBroadcast(ioBusyUnVoteIntent);
+                // Vote for sampling down factor to be restored to original value
+                application.sendBroadcast(downFactorVoteIntent);
             }
         } catch (Exception exception) {
             Log.e(TAG, "Unable to withdraw io_is_busy off vote.");
