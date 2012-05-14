@@ -33,13 +33,11 @@ import java.util.List;
  */
 public class CallBase extends Call {
     /*************************** Instance Variables **************************/
-    /*package*/ CallTracker tracker;
     /*package*/ PhoneBase owner;
 
     /****************************** Constructors *****************************/
-    public CallBase(PhoneBase owner, CallTracker tracker) {
+    public CallBase(PhoneBase owner) {
         this.owner = owner;
-        this.tracker = tracker;
     }
 
     public void dispose() {
@@ -68,7 +66,7 @@ public class CallBase extends Call {
     }
 
     public void hangupAllCalls() throws CallStateException {
-        owner.getCallTracker().hangupAllCalls(owner.getSupportedDomain());
+        owner.getCallTracker().hangupAllCalls(owner);
     }
 
     public String toString() {

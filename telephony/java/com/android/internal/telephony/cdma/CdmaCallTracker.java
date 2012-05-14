@@ -935,20 +935,6 @@ public final class CdmaCallTracker extends CallTracker {
         }
     }
 
-    /* package */
-    CdmaConnection getConnectionByIndex(CdmaCall call, int index)
-            throws CallStateException {
-        int count = call.connections.size();
-        for (int i = 0; i < count; i++) {
-            CdmaConnection cn = (CdmaConnection)call.connections.get(i);
-            if (cn.getIndex() == index) {
-                return cn;
-            }
-        }
-
-        return null;
-    }
-
     private void flashAndSetGenericTrue() throws CallStateException {
         cm.sendCDMAFeatureCode("", obtainMessage(EVENT_SWITCH_RESULT));
 

@@ -48,12 +48,20 @@ public abstract class CallTracker extends Handler {
     public PhoneBase phone;
     public PhoneBase imsPhone;
 
+    //CS calls
     public Call ringingCall;
     // A call that is ringing or (call) waiting
     public Call foregroundCall;
     public Call backgroundCall;
+
+    //PS calls
+    public Call ringingCallIms;
+    public Call foregroundCallIms;
+    public Call backgroundCallIms;
+
     public Phone.State state = Phone.State.IDLE; //Phone state for base phone
     public boolean mIsInEmergencyCall = false;
+    public boolean callSwitchPending = false;
 
     //***** Events
 
@@ -73,6 +81,7 @@ public abstract class CallTracker extends Handler {
     protected static final int EVENT_CALL_WAITING_INFO_CDMA        = 15;
     protected static final int EVENT_THREE_WAY_DIAL_L2_RESULT_CDMA = 16;
     protected static final int EVENT_MODIFY_CALL                   = 17;
+    protected static final int EVENT_SWITCH_RESULT_IMS             = 18;
 
     public abstract void acceptCall() throws CallStateException;
     public abstract void rejectCall() throws CallStateException;
@@ -245,16 +254,30 @@ public abstract class CallTracker extends Handler {
                 + this);
     }
 
-    void hangupAllCalls(int callDomain) throws CallStateException {
-        hangupAllCallsP(callDomain);
+    void hangupAllCalls(PhoneBase owner) throws CallStateException {
+        hangupAllCallsP(owner);
     }
 
-    protected void hangupAllCallsP(int callDomain) throws CallStateException {
+    protected void hangupAllCallsP(PhoneBase owner) throws CallStateException {
         throw new CallStateException("hangupAllCalls is not supported in this CallTracker");
     }
 
     public void rejectCall(PhoneBase phone) throws CallStateException {
         throw new CallStateException(
                 "rejectCall with PhoneBase is not supported in this CallTracker");
+    }
+
+    public void switchWaitingOrHoldingAndActiveIms() throws CallStateException{
+        throw new CallStateException(
+                "switchWaitingOrHoldingAndActiveIms is not supported in this CallTracker");
+    }
+
+    public void createImsCalls() {
+        log("createImsCalls is not supported in this CallTracker"+this);
+    }
+
+    public void
+    clearDisconnected(PhoneBase phone) {
+        log("clearDisconnected with phone is not supported in this CallTracker"+this);
     }
 }

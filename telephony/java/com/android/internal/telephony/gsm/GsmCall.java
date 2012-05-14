@@ -99,20 +99,6 @@ class GsmCall extends Call {
 
     //***** Called from GsmConnection
 
-    /*package*/ void
-    attach(Connection conn, DriverCall dc) {
-        connections.add(conn);
-
-        state = stateFromDCState (dc.state);
-    }
-
-    /*package*/ void
-    attachFake(Connection conn, State state) {
-        connections.add(conn);
-
-        this.state = state;
-    }
-
     /**
      * Called by GsmConnection when it has disconnected
      */
