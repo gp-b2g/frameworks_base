@@ -24,15 +24,18 @@ import android.app.IWallpaperManagerCallback;
 import android.app.PendingIntent;
 import android.app.WallpaperInfo;
 import android.app.backup.BackupManager;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.FileUtils;
@@ -123,6 +126,15 @@ class WallpaperManagerService extends IWallpaperManager.Stub {
                                 if (event == CLOSE_WRITE) {
                                     mImageWallpaperPending = false;
                                 }
+
+                                //everytime the wallpaper path is deleted(settings user data cleared),
+                                //we need to start monitor the path again or else we can not set new wallpapers.
+                                if(event == DELETE){
+                                    mWallpaperObserver.stopWatching();
+                                    WALLPAPER_DIR.mkdirs();
+                                    mWallpaperObserver.startWatching();
+                                }
+
                                 bindWallpaperComponentLocked(mImageWallpaperComponent,
                                         true, false);
                                 saveSettingsLocked();
@@ -328,8 +340,39 @@ class WallpaperManagerService extends IWallpaperManager.Stub {
         WALLPAPER_DIR.mkdirs();
         loadSettingsLocked();
         mWallpaperObserver.startWatching();
+
+        //to solve the bug when clear the settings user data,set wall paper has no effect.
+        IntentFilter pkgFilter = new IntentFilter();
+        pkgFilter.addAction(Intent.ACTION_PACKAGE_DATA_CLEARED);
+        pkgFilter.addDataScheme("package");
+        mContext.registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+
+                String pkg = getPackageName(intent);
+                if (pkg != null) {
+
+                        synchronized (WallpaperManagerService.this) {
+                            //when clear the data in settings,the wallpaper file stored in /data/data/com.android.settings/files is cleared
+                            //we need to start watching the file again.
+                            if(null != pkg && pkg.equalsIgnoreCase("com.android.settings")){
+                                mWallpaperObserver.stopWatching();
+                                WALLPAPER_DIR.mkdirs();
+                                mWallpaperObserver.startWatching();
+                            }
+
+                    }
+                }
+            }
+        }, pkgFilter);
     }
-    
+
+    private String getPackageName(Intent intent) {
+        Uri uri = intent.getData();
+        String pkg = uri != null ? uri.getSchemeSpecificPart() : null;
+        return pkg;
+    }
+
     @Override
     protected void finalize() throws Throwable {
         super.finalize();
