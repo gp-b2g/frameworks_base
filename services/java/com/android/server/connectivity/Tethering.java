@@ -43,6 +43,10 @@ import android.os.IBinder;
 import android.os.INetworkManagementService;
 import android.os.Looper;
 import android.os.Message;
+
+import android.os.PowerManager;
+import android.text.TextUtils;
+
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.provider.Settings;
@@ -136,6 +140,8 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
     private boolean mUsbTetherRequested; // true if USB tethering should be started
                                          // when RNDIS is enabled
 
+    private PowerManager.WakeLock mTetheringWakeLock;
+
     public Tethering(Context context, INetworkManagementService nmService,
             INetworkStatsService statsService, IConnectivityManager connService, Looper looper) {
         mContext = context;
@@ -180,6 +186,10 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
         mDefaultDnsServers = new String[2];
         mDefaultDnsServers[0] = DNS_DEFAULT_SERVER1;
         mDefaultDnsServers[1] = DNS_DEFAULT_SERVER2;
+	
+	PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
+	mTetheringWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Tethering.mTetheringWakeLock");
+	mTetheringWakeLock.setReferenceCounted(true);
     }
 
     void updateConfiguration() {
@@ -337,6 +347,10 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
             Log.e(TAG, "Tried to Tether an unavailable iface :" + iface + ", ignoring");
             return ConnectivityManager.TETHER_ERROR_UNAVAIL_IFACE;
         }
+	if(TextUtils.equals(iface,"wlan0")){
+		mTetheringWakeLock.acquire();
+		Log.d(TAG,"add wakelock for " + iface + "hotspot");
+ 	}
         sm.sendMessage(TetherInterfaceSM.CMD_TETHER_REQUESTED);
         return ConnectivityManager.TETHER_ERROR_NO_ERROR;
     }
@@ -356,6 +370,11 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
             return ConnectivityManager.TETHER_ERROR_UNAVAIL_IFACE;
         }
         sm.sendMessage(TetherInterfaceSM.CMD_TETHER_UNREQUESTED);
+
+	if(TextUtils.equals(iface,"wlan0")){
+	    mTetheringWakeLock.release();
+	    Log.d(TAG,"release wakelock for " + iface + "hotspot");
+	}
         return ConnectivityManager.TETHER_ERROR_NO_ERROR;
     }
 
