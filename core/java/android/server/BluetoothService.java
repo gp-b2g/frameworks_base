@@ -1269,9 +1269,10 @@ public class BluetoothService extends IBluetooth.Stub {
                 mBondState.clearPinAttempts(address);
             }
         } else {
-            setBondState(address, BluetoothDevice.BOND_NONE, result);
             if (result == BluetoothDevice.UNBOND_REASON_AUTH_FAILED &&
                 mBondState.getAttempt(address) == 1) {
+                //Dont update UI as we reattempt poping up for key
+                result = BluetoothDevice.UNBOND_REASON_REMOVED;
                 mBondState.addAutoPairingFailure(address);
                 pairingAttempt(address, result);
             } else if (result == BluetoothDevice.UNBOND_REASON_REMOTE_DEVICE_DOWN &&
@@ -1282,6 +1283,7 @@ public class BluetoothService extends IBluetooth.Stub {
                    mBondState.clearPinAttempts(address);
                 }
              }
+            setBondState(address, BluetoothDevice.BOND_NONE, result);
         }
     }
 
