@@ -856,6 +856,8 @@ public class MSimNetworkController extends NetworkController {
                 mMSimcombinedSignalIconId[subscription] = mMSimDataSignalIconId[subscription];
                 mMSimContentDescriptionCombinedSignal[subscription] =
                         mMSimContentDescriptionDataType[subscription];
+            } else if (mDataServiceState[subscription] == ServiceState.STATE_OUT_OF_SERVICE) {
+                mMSimcombinedActivityIconId[subscription] = mMSimMobileActivityIconId[subscription] = 0;
             }
         }
 
