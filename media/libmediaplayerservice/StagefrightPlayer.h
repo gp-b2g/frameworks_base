@@ -1,6 +1,7 @@
 /*
 **
 ** Copyright 2009, The Android Open Source Project
+** Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -58,6 +59,7 @@ public:
     virtual void setAudioSink(const sp<AudioSink> &audioSink);
     virtual status_t setParameter(int key, const Parcel &request);
     virtual status_t getParameter(int key, Parcel *reply);
+    virtual bool initRender();
 
     virtual status_t getMetadata(
             const media::Metadata::Filter& ids, Parcel *records);

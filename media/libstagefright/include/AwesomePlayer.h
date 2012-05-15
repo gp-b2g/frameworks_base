@@ -106,6 +106,8 @@ struct AwesomePlayer {
 
     status_t dump(int fd, const Vector<String16> &args) const;
 
+    bool initRender();
+
 private:
     friend struct AwesomeEvent;
     friend struct PreviewPlayer;

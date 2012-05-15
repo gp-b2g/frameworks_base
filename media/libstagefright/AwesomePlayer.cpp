@@ -2814,6 +2814,16 @@ void AwesomePlayer::modifyFlags(unsigned value, FlagMode mode) {
     }
 }
 
+bool AwesomePlayer::initRender(){
+    LOGV("initRender");
+    initRenderer_l();
+    if (mVideoBuffer != NULL){
+        LOGV("will render the buffer before suspend");
+        mVideoRenderer->render(mVideoBuffer);
+    }
+    return true;
+}
+
 //Statistics profiling
 void AwesomePlayer::logStatistics() {
     const char *mime;

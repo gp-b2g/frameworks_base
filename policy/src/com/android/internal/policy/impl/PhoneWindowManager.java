@@ -3970,6 +3970,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     }
     
     void startDockOrHome() {
+        Intent m_intent = new Intent("android.media.videoview.BACKTOHOME");
+        mContext.sendBroadcast(m_intent);
         Intent dock = createHomeDockIntent();
         if (dock != null) {
             try {

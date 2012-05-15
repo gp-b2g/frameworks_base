@@ -1087,6 +1087,15 @@ status_t MediaPlayerService::Client::getParameter(int key, Parcel *reply) {
     return p->getParameter(key, reply);
 }
 
+status_t MediaPlayerService::Client::initRender(bool* state)
+{
+    LOGV("initRender");
+    sp<MediaPlayerBase> p = getPlayer();
+    if (p == 0) return UNKNOWN_ERROR;
+    *state = p->initRender();
+    return NO_ERROR;
+}
+
 void MediaPlayerService::Client::notify(
         void* cookie, int msg, int ext1, int ext2, const Parcel *obj)
 {

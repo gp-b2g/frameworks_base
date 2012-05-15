@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -144,6 +145,7 @@ public:
     virtual player_type playerType() = 0;
     virtual status_t    setParameter(int key, const Parcel &request) = 0;
     virtual status_t    getParameter(int key, Parcel *reply) = 0;
+    virtual bool        initRender() {return false;}
 
     // Invoke a generic method on the player by using opaque parcels
     // for the request and reply.

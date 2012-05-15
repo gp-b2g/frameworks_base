@@ -1,6 +1,7 @@
 /*
 **
 ** Copyright 2008, The Android Open Source Project
+** Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -55,6 +56,7 @@ enum {
     SET_VIDEO_SURFACETEXTURE,
     SET_PARAMETER,
     GET_PARAMETER,
+    INIT_RENDER,
 };
 
 class BpMediaPlayer: public BpInterface<IMediaPlayer>
@@ -291,6 +293,15 @@ public:
         return remote()->transact(GET_PARAMETER, data, reply);
     }
 
+    status_t initRender(bool* state)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IMediaPlayer::getInterfaceDescriptor());
+        remote()->transact(INIT_RENDER, data, &reply);
+        *state = reply.readInt32();
+        return reply.readInt32();
+    }
+
 };
 
 IMPLEMENT_META_INTERFACE(MediaPlayer, "android.media.IMediaPlayer");
@@ -458,6 +469,14 @@ status_t BnMediaPlayer::onTransact(
         case GET_PARAMETER: {
             CHECK_INTERFACE(IMediaPlayer, data, reply);
             return getParameter(data.readInt32(), reply);
+        } break;
+        case INIT_RENDER: {
+            CHECK_INTERFACE(IMediaPlayer, data, reply);
+            bool state;
+            status_t ret = initRender(&state);
+            reply->writeInt32(state);
+            reply->writeInt32(ret);
+            return NO_ERROR;
         } break;
         default:
             return BBinder::onTransact(code, data, reply, flags);

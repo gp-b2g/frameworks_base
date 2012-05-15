@@ -1,6 +1,7 @@
 /* mediaplayer.cpp
 **
 ** Copyright 2006, The Android Open Source Project
+** Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -748,4 +749,19 @@ void MediaPlayer::died()
 
 }
 
+bool MediaPlayer::initRender() {
+    LOGV("MediaPlayer::initRender");
+    Mutex::Autolock _l(mLock);
+    if (mPlayer == 0) {
+        LOGE("mPlay = 0");
+        return false;
+    }
+    bool temp = false;
+    status_t ret = mPlayer->initRender(&temp);
+    if (OK != ret) {
+        LOGE("MediaPlayer::initRender return with error ret=%d, temp=%d",ret,temp);
+        return false;
+    }
+    return temp;
+}
 }; // namespace android

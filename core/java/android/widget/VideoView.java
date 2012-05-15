@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +36,8 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.MediaController.MediaPlayerControl;
-
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import java.io.IOException;
 import java.util.Map;
 
@@ -61,6 +63,17 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     private static final int STATE_PLAYING            = 3;
     private static final int STATE_PAUSED             = 4;
     private static final int STATE_PLAYBACK_COMPLETED = 5;
+    private static final int STATE_SUSPEND            = 6;
+    private static final int STATE_RESUME             = 7;
+    private static final int STATE_SUSPEND_UNSUPPORTED = 8;
+
+    //Framework Type, URI decided.
+    private static final int URI_HTTP     = 1;
+    private static final int URI_RTSP     = 2;
+    private static final int URI_HTTPLIVE = 3;
+    private static final int URI_HTTPDASH = 4;
+    private static final int URI_CONTENT  = 5;
+    private static final int URI_OTHER    = 6;
 
     // mCurrentState is a VideoView object's current state.
     // mTargetState is the state that a method caller intends to reach.
@@ -89,6 +102,8 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     private boolean     mCanSeekBack;
     private boolean     mCanSeekForward;
     private int         m3DAttributes;
+    private int         mStateWhenSuspended;       //state before calling suspend()
+    private VideoViewReceiver mReceiver = null;
 
     public VideoView(Context context) {
         super(context);
@@ -180,6 +195,28 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
         mTargetState  = STATE_IDLE;
     }
 
+    private final class VideoViewReceiver extends BroadcastReceiver {
+        public void onReceive(Context context, Intent intent){
+            String action = intent.getAction();
+            if (action == null) {
+                return;
+            } else if (action.equals("android.media.videoview.BACKTOHOME")) {
+                if (getURIType(mUri) != URI_OTHER) {
+                    release(true);
+                }
+
+                if (mReceiver != null){
+                    mContext.unregisterReceiver(mReceiver);
+                    mReceiver = null;
+                }
+            } else if(action.equals("android.intent.action.USER_PRESENT")) {
+                if (mMediaPlayer != null && mTargetState == STATE_PLAYING) {
+                    start();
+                }
+            }
+        }
+    }
+
     public void setVideoPath(String path) {
         setVideoURI(Uri.parse(path));
     }
@@ -264,6 +301,26 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
         }
         mMediaController = controller;
         attachMediaController();
+    }
+
+    private int getURIType(Uri muri) {
+        if (muri !=null){
+            String scheme = muri.toString();
+            if (scheme.startsWith("http://") || scheme.startsWith("https://")) {
+                if (scheme.endsWith(".m3u8") || scheme.endsWith(".m3u") || scheme.contains("m3u8")) {
+                    return URI_HTTPLIVE;
+                }
+                if (scheme.endsWith(".mpd")) {
+                    return URI_HTTPDASH;
+                }
+                return URI_HTTP;
+            } else if (scheme.startsWith("rtsp://")) {
+                return URI_RTSP;
+            } else if (scheme.startsWith("content://")) {
+                return URI_CONTENT;
+            }
+        }
+        return URI_OTHER;
     }
 
     private void attachMediaController() {
@@ -486,11 +543,49 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
                 }
                 start();
             }
+
+            //display the MediaController
+            if (mMediaController != null) {
+                if (mMediaController.isShowing()) {
+                    mMediaController.hide();
+                }
+                mMediaController.show();
+            }
         }
 
         public void surfaceCreated(SurfaceHolder holder)
         {
             mSurfaceHolder = holder;
+            if (mReceiver == null) {
+                IntentFilter filter = new IntentFilter();
+                filter.addAction("android.media.videoview.BACKTOHOME");
+                filter.addAction("android.intent.action.USER_PRESENT");
+                mReceiver = new VideoViewReceiver();
+                mContext.registerReceiver(mReceiver,filter);
+            }
+
+            if (mMediaPlayer != null) {
+                int uriType = getURIType(mUri);
+                if (mCurrentState == STATE_PAUSED && mTargetState == STATE_SUSPEND) {
+                    switch (uriType) {
+                        case URI_HTTP:
+                        case URI_CONTENT:
+                            mMediaPlayer.setDisplay(mSurfaceHolder);
+                            mMediaPlayer.initRender();
+                            mTargetState = mStateWhenSuspended;
+                            return;
+                        case URI_RTSP:
+                        case URI_HTTPLIVE:
+                        case URI_HTTPDASH:
+                            //TO DO
+                            break;
+                        case URI_OTHER:
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
             openVideo();
         }
 
@@ -498,7 +593,19 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
         {
             // after we return from this we can't use the surface any more
             mSurfaceHolder = null;
-            if (mMediaController != null) mMediaController.hide();
+            if (mMediaController != null)
+	        mMediaController.hide();
+
+            if (mReceiver != null) {
+                mContext.unregisterReceiver(mReceiver);
+                mReceiver = null;
+            }
+
+            if (getURIType(mUri) == URI_HTTP || getURIType(mUri) == URI_CONTENT) {
+                if (mCurrentState == STATE_PAUSED && mTargetState == STATE_SUSPEND) {
+                    return;
+                }
+            }
             release(true);
         }
     };
@@ -603,6 +710,29 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     }
 
     public void suspend() {
+        int uriType = getURIType(mUri);
+        if (mCurrentState != STATE_PREPARING) {
+            switch (uriType) {
+                case URI_HTTP:
+                case URI_CONTENT:
+                    mStateWhenSuspended = mTargetState;
+                    pause();
+                    mTargetState = STATE_SUSPEND;
+                    return;
+                case URI_RTSP:
+                case URI_HTTPLIVE:
+                case URI_HTTPDASH:
+                    //TO DO
+                    break;
+                case URI_OTHER:
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        //default operation
+        Log.v(TAG, "huiy: suspend() default operation");
         if(mSeekWhenPrepared == 0) {
           mSeekWhenPrepared = getCurrentPosition();
         }
@@ -611,6 +741,31 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     }
 
     public void resume() {
+        if (mMediaPlayer != null) {
+            int uriType = getURIType(mUri);
+            switch (uriType) {
+                case URI_HTTP:
+                case URI_CONTENT:
+                    if (mCurrentState == STATE_PAUSED && mTargetState == STATE_SUSPEND){
+                        if (mSurfaceHolder != null) {
+                            mTargetState = (mStateWhenSuspended == STATE_PLAYING) ? STATE_PLAYING : STATE_PAUSED;
+                        }
+                        return;
+                    }
+                    break;
+                case URI_RTSP:
+                case URI_HTTPLIVE:
+                case URI_HTTPDASH:
+                    //TO DO
+                    break;
+                case URI_OTHER:
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        //default operation
         openVideo();
     }
 
