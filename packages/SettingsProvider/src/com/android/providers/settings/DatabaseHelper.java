@@ -46,6 +46,8 @@ import com.android.internal.util.XmlUtils;
 import com.android.internal.widget.LockPatternUtils;
 import com.android.internal.widget.LockPatternView;
 
+import com.qrd.plugin.feature_query.FeatureQuery;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -1403,7 +1405,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             loadIntegerSetting(stmt, Settings.System.POINTER_SPEED,
                     R.integer.def_pointer_speed);
 
-            loadSetting(stmt, Settings.System.SHOW_DURATION, 0);
+            loadSetting(stmt, Settings.System.SHOW_DURATION,
+                    FeatureQuery.FEATURE_SHOW_DURATION_AFTER_CALL ? 1 : 0);
 
         } finally {
             if (stmt != null) stmt.close();
