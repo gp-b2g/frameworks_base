@@ -86,6 +86,7 @@ public final class CdmaCallTracker extends CallTracker {
 
 //    boolean needsPoll;
 
+    private CdmaCallWaitingNotification mCCWN = null;
 
 
     //***** Events
@@ -295,6 +296,9 @@ public final class CdmaCallTracker extends CallTracker {
             // triggered by updateParent.
             cwConn.updateParent(ringingCall, foregroundCall);
             cwConn.onConnectedInOrOut();
+
+            // accept call and reset the saved notification
+            resetWaitingNotification();
             updatePhoneState();
             switchWaitingOrHoldingAndActive();
         } else {
@@ -973,6 +977,18 @@ public final class CdmaCallTracker extends CallTracker {
     }
 
     private void handleCallWaitingInfo (CdmaCallWaitingNotification cw) {
+        if (mCCWN == null) {
+            mCCWN = cw;
+            Log.d(LOG_TAG, "call waiting info notification initial");
+        } else {
+            if (mCCWN.equals(cw)) {
+                Log.d(LOG_TAG, "no need to create another connection since cw is the same");
+                return;
+            } else {
+                mCCWN = cw;
+            }
+        }
+
         // Check how many connections in foregroundCall.
         // If the connection in foregroundCall is more
         // than one, then the connection information is
@@ -1191,6 +1207,11 @@ public final class CdmaCallTracker extends CallTracker {
 
     protected void log(String msg) {
         Log.d(LOG_TAG, "[CdmaCallTracker] " + msg);
+    }
+
+    void resetWaitingNotification(){
+        Log.d(LOG_TAG,"reset WaitingNotification");
+        mCCWN = null;
     }
 
 }

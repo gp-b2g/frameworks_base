@@ -65,4 +65,12 @@ public class CdmaCallWaitingNotification {
                 return Connection.PRESENTATION_UNKNOWN;
         }
     }
+
+    public boolean equals(CdmaCallWaitingNotification cw) {
+        if (cw != null && this.number.equals(cw.number)) {
+            return true;
+        }
+
+        return false;
+    }
 }

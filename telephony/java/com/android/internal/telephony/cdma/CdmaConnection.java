@@ -468,7 +468,7 @@ public class CdmaConnection extends Connection {
     /*package*/ void
     onDisconnect(DisconnectCause cause) {
         this.cause = cause;
-
+        owner.resetWaitingNotification();
         if (!disconnected) {
             doDisconnect();
             if (false) Log.d(LOG_TAG,
@@ -486,6 +486,7 @@ public class CdmaConnection extends Connection {
     /** Called when the call waiting connection has been hung up */
     /*package*/ void
     onLocalDisconnect() {
+        owner.resetWaitingNotification();
         if (!disconnected) {
             doDisconnect();
             if (false) Log.d(LOG_TAG,
