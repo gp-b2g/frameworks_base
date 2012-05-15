@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +25,6 @@ import android.util.TypedValue;
 import com.android.internal.util.XmlUtils;
 
 import java.util.Arrays;
-
-import com.qrd.plugin.feature_query.FeatureQuery;
 
 /**
  * Container for an array of values that were retrieved with
@@ -80,7 +77,7 @@ public class TypedArray {
     public Resources getResources() {
         return mResources;
     }
-
+    
     /**
      * Retrieve the styled string value for the attribute at <var>index</var>.
      * 
@@ -103,41 +100,6 @@ public class TypedArray {
         if (getValueAt(index, v)) {
             Log.w(Resources.TAG, "Converting to string: " + v);
             return v.coerceToString();
-        }
-        Log.w(Resources.TAG, "getString of bad type: 0x"
-              + Integer.toHexString(type));
-        return null;
-    }
-
-    /**
-     * {@hide}
-     * Retrieve the string value for the attribute at <var>index</var>.
-     * Too many caller of getString(),so extend it.
-     *
-     * @param index Index of attribute to retrieve.
-     *
-     * @return String holding string data.  Any styling information is
-     * removed.  Returns null if the attribute is not defined.
-     */
-    public String getStringEx(int index) {
-        index *= AssetManager.STYLE_NUM_ENTRIES;
-        final int[] data = mData;
-        final int type = data[index+AssetManager.STYLE_TYPE];
-        if (type == TypedValue.TYPE_NULL) {
-            return null;
-        } else if (type == TypedValue.TYPE_STRING) {
-            CharSequence resourceText =  loadStringValueAt(index);
-            if(FeatureQuery.FEATURE_DISPLAY_USE_WLAN_INSTEAD){
-                resourceText=AssetManager.replaceAllWiFi(resourceText);
-            }
-            return resourceText.toString();
-        }
-
-        TypedValue v = mValue;
-        if (getValueAt(index, v)) {
-            Log.w(Resources.TAG, "Converting to string: " + v);
-            CharSequence cs = v.coerceToString();
-            return cs != null ? cs.toString() : null;
         }
         Log.w(Resources.TAG, "getString of bad type: 0x"
               + Integer.toHexString(type));

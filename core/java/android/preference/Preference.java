@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -215,16 +214,16 @@ public class Preference implements Comparable<Preference>, OnDependencyChangeLis
                 case com.android.internal.R.styleable.Preference_key:
                     mKey = a.getString(attr);
                     break;
-
+                    
                 case com.android.internal.R.styleable.Preference_title:
                     mTitleRes = a.getResourceId(attr, 0);
-                    mTitle = a.getStringEx(attr);
+                    mTitle = a.getString(attr);
                     break;
-
+                    
                 case com.android.internal.R.styleable.Preference_summary:
-                    mSummary = a.getStringEx(attr);
+                    mSummary = a.getString(attr);
                     break;
-
+                    
                 case com.android.internal.R.styleable.Preference_order:
                     mOrder = a.getInt(attr, mOrder);
                     break;
