@@ -443,7 +443,7 @@ class SamplingRateChangeProcessor implements Runnable {
                 mSavedSamplingRate = new String(samplingRate);
                 PrintWriter samplingRateWriter = new PrintWriter(fileSamplingRate);
 
-                samplingRateWriter.print(SCREEN_OFF_SAMPLING_RATE);
+                samplingRateWriter.print(SystemProperties.get("dev.pm.dyn_sample_period", SCREEN_OFF_SAMPLING_RATE));
                 samplingRateWriter.close();
                 Log.i(TAG, "Increased sampling rate.");
             } catch (Exception exception) {
