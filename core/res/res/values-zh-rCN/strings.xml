@@ -656,6 +656,7 @@
     <string name="keyguard_password_enter_pin_password_code" msgid="638347075625491514">"输入 PIN 进行解锁"</string>
     <string name="keyguard_password_wrong_pin_code" msgid="1295984114338107718">"PIN 码不正确！"</string>
     <string name="keyguard_password_wrong_puk_code">"PUK 码不正确！"</string>
+    <string name="keyguard_pin_accepted">"PIN 码正确！"</string>
     <string name="keyguard_label_text" msgid="861796461028298424">"要解锁，请先按 MENU 再按 0。"</string>
     <string name="emergency_call_dialog_number_for_display" msgid="696192103195090970">"急救或报警电话"</string>
     <string name="lockscreen_carrier_default" msgid="8963839242565653192">"无服务"</string>
