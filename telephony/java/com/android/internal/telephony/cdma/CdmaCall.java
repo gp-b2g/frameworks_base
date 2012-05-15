@@ -32,7 +32,6 @@ import com.android.internal.telephony.Call.State;
 public final class CdmaCall extends Call {
     /*************************** Instance Variables **************************/
 
-    /*package*/ State state = State.IDLE;
     /*package*/ CdmaCallTracker owner;
 
     /***************************** Class Methods *****************************/
