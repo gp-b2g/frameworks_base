@@ -141,6 +141,14 @@ public class LocationManager {
     public static final String KEY_LOCATION_CHANGED = "location";
 
     /**
+     * Key used for storing and retrieving a Data Base entry
+     * correspoding to enabled/disabled state of Enhanced Location services
+     * Location Services.
+     * @hide
+     */
+    public static final String ENH_LOCATION_SERVICES_ENABLED = "enhLocationServices_on";
+
+    /**
      * Broadcast intent action indicating that the GPS has either been
      * enabled or disabled. An intent extra provides this state as a boolean,
      * where {@code true} means enabled.
