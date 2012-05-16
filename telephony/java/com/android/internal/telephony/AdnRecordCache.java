@@ -229,7 +229,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
             newAdn.efid = foundAdn.efid;
             newAdn.extRecord = foundAdn.extRecord;
-            newAdn.recordNumber = index;
+            newAdn.recordNumber = foundAdn.recordNumber;
 
 
         }
@@ -396,7 +396,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
         if (success) {
             userWriteResponse.put(efid, response);
             new AdnRecordLoader(mFh).updateEF(newAdn, newAdn.efid, extensionEF,
-                index, pin2,
+                newAdn.recordNumber, pin2,
                 obtainMessage(EVENT_UPDATE_ADN_DONE, efid, index, newAdn));
         } else {
             sendErrorResponse(response, "update anr failed");
