@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,6 +67,7 @@ NuPlayer::NuPlayer()
       mNumFramesTotal(0ll),
       mNumFramesDropped(0ll),
       mPauseIndication(false),
+      mSeeking(false),
       mLiveSourceType(kDefaultSource) {
 }
 
@@ -468,7 +470,9 @@ void NuPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 if (mDriver != NULL) {
                     sp<NuPlayerDriver> driver = mDriver.promote();
                     if (driver != NULL) {
-                        driver->notifyPosition(positionUs);
+                        if (!mSeeking) {
+                            driver->notifyPosition(positionUs);
+                        }
 
                         driver->notifyFrameStats(
                                 mNumFramesTotal, mNumFramesDropped);
@@ -550,6 +554,7 @@ void NuPlayer::onMessageReceived(const sp<AMessage> &msg) {
             LOGV("kWhatSeek seekTimeUs=%lld us (%.2f secs)",
                  seekTimeUs, seekTimeUs / 1E6);
 
+            mSource->setCbfForSeekDone(new AMessage(kWhatSeekDone, id()));
             nRet = mSource->seekTo(seekTimeUs);
 
             if (mLiveSourceType == kHttpLiveSource) {
@@ -580,8 +585,11 @@ void NuPlayer::onMessageReceived(const sp<AMessage> &msg) {
                // get the new seeked position
                newSeekTime = seekTimeUs;
                LOGV("newSeekTime %lld", newSeekTime);
+            } else if (mLiveSourceType == kRtspSource){
+                newSeekTime = seekTimeUs;
             }
-            if( (newSeekTime >= 0 ) && (mLiveSourceType != kHttpDashSource)) {
+
+            if( (newSeekTime >= 0 ) && (mLiveSourceType != kHttpDashSource) && (mLiveSourceType != kRtspSource) ) {
                mTimeDiscontinuityPending = true;
                if( (mAudioDecoder != NULL) &&
                    (mFlushingAudio == NONE || mFlushingAudio == AWAITING_DISCONTINUITY) ) {
@@ -602,6 +610,7 @@ void NuPlayer::onMessageReceived(const sp<AMessage> &msg) {
                }
             }
 
+            mSeeking = true;
             if (mDriver != NULL) {
                 sp<NuPlayerDriver> driver = mDriver.promote();
                 if (driver != NULL) {
@@ -632,7 +641,11 @@ void NuPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 mScanSourcesPending = false;
                 postScanSources();
             }
+        }
 
+        case kWhatSeekDone:
+        {
+            mSeeking = false;
             break;
         }
 
@@ -921,6 +934,11 @@ void NuPlayer::renderBuffer(bool audio, const sp<AMessage> &msg) {
 
     sp<AMessage> reply;
     CHECK(msg->findMessage("reply", &reply));
+
+    if (mSeeking) {
+        reply->post();
+        return;
+    }
 
     Mutex::Autolock autoLock(mLock);
     if (IsFlushingState(audio ? mFlushingAudio : mFlushingVideo)) {

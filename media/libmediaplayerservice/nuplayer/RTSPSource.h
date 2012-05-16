@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +50,8 @@ struct NuPlayer::RTSPSource : public NuPlayer::Source {
 
     void onMessageReceived(const sp<AMessage> &msg);
 
+    virtual bool setCbfForSeekDone(const sp<AMessage> &notify);
+
 protected:
     virtual ~RTSPSource();
 
@@ -88,6 +91,7 @@ private:
     State mState;
     status_t mFinalResult;
     uint32_t mDisconnectReplyID;
+    sp<AMessage> mSeekDoneNotify;
 
     sp<ALooper> mLooper;
     sp<AHandlerReflector<RTSPSource> > mReflector;

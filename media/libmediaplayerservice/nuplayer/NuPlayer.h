@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,6 +86,7 @@ private:
         kWhatSeek                       = 'seek',
         kWhatPause                      = 'paus',
         kWhatResume                     = 'rsme',
+        kWhatSeekDone                   = 'seeD',
     };
 
     wp<NuPlayerDriver> mDriver;
@@ -133,6 +135,7 @@ private:
     FlushStatus mFlushingVideo;
     bool mResetInProgress;
     bool mResetPostponed;
+    bool mSeeking;
 
     int64_t mSkipRenderingAudioUntilMediaTimeUs;
     int64_t mSkipRenderingVideoUntilMediaTimeUs;

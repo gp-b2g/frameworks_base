@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +40,7 @@ NuPlayer::RTSPSource::RTSPSource(
       mState(DISCONNECTED),
       mFinalResult(OK),
       mDisconnectReplyID(0),
+      mSeekDoneNotify(NULL),
       mSeekGeneration(0) {
     if (headers) {
         mExtraHeaders = *headers;
@@ -214,12 +216,19 @@ void NuPlayer::RTSPSource::onMessageReceived(const sp<AMessage> &msg) {
 
         case MyHandler::kWhatSeekDone:
         {
+            if (mSeekDoneNotify != NULL) {
+                sp<AMessage> notify = mSeekDoneNotify->dup();
+                notify->post();
+            }
             mState = CONNECTED;
             break;
         }
 
         case MyHandler::kWhatAccessUnit:
         {
+            if (mState == SEEKING) {
+                break;
+            }
             size_t trackIndex;
             CHECK(msg->findSize("trackIndex", &trackIndex));
             CHECK_LT(trackIndex, mTracks.size());
@@ -390,6 +399,11 @@ void NuPlayer::RTSPSource::finishDisconnectIfPossible() {
 
     (new AMessage)->postReply(mDisconnectReplyID);
     mDisconnectReplyID = 0;
+}
+
+bool NuPlayer::RTSPSource::setCbfForSeekDone(const sp<AMessage> &notify) {
+    mSeekDoneNotify = notify;
+    return true;
 }
 
 }  // namespace android
