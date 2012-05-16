@@ -478,7 +478,8 @@ static jboolean android_location_GpsLocationProvider_update_criteria(JNIEnv* env
 
 static jboolean android_location_GpsLocationProvider_update_settings(JNIEnv* env, jobject obj,
         jint currentContextType, jboolean currentGpsSetting, jboolean currentAgpsSetting,
-        jboolean currentNetworkProvSetting, jboolean currentWifiSetting, jboolean currentBatteryCharging)
+        jboolean currentNetworkProvSetting, jboolean currentWifiSetting,
+        jboolean currentBatteryCharging, jboolean currentEnhLocationServicesSetting )
 {
     if (sUlpPhoneContextInterface->ulp_phone_context_settings_update ) {
         UlpPhoneContextSettings settings;
@@ -488,6 +489,7 @@ static jboolean android_location_GpsLocationProvider_update_settings(JNIEnv* env
         settings.is_network_position_available = currentNetworkProvSetting;
         settings.is_wifi_setting_enabled = currentWifiSetting;
         settings.is_battery_charging = currentBatteryCharging;
+        settings.is_enh_location_services_enabled = currentEnhLocationServicesSetting;
         return sUlpPhoneContextInterface->ulp_phone_context_settings_update(&settings);
     }
     else
@@ -783,7 +785,7 @@ static JNINativeMethod sMethods[] = {
     {"native_cleanup", "()V", (void*)android_location_GpsLocationProvider_cleanup},
     {"native_set_position_mode", "(IIIII)Z", (void*)android_location_GpsLocationProvider_set_position_mode},
     {"native_update_criteria", "(IJFZII)Z", (void*)android_location_GpsLocationProvider_update_criteria},
-    {"native_update_settings", "(IZZZZZ)Z", (void*)android_location_GpsLocationProvider_update_settings},
+    {"native_update_settings", "(IZZZZZZ)Z", (void*)android_location_GpsLocationProvider_update_settings},
     {"native_start", "()Z", (void*)android_location_GpsLocationProvider_start},
     {"native_stop", "()Z", (void*)android_location_GpsLocationProvider_stop},
     {"native_delete_aiding_data", "(I)V", (void*)android_location_GpsLocationProvider_delete_aiding_data},

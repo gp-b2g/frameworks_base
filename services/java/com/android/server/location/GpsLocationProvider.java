@@ -19,7 +19,9 @@ package com.android.server.location;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ContentQueryMap;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -63,6 +65,7 @@ import android.util.Log;
 import android.util.NtpTrustedTime;
 import android.util.SparseIntArray;
 
+
 import com.android.internal.app.IBatteryStats;
 import com.android.internal.location.GpsNetInitiatedHandler;
 import com.android.internal.location.GpsNetInitiatedHandler.GpsNiNotification;
@@ -81,6 +84,9 @@ import java.util.Collection;
 import java.net.InetAddress;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
+import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
 
 /**
  * A GPS implementation of LocationProvider used by LocationManager.
@@ -205,6 +211,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private volatile boolean mAgpsSetting = false;
     private volatile boolean mNetworkProvSetting = false;
     private volatile boolean mWifiSetting = false;
+    private volatile boolean mEnhServicesSetting = false;
     //ULP Defines
     private static final int ULP_NETWORK_POS_STATUS_REQUEST = 1;
     private static final int ULP_NETWORK_POS_START_PERIODIC_REQUEST = 2;
@@ -221,6 +228,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
     * ON_CHANGE request type */
     private static final int ULP_PHONE_CONTEXT_BATTERY_CHARGING_STATE      = 0x8;
     private static final int ULP_PHONE_CONTEXT_AGPS_SETTING = 0x10;
+    private static final int ULP_PHONE_CONTEXT_ENH_LOCATION_SERVICES_SETTING = 0x20;
 
     /** Required Settings subscription flag*/
     private static final int ULP_PHONE_CONTEXT_GPS_ON        = 0x1;
@@ -233,6 +241,8 @@ public class GpsLocationProvider implements LocationProviderInterface {
     private static final int ULP_PHONE_CONTEXT_WIFI_OFF     = 0x80;
     private static final int ULP_PHONE_CONTEXT_BATTERY_CHARGING_ON= 0x100;
     private static final int ULP_PHONE_CONTEXT_BATTERY_CHARGING_OFF= 0x200;
+    private static final int ULP_PHONE_CONTEXT_ENH_LOCATION_SERVICES_ON= 0x400;
+    private static final int ULP_PHONE_CONTEXT_ENH_LOCATION_SERVICES_OFF= 0x800;
 
     /** return phone context only once */
     private static final int ULP_PHONE_CONTEXT_REQUEST_TYPE_SINGLE= 0x1;
@@ -980,9 +990,9 @@ public class GpsLocationProvider implements LocationProviderInterface {
             //We want to stop only if Hybrid is started and GPS is off
             if ((mHybridStarted == true) && (mGpsStarted == false)) {
                 mLocationFlags = LOCATION_INVALID;
-                mSingleShotHybrid =  false;
                 native_stop();
             }
+            mSingleShotHybrid =  false;
             mHybridStarted = false;
         }
         Log.d(TAG, "In handleEnableLocationTrackingHybrid.End. enable " +enable +
@@ -1086,10 +1096,10 @@ public class GpsLocationProvider implements LocationProviderInterface {
       //Read all the current settings and update mask value
       boolean currentAgpsSetting = false, currentWifiSetting  = false,
           currentGpsSetting = false, currentNetworkProvSetting = false,
-          currentBatteryCharging = false;
+          currentBatteryCharging = false, currentEnhLocationServicesSetting = false;
       boolean wasAgpsSettingAvailable = false, wasWifiSettingAvailable = false,
           wasGpsSettingAvailable = false, wasNetworkProviderSettingAvailable = false,
-          wasBatteryChargingAvailable = false;
+          wasBatteryChargingAvailable = false, wasEnhLocationServicesSettingAvailable = false;
 
       ContentResolver resolver = mContext.getContentResolver();
       Log.d(TAG, "handleNativePhoneContextUpdate called. updateType: "+ updateType
@@ -1168,6 +1178,32 @@ public class GpsLocationProvider implements LocationProviderInterface {
               }
           }
 
+          //Update Enhanced Location Services Setting
+          if( (mRequestContextType & ULP_PHONE_CONTEXT_ENH_LOCATION_SERVICES_SETTING)
+               == ULP_PHONE_CONTEXT_ENH_LOCATION_SERVICES_SETTING )
+          {
+              if(updateType == ULP_PHONE_CONTEXT_UPDATE_TYPE_SINGLE) {
+                  String currentEnhLocationServicesSettingString =
+                      Settings.Secure.getString(resolver,LocationManager.ENH_LOCATION_SERVICES_ENABLED);
+
+                  if(currentEnhLocationServicesSettingString != null) {
+                      currentEnhLocationServicesSetting = currentEnhLocationServicesSettingString.equals("1");
+                  } else {
+                      Log.e(TAG, "Got null pinter for call to "+
+                                 "Settings.Secure.getString(resolver,LocationManager.ENH_LOCATION_SERVICES_ENABLED)");
+                  }
+                  wasEnhLocationServicesSettingAvailable = true;
+              }else
+              {
+                  if(settingsValues.containsKey("enhLocationServicesSetting"))
+                  {
+                      wasEnhLocationServicesSettingAvailable = true;
+                      currentEnhLocationServicesSetting = settingsValues.getBoolean("enhLocationServicesSetting");
+                  }
+              }
+          }
+
+
           //Update Battery Charging Status
           if( (mRequestContextType & ULP_PHONE_CONTEXT_BATTERY_CHARGING_STATE)
                == ULP_PHONE_CONTEXT_BATTERY_CHARGING_STATE )
@@ -1243,6 +1279,16 @@ public class GpsLocationProvider implements LocationProviderInterface {
           }
           mWifiSetting = currentWifiSetting;
       }
+      if(!wasEnhLocationServicesSettingAvailable) {
+          currentContextType &= (~ULP_PHONE_CONTEXT_ENH_LOCATION_SERVICES_SETTING);
+      } else
+      {
+          if(updateType == ULP_PHONE_CONTEXT_UPDATE_TYPE_ONCHANGE &&
+                    currentEnhLocationServicesSetting == mEnhServicesSetting ) {
+              currentContextType &= (~ULP_PHONE_CONTEXT_ENH_LOCATION_SERVICES_SETTING);
+          }
+          mEnhServicesSetting = currentEnhLocationServicesSetting;
+      }
       if(!wasBatteryChargingAvailable) {
           currentContextType &= (~ULP_PHONE_CONTEXT_BATTERY_CHARGING_STATE);
       } else
@@ -1255,21 +1301,13 @@ public class GpsLocationProvider implements LocationProviderInterface {
       }
 
       native_update_settings(currentContextType, currentGpsSetting, currentAgpsSetting,
-                             currentNetworkProvSetting, currentWifiSetting, currentBatteryCharging);
+                             currentNetworkProvSetting, currentWifiSetting,
+                             currentBatteryCharging, currentEnhLocationServicesSetting);
       Log.d(TAG, "After calling native_update_settings. currentContextType: " +
             currentContextType+" sGpsSetting: "+mGpsSetting + "currentAgpsSetting: "+
-            currentAgpsSetting+" currentNetworkProvSetting: " + currentNetworkProvSetting
-            + " currentWifiSetting: " + currentWifiSetting + " currentBatteryCharging: " + currentBatteryCharging);
-    }
-    public boolean updateSettings(boolean gpsSetting,boolean networkProvSetting,
-                                  boolean wifiSetting,boolean agpsSetting){
-        if (DEBUG) Log.d(TAG, "updateSettings");
-        return true;
-    }
-
-    public boolean updateBatteryStatus(boolean isBatteryCharging){
-        if (DEBUG) Log.d(TAG, "updateBatteryStatus");
-        return true;
+            currentAgpsSetting+" currentNetworkProvSetting: " + currentNetworkProvSetting);
+       Log.d(TAG, "native_update_settings. " + "currentWifiSetting: " + currentWifiSetting + " currentBatteryCharging: " +
+            currentBatteryCharging + " currentEnhLocationServicesSetting: "+currentEnhLocationServicesSetting);
     }
 
     public String getInternalState() {
@@ -2288,7 +2326,8 @@ public class GpsLocationProvider implements LocationProviderInterface {
                                                   boolean singleShot, int horizontalAccuracy,
                                                   int powerRequirement);
     private native boolean native_update_settings(int currentContextType, boolean currentGpsSetting, boolean currentAgpsSetting,
-                           boolean currentNetworkProvSetting, boolean currentWifiSetting, boolean currentBatteryCharging);
+                           boolean currentNetworkProvSetting, boolean currentWifiSetting, boolean currentBatteryCharging,
+                           boolean currentEnhLocationServicesSetting);
 
     private native boolean native_start();
     private native boolean native_stop();
@@ -2395,6 +2434,34 @@ public class GpsLocationProvider implements LocationProviderInterface {
     }
     public class HybridLocationProvider implements LocationProviderInterface {
         private static final String TAG1 = "HybridProvider";
+        // for Settings change notification
+        private ContentQueryMap mSettings;
+
+        public HybridLocationProvider() {
+            //It is assumed that GpsLocationProvider is alive and up at this point
+            if (DEBUG) Log.d(TAG1, "Created HybridLocationProvider instance");
+            // Register for Power Connectivity updates
+            IntentFilter batteryFilter = new IntentFilter();
+            batteryFilter.addAction(Intent.ACTION_POWER_CONNECTED);
+            batteryFilter.addAction(Intent.ACTION_POWER_DISCONNECTED);
+            mContext.registerReceiver(mBatteryBroadcastReceiver, batteryFilter);
+
+            // listen for settings changes
+            ContentResolver resolver = mContext.getContentResolver();
+            Cursor settingsCursor = resolver.query(Settings.Secure.CONTENT_URI,
+                    new String[] {Settings.System.NAME,Settings.System.VALUE},
+                    "(" + Settings.System.NAME + "=?) or ("
+                        + Settings.System.NAME + "=?) or ("
+                        + Settings.System.NAME + "=?) or ("
+                        + Settings.System.NAME + "=?) ",
+                    new String[]{Settings.Secure.LOCATION_PROVIDERS_ALLOWED,
+                        Settings.Secure.WIFI_ON, Settings.Secure.ASSISTED_GPS_ENABLED,
+                        LocationManager.ENH_LOCATION_SERVICES_ENABLED},
+                        null);
+            mSettings = new ContentQueryMap(settingsCursor, Settings.System.NAME, true, mHandler);
+            SettingsObserver settingsObserver = new SettingsObserver();
+            mSettings.addObserver(settingsObserver);
+        }
 
         public String getName() {
             if (DEBUG) Log.d(TAG1, "getName");
@@ -2595,11 +2662,13 @@ public class GpsLocationProvider implements LocationProviderInterface {
             return return_value;
         }
 
-        public boolean updateSettings(boolean gpsSetting,boolean networkProvSetting,
-                                      boolean wifiSetting,boolean agpsSetting){
+        private boolean updateSettings(boolean gpsSetting,boolean networkProvSetting,
+                                      boolean wifiSetting,boolean agpsSetting,
+                                      boolean enhLocationServicesSetting){
            Log.d(TAG1, "updateSettings invoked from LMS and setting values. Gps:"+
                                 gpsSetting +" GNP:"+ networkProvSetting+" WiFi:"+ wifiSetting+
-                                " Agps:"+ agpsSetting);
+                                " Agps:"+ agpsSetting+ "enhLocationServicesSetting: "+
+                                enhLocationServicesSetting);
            synchronized (mWakeLock) {
                mWakeLock.acquire();
                mHandler.removeMessages(UPDATE_NATIVE_PHONE_CONTEXT_SETTINGS);
@@ -2609,14 +2678,15 @@ public class GpsLocationProvider implements LocationProviderInterface {
                b.putBoolean("networkProvSetting", networkProvSetting);
                b.putBoolean("wifiSetting", wifiSetting);
                b.putBoolean("agpsSetting", agpsSetting);
+               b.putBoolean("enhLocationServicesSetting", enhLocationServicesSetting);
                m.setData(b);
                m.arg1 = ULP_PHONE_CONTEXT_UPDATE_TYPE_ONCHANGE;
                mHandler.sendMessage(m);
            }
            return true;
         }
-        public boolean updateBatteryStatus(boolean isBatteryCharging){
-            Log.d(TAG, "updateBatteryStatus invoked from LMS and setting values. isBatteryCharging: " +
+        private boolean updateBatteryStatus(boolean isBatteryCharging){
+            Log.d(TAG, "updateBatteryStatus invoked and setting values. isBatteryCharging: " +
                                  isBatteryCharging);
             synchronized (mWakeLock) {
                 mWakeLock.acquire();
@@ -2633,6 +2703,56 @@ public class GpsLocationProvider implements LocationProviderInterface {
         public int getCapability(){
             if (DEBUG) Log.d(TAG1, "getCapability");
             return 0;
+        }
+
+        private final BroadcastReceiver mBatteryBroadcastReceiver = new BroadcastReceiver() {
+           @Override
+           public void onReceive(Context context, Intent intent) {
+               String action = intent.getAction();
+
+               if(Intent.ACTION_POWER_CONNECTED.equals(action)) {
+                   updateBatteryStatus(true);
+                   if (DEBUG) Log.d(TAG1,"Battery.update POWER_CONNECTED");
+
+               } else if(Intent.ACTION_POWER_DISCONNECTED.equals(action)) {
+                   updateBatteryStatus(false);
+                   if (DEBUG) Log.d(TAG1,"Battery.updatePOWER_DISCONNECTED");
+               }
+           }
+        };
+
+        private final class SettingsObserver implements Observer {
+            public void update(Observable o, Object arg) {
+                if (DEBUG) Log.d(TAG1,  "SettingsObserver.update invoked ");
+                boolean enhLocationServicesSetting = false;
+                //Will read the Settings values & determine if anything changed there
+                Map<String, ContentValues> kvs = ((ContentQueryMap)o).getRows();
+                if (null != kvs && !kvs.isEmpty()) {
+                    if (DEBUG) Log.d(TAG1, "in Settings.Secure.LOCATION_PROVIDERS_ALLOWED - "
+                    +kvs.get(Settings.Secure.LOCATION_PROVIDERS_ALLOWED).toString());
+                    String providers = kvs.get(Settings.Secure.LOCATION_PROVIDERS_ALLOWED).toString();
+                    boolean gpsSetting = providers.contains("gps");
+                    boolean networkProvSetting = providers.contains("network");
+                    boolean wifiSetting =  kvs.get(Settings.Secure.WIFI_ON).toString().contains("1");
+                    boolean agpsSetting =  kvs.get(Settings.Secure.ASSISTED_GPS_ENABLED).toString().contains("1");
+                    String enhLocationServicesSettingString =
+                        kvs.get(LocationManager.ENH_LOCATION_SERVICES_ENABLED).toString();
+                    if(enhLocationServicesSettingString != null) {
+                        enhLocationServicesSetting =
+                            enhLocationServicesSettingString.contains("1");
+                    } else {
+                      Log.e(TAG1, "Got null pinter for call to kvs.get(LocationManager.ENH_LOCATION_SERVICES_ENABLED)");
+                    }
+                    if (DEBUG) {
+                      Log.d(TAG1,  "SettingsObserver.update invoked and setting values. Gps:"+
+                             gpsSetting +" GNP:"+ networkProvSetting+" WiFi:"+ wifiSetting+
+                             " Agps:"+ agpsSetting+ " enhLocationServicesSettingString: "+
+                            enhLocationServicesSettingString);
+                    }
+                    updateSettings(gpsSetting,networkProvSetting,wifiSetting,
+                                   agpsSetting,enhLocationServicesSetting);
+                 }
+            }
         }
     }
 }

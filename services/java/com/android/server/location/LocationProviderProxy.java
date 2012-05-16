@@ -473,13 +473,6 @@ public class LocationProviderProxy implements LocationProviderInterface {
                boolean singleShot,Criteria criteria) {
         return true;
     }
-    public boolean updateSettings(boolean gpsSetting,boolean networkProvSetting,
-                                  boolean wifiSetting,boolean agpsSetting){
-       return true;
-    }
-    public boolean updateBatteryStatus(boolean isBatteryCharging){
-        return true;
-    }
     public int getCapability(){
         return 0;
     }

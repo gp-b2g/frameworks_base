@@ -437,32 +437,6 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
 
     private final class SettingsObserver implements Observer {
         public void update(Observable o, Object arg) {
-            //Settings update only for Hybrid Provider
-            LocationProviderInterface p = mProvidersByName.get(LocationManager.HYBRID_PROVIDER);
-            if(p != null) {
-                 if (LOCAL_LOGV) {
-                   Slog.d(TAG,  "SettingsObserver.update invoked and provider: "+ p.getName());
-                 }
-                 //Will read the Settings values & determine if anything changed there
-                 Map<String, ContentValues> kvs = ((ContentQueryMap)o).getRows();
-                 if (null != kvs && !kvs.isEmpty()) {
-                     Log.v(TAG, "in Settings.Secure.LOCATION_PROVIDERS_ALLOWED - "
-                     +kvs.get(Settings.Secure.LOCATION_PROVIDERS_ALLOWED).toString());
-                     String providers = kvs.get(Settings.Secure.LOCATION_PROVIDERS_ALLOWED).toString();
-                     boolean gpsSetting = providers.contains("gps");
-                     boolean networkProvSetting = providers.contains("network");
-                     boolean wifiSetting =  kvs.get(Settings.Secure.WIFI_ON).toString().contains("1");
-                     boolean agpsSetting =  kvs.get(Settings.Secure.ASSISTED_GPS_ENABLED).toString().contains("1");
-
-                     if (LOCAL_LOGV) {
-                       Slog.d(TAG,  "SettingsObserver.update invoked and setting values. Gps:"+
-                              gpsSetting +" GNP:"+ networkProvSetting+" WiFi:"+ wifiSetting+
-                              " Agps:"+ agpsSetting);
-                     }
-
-                     p.updateSettings(gpsSetting,networkProvSetting,wifiSetting,agpsSetting);
-                  }
-            }
             synchronized (mLock) {
                 updateProvidersLocked();
             }
@@ -590,12 +564,6 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         mContext.registerReceiver(mBroadcastReceiver, intentFilter);
         IntentFilter sdFilter = new IntentFilter(Intent.ACTION_EXTERNAL_APPLICATIONS_UNAVAILABLE);
         mContext.registerReceiver(mBroadcastReceiver, sdFilter);
-
-        // Register for Power Connectivity updates
-        IntentFilter batteryFilter = new IntentFilter();
-        batteryFilter.addAction(Intent.ACTION_POWER_CONNECTED);
-        batteryFilter.addAction(Intent.ACTION_POWER_DISCONNECTED);
-        mContext.registerReceiver(mBatteryBroadcastReceiver, batteryFilter);
 
         // listen for settings changes
         ContentResolver resolver = mContext.getContentResolver();
@@ -2064,26 +2032,6 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             }
         }
     }
-
-    private final BroadcastReceiver mBatteryBroadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            //Settings update only for Hybrid Provider
-            LocationProviderInterface p = mProvidersByName.get(LocationManager.HYBRID_PROVIDER);
-            if(p != null) {
-                if (LOCAL_LOGV) {
-                    Slog.d(TAG,  "Battery.update invoked for provider: " + p.getName());
-                }
-
-                if(Intent.ACTION_POWER_CONNECTED.equals(action)) {
-                    p.updateBatteryStatus(true);
-                } else if(Intent.ACTION_POWER_DISCONNECTED.equals(action)) {
-                    p.updateBatteryStatus(false);
-                }
-            }
-        }
-    };
 
     private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
