@@ -177,15 +177,20 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         }
 
         if (dcac != null) {
-            for (ApnContext apnContext : dcac.getApnListSync()) {
-                apnContext.setReason(reason);
-                if (apnContext.getState() == State.FAILED) {
-                    apnContext.setState(State.IDLE);
+            // If ReconnectIntent in the data connection is null, then it indicates that
+            // alarm was cancelled. This method was invoked due to a possible race condition.
+            // If Reconnect alarm is cancelled, do not try to setup data call.
+            if (dcac.getReconnectIntentSync() != null) {
+                for (ApnContext apnContext : dcac.getApnListSync()) {
+                    apnContext.setReason(reason);
+                    if (apnContext.getState() == State.FAILED) {
+                        apnContext.setState(State.IDLE);
+                    }
+                    sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, partialRetry, 0, apnContext));
                 }
-                sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, partialRetry, 0, apnContext));
+                // Alram had expired. Clear pending intent recorded on the DataConnection.
+                dcac.setReconnectIntentSync(null);
             }
-            // Alram had expired. Clear pending intent recorded on the DataConnection.
-            dcac.setReconnectIntentSync(null);
         }
     }
 
@@ -1141,14 +1146,6 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
             apnContext.setState(State.INITING);
             mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
         }
-        // If reconnect alarm is active on this DataConnection, wait for the alarm being
-        // fired so that we don't disruppt data retry pattern engaged.
-        if (apnContext.getDataConnectionAc().getReconnectIntentSync() != null) {
-            if (DBG) log("setupData: data reconnection pending");
-            apnContext.setState(State.FAILED);
-            mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
-            return true;
-        }
 
         Message msg = obtainMessage();
         msg.what = EVENT_DATA_SETUP_COMPLETE;
@@ -2008,6 +2005,8 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         apnContext.setEnabled(enabled);
         apnContext.setDependencyMet(met);
         if (cleanup) cleanUpConnection(true, apnContext, false);
+        // reset the partial retry state of the Apn
+        apnContext.setInPartialRetry(false);
         if (trySetup) trySetupData(apnContext);
     }
 
@@ -2800,7 +2799,11 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         for (DataConnection dc : mDataConnections.values()) {
             dcac = mDataConnectionAsyncChannels.get(dc.getDataConnectionId());
             if (dcac.getPartialSuccessStatusSync()) {
-                // Found at least one data connection with partial success, retry
+                // Found at least one data connection with partial success, if retry timer
+                // is running, cancel it and retry immediately.
+                if (dcac.getReconnectIntentSync() != null) {
+                    cancelReconnectAlarm(dcac);
+                }
                 sendMessage(obtainMessage(EVENT_TRY_SETUP_DATA, Phone.DUALIP_PARTIAL_RETRY, 0,
                         Phone.REASON_RAT_CHANGED));
                 resetAllRetryCounts();

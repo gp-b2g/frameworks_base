@@ -576,6 +576,8 @@ public abstract class DataConnection extends StateMachine {
             result = updateLinkProperty(response).setupResult;
         }
 
+        mRetryOverride = getSuggestedRetryTime(ar);
+
         return result;
     }
 
@@ -958,6 +960,15 @@ public abstract class DataConnection extends StateMachine {
 
                 case EVENT_CONNECT:
                     ConnectionParams cp = (ConnectionParams) msg.obj;
+                    if (mReconnectIntent != null) {
+                        if (DBG) {
+                            log("DcInactiveState: msg.what=EVENT_CONNECT, " +
+                                    "while reconnect alarm pending. FAIL.");
+                        }
+                        notifyConnectCompleted(cp, FailCause.UNKNOWN);
+                        retVal = HANDLED;
+                        break;
+                    }
                     cp.tag = mTag;
                     if (DBG) {
                         log("DcInactiveState msg.what=EVENT_CONNECT." + "RefCount = "
@@ -1155,7 +1166,10 @@ public abstract class DataConnection extends StateMachine {
                             notifyConnectCompleted(cp, FailCause.NONE);
                         }
                     } else {
-                        if (mPendingRequest) {
+                        if (mReconnectIntent != null) {
+                            log("DcActiveState mReconnectIntent != null && isPartialRetry!" +
+                                    " Out of sync detected. Ignoring this request.");
+                        } else if (mPendingRequest) {
                             log("DcActiveState Already in partial retry, ignoring multiple requests");
                         } else {
                             handlePartialRetrySetupRequest(msg);
