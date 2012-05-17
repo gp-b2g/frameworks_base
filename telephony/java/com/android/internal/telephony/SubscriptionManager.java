@@ -588,6 +588,10 @@ public class SubscriptionManager extends Handler {
         if (ar.exception == null) {
             saveUserPreferredSubscription(setSubParam.subId,
                     getCurrentSubscription(SubscriptionId.values()[setSubParam.subId]));
+        } else {
+            // Failure case: update the subscription readiness properly.
+            updateSubscriptionReadiness(setSubParam.subId,
+                    (subStatus == SubscriptionStatus.SUB_ACTIVATED));
         }
 
         mSubResult[setSubParam.subId] = cause;
