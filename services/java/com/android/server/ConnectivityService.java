@@ -24,6 +24,9 @@ import static android.net.ConnectivityManager.isNetworkTypeValid;
 import static android.net.NetworkPolicyManager.RULE_ALLOW_ALL;
 import static android.net.NetworkPolicyManager.RULE_REJECT_METERED;
 
+import static android.net.ConnectivityManager.TYPE_WIFI;
+import static android.net.ConnectivityManager.TYPE_MOBILE;
+
 import android.bluetooth.BluetoothTetheringDataTracker;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -81,6 +84,9 @@ import android.util.SparseIntArray;
 import com.android.internal.net.LegacyVpnInfo;
 import com.android.internal.net.VpnConfig;
 import com.android.internal.telephony.Phone;
+import com.android.internal.util.StateMachine;
+import com.android.internal.util.IState;
+import com.android.internal.util.State;
 import com.android.server.am.BatteryStatsService;
 import com.android.server.connectivity.Tethering;
 import com.android.server.connectivity.Vpn;
@@ -102,10 +108,12 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import dalvik.system.PathClassLoader;
 import java.lang.reflect.Constructor;
@@ -121,6 +129,8 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     private static final String TAG = "ConnectivityService";
 
     private static final boolean LOGD_RULES = false;
+    //invalid arg to handler
+    private static final int INVALID_MSG_ARG = -1;
 
     // how long to wait before switching back to a radio's default network
     private static final int RESTORE_DEFAULT_NETWORK_DELAY = 1 * 60 * 1000;
@@ -179,7 +189,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     private Object mDnsLock = new Object();
     private int mNumDnsEntries;
     private boolean mDnsOverridden = false;
-    private static int mRouteIdCtr = 0;
+    private int mRouteIdCtr = 0;
 
     private boolean mTestMode;
     private static ConnectivityService sServiceInstance;
@@ -285,6 +295,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     private static final int EVENT_SET_POLICY_DATA_ENABLE = MAX_NETWORK_STATE_TRACKER_EVENT + 13;
 
     private Handler mHandler;
+    private ConnectivityServiceHSM mHSM;
 
     private ILinkManager mLinkManager = null;
     private Object mCneObj = null;
@@ -311,7 +322,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     private Collection<RouteInfo> mAddedRoutes = new ArrayList<RouteInfo>();
 
     // used in DBG mode to track inet condition reports
-    private static final int INET_CONDITION_LOG_MAX_SIZE = 15;
+    private static final int INET_CONDITION_LOG_MAX_SIZE = 30;
     private ArrayList mInetLog;
 
     // track the current default http proxy - tell the world if we get a new one (real change)
@@ -339,24 +350,35 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     }
     RadioAttributes[] mRadioAttributes;
 
-    private class RouteAttributes {
+    private final class RouteAttributes {
         /**
          * Class for holding identifiers used to create custom tables for source
          * policy routing in the kernel.
-         * Max allowable custom tables is 253 with 0 set to local and 254 set to
-         * main table. Anything in between is valid.
          */
-        public int v4TableId;
-        public int v6TableId;
+        private int tableId;
+        private int metric;
+
         public RouteAttributes () {
-            //We are assuming that MAX network types supported on android won't
-            //exceed 126 in which case identifier assignment needs to change. Its
-            //safe to do it this way for now.
-            v4TableId = ++mRouteIdCtr;
-            v6TableId = ++mRouteIdCtr;
+        //We are assuming that MAX network types supported on android won't
+        //exceed 253 in which case identifier assignment needs to change. Its
+        //safe to do it this way for now.
+            tableId = ++mRouteIdCtr;
+            metric = 0;
+        }
+
+        public int getTableId() {
+            return tableId;
+        }
+
+        public int getMetric() {
+            return metric;
+        }
+
+        public void setMetric(int m) {
+            metric = m;
         }
     }
-    RouteAttributes[]  mRouteAttributes;
+    private RouteAttributes[]  mRouteAttributes;
 
     // the set of network types that can only be enabled by system/sig apps
     List mProtectedNetworks;
@@ -365,13 +387,28 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     private IFmcEventListener mListener = null;
     private boolean mFmcEnabled = false;
 
+
     public ConnectivityService(Context context, INetworkManagementService netd,
             INetworkStatsService statsService, INetworkPolicyManager policyManager) {
         if (DBG) log("ConnectivityService starting up");
 
+        //HSM uses routeAttributes. So initialize it here, prior to creating HSM
+        mRouteAttributes = new RouteAttributes[ConnectivityManager.MAX_NETWORK_TYPE+1];
+        for (int i = 0; i < ConnectivityManager.MAX_NETWORK_TYPE+1; i++) {
+            mRouteAttributes[i] = new RouteAttributes();
+        }
+
         HandlerThread handlerThread = new HandlerThread("ConnectivityServiceThread");
         handlerThread.start();
-        mHandler = new MyHandler(handlerThread.getLooper());
+        if (isCneAware()) { //TODO use featureConfig when ready
+            mHSM = new ConnectivityServiceHSM( mContext,
+                                               "ConnectivityServiceHSM",
+                                               handlerThread.getLooper() );
+            mHSM.start();
+            mHandler = mHSM.getHandler();
+        } else {
+            mHandler = new MyHandler(handlerThread.getLooper());
+        }
 
         // setup our unique device name
         if (TextUtils.isEmpty(SystemProperties.get("net.hostname"))) {
@@ -421,10 +458,6 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
         mRadioAttributes = new RadioAttributes[ConnectivityManager.MAX_RADIO_TYPE+1];
         mNetConfigs = new NetworkConfig[ConnectivityManager.MAX_NETWORK_TYPE+1];
-        mRouteAttributes = new RouteAttributes[ConnectivityManager.MAX_NETWORK_TYPE+1];
-        for (int i = 0; i < ConnectivityManager.MAX_NETWORK_TYPE+1; i++) {
-            mRouteAttributes[i] = new RouteAttributes();
-        }
 
         // Load device network attributes from resources
         String[] raStrings = context.getResources().getStringArray(
@@ -673,7 +706,8 @@ private NetworkStateTracker makeWimaxStateTracker() {
     public void setNetworkPreference(int preference) {
         enforceChangePermission();
 
-        mHandler.sendMessage(mHandler.obtainMessage(EVENT_SET_NETWORK_PREFERENCE, preference, 0));
+        mHandler.sendMessage(mHandler.obtainMessage(
+                    EVENT_SET_NETWORK_PREFERENCE, preference, INVALID_MSG_ARG));
     }
 
     public int getNetworkPreference() {
@@ -1069,8 +1103,8 @@ private NetworkStateTracker makeWimaxStateTracker() {
                 }
 
                 if (restoreTimer >= 0) {
-                    mHandler.sendMessageDelayed(
-                            mHandler.obtainMessage(EVENT_RESTORE_DEFAULT_NETWORK, f), restoreTimer);
+                    mHandler.sendMessageDelayed(mHandler.obtainMessage(
+                                EVENT_RESTORE_DEFAULT_NETWORK, f), restoreTimer);
                 }
 
                 if ((ni.isConnectedOrConnecting() == true) &&
@@ -1362,6 +1396,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
             try {
                 if (toDefaultTable) {
                     mAddedRoutes.add(r);  // only track default table - only one apps can effect
+                    if (VDBG) log("Routes in main table - [ " + mAddedRoutes + " ]");
                     mNetd.addRoute(ifaceName, r);
                 } else {
                     mNetd.addSecondaryRoute(ifaceName, r);
@@ -1376,6 +1411,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
             // we can remove it from the table
             if (toDefaultTable) {
                 mAddedRoutes.remove(r);
+                if (VDBG) log("Routes in main table - [ " + mAddedRoutes + " ]");
                 if (mAddedRoutes.contains(r) == false) {
                     if (VDBG) log("Removing " + r + " for interface " + ifaceName);
                     try {
@@ -1480,7 +1516,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
         if (DBG) log("setMobileDataEnabled(" + enabled + ")");
 
         mHandler.sendMessage(mHandler.obtainMessage(EVENT_SET_MOBILE_DATA,
-                (enabled ? ENABLED : DISABLED), 0));
+                (enabled ? ENABLED : DISABLED), INVALID_MSG_ARG));
     }
 
     private void handleSetMobileData(boolean enabled) {
@@ -1833,13 +1869,10 @@ private NetworkStateTracker makeWimaxStateTracker() {
         boolean isFailover = info.isFailover();
         final NetworkStateTracker thisNet = mNetTrackers[type];
 
-        if (mFmcEnabled) {
-            if (DBG) log("Not tearing down WWAN because FMC enabled");
-        }
 
         // if this is a default net and other default is running
         // kill the one not preferred
-        if (mNetConfigs[type].isDefault() && !(mFmcEnabled)) {
+        if (mNetConfigs[type].isDefault()) {
             if (mActiveDefaultNetwork != -1 && mActiveDefaultNetwork != type) {
                 if ((type != mNetworkPreference &&
                         mNetConfigs[mActiveDefaultNetwork].priority >
@@ -1874,7 +1907,8 @@ private NetworkStateTracker makeWimaxStateTracker() {
                 if (mNetTransitionWakeLock.isHeld()) {
                     mHandler.sendMessageDelayed(mHandler.obtainMessage(
                             EVENT_CLEAR_NET_TRANSITION_WAKELOCK,
-                            mNetTransitionWakeLockSerialNumber, 0),
+                            mNetTransitionWakeLockSerialNumber,
+                            INVALID_MSG_ARG),
                             1000);
                 }
             }
@@ -1891,6 +1925,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
         thisNet.setTeardownRequested(false);
         updateNetworkSettings(thisNet);
         handleConnectivityChange(type, false);
+
         sendConnectedBroadcastDelayed(info, getConnectivityChangeDelay());
 
         // notify battery stats service about this network
@@ -1977,8 +2012,10 @@ private NetworkStateTracker makeWimaxStateTracker() {
             }
         }
         mCurrentLinkProperties[netType] = newLp;
-        boolean resetDns = updateRoutes(newLp, curLp, mNetConfigs[netType].isDefault(),
-                mRouteAttributes[netType]);
+        boolean resetDns = updateRoutes( newLp,
+                                         curLp,
+                                         mNetConfigs[netType].isDefault(),
+                                         mRouteAttributes[netType] );
 
         if (resetMask != 0 || resetDns) {
             LinkProperties linkProperties = mNetTrackers[netType].getLinkProperties();
@@ -2023,8 +2060,8 @@ private NetworkStateTracker makeWimaxStateTracker() {
      * Add and remove routes using the old properties (null if not previously connected),
      * new properties (null if becoming disconnected).  May even be double null, which
      * is a noop.
-     * Uses isLinkDefault to determine if default routes should be set or conversely if
-     * host routes should be set to the dns servers
+     * Uses isLinkDefault to determine if default routes should be set.
+     * Sets host routes to the dns servers
      * returns a boolean indicating the routes changed
      */
     private boolean updateRoutes(LinkProperties newLp, LinkProperties curLp,
@@ -2044,7 +2081,6 @@ private NetworkStateTracker makeWimaxStateTracker() {
             localAddrDiff.added = newLp.getLinkAddresses();
         }
 
-        // linkaddress change does not affect dns, so exclude it from this condition.
         boolean routesChanged = (routeDiff.removed.size() != 0 || routeDiff.added.size() != 0);
 
         for (RouteInfo r : routeDiff.removed) {
@@ -2083,66 +2119,61 @@ private NetworkStateTracker makeWimaxStateTracker() {
             for (LinkAddress la : localAddrDiff.removed) {
                 if (VDBG) log("Removing src route for:" + la.getAddress().getHostAddress());
                 try {
-                    if (la.getAddress() instanceof Inet4Address)
-                        mNetd.delV4SrcRoute(ra.v4TableId);
-                    else
-                        mNetd.delV6SrcRoute(ra.v6TableId);
+                     mNetd.delSrcRoute(la.getAddress().getAddress(), ra.getTableId());
                 } catch (Exception e) {
-                    // never crash - catch them all
-                    if (VDBG) loge("Exception trying to remove src route: " + e);
+                    loge("Exception while trying to remove src route: " + e);
                 }
             }
         }
 
         if (localAddrDiff.added.size() != 0) {
-            String gw4Str = null, gw6Str = null, localAddr = null;
+            InetAddress gw4Addr = null, gw6Addr = null;
             String ifaceName = newLp.getInterfaceName();
             if (! TextUtils.isEmpty(ifaceName)) {
                 for (RouteInfo r : newLp.getRoutes()) {
                     if (! r.isDefaultRoute()) continue;
                     if (r.getGateway() instanceof Inet4Address)
-                        gw4Str = r.getGateway().getHostAddress();
+                        gw4Addr = r.getGateway();
                     else
-                        gw6Str = r.getGateway().getHostAddress();
+                        gw6Addr = r.getGateway();
                 } //gateway is optional so continue adding the source route.
                 for (LinkAddress la : localAddrDiff.added) {
                     try {
-                        localAddr = la.getAddress().getHostAddress();
-                        if (la.getAddress() instanceof Inet4Address)
-                            mNetd.replaceV4SrcRoute(ifaceName, localAddr, gw4Str, ra.v4TableId);
-                        else
-                            mNetd.replaceV6SrcRoute(ifaceName, localAddr, gw6Str, ra.v6TableId);
+                        if (la.getAddress() instanceof Inet4Address) {
+                            mNetd.replaceSrcRoute(ifaceName, la.getAddress().getAddress(),
+                                    gw4Addr.getAddress(), ra.getTableId());
+                        } else {
+                            mNetd.replaceSrcRoute(ifaceName, la.getAddress().getAddress(),
+                                    gw6Addr.getAddress(), ra.getTableId());
+                        }
                     } catch (Exception e) {
-                        // never crash - catch them all
-                        if (VDBG) loge("Exception trying to add a src route: " + e);
+                        //never crash, catch them all
+                        loge("Exception while trying to add src route: " + e);
                     }
                 }
             }
         }
 
-
-        if (!isLinkDefault) {
-            // handle DNS routes
-            if (routesChanged) {
-                // routes changed - remove all old dns entries and add new
-                if (curLp != null) {
-                    for (InetAddress oldDns : curLp.getDnses()) {
-                        removeRouteToAddress(curLp, oldDns);
-                    }
-                }
-                if (newLp != null) {
-                    for (InetAddress newDns : newLp.getDnses()) {
-                        addRouteToAddress(newLp, newDns);
-                    }
-                }
-            } else {
-                // no change in routes, check for change in dns themselves
-                for (InetAddress oldDns : dnsDiff.removed) {
+        // handle DNS routes for all net types - no harm done
+        if (routesChanged) {
+            // routes changed - remove all old dns entries and add new
+            if (curLp != null) {
+                for (InetAddress oldDns : curLp.getDnses()) {
                     removeRouteToAddress(curLp, oldDns);
                 }
-                for (InetAddress newDns : dnsDiff.added) {
+            }
+            if (newLp != null) {
+                for (InetAddress newDns : newLp.getDnses()) {
                     addRouteToAddress(newLp, newDns);
                 }
+            }
+        } else {
+            // no change in routes, check for change in dns themselves
+            for (InetAddress oldDns : dnsDiff.removed) {
+                removeRouteToAddress(curLp, oldDns);
+            }
+            for (InetAddress newDns : dnsDiff.added) {
+                addRouteToAddress(newLp, newDns);
             }
         }
         return routesChanged;
@@ -2703,7 +2734,8 @@ private NetworkStateTracker makeWimaxStateTracker() {
         }
         mHandler.sendMessageDelayed(mHandler.obtainMessage(
                 EVENT_CLEAR_NET_TRANSITION_WAKELOCK,
-                mNetTransitionWakeLockSerialNumber, 0),
+                mNetTransitionWakeLockSerialNumber,
+                INVALID_MSG_ARG),
                 mNetTransitionWakeLockTimeout);
         return;
     }
@@ -2929,6 +2961,14 @@ private NetworkStateTracker makeWimaxStateTracker() {
         Slog.e(TAG, s);
     }
 
+    private void logw(String s) {
+        Slog.w(TAG, s);
+    }
+
+    private void logv(String s) {
+        Slog.v(TAG, s);
+    }
+
     int convertFeatureToNetworkType(int networkType, String feature) {
         int usedNetworkType = networkType;
 
@@ -2949,16 +2989,16 @@ private NetworkStateTracker makeWimaxStateTracker() {
             } else if (TextUtils.equals(feature, Phone.FEATURE_ENABLE_CBS)) {
                 usedNetworkType = ConnectivityManager.TYPE_MOBILE_CBS;
             } else {
-                Slog.e(TAG, "Can't match any mobile netTracker!");
+                loge("Can't match any mobile netTracker!");
             }
         } else if (networkType == ConnectivityManager.TYPE_WIFI) {
             if (TextUtils.equals(feature, "p2p")) {
                 usedNetworkType = ConnectivityManager.TYPE_WIFI_P2P;
             } else {
-                Slog.e(TAG, "Can't match any wifi netTracker!");
+                loge("Can't match any wifi netTracker!");
             }
         } else {
-            Slog.e(TAG, "Unexpected network type");
+            loge("Unexpected network type");
         }
         return usedNetworkType;
     }
@@ -3131,16 +3171,16 @@ private NetworkStateTracker makeWimaxStateTracker() {
             if (isCneAware()) {
                 mCneObj = makeVendorCne(qosManager);
                 if (mCneObj != null) {
-                    Slog.v(TAG, "Vendor CNE is starting up");
+                    logv("Vendor CNE is starting up");
                     mLinkManager = (ILinkManager) mCneObj;
                     return;
                 }
             } else {
-                Slog.v(TAG, "CNE is disabled.");
+                logv("CNE is disabled.");
             }
             mLinkManager = new LinkManager(mContext, this, qosManager);
         } else {
-            Slog.e(TAG, "CNE already Started");
+            loge("CNE already Started");
         }
     }
 
@@ -3153,18 +3193,10 @@ private NetworkStateTracker makeWimaxStateTracker() {
             Constructor cneConstructor = cneClass.getConstructor
                         (new Class[] {Context.class,ConnectivityService.class,QosManager.class});
                 return cneConstructor.newInstance(mContext,this,qosMgr);
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            } catch (InstantiationException e) {
-                e.printStackTrace();
-            } catch(IllegalAccessException e) {
-                e.printStackTrace();
-            } catch(InvocationTargetException e) {
-                e.printStackTrace();
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (Exception e) { // ignored; lives in system server
+                loge("Caught exception in makeVendorCne " + e);
             }
-        Slog.e(TAG,"Could not make vendor Cne obj. Disabling CNE");
+        loge("Could not make vendor Cne obj. Disabling CNE");
         return null;
     }
 
@@ -3184,7 +3216,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
         try {
             return  (SystemProperties.get(UseCne, "none")).equalsIgnoreCase("vendor");
         } catch ( Exception e) {
-            Slog.v(TAG, "Received Exception while reading UseCne property, Disabling CNE");
+            logv("Received Exception while reading UseCne property, Disabling CNE");
         }
         return false;
     }
@@ -3318,9 +3350,11 @@ private NetworkStateTracker makeWimaxStateTracker() {
 
     /* Used by FmcProvider to start FMC */
     public boolean startFmc(IBinder listener) {
-        ConnectivityManager cm = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        ConnectivityManager cm =
+            (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = cm.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-        NetworkInfo.State networkState = (networkInfo == null ? NetworkInfo.State.UNKNOWN : networkInfo.getState());
+        NetworkInfo.State networkState =
+            (networkInfo == null ? NetworkInfo.State.UNKNOWN : networkInfo.getState());
 
         mListener = (IFmcEventListener) IFmcEventListener.Stub.asInterface(listener);
 
@@ -3328,25 +3362,24 @@ private NetworkStateTracker makeWimaxStateTracker() {
             try {
                 mListener.onFmcStatus(FmcNotifier.FMC_STATUS_FAILURE);
                 return false;
-            } catch (RemoteException e) {
-                Slog.d(TAG, "RemoteException " + e.getMessage());
+            } catch (Exception e) {
+                // lives in system server, never crash - catch them all
+                loge("Exception in startFmc " + e);
             }
         }
 
         mFmcSM = FmcStateMachine.create(mContext, mListener, this);
         if (mFmcSM != null) {
-            //try {
-                // if we try to notify FMC status at this moment, we will get FMC_CLOSE
-                // This notification will make UI layer confuse about FMC status
-                // mListener.onFmcStatus(mFmcSM.getStatus());
-            //} catch (RemoteException e) {
-                //Slog.d(TAG, "RemoteException " + e.getMessage());
-            //}
+//            try {
+//                mListener.onFmcStatus(mFmcSM.getStatus());
+//            } catch (RemoteException e) { // ignored; lives in system server
+//                loge("Exception during onFmcStatus " + e);
+//            }
             mFmcEnabled = mFmcSM.startFmc();
-            Slog.d(TAG, "mFmcEnabled=" + mFmcEnabled);
+            log("mFmcEnabled=" + mFmcEnabled);
             return mFmcEnabled;
         } else {
-            Slog.d(TAG, "mFmcSM is null while calling startFmc");
+            log("mFmcSM is null while calling startFmc");
             return false;
         }
     }
@@ -3357,7 +3390,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
         if (mFmcSM != null) {
             return mFmcSM.stopFmc();
         } else {
-            Slog.d(TAG, "mFmcSM is null while calling stopFmc");
+            log("mFmcSM is null while calling stopFmc");
             return false;
         }
     }
@@ -3367,7 +3400,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
         if(mFmcSM != null) {
             return mFmcSM.getStatus();
         } else {
-            Slog.d(TAG, "mFmcSM is null while calling startFmc");
+            log("mFmcSM is null while calling startFmc");
             return -1;
         }
     }
@@ -3375,23 +3408,23 @@ private NetworkStateTracker makeWimaxStateTracker() {
     /* Used by FmcStateMachine to control network connections */
     public void setFmcDisabled() {
         mFmcEnabled = false;
-        Slog.d(TAG, "mFmcEnabled=" + mFmcEnabled);
+        log("mFmcEnabled=" + mFmcEnabled);
     }
 
     /* Used by FmcStateMachine to control network connections */
     public boolean bringUpRat(int ratType) {
-        Slog.d(TAG, "BringUpRat called for ratType=" + ratType);
+        log("BringUpRat called for ratType=" + ratType);
 
         if (ratType == ConnectivityManager.TYPE_MOBILE) {
             if (!getMobileDataEnabled()) {
-                if (DBG) Slog.d(TAG, "mobile data service disabled");
+                if (DBG) log("mobile data service disabled");
                 reconnect(ratType);
                 return false;
             }
         } else if (ratType != ConnectivityManager.TYPE_WIFI) {
             return false;
         } else {
-            Slog.d(TAG, "Unknown RatType = " + ratType);
+            log("Unknown RatType = " + ratType);
             return false;
         }
 
@@ -3400,7 +3433,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
 
     /* Used by FmcStateMachine to control network connections */
     public boolean bringDownRat(int ratType) {
-        Slog.d(TAG, "BringDownRat called for ratType=" + ratType);
+        log("BringDownRat called for ratType=" + ratType);
 
         if (ratType == ConnectivityManager.TYPE_MOBILE) {
             NetworkStateTracker network = mNetTrackers[ratType];
@@ -3409,7 +3442,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
         } else if (ratType != ConnectivityManager.TYPE_WIFI) {
             return false;
         } else {
-            Slog.d(TAG, "Unknown RatType = " + ratType);
+            log("Unknown RatType = " + ratType);
             return false;
         }
     }
@@ -3419,11 +3452,10 @@ private NetworkStateTracker makeWimaxStateTracker() {
         NetworkStateTracker network = mNetTrackers[networkType];
         try{
             network.setTeardownRequested(true);
-            Slog.d(TAG, "Sending Network Connection Request to Driver.");
+            log("Sending Network Connection Request to Driver.");
             return network.reconnect();
-        } catch(NullPointerException e){
-            Slog.d(TAG, "network Obj is Null" + e);
-            e.printStackTrace();
+        } catch (NullPointerException e) { // ignored; lives in system server
+            log("network Obj is Null" + e);
         }
         return false;
     }
@@ -3437,7 +3469,7 @@ private NetworkStateTracker makeWimaxStateTracker() {
      */
     public boolean updateOperatorPolicy(String filePath)
     {
-        Slog.d(TAG, "Updating Operator Policy");
+        log("Updating Operator Policy");
         Object andsfParser;
         if ( mContext != null ) {
             try {
@@ -3460,19 +3492,1686 @@ private NetworkStateTracker makeWimaxStateTracker() {
 
                 return passed;
 
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            } catch (InstantiationException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-            } catch (NoSuchMethodException e) {
-                e.printStackTrace();
+            } catch (Exception e) { // ignored; lives in system server
+                loge("update operator policy error" + e);
             }
         }
-        Slog.d(TAG, "Updating Operator Policy failed");
+        log("Updating Operator Policy failed");
         return false;
     }
+
+    /**
+     * Used by cne to set active default network
+     * @hide
+     */
+    public void setActiveDefaultNetwork (int type, String reason) {
+        enforceChangePermission();
+        if (!ConnectivityManager.isNetworkTypeValid(type)) {
+            return;
+        }
+        mHandler.sendMessage(mHandler.obtainMessage(
+                    ConnectivityServiceHSM.HSM_EVENT_CONNECTIVITY_SWITCH,
+                    type,
+                    INVALID_MSG_ARG,
+                    reason));
+    }
+
+    /**
+     * Used by cne to set dns lookup priority.
+     * Sets the given networks dns server to highest priority for lookups.
+     * @hide
+     */
+    public void prioritizeDns (int type) {
+        enforceChangePermission();
+        if (!ConnectivityManager.isNetworkTypeValid(type)) {
+            return;
+        }
+        mHandler.sendMessage(mHandler.obtainMessage(
+                    ConnectivityServiceHSM.HSM_EVENT_REPRIORITIZE_DNS, type, INVALID_MSG_ARG));
+    }
+
+
+    private final class ConnectivityServiceHSM extends StateMachine {
+
+        // min HSM internal message
+        static final int HSM_MSG_MIN = 5000;
+
+        // handleConnect
+        static final int HSM_HANDLE_CONNECT = HSM_MSG_MIN + 1;
+        // handleDisconnect
+        static final int HSM_HANDLE_DISCONNECT = HSM_MSG_MIN + 2;
+        // handleConnecitivtyChange
+        static final int HSM_HANDLE_CONNECTIVITY_CHANGE = HSM_MSG_MIN + 3;
+        // handleDnsConfigurationChange
+        static final int HSM_HANDLE_DNS_CONFIGURATION_CHANGE = HSM_MSG_MIN + 4;
+        // handleConnectionFailure
+        static final int HSM_HANDLE_CONNECTION_FAILURE = HSM_MSG_MIN + 5;
+        // handleInetConditionChange
+        static final int HSM_HANDLE_INET_CONDITION_CHANGE = HSM_MSG_MIN + 6;
+        // handleInetConditionHoldEnd
+        static final int HSM_HANDLE_INET_CONDITION_HOLD_END = HSM_MSG_MIN + 7;
+        // enforcePreference
+        static final int HSM_EVENT_ENFORCE_PREFERENCE = HSM_MSG_MIN + 8;
+        // restoredns
+        static final int HSM_EVENT_RESTORE_DNS = HSM_MSG_MIN + 9;
+        // handleDnsReprioritization
+        static final int HSM_EVENT_REPRIORITIZE_DNS = HSM_MSG_MIN + 10;
+        // handleConnectivitySwitch (int toNetType)
+        static final int HSM_EVENT_CONNECTIVITY_SWITCH = HSM_MSG_MIN + 11;
+
+        private int myDefaultDnsNet;
+        // List to track multiple active default networks
+        private ConnectedDefaultNetworkSet mConnectedDefaultNetworks;
+        //Maximum simultaneous default networks supported in normal operation.
+
+        public void sendMessageImmediate (Message msg) {
+            sendMessageAtFrontOfQueue(msg);
+        }
+
+        /**
+         * Class that tracks active default networks.
+         * Allows simultaneous Mobile and Wifi default networks
+         */
+        private class ConnectedDefaultNetworkSet {
+
+            private final int MAX_SIMULTANEOUS_DEFAULTS = 2;
+            private Collection<Integer> mDefaultNetworks;
+
+            // Empty constructor
+            public ConnectedDefaultNetworkSet() {
+                mDefaultNetworks = new HashSet<Integer>(2);
+            }
+
+            public int size() {
+                return mDefaultNetworks.size();
+            }
+
+            public boolean add(int i) {
+                Integer j = new Integer(i);
+                // restrict size to max simultaneous default networks
+                if (mDefaultNetworks.size() >= MAX_SIMULTANEOUS_DEFAULTS) return false;
+                // Allow only wifi and mobile for simultaneous connection
+                if ((i != TYPE_WIFI) && (i != TYPE_MOBILE)) return false;
+                if (mDefaultNetworks.contains(j)) return true;
+                return mDefaultNetworks.add(j);
+            }
+
+            public boolean remove(int i) {
+                return mDefaultNetworks.remove(new Integer(i));
+            }
+
+            public boolean contains(int i) {
+                return mDefaultNetworks.contains(new Integer(i));
+            }
+
+            public boolean isHigherPriorityNetwork(int i) {
+                int res = 0;
+                if (mDefaultNetworks.isEmpty()) return true;
+                for (Integer type : mDefaultNetworks) {
+                    res += (mNetConfigs[i].priority > mNetConfigs[type.intValue()].priority) ? 1:0;
+                }
+                return ((res > 0) ? (res == mDefaultNetworks.size()) : false);
+            }
+
+            public Collection<Integer> getActiveDefaults() {
+                return Collections.unmodifiableCollection(mDefaultNetworks);
+            }
+
+            public void clear() {
+                mDefaultNetworks.clear();
+            }
+
+        }
+
+        private State mDefaultConnectivityState;
+        private SmartConnectivityState  mSmartConnectivityState;
+        private DualConnectivityState mWifiDefaultState;
+        private DualConnectivityState mMobileDefaultState;
+        private FmcInitialState mFmcInitialState;
+        private FmcActiveState mFmcActiveState;
+        private State myInitialState;
+
+        /**
+         *
+         * STATE MAP
+         *                     DefaultConnectivityState
+         *                                |           \
+         *                     SmartConnectivityState  FmcInitialState
+         *                            /             \           \_________
+         *                           /               \                    \
+         *  Dual connectivity:  WifiDefaultState --  WwanDefaultState   FmcActiveState
+         *
+         */
+
+        ConnectivityServiceHSM(Context context, String name, Looper looper) {
+            super(name, looper);
+
+            mConnectedDefaultNetworks = new ConnectedDefaultNetworkSet();
+
+            mDefaultConnectivityState = new DefaultConnectivityState();
+            addState(mDefaultConnectivityState);
+            //TODO move from swim property check to cneFeatureConfig when ready
+            final String isTrue = "true";
+            if (isTrue.equalsIgnoreCase(SystemProperties.get("persist.cne.fmc.mode"))) {
+                // fmc mode device
+                mFmcInitialState = new FmcInitialState();
+                addState(mFmcInitialState, mDefaultConnectivityState);
+                mFmcActiveState = new FmcActiveState();
+                addState(mFmcActiveState, mFmcInitialState);
+                myInitialState = mFmcInitialState;
+            } else if (isTrue.equalsIgnoreCase(SystemProperties.get("persist.cne.UseSwim"))) {
+                // cne dual net mode enabled;
+                mSmartConnectivityState = new SmartConnectivityState();
+                addState(mSmartConnectivityState, mDefaultConnectivityState);
+                mWifiDefaultState = new WifiDefaultState();
+                addState(mWifiDefaultState, mSmartConnectivityState);
+                mMobileDefaultState = new MobileDefaultState();
+                addState(mMobileDefaultState, mSmartConnectivityState);
+                myInitialState = mSmartConnectivityState;
+            }  else {
+                // cne single net, cne disabled mode device.
+                myInitialState = mDefaultConnectivityState;
+            }
+
+            setInitialState(myInitialState);
+        }
+
+        private final class DefaultConnectivityState extends State {
+            public DefaultConnectivityState() {
+            }
+
+            @Override
+            public void enter() {
+                if (DBG) log( "ConnectivityServiceHSM entering " + getCurrentState().getName());
+            }
+
+            @Override
+            public void exit() {
+                if (DBG) log( "ConnectivityServiceHSM leaving " + getCurrentState().getName());
+            }
+
+            @Override
+            public boolean processMessage(Message msg) {
+
+                if (DBG) log("Actual State: DefaultConnectivityState, Current State: " +
+                        getCurrentState().getName() + ".processMessage what=" + msg.what);
+
+                NetworkInfo info;
+                switch (msg.what) {
+                    case NetworkStateTracker.EVENT_STATE_CHANGED:
+                    {
+                        info = (NetworkInfo) msg.obj;
+                        int type = info.getType();
+                        NetworkInfo.State state = info.getState();
+
+                        if (VDBG || (state == NetworkInfo.State.CONNECTED) ||
+                                (state == NetworkInfo.State.DISCONNECTED)) {
+                            log("ConnectivityChange for " +
+                                info.getTypeName() + ": " +
+                                state + "/" + info.getDetailedState());
+                        }
+
+                        // Connectivity state changed:
+                        // [31-13] Reserved for future use
+                        // [12-9] Network subtype (for mobile network, as defined
+                        //         by TelephonyManager)
+                        // [8-3] Detailed state ordinal (as defined by
+                        //         NetworkInfo.DetailedState)
+                        // [2-0] Network type (as defined by ConnectivityManager)
+                        int eventLogParam = (info.getType() & 0x7) |
+                                ((info.getDetailedState().ordinal() & 0x3f) << 3) |
+                                (info.getSubtype() << 9);
+                        EventLog.writeEvent(EventLogTags.CONNECTIVITY_STATE_CHANGED,
+                                eventLogParam);
+
+                        if (info.getDetailedState() ==
+                                NetworkInfo.DetailedState.FAILED) {
+                            sendMessageAtFrontOfQueue(HSM_HANDLE_CONNECTION_FAILURE, info);
+                        } else if (state == NetworkInfo.State.DISCONNECTED) {
+                            sendMessageAtFrontOfQueue(HSM_HANDLE_DISCONNECT, info);
+                        } else if (state == NetworkInfo.State.SUSPENDED) {
+                            // TODO: need to think this over.
+                            // the logic here is, handle SUSPENDED the same as
+                            // DISCONNECTED. The only difference being we are
+                            // broadcasting an intent with NetworkInfo that's
+                            // suspended. This allows the applications an
+                            // opportunity to handle DISCONNECTED and SUSPENDED
+                            // differently, or not.
+                            sendMessageAtFrontOfQueue(HSM_HANDLE_DISCONNECT, info);
+                        } else if (state == NetworkInfo.State.CONNECTED) {
+                            sendMessageAtFrontOfQueue(HSM_HANDLE_CONNECT, info);
+                        }
+                        break;
+                    }
+                    case NetworkStateTracker.EVENT_CONFIGURATION_CHANGED:
+                    {
+                        info = (NetworkInfo) msg.obj;
+                        // TODO: Temporary allowing network configuration
+                        //       change not resetting sockets.
+                        //       @see bug/4455071
+                        sendMessageAtFrontOfQueue(obtainMessage(
+                                    HSM_HANDLE_CONNECTIVITY_CHANGE,
+                                    info.getType(), 0));
+                        break;
+                    }
+                    case EVENT_CLEAR_NET_TRANSITION_WAKELOCK:
+                    {
+                        String causedBy = null;
+                        synchronized (ConnectivityService.this) {
+                            if (msg.arg1 == mNetTransitionWakeLockSerialNumber &&
+                                    mNetTransitionWakeLock.isHeld()) {
+                                mNetTransitionWakeLock.release();
+                                causedBy = mNetTransitionWakeLockCausedBy;
+                            }
+                        }
+                        if (causedBy != null) {
+                            log("NetTransition Wakelock for " + causedBy + " released by timeout");
+                        }
+                        break;
+                    }
+                    case EVENT_RESTORE_DEFAULT_NETWORK:
+                    {
+                        FeatureUser u = (FeatureUser)msg.obj;
+                        u.expire();
+                        break;
+                    }
+                    case EVENT_INET_CONDITION_CHANGE:
+                    {
+                        sendMessageAtFrontOfQueue(obtainMessage(
+                                    HSM_HANDLE_INET_CONDITION_CHANGE, msg.arg1, msg.arg2));
+                        break;
+                    }
+                    case EVENT_INET_CONDITION_HOLD_END:
+                    {
+                        sendMessageAtFrontOfQueue(obtainMessage(
+                                HSM_HANDLE_INET_CONDITION_HOLD_END, msg.arg1, msg.arg2));
+                        break;
+                    }
+                    case EVENT_SET_NETWORK_PREFERENCE:
+                    {
+                        int preference = msg.arg1;
+                        handleSetNetworkPreference(preference);
+                        break;
+                    }
+                    case EVENT_SET_MOBILE_DATA:
+                    {
+                        boolean enabled = (msg.arg1 == ENABLED);
+                        handleSetMobileData(enabled);
+                        break;
+                    }
+                    case EVENT_APPLY_GLOBAL_HTTP_PROXY:
+                    {
+                        handleDeprecatedGlobalHttpProxy();
+                        break;
+                    }
+                    case EVENT_SET_DEPENDENCY_MET:
+                    {
+                        boolean met = (msg.arg1 == ENABLED);
+                        handleSetDependencyMet(msg.arg2, met);
+                        break;
+                    }
+                    case EVENT_RESTORE_DNS:
+                    {
+                        sendMessageAtFrontOfQueue(HSM_EVENT_RESTORE_DNS);
+                        break;
+                    }
+                    case EVENT_SEND_STICKY_BROADCAST_INTENT:
+                    {
+                        Intent intent = (Intent)msg.obj;
+                        sendStickyBroadcast(intent);
+                        break;
+                    }
+                    case EVENT_SET_POLICY_DATA_ENABLE: {
+                        final int networkType = msg.arg1;
+                        final boolean enabled = msg.arg2 == ENABLED;
+                        handleSetPolicyDataEnable(networkType, enabled);
+                        break;
+                    }
+
+                    /**
+                     * Default connectivity service event handler implementation used
+                     * by the default connectivity state
+                     */
+                    case HSM_HANDLE_CONNECT:
+                        info = (NetworkInfo) msg.obj;
+                        handleConnect(info);
+                        break;
+                    case HSM_HANDLE_DISCONNECT:
+                        info = (NetworkInfo) msg.obj;
+                        handleDisconnect(info);
+                        break;
+                    case HSM_HANDLE_CONNECTIVITY_CHANGE:
+                    {
+                        int type = msg.arg1;
+                        boolean doReset = (msg.arg2 == 1);
+                        handleConnectivityChange(type, doReset);
+                        break;
+                    }
+                    case HSM_HANDLE_DNS_CONFIGURATION_CHANGE:
+                        handleDnsConfigurationChange(msg.arg1);
+                        break;
+                    case HSM_HANDLE_CONNECTION_FAILURE:
+                        info = (NetworkInfo) msg.obj;
+                        handleConnectionFailure(info);
+                        break;
+                    case HSM_HANDLE_INET_CONDITION_CHANGE:
+                    {
+                        int netType = msg.arg1;
+                        int condition = msg.arg2;
+                        handleInetConditionChange(netType, condition);
+                        break;
+                    }
+                    case HSM_HANDLE_INET_CONDITION_HOLD_END:
+                    {
+                        int netType = msg.arg1;
+                        int sequence = msg.arg2;
+                        handleInetConditionHoldEnd(netType, sequence);
+                        break;
+                    }
+                    case HSM_EVENT_ENFORCE_PREFERENCE:
+                        enforcePreference();
+                        break;
+                    case HSM_EVENT_RESTORE_DNS:
+                    {
+                        if (mActiveDefaultNetwork != -1) {
+                            handleDnsConfigurationChange(mActiveDefaultNetwork);
+                        }
+                        break;
+                    }
+                    default:
+                        loge(getCurrentState().getName() + " ignoring unhandled message");
+                }
+                // runs in system-server and is the root parent state for all
+                // never return not_handled
+                return true;
+            }
+        }
+
+        private final class FmcInitialState extends State {
+            @Override
+            public void enter() {
+                if (DBG) log( "ConnectivityServiceHSM entering " + getCurrentState().getName());
+            }
+
+            @Override
+            public void exit() {
+                if (DBG) log( "ConnectivityServiceHSM leaving " + getCurrentState().getName());
+            }
+
+            @Override
+            public boolean processMessage(Message msg) {
+                if (DBG) log(getCurrentState().getName() + ".processMessage what=" + msg.what);
+                boolean ret = NOT_HANDLED; // by default leave all events as not_handled
+                switch (msg.what) {
+                    case HSM_HANDLE_CONNECT:
+                    {
+                        ret = handleConnect(msg);
+                        break;
+                    }
+
+                    default:
+                    log("Unhandled in this state.");
+                }
+                return ret;
+            }
+
+            private boolean handleConnect(Message msg) {
+                NetworkInfo info = (NetworkInfo) msg.obj;
+                if (isFmcActiveState(info)) {
+                    deferMessage(msg); //handle this in fmcactivestate
+                    transitionTo(mFmcActiveState);
+                    return HANDLED;
+                }
+                return NOT_HANDLED;
+            }
+
+            /* If fmcEnabled is true, current default network is wifi &
+               next available network is 3G then return true */
+            private boolean isFmcActiveState(NetworkInfo info) {
+                final int netType = info.getType();
+                if (DBG) log("NetType = " + netType);
+                if (mFmcEnabled &&
+                        (mActiveDefaultNetwork == TYPE_WIFI) && (netType == TYPE_MOBILE)) {
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        private final class FmcActiveState extends State {
+            private RouteInfo wlanDefault = null;
+            private RouteInfo wwanFmc = null;
+
+            @Override
+            public void enter() {
+                if (DBG) log( "ConnectivityServiceHSM entering " + getCurrentState().getName());
+                //when fmc is enabled, mobile is the default connection. So remove wifi
+                //default routes. fmc will add host specific routes over wifi.
+                LinkProperties curLp = mCurrentLinkProperties[TYPE_WIFI];
+                removeRoutes(curLp);
+            }
+
+            @Override
+            public void exit() {
+                if (DBG) log( "ConnectivityServiceHSM leaving " + getCurrentState().getName());
+            }
+
+            @Override
+            public boolean processMessage(Message msg) {
+                if (DBG) log(getCurrentState().getName() + ".processMessage what=" + msg.what);
+                boolean ret = NOT_HANDLED; // by default leave all events as not_handled
+                switch (msg.what) {
+                    case HSM_HANDLE_CONNECT:
+                    {
+                        ret = handleConnect(msg);
+                        break;
+                    }
+                    case HSM_HANDLE_DISCONNECT:
+                    {
+                        ret = handleDisconnect(msg);
+                        break;
+                    }
+
+                    default: {
+                        if (DBG) log(getCurrentState().getName()+ " handle disconnect");
+                    }
+                }
+                return ret;
+            }
+
+            private void removeRoutes(LinkProperties lp) {
+                if (lp == null) return;
+                Collection<RouteInfo> curRoutes = lp.getRoutes();
+
+                if (curRoutes != null) {
+                    for(RouteInfo r: curRoutes) {
+                        removeRoute(lp, r, TO_DEFAULT_TABLE);
+                    }
+                }
+            }
+
+            private void addRoutes(LinkProperties lp) {
+                if (lp == null) return;
+                Collection<RouteInfo> newRoutes = lp.getRoutes();
+                if (newRoutes != null) {
+                    for(RouteInfo r: newRoutes) {
+                        addRoute(lp, r, TO_DEFAULT_TABLE);
+                    }
+                }
+            }
+
+            private boolean handleConnect(Message msg) {
+                if (DBG) log(getCurrentState().getName()+ " handle connect");
+                NetworkInfo info = (NetworkInfo) msg.obj;
+                final int type = info.getType();
+
+                /* Don't do teardowns when FMC enabled. Rest is same as default implementation */
+                mActiveDefaultNetwork = type;
+
+                mDefaultInetConditionPublished = 0;
+                mDefaultConnectionSequence++;
+                mInetConditionChangeInFlight = false;
+
+                final NetworkStateTracker thisNet = mNetTrackers[type];
+                thisNet.setTeardownRequested(false);
+                updateNetworkSettings(thisNet);
+
+                ConnectivityService.this.handleConnectivityChange(type, false);
+                sendConnectedBroadcastDelayed(info, getConnectivityChangeDelay());
+                // notify battery stats service about this network
+                final String iface = thisNet.getLinkProperties().getInterfaceName();
+                if (iface != null) {
+                    try {
+                        BatteryStatsService.getService().noteNetworkInterfaceType(iface, type);
+                    } catch (RemoteException e) {
+                        // ignored; service lives in system_server
+                    }
+                }
+
+                return HANDLED;
+            }
+
+            private boolean handleDisconnect(Message msg) {
+                if (DBG) log(getCurrentState().getName()+ " handle disconnect");
+
+                final int type = ((NetworkInfo) msg.obj).getType();
+
+                /* if mobile connection lost but Wifi still connected, restore Wifi routes.
+                 * else just allow default handling of HSM_HANDLE_DISCONNECT.
+                 * If Wifi disconnects, then FMC will stop since the mobile connection
+                 * will also be brought down (as its a tunnel over Wifi), in which case no need
+                 * to restore routes. */
+                if (type == TYPE_MOBILE) {
+                    LinkProperties curLp = mCurrentLinkProperties[TYPE_WIFI];
+                    addRoutes(curLp);
+                    mActiveDefaultNetwork = TYPE_WIFI;
+                    deferMessage(msg);
+                    transitionTo(mFmcInitialState);
+                    return HANDLED;
+                } else if (type == TYPE_WIFI) {
+                    deferMessage(msg);
+                    transitionTo(mFmcInitialState);
+                    return HANDLED;
+                }
+                return NOT_HANDLED;
+            }
+
+        }
+
+        /**
+         * Smart Connectivity State.
+         * CS will be in this state when CNE smart connectivity is enabled and FMC is disabled.
+         * Supports simultaneous wif + mobile connections.
+         * Is a parent state for other smart connectivity states.
+         */
+        private final class SmartConnectivityState extends State {
+
+            public SmartConnectivityState () {
+            }
+
+            @Override
+            public void enter() {
+                if (DBG) log( "ConnectivityServiceHSM entering " + getCurrentState().getName());
+                //reset metric of default routes for wwan & wifi
+                mRouteAttributes[TYPE_WIFI].setMetric(0);
+                mRouteAttributes[TYPE_MOBILE].setMetric(0);
+                //make wifi higher priority dns than 3g by default.
+                myDefaultDnsNet = TYPE_WIFI;
+            }
+
+            @Override
+            public void exit() {
+                if (DBG) log( "ConnectivityServiceHSM leaving " + getCurrentState().getName());
+            }
+
+            /**
+             * connected.
+             */
+            private boolean isNetworkSimultaneitySupported(NetworkInfo info) {
+                final int type = info.getType();
+                boolean ret = false;
+                if (mNetConfigs[type].isDefault()) {
+                    mConnectedDefaultNetworks.add(type);
+                    if (mConnectedDefaultNetworks.size() > 1) {
+                        ret = true;
+                    }
+                }
+                return ret;
+            }
+
+            @Override
+            public boolean processMessage(Message msg) {
+                if (DBG) log(getCurrentState().getName() + ".processMessage what=" + msg.what);
+                NetworkInfo info = null;
+                boolean ret = NOT_HANDLED; // by default leave all events as not_handled
+                switch (msg.what) {
+                    case HSM_HANDLE_CONNECT :
+                    {
+                        info = (NetworkInfo) msg.obj;
+                        if (isNetworkSimultaneitySupported(info)) {
+                            log("Dual Connectivity Mode detected");
+                            deferMessage(msg);
+                            if (mActiveDefaultNetwork == TYPE_WIFI) {
+                                transitionTo(mWifiDefaultState);
+                            } else {
+                                transitionTo(mMobileDefaultState);
+                            }
+                            ret = HANDLED;
+                        }
+                        break;
+                    }
+                    case HSM_HANDLE_DISCONNECT:
+                    {
+                        info = (NetworkInfo) msg.obj;
+                        mConnectedDefaultNetworks.remove(info.getType());
+                        break;
+                    }
+                    default: ret = NOT_HANDLED;
+                }
+                return ret;
+            }
+        }
+
+        /**
+         * Dual connectivity Mobile default state.
+         * Mobile is treated as the mActiveDefaultNetwork in this state
+         */
+        private final class MobileDefaultState extends DualConnectivityState {
+            public MobileDefaultState () {
+                myDefaultNet = TYPE_MOBILE;
+                otherDefaultNet = TYPE_WIFI;
+            }
+
+            @Override
+            public void enter() {
+                if (DBG) log( "ConnectivityServiceHSM entering " + getCurrentState().getName());
+                runOnEnter();
+            }
+
+            @Override
+            public void exit() {
+                if (DBG) log( "ConnectivityServiceHSM leaving " + getCurrentState().getName());
+            }
+
+            @Override
+            protected void transitionToOther() {
+                if (DBG) log(getCurrentState().getName() + " transitionToOther");
+                transitionTo(mWifiDefaultState); // transition to mWifiDefaultState
+            }
+
+        }
+
+        /**
+         * Dual connectivity Wifi default state.
+         * Wifi is treated as the mActiveDefaultNetwork in this state
+         */
+        private final class WifiDefaultState extends DualConnectivityState {
+            public WifiDefaultState () {
+                myDefaultNet = TYPE_WIFI;
+                otherDefaultNet = TYPE_MOBILE;
+            }
+
+            @Override
+            public void enter() {
+                if (DBG) log( "ConnectivityServiceHSM entering " + getCurrentState().getName());
+                runOnEnter();
+            }
+
+            @Override
+            public void exit() {
+                if (DBG) log( "ConnectivityServiceHSM leaving " + getCurrentState().getName());
+            }
+
+            @Override
+            protected void transitionToOther() {
+                if (DBG) log(getCurrentState().getName() + " transitionToOther");
+                transitionTo(mMobileDefaultState); // transition to mMobileDefaultState
+            }
+
+        }
+
+        /**
+         * Abstract class that provides framework to support 3G and Wifi
+         * simultaneously.
+         * All dual connectivity states except FMC must extend from this class
+         */
+        private abstract class DualConnectivityState extends State {
+
+            protected int myDefaultNet;
+            protected int otherDefaultNet,
+                          mOtherDefaultInetCondition = 0,
+                          mOtherDefaultInetConditionPublished = 0,
+                          mOtherDefaultConnectionSequence = 0;
+            protected boolean mOtherInetConditionChangeInFlight = false;
+
+            @Override
+            public boolean processMessage(Message msg) {
+                if (DBG) log(getCurrentState().getName() + ".processMessage what=" + msg.what);
+                NetworkInfo info;
+                boolean ret = NOT_HANDLED; // by default leave all messages as unhandled
+                switch (msg.what) {
+                    case HSM_HANDLE_CONNECT:
+                    {
+                        info = (NetworkInfo) msg.obj;
+                        int r = handleConnect(info);
+                        if (r == 0) {
+                            ret = HANDLED; // handled connect in this state
+                        } else if (r == -1) {
+                            ret = NOT_HANDLED; // let parent process this event
+                        } else {
+                            deferMessage(msg);
+                            transitionTo(mSmartConnectivityState);
+                            ret = HANDLED; // state change, transition to parent and then process
+                        }
+                        break;
+                    }
+                    case HSM_HANDLE_DISCONNECT:
+                    {
+                        info = (NetworkInfo) msg.obj;
+                        int r = handleDisconnect(info); //private handler
+                        if (r == 0) {
+                            ret = NOT_HANDLED;
+                        } else if (r == -1) {
+                            deferMessage(msg);
+                            transitionTo(mSmartConnectivityState);
+                            ret = HANDLED;
+                        } else {
+                            transitionTo(mSmartConnectivityState);
+                            ret = HANDLED;
+                        }
+                        break;
+                    }
+                    case HSM_HANDLE_CONNECTIVITY_CHANGE:
+                    {
+                        int type = msg.arg1;
+                        boolean doReset = (msg.arg2 == 1);
+                        handleConnectivityChange(type, doReset); //private handler
+                        ret = HANDLED;
+                        break;
+                    }
+                    case HSM_HANDLE_DNS_CONFIGURATION_CHANGE:
+                    {
+                        int type = msg.arg1;
+                        handleDnsConfigurationChange(type); //private handler
+                        ret = HANDLED;
+                        break;
+                    }
+                    case HSM_HANDLE_CONNECTION_FAILURE:
+                        break;
+                    case HSM_HANDLE_INET_CONDITION_CHANGE:
+                    {
+                        int netType = msg.arg1;
+                        int condition = msg.arg2;
+                        if (handleInetConditionChange(netType, condition)) {
+                            ret = HANDLED;
+                        }
+                        break;
+                    }
+                    case HSM_HANDLE_INET_CONDITION_HOLD_END:
+                    {
+                        int netType = msg.arg1;
+                        int sequence = msg.arg2;
+                        if (handleInetConditionHoldEnd(netType, sequence)) {
+                            ret = HANDLED;
+                        }
+                        break;
+                    }
+                    case HSM_EVENT_ENFORCE_PREFERENCE:
+                    {
+                        loge("enforcing network preference not allowed in dual connectivity state");
+                        ret = HANDLED;
+                        break;
+                    }
+                    case HSM_EVENT_RESTORE_DNS:
+                    {
+                        handleDnsConfigurationChange(myDefaultDnsNet);
+                        ret = HANDLED;
+                        break;
+                    }
+                    case HSM_EVENT_CONNECTIVITY_SWITCH:
+                    {
+                        String reason = (String) msg.obj;
+                        int type = msg.arg1;
+                        if ( ! handleConnectivitySwitch(type, reason)) {
+                            deferMessage(msg);
+                            transitionToOther();
+                        }
+                        ret = HANDLED;
+                        break;
+                    }
+                    case HSM_EVENT_REPRIORITIZE_DNS:
+                    {
+                        int type = msg.arg1;
+                        if (type != myDefaultDnsNet) {
+                            handleDnsReprioritization(type);
+                        } else {
+                            logw("Dns is already prioritized for network " + type);
+                        }
+                        ret = HANDLED;
+                        break;
+                    }
+                    default:
+                        ret = NOT_HANDLED;
+                        if (DBG) {
+                            log(getCurrentState().getName() +
+                                     ": no handler for message="+ msg.what);
+                        }
+                }
+                return ret;
+            }
+
+            /**
+             * state specific route updates to be run as the first thing on
+             * entering this state.
+             */
+            protected void runOnEnter() {
+                if (DBG) log(getCurrentState().getName() + " runOnEnter");
+                // reset to implementation state specific route metric and update default route
+                mRouteAttributes[myDefaultNet].setMetric(0);
+                mRouteAttributes[otherDefaultNet].setMetric(20);
+                updateDefaultRouteMetric(myDefaultNet);
+            }
+
+            /**
+             * To be implemented by implementing class of dualconnectivitystate
+             * to transition from my to other default net state.
+             */
+            protected abstract void transitionToOther();
+
+
+            /**
+             * Broadcasts an intent indicating switch in default connectivity
+             * from one network to another.
+             * Modelled on the intent sent out in handleConnectionFailure
+             * Is valid only in dual network states
+             * Reason is provided by the implementing class
+             */
+            protected void sendConnectivitySwitchBroadcast(String reason) {
+
+                if (DBG) log(getCurrentState().getName() + " sendConnectivitySwitchBroadcast");
+                NetworkInfo newNetInfo = mNetTrackers[myDefaultNet].getNetworkInfo();
+                NetworkInfo oldNetInfo = mNetTrackers[otherDefaultNet].getNetworkInfo();
+
+                Intent intent = new Intent(ConnectivityManager.CONNECTIVITY_ACTION);
+                intent.putExtra(ConnectivityManager.EXTRA_NETWORK_INFO, oldNetInfo);
+                if (reason != null && reason.length() > 0) {
+                    intent.putExtra(ConnectivityManager.EXTRA_REASON, reason);
+                }
+                if (oldNetInfo.isFailover()) {
+                    intent.putExtra(ConnectivityManager.EXTRA_IS_FAILOVER, true);
+                }
+                intent.putExtra(ConnectivityManager.EXTRA_OTHER_NETWORK_INFO, newNetInfo);
+                intent.putExtra(ConnectivityManager.EXTRA_INET_CONDITION,
+                                mDefaultInetConditionPublished);
+
+                final Intent immediateIntent = new Intent(intent);
+                immediateIntent.setAction(CONNECTIVITY_ACTION_IMMEDIATE);
+                sendStickyBroadcast(immediateIntent);
+                sendStickyBroadcast(intent);
+
+                sendConnectedBroadcast(newNetInfo);
+            }
+
+            /**
+             * Switches default connectivity from one active default to another.
+             * Same method is used by both pre-transition state and the post
+             * transition state.
+             * handles routes and intents in post transition
+             * returns:
+             *      true  - event handled completely, don't transition.
+             *      false - event handled in old state, defermsg and transition to new state
+             *              and handle the rest of it
+             */
+            protected boolean handleConnectivitySwitch (int netType, String reason) {
+
+                if (DBG) log(getCurrentState().getName() + " handleConnectivitySwitch");
+                boolean ret = true; // true - dont transition, false - transition
+
+                if ( ! mConnectedDefaultNetworks.contains(netType) ) {
+                    logw(" Network " + netType + " not supported for default connectivity");
+                    return ret;
+                }
+                // mactive isn't updated yet, is updated post switch.
+                if (mActiveDefaultNetwork == netType) {
+                    logw(" Network" + netType + " is already default");
+                    return ret;
+                }
+                if (myDefaultNet == netType) {
+                    //post switch handling in new state
+                    mActiveDefaultNetwork = myDefaultNet;
+                    updateDefaultRouteMetric(otherDefaultNet);
+                    sendConnectivitySwitchBroadcast(reason);
+                } else {
+                    //pre switch handling in old state
+                    removeDefaultRoutes(myDefaultNet);
+                    ret = false;  // transition to otherstate
+                }
+                return ret;
+            }
+
+            /**
+             * Updates name server priority and sets up the dns cache.
+             * can be double null in which case it will only update name server
+             * priority.
+             * Caller must grab mDnsLock
+             */
+            private boolean updateDns(String iface, Collection<InetAddress> netDnses) {
+
+                if (DBG) log(getCurrentState().getName() + " updateDns");
+                boolean changed = false;
+                int last = 0;
+                List<InetAddress> dnses = new ArrayList<InetAddress>();
+
+                LinkProperties mlp = mNetTrackers[myDefaultNet].getLinkProperties();
+                LinkProperties olp = mNetTrackers[otherDefaultNet].getLinkProperties();
+
+                if (mlp != null) dnses.addAll(mlp.getDnses());
+                if (olp != null) {
+                    if (otherDefaultNet == myDefaultDnsNet) {
+                        dnses.addAll(0, olp.getDnses());
+                    } else {
+                        dnses.addAll(olp.getDnses());
+                    }
+                }
+
+                if (dnses.size() == 0 && mDefaultDns != null) {
+                    ++last;
+                    String value = mDefaultDns.getHostAddress();
+                    if (!value.equals(SystemProperties.get("net.dns1"))) {
+                        if (DBG) {
+                            loge("no dns provided - using " + value);
+                        }
+                        changed = true;
+                        SystemProperties.set("net.dns1", value);
+                    }
+                } else {
+                    for (InetAddress dns : dnses) {
+                        ++last;
+                        String key = "net.dns" + last;
+                        String value = dns.getHostAddress();
+                        if (!changed && value.equals(SystemProperties.get(key))) {
+                            continue;
+                        }
+                        if (VDBG) {
+                            log("adding dns " + value );
+                        }
+                        changed = true;
+                        SystemProperties.set(key, value);
+                    }
+                }
+                for (int i = last + 1; i <= mNumDnsEntries; ++i) {
+                    String key = "net.dns" + i;
+                    if (VDBG) log("erasing " + key);
+                    changed = true;
+                    SystemProperties.set(key, "");
+                }
+                mNumDnsEntries = last;
+
+                if (changed) {
+                    try {
+                        if (iface != null && netDnses != null) {
+                            // only update interface dns cache for the changed iface.
+                            mNetd.setDnsServersForInterface( iface,
+                                    NetworkUtils.makeStrings(netDnses) );
+                        }
+                        // set appropriate default iface for dns cache
+                        String defDnsIface = null;
+                        if (myDefaultDnsNet == myDefaultNet && mlp != null) {
+                            defDnsIface = mlp.getInterfaceName();
+                        } else if (olp != null) {
+                            defDnsIface = olp.getInterfaceName();
+                        }
+                        if (!TextUtils.isEmpty(defDnsIface)) {
+                            mNetd.setDefaultInterfaceForDns(defDnsIface);
+                        }
+                    } catch (Exception e) {
+                        if (VDBG) loge("exception setting default dns interface: " + e);
+                    }
+                }
+                return changed;
+            }
+
+            /**
+             * Reprioritizes the specified networks name servers.
+             */
+            protected void handleDnsReprioritization (int netType) {
+
+                if (DBG) log(getCurrentState().getName() + " handleDnsReprioritization");
+                // only change dns priority for networks we can handle in this state.
+                if (!mConnectedDefaultNetworks.contains(netType)) {
+                    logw("Cannot prioritize dns for unsupported type" + netType);
+                    return;
+                }
+
+                log("Prioritizing Dns for network " + netType);
+
+                synchronized (mDnsLock) {
+                    myDefaultDnsNet = netType;
+                    if (!mDnsOverridden) {
+                        if (updateDns(null, null)) bumpDns();
+                    }
+                }
+            }
+
+            /**
+             * Same as default state's implementation, with exception of calling
+             * custom updateDns method.
+             */
+            protected void handleDnsConfigurationChange(int netType) {
+
+                if (DBG) log(getCurrentState().getName() + " handleDnsConfigurationChange");
+                // add default net's dns entries
+                NetworkStateTracker nt = mNetTrackers[netType];
+                if (nt != null && nt.getNetworkInfo().isConnected() && !nt.isTeardownRequested()) {
+                    LinkProperties p = nt.getLinkProperties();
+                    if (p == null) return;
+                    Collection<InetAddress> dnses = p.getDnses();
+                    boolean changed = false;
+                    if (mNetConfigs[netType].isDefault()) {
+                        String network = nt.getNetworkInfo().getTypeName();
+                        synchronized (mDnsLock) {
+                            if (!mDnsOverridden) {
+                                changed = updateDns(p.getInterfaceName(), dnses);
+                            }
+                        }
+                    } else {
+                        try {
+                            mNetd.setDnsServersForInterface(p.getInterfaceName(),
+                                    NetworkUtils.makeStrings(dnses));
+                        } catch (Exception e) {
+                            if (VDBG) loge("exception setting dns servers: " + e);
+                        }
+                        // set per-pid dns for attached secondary nets
+                        List pids = mNetRequestersPids[netType];
+                        for (int y=0; y< pids.size(); y++) {
+                            Integer pid = (Integer)pids.get(y);
+                            changed = writePidDns(dnses, pid.intValue());
+                        }
+                    }
+                    if (changed) bumpDns();
+                }
+            }
+
+            /**
+             * Handle a {@code DISCONNECTED} event of other Default network when
+             * my default network is still connected.
+             * Defer message to parent state for processing of my default net type.
+             * handle non-defaults in parent
+             * handle and transition to parent when other disconnects.
+             * @param info the {@code NetworkInfo} for the network
+             * returns:
+             *      0 - NOT_HANDLED
+             *     -1 - deferMsg and tansition to parent
+             *     -2 - transition to parent
+             */
+            protected int handleDisconnect(NetworkInfo info) {
+
+                if (DBG) log(getCurrentState().getName() + " handleDisconnect");
+                int type = info.getType();
+
+                // dont handle network types other than my and other DefaultNet
+                if ( !mNetConfigs[type].isDefault() || !mConnectedDefaultNetworks.contains(type)) {
+                    return 0;
+                }
+
+                if (type == myDefaultNet) {
+                    if (myDefaultDnsNet == type) { // reprioritize dns to other
+                        handleDnsReprioritization(otherDefaultNet);
+                    }
+                    mConnectedDefaultNetworks.remove(type);
+                    return -1; // defer and transition to parent
+                }
+
+                //release the transitionWakeLock as some NetTrackers hold it after they disconnect.
+                // We already have default network, release the transition wakelock immediately
+                String causedBy = null;
+                synchronized (ConnectivityService.this) {
+                    if (mNetTransitionWakeLock.isHeld()) {
+                        mNetTransitionWakeLock.release();
+                        causedBy = mNetTransitionWakeLockCausedBy;
+                    }
+                }
+                if (causedBy != null) {
+                    log("NetTransition Wakelock for " +causedBy+ " released because of disconnect");
+                }
+
+                //handle other def net disconnect
+                mNetTrackers[type].setTeardownRequested(false);
+
+                Intent intent = new Intent(ConnectivityManager.CONNECTIVITY_ACTION);
+                intent.putExtra(ConnectivityManager.EXTRA_NETWORK_INFO, info);
+                if (info.isFailover()) {
+                    intent.putExtra(ConnectivityManager.EXTRA_IS_FAILOVER, true);
+                    info.setFailover(false);
+                }
+                if (info.getReason() != null) {
+                    intent.putExtra(ConnectivityManager.EXTRA_REASON, info.getReason());
+                }
+                if (info.getExtraInfo() != null) {
+                    intent.putExtra(ConnectivityManager.EXTRA_EXTRA_INFO,
+                            info.getExtraInfo());
+                }
+                intent.putExtra(ConnectivityManager.EXTRA_INET_CONDITION,
+                                mDefaultInetConditionPublished);
+
+                // Reset interface if no other connections are using the same interface
+                boolean doReset = true;
+                LinkProperties linkProperties = mNetTrackers[type].getLinkProperties();
+                if (linkProperties != null) {
+                    String oldIface = linkProperties.getInterfaceName();
+                    if (TextUtils.isEmpty(oldIface) == false) {
+                        for (NetworkStateTracker networkStateTracker : mNetTrackers) {
+                            if (networkStateTracker == null) continue;
+                            NetworkInfo networkInfo = networkStateTracker.getNetworkInfo();
+                            if (networkInfo.isConnected() && networkInfo.getType() != type) {
+                                LinkProperties l = networkStateTracker.getLinkProperties();
+                                if (l == null) continue;
+                                if (oldIface.equals(l.getInterfaceName())) {
+                                    doReset = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                // do this before we broadcast the change - use custom handler
+                handleConnectivityChange(type, doReset);
+
+                final Intent immediateIntent = new Intent(intent);
+                immediateIntent.setAction(CONNECTIVITY_ACTION_IMMEDIATE);
+                sendStickyBroadcast(immediateIntent);
+                sendStickyBroadcastDelayed(intent, getConnectivityChangeDelay());
+
+                // reprioritize dns to remove other net's dnses
+                if (myDefaultDnsNet == type) {
+                    handleDnsReprioritization(myDefaultNet);
+                }
+                //Stop tracking other default network
+                mConnectedDefaultNetworks.remove(type);
+                return -2; // true - transition to parent state.
+            }
+
+            /**
+             * Handle a {@code CONNECTED} event of other default network.
+             * If a higher priority network comes up, disconnect connected defaults and
+             * transition to parent state for processing this event.
+             * If a lower priority or non-default network comes up, process event in parent state.
+             */
+            protected boolean isHigherPriorityNet(int type) {
+
+                if (DBG) log(getCurrentState().getName() + " isHigherPriorityNet");
+                boolean ret = false;
+                if (mConnectedDefaultNetworks.isHigherPriorityNetwork(type)) {
+                    // a higher priority network is connected disconnect our active default
+                    // networks, defer msg and transition to parent state
+                    teardown(mNetTrackers[otherDefaultNet]);
+                    mConnectedDefaultNetworks.remove(otherDefaultNet);
+                    teardown(mNetTrackers[myDefaultNet]);
+                    mConnectedDefaultNetworks.remove(myDefaultNet);
+                    ret = true;
+                } else {
+                    teardown(mNetTrackers[type]);
+                }
+                return ret;
+            }
+
+            /**
+             * Handle a {@code CONNECTED} event of the my and other
+             * default network types.
+             * returns:
+             *      0 - handled connect for my and other and lower prio defaults
+             *     -1 - NOT_HANDLED for non-default types
+             *     -2 - Higher pri net connected, deferMsg and transition
+             */
+            protected int handleConnect(NetworkInfo info) {
+
+                if (DBG) log(getCurrentState().getName() + " handleConnect");
+                final int type = info.getType();
+                final NetworkStateTracker thisNet = mNetTrackers[type];
+
+                // handle non default networks in parent state.
+                if ( ! mNetConfigs[type].isDefault() ) {
+                   return -1;
+                }
+
+                // handle lower prio default in this state, higher prio defaults
+                // in parent state by transitioning to it.
+                if (! mConnectedDefaultNetworks.contains(type)) {
+                    return (isHigherPriorityNet(type) ? -2 : 0);
+                }
+
+                // handle connect event for active defaults
+                // release the transitionWakeLock as some NetTrackers hold it after they disconnect.
+                // We already have default network, release the transition wakelock immediately
+                String causedBy = null;
+                synchronized (ConnectivityService.this) {
+                    if (mNetTransitionWakeLock.isHeld()) {
+                        mNetTransitionWakeLock.release();
+                        causedBy = mNetTransitionWakeLockCausedBy;
+                    }
+                }
+                if (causedBy != null) {
+                    log("NetTransition Wakelock for " + causedBy + " released because of connect");
+                }
+
+                if (type == myDefaultNet) {
+                    mDefaultInetConditionPublished = 0;
+                    mDefaultConnectionSequence++;
+                    mInetConditionChangeInFlight = false;
+                } else {
+                    mOtherDefaultInetConditionPublished = 0;
+                    mOtherDefaultConnectionSequence++;
+                    mOtherInetConditionChangeInFlight = false;
+                }
+                thisNet.setTeardownRequested(false);
+                updateNetworkSettings(thisNet);
+                handleConnectivityChange(type, false); // private handler
+                sendConnectedBroadcastDelayed(info, getConnectivityChangeDelay());
+
+                // notify battery stats service about this network
+                final String iface = thisNet.getLinkProperties().getInterfaceName();
+                if (iface != null) {
+                    try {
+                        BatteryStatsService.getService().noteNetworkInterfaceType(iface, type);
+                    } catch (RemoteException e) {
+                        // ignored; service lives in system_server
+                    }
+                }
+                return 0;
+            }
+
+            /**
+             * handles inet condition change for otherDefaultNet.
+             * Defers processing of other net types to parent state
+             */
+            protected boolean handleInetConditionChange(int netType, int condition) {
+
+                if (DBG) log(getCurrentState().getName() + " handleInetConditionChange");
+                if (netType != otherDefaultNet) {
+                    return false;
+                }
+
+                if (VDBG) {
+                    log("handleInetConditionChange: net=" +
+                            netType + ", condition=" + condition +
+                            ", for other active default Network=" + netType);
+                }
+
+                mOtherDefaultInetCondition = condition;
+                int delay;
+                if (mOtherInetConditionChangeInFlight == false) {
+                    if (VDBG) log("handleInetConditionChange: starting a change hold");
+                    // setup a new hold to debounce this
+                    if (mOtherDefaultInetCondition > 50) {
+                        delay = Settings.Secure.getInt(mContext.getContentResolver(),
+                                Settings.Secure.INET_CONDITION_DEBOUNCE_UP_DELAY, 500);
+                    } else {
+                        delay = Settings.Secure.getInt(mContext.getContentResolver(),
+                        Settings.Secure.INET_CONDITION_DEBOUNCE_DOWN_DELAY, 3000);
+                    }
+                    mOtherInetConditionChangeInFlight = true;
+                    sendMessageDelayed(obtainMessage(EVENT_INET_CONDITION_HOLD_END,
+                                otherDefaultNet, mOtherDefaultConnectionSequence), delay);
+                } else {
+                    // we've set the new condition, when this hold ends that will get picked up
+                    if (VDBG) {
+                        log("handleInetConditionChange:" +
+                            " currently in hold - not setting new end evt");
+                    }
+                }
+                return true;
+            }
+
+            /**
+             * handles inet condition hold end for otherDefaultNet.
+             * Defers processing of other net types to parent
+             */
+            protected boolean handleInetConditionHoldEnd(int netType, int sequence) {
+
+                if (DBG) log(getCurrentState().getName() + " handleInetConditionHoldEnd");
+                if (netType != otherDefaultNet) {
+                    return false;
+                }
+
+                if (DBG) {
+                    log("handleInetConditionHoldEnd: net=" + netType +
+                            ", condition=" + mOtherDefaultInetCondition +
+                            ", published condition=" + mOtherDefaultInetConditionPublished);
+                }
+                mOtherInetConditionChangeInFlight = false;
+
+                if (mOtherDefaultConnectionSequence != sequence) {
+                    if (DBG) {
+                        log("handleInetConditionHoldEnd: " +
+                            "event hold for obsolete network - ignoring");
+                    }
+                    return true;
+                }
+
+                NetworkInfo networkInfo = mNetTrackers[otherDefaultNet].getNetworkInfo();
+                if (networkInfo.isConnected() == false) {
+                    if (DBG) log("handleInetConditionHoldEnd: default network " +
+                            netType + " not connected - ignoring");
+                    return true;
+                }
+                mOtherDefaultInetConditionPublished = mOtherDefaultInetCondition;
+                sendInetConditionBroadcast(networkInfo);
+                return true;
+            }
+
+            /**
+             * Smart Connectivity networks handleConnectivityChange method.
+             * Pretty much the same as default state's method barring exception
+             * that it calls a private update route method.
+             * -------------------------------
+             * After a change in the connectivity state of a network. We're mainly
+             * concerned with making sure that the list of DNS servers is set up
+             * according to which networks are connected, and ensuring that the
+             * right routing table entries exist.
+             */
+            private void handleConnectivityChange(int netType, boolean doReset) {
+
+                if (DBG) log(getCurrentState().getName() + " handleConnectivityChange");
+                int resetMask = doReset ? NetworkUtils.RESET_ALL_ADDRESSES : 0;
+                 //If a non-default network is enabled, add the host routes that
+                 //will allow it's DNS servers to be accessed.
+                handleDnsConfigurationChange(netType); // use custom handler
+
+                LinkProperties curLp = mCurrentLinkProperties[netType];
+                LinkProperties newLp = null;
+
+                if (mNetTrackers[netType].getNetworkInfo().isConnected()) {
+                    newLp = mNetTrackers[netType].getLinkProperties();
+
+                    if (VDBG) {
+                        log("handleConnectivityChange: changed linkProperty[" + netType + "]:" +
+                                " doReset=" + doReset + " resetMask=" + resetMask +
+                                "\n   curLp=" + curLp +
+                                "\n   newLp=" + newLp);
+                    }
+
+                    if (curLp != null) {
+                        if (curLp.isIdenticalInterfaceName(newLp)) {
+                            CompareResult<LinkAddress> car = curLp.compareAddresses(newLp);
+                            if ((car.removed.size() != 0) || (car.added.size() != 0)) {
+                                for (LinkAddress linkAddr : car.removed) {
+                                    if (linkAddr.getAddress() instanceof Inet4Address) {
+                                        resetMask |= NetworkUtils.RESET_IPV4_ADDRESSES;
+                                    }
+                                    if (linkAddr.getAddress() instanceof Inet6Address) {
+                                        resetMask |= NetworkUtils.RESET_IPV6_ADDRESSES;
+                                    }
+                                }
+                                if (DBG) {
+                                    log("handleConnectivityChange: addresses changed" +
+                                            " linkProperty[" + netType + "]:" +
+                                            " resetMask=" + resetMask + "\n   car=" + car);
+                                }
+                            } else {
+                                if (DBG) {
+                                    log("handleConnectivityChange: address are the " +
+                                            " same reset per doReset linkProperty[" +
+                                            netType + "]: resetMask=" + resetMask);
+                                }
+                            }
+                        } else {
+                            resetMask = NetworkUtils.RESET_ALL_ADDRESSES;
+                            if (DBG) {
+                                log("handleConnectivityChange: interface not equivalent reset both"+
+                                        " linkProperty[" + netType + "]: resetMask=" + resetMask);
+                            }
+                        }
+                    }
+                    if (mNetConfigs[netType].isDefault()) {
+                        handleApplyDefaultProxy(newLp.getHttpProxy());
+                    }
+                } else {
+                    if (VDBG) {
+                        log("handleConnectivityChange: changed linkProperty[" + netType + "]:" +
+                                " doReset=" + doReset + " resetMask=" + resetMask +
+                                "\n  curLp=" + curLp +
+                                "\n  newLp= null");
+                    }
+                }
+                mCurrentLinkProperties[netType] = newLp;
+                boolean resetDns = updateRoutes( newLp,
+                                                 curLp,
+                                                 mNetConfigs[netType].isDefault(),
+                                                 mRouteAttributes[netType] );
+
+                if (resetMask != 0 || resetDns) {
+                    LinkProperties linkProperties = mNetTrackers[netType].getLinkProperties();
+                    if (linkProperties != null) {
+                        String iface = linkProperties.getInterfaceName();
+                        if (TextUtils.isEmpty(iface) == false) {
+                            if (resetMask != 0) {
+                                if (DBG) log("resetConnections(" + iface + ", " + resetMask + ")");
+                                NetworkUtils.resetConnections(iface, resetMask);
+
+                                // Tell VPN the interface is down. It is a temporary
+                                // but effective fix to make VPN aware of the change.
+                                if ((resetMask & NetworkUtils.RESET_IPV4_ADDRESSES) != 0) {
+                                    mVpn.interfaceStatusChanged(iface, false);
+                                }
+                            }
+                            if (resetDns) {
+                                if (VDBG) log("resetting DNS cache for " + iface);
+                                try {
+                                    mNetd.flushInterfaceDnsCache(iface);
+                                } catch (Exception e) {
+                                    // never crash - catch them all
+                                    if (DBG) loge("Exception resetting dns cache: " + e);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // TODO: Temporary notifying upstread change to Tethering.
+                //       @see bug/4455071
+                /** Notify TetheringService if interface name has been changed. */
+                if (TextUtils.equals(mNetTrackers[netType].getNetworkInfo().getReason(),
+                                     Phone.REASON_LINK_PROPERTIES_CHANGED)) {
+                    if (isTetheringSupported()) {
+                        mTethering.handleTetherIfaceChange(mNetTrackers[netType].getNetworkInfo());
+                    }
+                }
+            }
+
+            /**
+             * Updates route metric of mActiveDefaultNetwork when transitioning
+             * from another network.
+             */
+            protected void updateDefaultRouteMetric(int type) {
+
+                if (DBG) log(getCurrentState().getName() + " updateDefaultRouteMetric");
+                LinkProperties lp = mCurrentLinkProperties[type];
+                if (lp == null) return;
+
+                for (RouteInfo r : lp.getRoutes()) {
+                    if (r == null || r.isHostRoute()) continue;
+                    addRoute(lp, r, 0, mRouteAttributes[type].getMetric());
+                }
+            }
+
+            /**
+             * Removes default routes for default networks if type is all (-1).
+             * Else removes default route for specified type
+             */
+            protected void removeDefaultRoutes (int netType) {
+
+                if (DBG) log(getCurrentState().getName() + " removeDefaultRoutes");
+                if (netType == -1) {
+                    if (DBG) log("removing default routes for all networks");
+                    for (Integer type : mConnectedDefaultNetworks.getActiveDefaults()){
+                        LinkProperties p = mCurrentLinkProperties[type.intValue()];
+                        if (p == null ) continue;
+                        for (RouteInfo r : p.getRoutes()) {
+                            if (r != null && r.isDefaultRoute()) {
+                                removeRoute(p, r, TO_DEFAULT_TABLE);
+                            }
+                        }
+                    }
+                } else if (mConnectedDefaultNetworks.contains(netType)) {
+                    if (DBG) log("removing default routes for " + netType);
+                    LinkProperties p = mCurrentLinkProperties[netType];
+                    if (p == null) return;
+                    for (RouteInfo r : p.getRoutes()) {
+                        if (r != null && r.isDefaultRoute()) {
+                            removeRoute(p, r, TO_DEFAULT_TABLE);
+                        }
+                    }
+                }
+            }
+
+            /**
+             * Custom addRoute implementation for smart connectivity states.
+             * Supports metric routes for default networks.
+             * Manages mAddedRoutes appropriately for dual default Network State.
+             * Does not support adding route to secondary table.
+             */
+            protected boolean addRoute(LinkProperties lp, RouteInfo r,
+                    int cycleCount, int defaultRouteMetric) {
+
+                if (DBG) log(getCurrentState().getName() + " addRoute");
+
+                int metric = 0;
+                String ifaceName = lp.getInterfaceName();
+
+                if ((ifaceName == null) || (lp == null) || (r == null)) {
+                    return false;
+                }
+
+                if (cycleCount > MAX_HOSTROUTE_CYCLE_COUNT) {
+                    loge("Error adding route - too much recursion");
+                    return false;
+                }
+
+                if (r.isHostRoute() == false) {
+                    // use state specific metric for default routes
+                    metric = defaultRouteMetric;
+                    RouteInfo bestRoute =
+                        RouteInfo.selectBestRoute(lp.getRoutes(), r.getGateway());
+                    if (bestRoute != null) {
+                        if (bestRoute.getGateway().equals(r.getGateway())) {
+                            //if there is no better route, add the implied hostroute for our gateway
+                            bestRoute = RouteInfo.makeHostRoute(r.getGateway());
+                        } else {
+                            // if we will connect to our gateway through another route, add a direct
+                            // route to it's gateway
+                            bestRoute =
+                                RouteInfo.makeHostRoute(r.getGateway(), bestRoute.getGateway());
+                        }
+                        addRoute(lp, bestRoute, cycleCount+1, metric);
+                    }
+                }
+
+                if (VDBG) {
+                    log("Adding " + r + " with metric " + metric + " for interface " + ifaceName);
+                }
+                try {
+                     //metric update removes existing route and adds another
+                     //with newer metric. So check for duplicate here.
+                     if (! mAddedRoutes.contains(r))
+                         mAddedRoutes.add(r);  // only track default table
+                     if (VDBG) log("Routes in main table - [ " + mAddedRoutes + " ]");
+                     mNetd.addRouteWithMetric(ifaceName, metric, r);
+                } catch (Exception e) {
+                    // never crash - catch them all
+                    if (VDBG) loge("Exception trying to add a Metric Route: " + e);
+                    return false;
+                }
+                return true;
+            }
+
+            /**
+             * Add and remove routes using the old properties (null if not previously connected),
+             * new properties (null if becoming disconnected).  May even be double null, which
+             * is a noop.
+             * updates dns routes for all networks.
+             * Uses private addRoute method to handle metrics for default routes in default table
+             * returns a boolean indicating the routes changed
+             */
+            protected boolean updateRoutes(LinkProperties newLp,
+                    LinkProperties curLp, boolean isLinkDefault, RouteAttributes ra) {
+
+                if (DBG) log(getCurrentState().getName() + " updateRoutes");
+
+                Collection<RouteInfo> routesToAdd = null;
+                CompareResult<InetAddress> dnsDiff = new CompareResult<InetAddress>();
+                CompareResult<RouteInfo> routeDiff = new CompareResult<RouteInfo>();
+                CompareResult<LinkAddress> localAddrDiff = new CompareResult<LinkAddress>();
+                if (curLp != null) {
+                    // check for the delta between the current set and the new
+                    routeDiff = curLp.compareRoutes(newLp);
+                    dnsDiff = curLp.compareDnses(newLp);
+                    localAddrDiff = curLp.compareAddresses(newLp);
+                } else if (newLp != null) {
+                    routeDiff.added = newLp.getRoutes();
+                    dnsDiff.added = newLp.getDnses();
+                    localAddrDiff.added = newLp.getLinkAddresses();
+                }
+
+                boolean routesChanged =
+                    (routeDiff.removed.size() != 0 || routeDiff.added.size() != 0);
+
+                for (RouteInfo r : routeDiff.removed) {
+                    if (isLinkDefault || ! r.isDefaultRoute()) {
+                        removeRoute(curLp, r, TO_DEFAULT_TABLE);
+                    }
+                    if (isLinkDefault == false) {
+                        // remove from a secondary route table
+                        removeRoute(curLp, r, TO_SECONDARY_TABLE);
+                    }
+                }
+
+                for (RouteInfo r : routeDiff.added) {
+                    if (isLinkDefault || ! r.isDefaultRoute()) {
+                        // add to main table - uses custom addRoute with metric
+                        addRoute(newLp, r, 0, ra.getMetric());
+                    } else {
+                        // add to a secondary route table - uses default addRoute method
+                        ConnectivityService.this.addRoute(newLp, r, TO_SECONDARY_TABLE);
+
+                        // many radios add a default route even when we don't want one.
+                        // remove the default route unless somebody else has asked for it
+                        String ifaceName = newLp.getInterfaceName();
+                        if ( ! TextUtils.isEmpty(ifaceName) && ! mAddedRoutes.contains(r)) {
+                            if (VDBG) log("Removing " + r + " for interface " + ifaceName);
+                            try {
+                                mNetd.removeRoute(ifaceName, r);
+                            } catch (Exception e) {
+                                // never crash - catch them all
+                                if (VDBG) loge("Exception trying to remove a route: " + e);
+                            }
+                        }
+                    }
+                }
+
+                if (localAddrDiff.removed.size() != 0) {
+                    for (LinkAddress la : localAddrDiff.removed) {
+                        if (VDBG) log("Removing src route for:" + la.getAddress().getHostAddress());
+                        try {
+                             mNetd.delSrcRoute(la.getAddress().getAddress(), ra.getTableId());
+                        } catch (Exception e) {
+                            loge("Exception while trying to remove src route: " + e);
+                        }
+                    }
+                }
+
+                if (localAddrDiff.added.size() != 0) {
+                    InetAddress gw4Addr = null, gw6Addr = null;
+                    String ifaceName = newLp.getInterfaceName();
+                    if (! TextUtils.isEmpty(ifaceName)) {
+                        for (RouteInfo r : newLp.getRoutes()) {
+                            if (! r.isDefaultRoute()) continue;
+                            if (r.getGateway() instanceof Inet4Address) {
+                                gw4Addr = r.getGateway();
+                            } else {
+                                gw6Addr = r.getGateway();
+                            }
+                        } //gateway is optional so continue adding the source route.
+                        for (LinkAddress la : localAddrDiff.added) {
+                            try {
+                                if (la.getAddress() instanceof Inet4Address) {
+                                    mNetd.replaceSrcRoute(ifaceName, la.getAddress().getAddress(),
+                                            gw4Addr.getAddress(), ra.getTableId());
+                                } else {
+                                    mNetd.replaceSrcRoute(ifaceName, la.getAddress().getAddress(),
+                                            gw6Addr.getAddress(), ra.getTableId());
+                                }
+                            } catch (Exception e) {
+                                //never crash, catch them all
+                                loge("Exception while trying to add src route: " + e);
+                            }
+                        }
+                    }
+                }
+
+                // handle DNS routes
+                if (routesChanged) {
+                    // routes changed - remove all old dns entries and add new
+                    if (curLp != null) {
+                        for (InetAddress oldDns : curLp.getDnses()) {
+                            removeRouteToAddress(curLp, oldDns);
+                        }
+                    }
+                    if (newLp != null) {
+                        for (InetAddress newDns : newLp.getDnses()) {
+                            addRouteToAddress(newLp, newDns);
+                        }
+                    }
+                } else {
+                    // no change in routes, check for change in dns themselves
+                    for (InetAddress oldDns : dnsDiff.removed) {
+                        removeRouteToAddress(curLp, oldDns);
+                    }
+                    for (InetAddress newDns : dnsDiff.added) {
+                        addRouteToAddress(newLp, newDns);
+                    }
+                }
+                return routesChanged;
+            }
+        } // end dualConnectivityState class
+    } // end ConnectivityServiceHSM
 }

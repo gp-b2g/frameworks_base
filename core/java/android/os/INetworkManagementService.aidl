@@ -1,7 +1,7 @@
 /* //device/java/android/android/os/INetworkManagementService.aidl
 **
 ** Copyright 2007, The Android Open Source Project
-** Copyright (c) 2011,2012 Code Aurora Forum. All rights reserved.
+** Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -128,30 +128,29 @@ interface INetworkManagementService
     **/
 
    /**
-    * Replaces a source policy route for the given iface and protocol family AF_INET
-    * in a custom routing table denoted by routeId, if it already exists.
+    * Replaces a prexisting identical route with the new metric specified.
+    * Adds a new route if none existed before.
+    */
+   boolean addRouteWithMetric(String iface, int metric, in RouteInfo route);
+
+   /**
+    * Replaces a source policy route for the given iface in a custom routing
+    * table denoted by routeId, if it already exists.
     * Adds a new route if it did not exist.
     */
-   boolean replaceV4SrcRoute(String iface, String ipAddr, String gatewayAddr, int routeId);
+   boolean replaceSrcRoute(String iface, in byte[] ip, in byte[] gateway, int routeId);
 
    /**
-    * Replaces a source policy route for the given iface and protocol family AF_INET6
-    * in a custom routing table denoted by routeId, if it already exists.
-    * Adds a new route if it did not exist.
+    * Deletes a source policy route for the given route identifier and source
+    * address from a custom routing table denoted by routeId
     */
-   boolean replaceV6SrcRoute(String iface, String ipAddr, String gatewayAddr, int routeId);
+   boolean delSrcRoute(in byte[] ip, int routeId);
 
    /**
-    * Deletes a source policy route for the given route identifier
-    * and protocol family AF_INET from a custom routing table
+    * Replaces the default route in main table with the specified gateway and
+    * interface
     */
-   boolean delV4SrcRoute(int routeId);
-
-   /**
-    * Deletes a source policy route for the given route identifier
-    * and protocol family AF_INET6 from a custom routing table
-    */
-   boolean delV6SrcRoute(int routeId);
+   boolean replaceDefaultRoute(String iface, in byte[] gateway);
 
     /**
      ** TETHERING RELATED
@@ -392,8 +391,6 @@ interface INetworkManagementService
      * Flush the DNS cache associated with the specified interface.
      */
     void flushInterfaceDnsCache(String iface);
-
-    boolean replaceV4DefaultRoute(String iface, String gatewayAddr);
 
     /**
      * Request router solicitation for the interface

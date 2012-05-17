@@ -54,6 +54,7 @@ import android.os.ServiceManager;
 import android.util.Log;
 
 import java.net.InetAddress;
+import java.net.Inet4Address;
 import java.util.Collection;
 import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
@@ -318,7 +319,7 @@ public class FmcStateMachine extends StateMachine {
         mDestIp = destIp;
 
         if (DBG) {
-            String debug = (short) (mDestIp[0] & 0xff) + 
+            String debug = (short) (mDestIp[0] & 0xff) +
                      "." + (short) (mDestIp[1] & 0xff) +
                      "." + (short) (mDestIp[2] & 0xff) +
                      "." + (short) (mDestIp[3] & 0xff);
@@ -466,132 +467,15 @@ public class FmcStateMachine extends StateMachine {
             }
 
             try {
-                /* Create route info for host address and active gateway */
-                LinkProperties lp = mConnSvc.getLinkProperties(ConnectivityManager.TYPE_WIFI);
-                if (lp == null) {
-                    Log.e(this.getName(), "handleActiveRouting LinkProperties is null");
-                    return;
+                Log.d(this.getName(), "Creating a host route");
+                if (!mConnSvc.requestRouteToHostAddress(ConnectivityManager.TYPE_WIFI, hostRoutingIpAddr)) {
+                    Log.e(this.getName(),"failed to requestRouteToHostAddress");
                 }
-                String iface = lp.getInterfaceName();
-                InetAddress gateway = lp.getRoutes().iterator().next().getGateway();
-                InetAddress ipAddr = InetAddress.getByAddress(hostRoutingIpAddr);
-                RouteInfo rInfo = RouteInfo.makeHostRoute(ipAddr, gateway);
-
-                /* Add host route to wlan0 */
-                IBinder b = ServiceManager.getService(Context.NETWORKMANAGEMENT_SERVICE);
-                INetworkManagementService nms = INetworkManagementService.Stub.asInterface(b);
-                if (nms == null) {
-                    Log.e(this.getName(), "handleActiveRouting INetworkManagementService is null");
-                    return;
-                }
-
-                if (DBG) Log.d(this.getName(), "handleActiveRouting addRoute iface=" + iface + " gateway=" + gateway);
-                nms.addRoute(iface, rInfo);
-
-                /* Set rmnet0 as default interface */
-                lp = mConnSvc.getLinkProperties(ConnectivityManager.TYPE_MOBILE);
-                iface = lp.getInterfaceName();
-                String defGateway = null;
-                Collection<RouteInfo> routes = lp.getRoutes();
-                for (RouteInfo r : routes) {
-                    if (r.isDefaultRoute()) {
-                        defGateway = r.getGateway().getHostAddress();
-                    }
-                }
-                if (defGateway == null) {
-                    if (DBG) Log.d(this.getName(), "handleActiveRouting defGateway is null");
-                    return;
-                }
-
-                if (DBG) Log.d(this.getName(), "handleActiveRouting replaceV4DefaultRoute iface=" + iface + " gateway=" + defGateway);
-                nms.replaceV4DefaultRoute(iface, defGateway);
             } catch (Exception e) {
                 if (DBG) Log.d(this.getName(), "handleActiveRouting Exception=" + e.getMessage());
             }
         }
 
-        protected final void handleRegisteredRouting() {
-            if (DBG) Log.d(this.getName(), "handleRegisteredRouting");
-
-            try {
-                /* Attempt to remove and retain wlan0 default route */
-                LinkProperties lp = mConnSvc.getLinkProperties(ConnectivityManager.TYPE_WIFI);
-                if (lp == null) {
-                    Log.e(this.getName(), "handleRegisteredRouting LinkProperties is null");
-                    return;
-                }
-                String iface = lp.getInterfaceName();
-                Collection<RouteInfo> routes = lp.getRoutes();
-                for (RouteInfo r : routes) {
-                    Log.d(this.getName(), "loop handleRegisteredRouting rInfo=" + r);
-                    if (r.isDefaultRoute()) {
-                        /* Retain default wlan0 route to restore later */
-                        wlanDefault = r;
-                        break;
-                    }
-                }
-                if (wlanDefault == null) {
-                    if (DBG) Log.d(this.getName(), "handleActiveRouting wlanDefault is null");
-                    return;
-                }
-
-                IBinder b = ServiceManager.getService(Context.NETWORKMANAGEMENT_SERVICE);
-                INetworkManagementService nms = INetworkManagementService.Stub.asInterface(b);
-                if (nms == null) {
-                    Log.e(this.getName(), "handleRegisteredRouting INetworkManagementService is null");
-                    return;
-                }
-
-                if (DBG) Log.d(this.getName(), "handleRegisteredRouting removeRoute iface=" + iface + " rInfo=" + wlanDefault);
-                nms.removeRoute(iface, wlanDefault);
-            } catch (Exception e) {
-                if (DBG) Log.d(TAG, "handleRegisteredRouting Exception=" + e.getMessage());
-            }
-        }
-
-        protected final void handleCleanUpRouting(byte[] hostRoutingIpAddr) {
-            try {
-                if (DBG) Log.d(this.getName(), "handleCleanUpRouting hostRoutingIpAddr=" + InetAddress.getByAddress(hostRoutingIpAddr).getHostAddress());
-            } catch (Exception e) {
-                if (DBG) Log.d(this.getName(), "handleCleanUpRouting Exception=" + e.getMessage());
-            }
-
-            /* Indicates FMC cycle has not started or no IP address from FMC server */
-            if (hostRoutingIpAddr == null) {
-                return;
-                }
-
-            try {
-                /* Remove FMC host route from wlan0 and replace wlan0 default route */
-                LinkProperties lp = mConnSvc.getLinkProperties(ConnectivityManager.TYPE_WIFI);
-                if (lp == null) {
-                    Log.e(this.getName(), "handleCleanUpRouting LinkProperties is null");
-                    return;
-                }
-                String iface = lp.getInterfaceName();
-                InetAddress gateway = lp.getRoutes().iterator().next().getGateway();
-                RouteInfo rInfo = new RouteInfo(new LinkAddress(InetAddress.getByAddress(hostRoutingIpAddr), 32), 
-                                                gateway);
-
-                IBinder b = ServiceManager.getService(Context.NETWORKMANAGEMENT_SERVICE);
-                INetworkManagementService nms = INetworkManagementService.Stub.asInterface(b);
-                if (nms == null) {
-                    Log.e(this.getName(), "handleCleanUpRouting INetworkManagementService is null");
-                    return;
-                }
-                try {
-                    if (DBG) Log.d(this.getName(), "handleCleanUpRouting removeRoute iface=" + iface + " gateway=" + gateway);
-                    nms.removeRoute(iface, rInfo);
-                } catch (Exception e) {
-                    if (DBG) Log.d(TAG, "handleCleanUpRouting Exception=" + e.getMessage());
-                }
-
-                if (DBG) Log.d(this.getName(), "handleCleanUpRouting addRoute iface=" + iface + " gateway=" + gateway);
-                nms.addRoute(iface, wlanDefault);
-            } catch (Exception e) {
-                if (DBG) Log.d(TAG, "handleCleanUpRouting Exception=" + e.getMessage());
-            }
-        }
     }
 
     class FmcStateInactive extends FmcState {
@@ -612,7 +496,6 @@ public class FmcStateMachine extends StateMachine {
             } else {
                 mUserShutDown = true;
             }
-            handleCleanUpRouting(mDestIp);
         }
 
         @Override
@@ -789,7 +672,6 @@ public class FmcStateMachine extends StateMachine {
             if (DBG) Log.d(this.getName(), "enter");
 
             setStatus(FMC_STATUS_ENABLED);
-            handleRegisteredRouting();
             handleActiveRouting(mDestIp);
         }
 
@@ -809,7 +691,6 @@ public class FmcStateMachine extends StateMachine {
                     transitionToState(mFmcStateActive);
                     break;
                 case FMC_MSG_DATA_DISABLED:
-                    handleCleanUpRouting(mDestIp);
                     transitionToState(mFmcStateRegistered);
                     break;
                 case FMC_MSG_WIFI_DOWN:

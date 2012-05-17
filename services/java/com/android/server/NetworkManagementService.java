@@ -43,6 +43,7 @@ import android.os.INetworkManagementService;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.Slog;
 import android.util.SparseBooleanArray;
@@ -60,10 +61,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -722,163 +725,184 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         Slog.d(TAG, "Shutting down");
     }
 
-    public boolean replaceV4SrcRoute(String iface, String ipAddr, String gatewayAddr, int routeId) {
-        try {
-            String cmd;
-            if ((gatewayAddr == null) ||
-                            (gatewayAddr.startsWith("0")) || (gatewayAddr.length() == 0 )) {
-                cmd = String.format("route replace src v4 %s %s %d", iface, ipAddr, routeId);
-            } else {
-                cmd = String.format("route replace src v4 %s %s %d %s",
-                                iface, ipAddr, routeId, gatewayAddr);
-            }
-            String rsp = mConnector.doCommand(cmd).get(0);
+    public boolean replaceSrcRoute(String iface, byte[] ip, byte[] gateway, int routeId) {
+        mContext.enforceCallingOrSelfPermission(CHANGE_NETWORK_STATE, TAG);
+        ArrayList<String> rsp;
+        InetAddress ipAddr;
 
-            String []tok = rsp.split(" ");
-            int code;
-            try {
-                code = Integer.parseInt(tok[0]);
-            } catch (NumberFormatException nfe) {
-                Slog.e(TAG, String.format("Error parsing code %s", tok[0]));
-                return false;
-            }
-            if (code == NetdResponseCode.CommandOkay) {
-                Slog.d(TAG, rsp);
-                return true;
-            } else {
-                Slog.e(TAG, rsp);
-                return false;
-            }
-        } catch (NullPointerException npe) {
-            Slog.e(TAG, "Null pointer exception while trying to add src route");
-        } catch (NativeDaemonConnectorException nde) {
-            Slog.e(TAG, String.format("Failed to set route %s: for iface [%s] ip [%s] rid [%d]",
-                                  nde, iface, ipAddr, routeId));
+        if (TextUtils.isEmpty(iface)) {
+            Log.e(TAG,"route cmd failed - iface is invalid");
+            return false;
         }
-        return false;
+
+        try {
+            ipAddr = InetAddress.getByAddress(ip);
+        } catch (UnknownHostException e) {
+            Log.e(TAG,"route cmd failed because of unknown src ip", e);
+            return false;
+        }
+
+        StringBuilder cmd = new StringBuilder("route replace src");
+
+        if (ipAddr instanceof Inet4Address)
+            cmd.append(" v4 ");
+        else
+            cmd.append(" v6 ");
+
+        cmd.append(iface + " ");
+        cmd.append(ipAddr.getHostAddress() + " ");
+        cmd.append(routeId);
+
+        try {
+            InetAddress gatewayAddr = InetAddress.getByAddress(gateway);
+            // check validity of gw address - add route without gw if its invalid
+            if ((ipAddr instanceof Inet4Address && gatewayAddr instanceof Inet4Address) ||
+                    (ipAddr instanceof Inet6Address && gatewayAddr instanceof Inet6Address))
+            {
+                cmd.append(" " + gatewayAddr.getHostAddress());
+            }
+        } catch (UnknownHostException e) {
+            Log.w(TAG,"route cmd did not obtain valid gw; adding route without gw");
+        }
+
+        try {
+            rsp = mConnector.doCommand(cmd.toString());
+        } catch (NativeDaemonConnectorException e) {
+            Log.w(TAG,"route cmd failed: ", e);
+            return false;
+        }
+        if (DBG) {
+            for (String line : rsp) {
+                Log.v(TAG, "replace src route response is " + line);
+            }
+        }
+        return true;
     }
 
-    public boolean replaceV6SrcRoute(String iface, String ipAddr, String gatewayAddr, int routeId) {
-        try {
-            String cmd;
-            if ((gatewayAddr == null) || (gatewayAddr.startsWith("0"))
-                           || (gatewayAddr.startsWith(":")) || (gatewayAddr.length() == 0)) {
-                cmd = String.format("route replace src v6 %s %s %d", iface, ipAddr, routeId);
-            } else {
-                cmd = String.format("route replace src v6 %s %s %d %s",
-                                iface, ipAddr, routeId, gatewayAddr);
-            }
-            String rsp = mConnector.doCommand(cmd).get(0);
+    public boolean delSrcRoute(byte[] ip, int routeId) {
+        mContext.enforceCallingOrSelfPermission(CHANGE_NETWORK_STATE, TAG);
+        ArrayList<String> rsp;
+        InetAddress ipAddr;
 
-            String []tok = rsp.split(" ");
-            int code;
-            try {
-                code = Integer.parseInt(tok[0]);
-            } catch (NumberFormatException nfe) {
-                Slog.e(TAG, String.format("Error parsing code %s", tok[0]));
-                return false;
-            }
-            if (code == NetdResponseCode.CommandOkay) {
-                Slog.d(TAG, rsp);
-                return true;
-            } else {
-                Slog.e(TAG, rsp);
-                return false;
-            }
-        } catch (NullPointerException npe) {
-            Slog.e(TAG, "Null pointer exception while trying to add src route");
-        } catch (NativeDaemonConnectorException nde) {
-            Slog.e(TAG, String.format("Failed to set route %s: for iface [%s] ip [%s] rid [%d]",
-                                  nde, iface, ipAddr, routeId));
+        try {
+            ipAddr = InetAddress.getByAddress(ip);
+        } catch (UnknownHostException e) {
+            Log.e(TAG,"route cmd failed due to invalid src ip", e);
+            return false; //cannot remove src route without valid src prefix
         }
-        return false;
+
+        StringBuilder cmd = new StringBuilder("route del src");
+
+        if (ipAddr instanceof Inet4Address) {
+            cmd.append(" v4 ");
+        } else {
+            cmd.append(" v6 ");
+        }
+
+        cmd.append(routeId);
+
+        try {
+            rsp = mConnector.doCommand(cmd.toString());
+        } catch (NativeDaemonConnectorException e) {
+            Log.w(TAG,"route cmd failed: ", e);
+            return false;
+        }
+        if (DBG) {
+            for (String line : rsp) {
+                Log.v(TAG, "del src route response is " + line);
+            }
+        }
+        return true;
     }
 
-    public boolean delV4SrcRoute(int routeId) {
-        try {
-            String cmd = String.format("route del src v4 %d", routeId);
-            String rsp = mConnector.doCommand(cmd).get(0);
+    public boolean replaceDefaultRoute(String iface, byte[] gateway) {
+        mContext.enforceCallingOrSelfPermission(CHANGE_NETWORK_STATE, TAG);
+        ArrayList<String> rsp;
+        InetAddress gatewayAddr;
 
-            String []tok = rsp.split(" ");
-            int code;
-            try {
-                code = Integer.parseInt(tok[0]);
-            } catch (NumberFormatException nfe) {
-                Slog.e(TAG, String.format("Error parsing code %s", tok[0]));
-                return false;
-            }
-            if (code == NetdResponseCode.CommandOkay) {
-                Slog.d(TAG, rsp);
-                return true;
-            } else {
-                Slog.e(TAG, rsp);
-                return false;
-            }
-        } catch (NativeDaemonConnectorException nde) {
-            Slog.e(TAG, String.format("Failed to del src route %s: for rid [%d]", nde, routeId));
+        if (TextUtils.isEmpty(iface)) {
+            Log.e(TAG,"route cmd failed - iface is invalid");
+            return false;
         }
-        return false;
+
+        try {
+            gatewayAddr = InetAddress.getByAddress(gateway);
+        } catch (UnknownHostException e) {
+            Log.e(TAG,"route cmd failed - cannot determine INET family from null gw", e);
+            return false;
+        }
+
+        StringBuilder cmd = new StringBuilder("route replace def");
+
+        if (gatewayAddr instanceof Inet4Address) {
+            cmd.append(" v4 ");
+        } else {
+            cmd.append(" v6 ");
+        }
+
+        cmd.append(iface);
+        cmd.append(" " + gatewayAddr.getHostAddress());
+
+        try {
+            rsp = mConnector.doCommand(cmd.toString());
+        } catch (NativeDaemonConnectorException e) {
+            Log.w(TAG,"route cmd failed: ", e);
+            return false;
+        }
+        if (DBG) {
+            for (String line : rsp) {
+                Log.v(TAG, "replace default route response is " + line);
+            }
+        }
+        return true;
     }
 
-    public boolean delV6SrcRoute(int routeId) {
-        try {
-            String cmd = String.format("route del src v6 %d", routeId);
-            String rsp = mConnector.doCommand(cmd).get(0);
+    public boolean addRouteWithMetric(String iface, int metric, RouteInfo route) {
+        mContext.enforceCallingOrSelfPermission(CHANGE_NETWORK_STATE, TAG);
+        ArrayList<String> rsp;
 
-            String []tok = rsp.split(" ");
-            int code;
-            try {
-                code = Integer.parseInt(tok[0]);
-            } catch (NumberFormatException nfe) {
-                Slog.e(TAG, String.format("Error parsing code %s", tok[0]));
-                return false;
-            }
-            if (code == NetdResponseCode.CommandOkay) {
-                Slog.d(TAG, rsp);
-                return true;
-            } else {
-                Slog.e(TAG, rsp);
-                return false;
-            }
-        } catch (NativeDaemonConnectorException nde) {
-            Slog.e(TAG, String.format("Failed to del src route %s: for rid [%d]", nde, routeId));
+        if (TextUtils.isEmpty(iface)) {
+            Log.e(TAG,"route cmd failed - iface is invalid");
+            return false;
         }
-        return false;
-    }
 
-    public boolean replaceV4DefaultRoute(String iface, String gatewayAddr) {
-        try {
-            String cmd;
-            if ((gatewayAddr == null) || (gatewayAddr.startsWith("0")) ||
-                (gatewayAddr.length() == 0)) {
-                cmd = String.format("route replace def v4 %s", iface);
-            } else {
-                cmd = String.format("route replace def v4 %s %s", iface, gatewayAddr);
-            }
-            String rsp = mConnector.doCommand(cmd).get(0);
-
-            String []tok = rsp.split(" ");
-            int code;
-            try {
-                code = Integer.parseInt(tok[0]);
-            } catch (NumberFormatException nfe) {
-                Slog.e(TAG, String.format("Error parsing code %s", tok[0]));
-                return false;
-            }
-            if (code == NetdResponseCode.CommandOkay) {
-                Slog.d(TAG, rsp);
-                return true;
-            } else {
-                Slog.e(TAG, rsp);
-                return false;
-            }
-        } catch (NullPointerException npe) {
-            Slog.e(TAG, "Null pointer exception while trying to replace def route");
-        } catch (NativeDaemonConnectorException nde) {
-            Slog.e(TAG, String.format("Failed to replace default route %s: for iface [%s]",
-                                  nde, iface));
+        StringBuilder cmd = new StringBuilder("route add");
+        if (route.isDefaultRoute()) {
+            cmd.append(" def");
+        } else {
+            cmd.append(" dst");
         }
-        return false;
+
+        InetAddress gateway = route.getGateway();
+        if (gateway instanceof Inet4Address) {
+            cmd.append(" v4 ");
+        } else {
+            cmd.append(" v6 ");
+        }
+
+        cmd.append(iface + " ");
+        cmd.append(metric);
+
+        if (route.isHostRoute()) {
+            cmd.append(' ');
+            cmd.append(route.getDestination().getAddress().getHostAddress());
+        }
+
+        cmd.append(" " + gateway.getHostAddress());
+
+        try {
+            rsp = mConnector.doCommand(cmd.toString());
+        } catch (NativeDaemonConnectorException e) {
+            Log.w(TAG,"route cmd failed: ", e);
+            return false;
+        }
+
+        if (DBG) {
+            for (String line : rsp) {
+                Log.v(TAG, "add metric route response is " + line);
+            }
+        }
+        return true;
     }
 
     public boolean getIpForwardingEnabled() throws IllegalStateException{
