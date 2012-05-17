@@ -114,7 +114,8 @@ public class UsbStorageActivity extends Activity
         thr.start();
         mAsyncStorageHandler = new Handler(thr.getLooper());
 
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+        //avoid the activtity to pause state.
+      //  getWindow().addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
         if (Environment.isExternalStorageRemovable()) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
         }
