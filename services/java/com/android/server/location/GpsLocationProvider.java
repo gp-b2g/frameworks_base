@@ -2735,14 +2735,19 @@ public class GpsLocationProvider implements LocationProviderInterface {
                     boolean networkProvSetting = providers.contains("network");
                     boolean wifiSetting =  kvs.get(Settings.Secure.WIFI_ON).toString().contains("1");
                     boolean agpsSetting =  kvs.get(Settings.Secure.ASSISTED_GPS_ENABLED).toString().contains("1");
-                    String enhLocationServicesSettingString =
-                        kvs.get(LocationManager.ENH_LOCATION_SERVICES_ENABLED).toString();
+
+                    ContentValues enhSetting = kvs.get(LocationManager.ENH_LOCATION_SERVICES_ENABLED);
+                    String enhLocationServicesSettingString = null;
+                    if ( enhSetting != null ) {
+                        enhLocationServicesSettingString = enhSetting.toString();
+                    }
                     if(enhLocationServicesSettingString != null) {
                         enhLocationServicesSetting =
                             enhLocationServicesSettingString.contains("1");
                     } else {
-                      Log.e(TAG1, "Got null pinter for call to kvs.get(LocationManager.ENH_LOCATION_SERVICES_ENABLED)");
+                      Log.e(TAG1, "Got null pointer for call to kvs.get(LocationManager.ENH_LOCATION_SERVICES_ENABLED)");
                     }
+
                     if (DEBUG) {
                       Log.d(TAG1,  "SettingsObserver.update invoked and setting values. Gps:"+
                              gpsSetting +" GNP:"+ networkProvSetting+" WiFi:"+ wifiSetting+
