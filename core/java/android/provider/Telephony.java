@@ -1999,6 +1999,25 @@ public final class Telephony {
 
     }
 
+    /**
+     * record the avoid CDMA current system network log
+     *
+     */
+    public static final class AvoidNetWork implements BaseColumns {
+        /**
+         * The content:// style URL for this table
+         */
+        public static final Uri CONTENT_URI =
+                Uri.parse("content://cdma/avoid_net");
+
+        /**
+         * The default sort order for this table
+         */
+        public static final String MCC = "mcc";
+
+        public static final String MNC = "mnc";
+
+    }
 
     public static final class Intents {
         private Intents() {
