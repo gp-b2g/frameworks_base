@@ -85,6 +85,10 @@ public class MSimSimUnlockScreen extends SimUnlockScreen implements KeyguardScre
     /** {@inheritDoc} */
     @Override
     public void onResume() {
+        if (mUpdateMonitor.isinAirplaneMode()) {
+            mUpdateMonitor.reportSimUnlocked(mSubscription);
+            mCallback.goToUnlockScreen();
+        }
         // start fresh
         if (TelephonyManager.getDefault().isMultiSimEnabled()) {
             String displayText = getContext().getString(pinStrIds[mSubscription]);
@@ -92,12 +96,10 @@ public class MSimSimUnlockScreen extends SimUnlockScreen implements KeyguardScre
         } else {
            mHeaderText.setText(R.string.keyguard_password_enter_pin_code);
         }
-
         // make sure that the number of entered digits is consistent when we
         // erase the SIM unlock code, including orientation changes.
         mPinText.setText("");
         mEnteredDigits = 0;
-
         mKeyguardStatusViewManager.onResume();
     }
 

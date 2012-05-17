@@ -650,6 +650,13 @@ public class KeyguardUpdateMonitor {
         return mSimState[subscription];
     }
 
+    public boolean isinAirplaneMode() {
+        if (Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.AIRPLANE_MODE_ON, 0) > 0)
+            return true;
+        return false;
+    }
+
     /**
      * Report that the user successfully entered the SIM PIN or PUK/SIM PIN so we
      * have the information earlier than waiting for the intent
