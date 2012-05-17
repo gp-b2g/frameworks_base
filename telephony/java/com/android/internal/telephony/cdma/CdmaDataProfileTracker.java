@@ -98,7 +98,7 @@ public final class CdmaDataProfileTracker extends Handler {
     private int mOmhReadProfileCount = 0;
 
     private boolean mIsOmhEnabled =
-                SystemProperties.getBoolean(TelephonyProperties.PROPERTY_OMH_ENABLED, false);
+                SystemProperties.getBoolean(TelephonyProperties.PROPERTY_OMH_ENABLED, true);
 
     // Enumerated list of DataProfile from the modem.
     ArrayList<DataProfile> mOmhDataProfilesList = new ArrayList<DataProfile>();
