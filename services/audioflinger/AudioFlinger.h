@@ -1063,6 +1063,7 @@ private:
                 int                                 mReqChannelCount;
                 uint32_t                            mReqSampleRate;
                 ssize_t                             mBytesRead;
+                int16_t                             mInputSource;
     };
 
     class RecordHandle : public android::BnAudioRecord {

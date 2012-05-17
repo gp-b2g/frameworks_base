@@ -423,11 +423,19 @@ uint32_t AudioTrack::frameCount() const
 
 int AudioTrack::frameSize() const
 {
-    if (audio_is_linear_pcm(mFormat)) {
-        return channelCount()*audio_bytes_per_sample(mFormat);
+    if ((audio_stream_type_t)mStreamType == AUDIO_STREAM_VOICE_CALL) {
+       if (audio_is_linear_pcm(mFormat)) {
+          return channelCount()*audio_bytes_per_sample(mFormat);
+       } else {
+          return channelCount()*sizeof(int16_t);
+       }
     } else {
-        return sizeof(uint8_t);
-    }
+       if (audio_is_linear_pcm(mFormat)) {
+          return channelCount()*audio_bytes_per_sample(mFormat);
+       } else {
+          return sizeof(uint8_t);
+       }
+   }
 }
 
 sp<IMemory>& AudioTrack::sharedBuffer()
@@ -890,7 +898,8 @@ status_t AudioTrack::createTrack_l(
     }
 
     mNotificationFramesAct = mNotificationFramesReq;
-    if (!audio_is_linear_pcm(format)) {
+    if (((audio_stream_type_t)mStreamType != AUDIO_STREAM_VOICE_CALL)
+          && (!audio_is_linear_pcm(format))) {
         if (sharedBuffer != 0) {
             frameCount = sharedBuffer->size();
         }
