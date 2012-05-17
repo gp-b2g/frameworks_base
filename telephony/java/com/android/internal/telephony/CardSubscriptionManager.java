@@ -167,6 +167,9 @@ public class CardSubscriptionManager extends Handler {
             mCi[i].registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, slot);
             //mCi[i].registerForNotAvailable(this, EVENT_RADIO_NOT_AVAILABLE, slot);
             mCi[i].registerForOn(this, EVENT_RADIO_ON, slot);
+
+            // Register for SIM Refresh events
+            mCi[i].registerForIccRefresh(this, EVENT_SIM_REFRESH, new Integer(i));
         }
 
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
