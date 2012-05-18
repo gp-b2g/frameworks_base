@@ -1240,4 +1240,6 @@
     <string name="China_Mobile">中国移动</string>
     <string name="China_Unicom">中国联通</string>
     <string name="China_Telecom">中国电信</string>
+
+    <string name="transport_destination">备份调试状态下的用户私有缓存</string>
 </resources>
