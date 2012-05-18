@@ -2211,7 +2211,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
                             public void run() {
                                 handleInjectNtpTime();
                             }
-                        }).run();
+                        }).start();
                     }
                     break;
                 case DOWNLOAD_XTRA_DATA:
@@ -2221,7 +2221,7 @@ public class GpsLocationProvider implements LocationProviderInterface {
                                 public void run() {
                                     handleDownloadXtraData();
                                 }
-                            }).run();
+                            }).start();
                         }
                     }
                     break;
