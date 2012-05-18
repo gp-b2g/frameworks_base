@@ -60,10 +60,9 @@ import java.util.TimerTask;
  */
 public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
     MediaPlayerControl, View.OnTouchListener, VideoTextureView.VideoTextureListener,
-    SurfaceTexture.OnFrameAvailableListener
+    SurfaceTexture.OnFrameAvailableListener, MediaPlayer.OnVideoSizeChangedListener
 {
     private static final String LOGTAG = "HTML5VideoView";
-
     private static final String COOKIE = "Cookie";
     private static final String HIDE_URL_LOGS = "x-hide-urls-from-log";
 
@@ -80,7 +79,7 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
     static final int STATE_PLAYING            = 3;
     static final int STATE_BUFFERING          = 4;
     static final int STATE_RELEASED           = 5;
-    protected int mCurrentState;
+    private int mCurrentState;
 
     private HTML5VideoViewProxy mProxy;
 
@@ -306,7 +305,7 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
         mPlayer.setOnPreparedListener(this);
         mPlayer.setOnErrorListener(mProxy);
         mPlayer.setOnInfoListener(mProxy);
-        mPlayer.setOnVideoSizeChangedListener(mProxy);
+        mPlayer.setOnVideoSizeChangedListener(this);
 
         // When there is exception, we could just bail out silently.
         // No Video will be played though. Write the stack for debug
@@ -364,9 +363,6 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
 
     public void onPrepared(MediaPlayer mp) {
         mCurrentState = STATE_PREPARED;
-        mVideoWidth  = mp.getVideoWidth();
-        mVideoHeight = mp.getVideoHeight();
-
         seekTo(mSaveSeekTime);
 
         if (mProxy != null)
@@ -379,9 +375,6 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
 
         if (mIsFullscreen) {
             attachMediaController();
-            // Request layout now that mVideoWidth and mVideoHeight are known
-            if (mTextureView != null)
-                mTextureView.requestLayout();
             if (mProgressView != null)
                 mProgressView.setVisibility(View.GONE);
         }
@@ -407,6 +400,19 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
             mSurfaceTexture = new SurfaceTexture(mTextureNames[0]);
         }
         return mSurfaceTexture;
+    }
+
+    public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
+        mVideoWidth = width;
+        mVideoHeight = height;
+        if (mTextureView != null) {
+            // Request layout now that mVideoWidth and mVideoHeight are known
+            // This will trigger onMeasure to get the display size right
+            mTextureView.requestLayout();
+        }
+        if (mProxy != null) {
+            mProxy.onVideoSizeChanged(mp, width, height);
+        }
     }
 
     public int getTextureName() {
