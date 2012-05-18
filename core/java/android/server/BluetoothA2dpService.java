@@ -517,6 +517,7 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
         }
         mAudioManager.setParameters(BLUETOOTH_ENABLED+"=true");
         mAudioManager.setParameters("A2dpSuspended=false");
+        mPlayingA2dpDevice = null;
     }
 
     private synchronized void onBluetoothDisable() {
