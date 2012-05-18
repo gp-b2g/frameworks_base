@@ -556,11 +556,14 @@ int register_gatt_path(native_data_t *nat, const char * gatt_path)
         return -1;
     }
 
-    if (!dbus_connection_register_object_path(nat->conn, gatt_path,
-            &gatt_vtable, nat)) {
+    if (!dbus_connection_try_register_object_path(nat->conn, gatt_path,
+                                                  &gatt_vtable, nat, &err)) {
         LOGE("%s: Can't register object path %s for Gatt!",
               __FUNCTION__, gatt_path);
-        return -1;
+
+        LOGE("DBus error name: %s message: %s", err.name, err.message);
+        if (strcmp(err.name, DBUS_ERROR_OBJECT_PATH_IN_USE) != 0)
+            return -1;
     }
 
     name = dbus_bus_get_unique_name(nat->conn);

@@ -41,9 +41,11 @@ import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.os.ParcelUuid;
 import android.os.RemoteException;
+import android.os.DeadObjectException;
 import android.util.Log;
 
 import java.io.IOException;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,12 +63,13 @@ final class BluetoothGattProfileHandler {
 
     private static BluetoothGattProfileHandler sInstance;
     private BluetoothService mBluetoothService;
-    private HashMap <BluetoothGattAppConfiguration, String> mAppConfigs;
+    private HashMap <String, Boolean> mRegisteredServers;
+    private HashMap <String, BluetoothGattAppConfiguration> mAppConfigs;
     private HashMap <BluetoothGattAppConfiguration, IBluetoothGattCallback> mCallbacks;
 
-    private static final int MESSAGE_REGISTER_APPLICATION = 0;
-    private static final int MESSAGE_UNREGISTER_APPLICATION = 1;
-    private static final int MESSAGE_ADD_PRIMARY_SDP = 2;
+    private static final int MESSAGE_REGISTER_APPLICATION = 1;
+    private static final int MESSAGE_UNREGISTER_APPLICATION = 2;
+    private static final int MESSAGE_ADD_PRIMARY_SDP = 3;
     private static final int MESSAGE_SEND_INDICATION = 4;
     private static final int MESSAGE_DISCOVER_PRIMARY_SERVICE_RESP = 5;
     private static final int MESSAGE_DISCOVER_PRIMARY_SERVICE_BY_UUID_RESP = 6;
@@ -105,14 +108,30 @@ final class BluetoothGattProfileHandler {
             switch (msg.what) {
             case MESSAGE_REGISTER_APPLICATION:
                 int range = config.getRange();
-                result  = mBluetoothService.registerGattServerNative(path, range);
+                boolean isNew;
+
+                /* Nothing to do, just return success for status */
+                if (mAppConfigs.containsKey(path))
+                    callGattApplicationStatusCallback(config,
+                           BluetoothGatt.GATT_CONFIG_REGISTRATION_SUCCESS);
+
+                if (mRegisteredServers.isEmpty()) {
+                    String[] servers = null;
+                    servers  = (String[]) mBluetoothService.getGattServersNative();
+                    if ((servers != null) && (servers.length > 0))
+                        loadRegisteredServers(servers);
+                }
+
+                isNew = mRegisteredServers.isEmpty() || !mRegisteredServers.containsKey(path);
+                result  = mBluetoothService.registerGattServerNative(path, range, isNew);
 
                 if (!result) {
                     callGattApplicationStatusCallback(config,
                            BluetoothGatt.GATT_CONFIG_REGISTRATION_FAILURE);
                     mCallbacks.remove(config);
                 } else {
-                    mAppConfigs.put(config, path);
+                    mAppConfigs.put(path, config);
+                    serverEnable(path);
                     callGattApplicationStatusCallback(config,
                            BluetoothGatt.GATT_CONFIG_REGISTRATION_SUCCESS);
                 }
@@ -121,17 +140,18 @@ final class BluetoothGattProfileHandler {
             case MESSAGE_UNREGISTER_APPLICATION:
                 Log.d(TAG, "GATT: MESSAGE_UNREGISTER_APPLICATION");
 
-                result = mBluetoothService.unregisterGattServerNative(path);
+                result = mBluetoothService.unregisterGattServerNative(path, true);
 
                 if (!result) {
                     callGattApplicationStatusCallback(config,
                            BluetoothGatt.GATT_CONFIG_UNREGISTRATION_FAILURE);
                 } else {
-                    mCallbacks.remove(config);
-                    mAppConfigs.remove(config);
                     callGattApplicationStatusCallback(config,
                            BluetoothGatt.GATT_CONFIG_UNREGISTRATION_SUCCESS);
                 }
+
+                mCallbacks.remove(config);
+                mAppConfigs.remove(path);
 
                 break;
             case MESSAGE_ADD_PRIMARY_SDP:
@@ -307,8 +327,9 @@ final class BluetoothGattProfileHandler {
 
     private BluetoothGattProfileHandler(Context context, BluetoothService service) {
         mBluetoothService = service;
-        mAppConfigs = new HashMap<BluetoothGattAppConfiguration, String>();
+        mAppConfigs = new HashMap<String, BluetoothGattAppConfiguration>();
         mCallbacks = new HashMap<BluetoothGattAppConfiguration, IBluetoothGattCallback>();
+        mRegisteredServers = new HashMap<String, Boolean>();
     }
 
     static synchronized BluetoothGattProfileHandler getInstance(Context context,
@@ -319,31 +340,35 @@ final class BluetoothGattProfileHandler {
 
     boolean registerAppConfiguration(BluetoothGattAppConfiguration config,
                                      IBluetoothGattCallback callback) {
+
         Message msg = mHandler.obtainMessage(MESSAGE_REGISTER_APPLICATION);
         msg.obj = config;
         mHandler.sendMessage(msg);
         mCallbacks.put(config, callback);
+
         return true;
     }
 
    boolean unregisterAppConfiguration(BluetoothGattAppConfiguration config) {
-        String path = mAppConfigs.get(config);
-        if (path == null) {
+       String path = config.getPath();
+       if (mAppConfigs.containsKey(path)) {
+               Message msg = mHandler.obtainMessage(MESSAGE_UNREGISTER_APPLICATION);
+               msg.obj = config;
+               mHandler.sendMessage(msg);
+               removeRegisteredServer(path);
+               return true;
+       } else {
            Log.e(TAG, "unregisterAppConfiguration: GATT app not registered");
-            return false;
-        }
-
-        Message msg = mHandler.obtainMessage(MESSAGE_UNREGISTER_APPLICATION);
-        msg.obj = config;
-        mHandler.sendMessage(msg);
-        return true;
+           return false;
+       }
     }
-
 
     boolean addPrimarySdp(BluetoothGattAppConfiguration config,
                                  ParcelUuid uuid, int start, int end, boolean eir) {
-        String path = mAppConfigs.get(config);
-        if (path == null) {
+
+        String path = config.getPath();
+
+       if (!mAppConfigs.containsKey(path)) {
             Log.e(TAG, "addPrimarySdp: GATT app not registered");
             return false;
         }
@@ -363,13 +388,11 @@ final class BluetoothGattProfileHandler {
         return true;
     }
 
-
-
     boolean sendIndication(BluetoothGattAppConfiguration config,
                            int handle, byte[] value, boolean notify, int sessionHandle) {
 
-       String path = mAppConfigs.get(config);
-        if (path == null) {
+       String path = config.getPath();
+       if (!mAppConfigs.containsKey(path)) {
             Log.e(TAG, "addPrimarySdp: GATT app not registered");
             return false;
         }
@@ -390,13 +413,15 @@ final class BluetoothGattProfileHandler {
 
     boolean discoverPrimaryResponse(BluetoothGattAppConfiguration config,
                                        String uuid, int handle, int end, int status, int reqHandle) {
-       String path = mAppConfigs.get(config);
-        if (path == null) {
+
+       Log.d(TAG, "discoverPrimaryResponse uuid : " + uuid +
+             " handle : " + handle + " end: " + end + " reqHandle : " + reqHandle);
+
+       String path = config.getPath();
+       if (!mAppConfigs.containsKey(path)) {
             Log.e(TAG, "discoverPrimaryResponse: GATT app not registered");
             return false;
         }
-       Log.d(TAG, "discoverPrimaryResponse uuid : " + uuid +
-             " handle : " + handle + " end: " + end + " reqHandle : " + reqHandle);
 
         Bundle b = new Bundle();
 
@@ -416,11 +441,12 @@ final class BluetoothGattProfileHandler {
 
     boolean discoverPrimaryByUuidResponse(BluetoothGattAppConfiguration config,
                                           int handle, int end, int status, int reqHandle) {
-       String path = mAppConfigs.get(config);
-        if (path == null) {
+       String path = config.getPath();
+       if (!mAppConfigs.containsKey(path)) {
             Log.e(TAG, "discoverPrimaryByUuidResponse: GATT app not registered");
             return false;
         }
+
        Log.d(TAG, "discoverPrimaryByUuidResponse " + " handle : " + handle
              + " end: " + end + " reqHandle : " + reqHandle);
 
@@ -440,11 +466,12 @@ final class BluetoothGattProfileHandler {
 
     boolean findIncludedResponse(BluetoothGattAppConfiguration config, String uuid,
                                  int handle, int start, int end, int status, int reqHandle) {
-       String path = mAppConfigs.get(config);
-        if (path == null) {
+       String path = config.getPath();
+       if (!mAppConfigs.containsKey(path)) {
             Log.e(TAG, "findIncludedResponse: GATT app not registered");
             return false;
         }
+
        Log.d(TAG, "findIncludedResponse uuid : " + uuid +
              " handle : " + handle + " end: " + end + " reqHandle : " + reqHandle);
 
@@ -467,8 +494,8 @@ final class BluetoothGattProfileHandler {
     boolean discoverCharacteristicsResponse(BluetoothGattAppConfiguration config, String uuid,
                                             int handle, byte property, int valueHandle,
                                             int status, int reqHandle) {
-       String path = mAppConfigs.get(config);
-        if (path == null) {
+       String path = config.getPath();
+       if (!mAppConfigs.containsKey(path)) {
             Log.e(TAG, "discoverCharacteristicsResponse: GATT app not registered");
             return false;
         }
@@ -494,8 +521,8 @@ final class BluetoothGattProfileHandler {
 
     boolean discoverCharacteristicDescriptorResponse(BluetoothGattAppConfiguration config, String uuid,
                                                      int handle, int status, int reqHandle) {
-       String path = mAppConfigs.get(config);
-        if (path == null) {
+       String path = config.getPath();
+       if (!mAppConfigs.containsKey(path)) {
             Log.e(TAG, "discoverCharacteristicDescriptorResponse: GATT app not registered");
             return false;
         }
@@ -518,8 +545,8 @@ final class BluetoothGattProfileHandler {
 
     boolean readByTypeResponse(BluetoothGattAppConfiguration config, String uuid, int handle,
                                byte[] payload, int status, int reqHandle) {
-       String path = mAppConfigs.get(config);
-        if (path == null) {
+       String path = config.getPath();
+       if (!mAppConfigs.containsKey(path)) {
             Log.e(TAG, "readByTypeResponse: GATT app not registered");
             return false;
         }
@@ -543,8 +570,8 @@ final class BluetoothGattProfileHandler {
 
     boolean readResponse(BluetoothGattAppConfiguration config, String uuid,
                          byte[] payload, int status, int reqHandle) {
-       String path = mAppConfigs.get(config);
-        if (path == null) {
+       String path = config.getPath();
+       if (!mAppConfigs.containsKey(path)) {
             Log.e(TAG, "readResponse: GATT app not registered");
             return false;
         }
@@ -567,8 +594,8 @@ final class BluetoothGattProfileHandler {
 
     boolean writeResponse(BluetoothGattAppConfiguration config, String uuid, int status,
                           int reqHandle) {
-       String path = mAppConfigs.get(config);
-        if (path == null) {
+       String path = config.getPath();
+       if (!mAppConfigs.containsKey(path)) {
             Log.e(TAG, "writeResponse: GATT app not registered");
             return false;
         }
@@ -587,17 +614,18 @@ final class BluetoothGattProfileHandler {
         return true;
     }
 
-    /*package*/ synchronized void onGattDiscoverPrimaryRequest(String gattObjPath, int start, int end, int reqHandle) {
-         Log.d(TAG, "Gatt object path : "  + gattObjPath + "start :  " + start + " end : " + end );
-         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjPath);
-         Log.d(TAG, "Config " + config);
+    /*package*/ synchronized void onGattDiscoverPrimaryRequest(String path, int start, int end, int reqHandle) {
+         Log.d(TAG, "onGattDiscoverPrimaryRequest - path : "  + path + "start :  " + start + " end : " + end );
+         BluetoothGattAppConfiguration config = mAppConfigs.get(path);
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
-             if (callback != null) {
+             if (callback != null && isServerEnabled(path)) {
                 try {
                     callback.onGattDiscoverPrimaryServiceRequest(config, start, end, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Exception:" + e);
+                    Log.e(TAG, "Remote Exception:" + e);
+                    if (e instanceof DeadObjectException)
+                        serverDisable(path);
                 } catch (NullPointerException e) {
                     Log.e(TAG, "Exception:" + e);
                 }
@@ -605,39 +633,40 @@ final class BluetoothGattProfileHandler {
          }
      }
 
-    /*package*/ synchronized void onIndicateResponse(String gattObjPath, boolean result) {
-         Log.d(TAG, "Indicate response object path : "  + gattObjPath + "result :" + result );
-         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjPath);
-         Log.d(TAG, "Config " + config);
-         if (config != null) {
-             IBluetoothGattCallback callback = mCallbacks.get(config);
-             if (callback != null) {
+    /*package*/ synchronized void onIndicateResponse(String path, boolean result) {
+        Log.d(TAG, "Indicate response object path : "  + path + "result :" + result );
+        BluetoothGattAppConfiguration config = mAppConfigs.get(path);
+        Log.d(TAG, "Config " + config);
+        if (config != null) {
+            IBluetoothGattCallback callback = mCallbacks.get(config);
+            if (callback != null) {
                 try {
                     callback.onGattIndicateResponse(config, result);
                 } catch (RemoteException e) {
                     Log.e(TAG, "Remote Exception:" + e);
                 }
-             }
-         }
-     }
+            }
+        }
+    }
 
-     /*package*/ synchronized void onGattDiscoverPrimaryByUuidRequest(String gattObjPath,
+     /*package*/ synchronized void onGattDiscoverPrimaryByUuidRequest(String path,
                                                                       int start, int end,
                                                                       String uuidStr,
                                                                       int reqHandle) {
-         Log.d(TAG, "Gatt object path : "  + gattObjPath + "uuid : " + uuidStr +
+         Log.d(TAG, "onGattDiscoverPrimaryByUuidRequest - path : "  + path + "uuid : " + uuidStr +
                "start :  " + start + " end : " + end );
-         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjPath);
-         Log.d(TAG, "Config " + config);
+         BluetoothGattAppConfiguration config = mAppConfigs.get(path);
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
-             if (callback != null) {
+             if (callback != null && isServerEnabled(path)) {
                 try {
                     ParcelUuid uuid = ParcelUuid.fromString(uuidStr);
                     Log.d(TAG, "Convert string to parceluuid : " + uuid);
                     callback.onGattDiscoverPrimaryServiceByUuidRequest(config, start, end, uuid, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Exception:" + e);
+                    Log.e(TAG, "Remote Exception:" + e);
+                    if (e instanceof DeadObjectException)
+                        serverDisable(path);
                 } catch (NullPointerException e) {
                     Log.e(TAG, "Exception:" + e);
                 }
@@ -645,20 +674,21 @@ final class BluetoothGattProfileHandler {
          }
      }
 
-     /*package*/ synchronized void onGattDiscoverIncludedRequest(String gattObjPath,
+     /*package*/ synchronized void onGattDiscoverIncludedRequest(String path,
                                                                  int start, int end,
                                                                  int reqHandle) {
-         Log.d(TAG, "Gatt object path : "  + gattObjPath +
+         Log.d(TAG, "onGattDiscoverIncludedRequest - path : "  + path +
                "start :  " + start + " end : " + end );
-         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjPath);
-         Log.d(TAG, "Config " + config);
+         BluetoothGattAppConfiguration config = mAppConfigs.get(path);
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
-             if (callback != null) {
+             if (callback != null && isServerEnabled(path)) {
                 try {
                     callback.onGattFindIncludedServiceRequest(config, start, end, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Exception:" + e);
+                    Log.e(TAG, "Remote Exception:" + e);
+                    if (e instanceof DeadObjectException)
+                        serverDisable(path);
                 } catch (NullPointerException e) {
                     Log.e(TAG, "Exception:" + e);
                 }
@@ -666,20 +696,21 @@ final class BluetoothGattProfileHandler {
          }
      }
 
-     /*package*/ synchronized void onGattDiscoverCharacteristicsRequest(String gattObjPath,
+     /*package*/ synchronized void onGattDiscoverCharacteristicsRequest(String path,
                                                                  int start, int end,
                                                                  int reqHandle) {
-         Log.d(TAG, "Gatt object path : "  + gattObjPath +
+         Log.d(TAG, "onGattDiscoverCharacteristicsRequest - path : "  + path +
                "start :  " + start + " end : " + end );
-         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjPath);
-         Log.d(TAG, "Config " + config);
+         BluetoothGattAppConfiguration config = mAppConfigs.get(path);
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
-             if (callback != null) {
+             if (callback != null && isServerEnabled(path)) {
                 try {
                     callback.onGattDiscoverCharacteristicRequest(config, start, end, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Exception:" + e);
+                    Log.e(TAG, "Remote Exception:" + e);
+                    if (e instanceof DeadObjectException)
+                        serverDisable(path);
                 } catch (NullPointerException e) {
                     Log.e(TAG, "Exception:" + e);
                 }
@@ -687,21 +718,22 @@ final class BluetoothGattProfileHandler {
          }
      }
 
-     /*package*/ synchronized void onGattDiscoverCharacteristicDescriptorRequest(String gattObjPath,
+     /*package*/ synchronized void onGattDiscoverCharacteristicDescriptorRequest(String path,
                                                                  int start, int end,
                                                                  int reqHandle) {
-         Log.d(TAG, "Gatt object path : "  + gattObjPath +
+         Log.d(TAG, "onGattDiscoverCharacteristicDescriptorRequest - path : "  + path +
                "start :  " + start + " end : " + end );
-         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjPath);
-         Log.d(TAG, "Config " + config);
+         BluetoothGattAppConfiguration config = mAppConfigs.get(path);
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
-             if (callback != null) {
+             if (callback != null && isServerEnabled(path)) {
                 try {
                     callback.onGattDiscoverCharacteristicDescriptorRequest(config, start,
                                                                            end, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Exception:" + e);
+                    Log.e(TAG, "Remote Exception:" + e);
+                    if (e instanceof DeadObjectException)
+                        serverDisable(path);
                 } catch (NullPointerException e) {
                     Log.e(TAG, "Exception:" + e);
                 }
@@ -709,21 +741,22 @@ final class BluetoothGattProfileHandler {
          }
      }
 
-     /*package*/ synchronized void onGattReadByTypeRequest(String gattObjPath, int start, int end,
+     /*package*/ synchronized void onGattReadByTypeRequest(String path, int start, int end,
                                                            String uuidStr, String auth, int reqHandle) {
-         Log.d(TAG, "Gatt object path : "  + gattObjPath + "uuid : " + uuidStr +
+         Log.d(TAG, "onGattReadByTypeRequest - path : "  + path + "uuid : " + uuidStr +
                "start :  " + start + " end : " + end + " auth : " + auth);
-         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjPath);
-         Log.d(TAG, "Config " + config);
+         BluetoothGattAppConfiguration config = mAppConfigs.get(path);
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
-             if (callback != null) {
+             if (callback != null && isServerEnabled(path)) {
                 try {
                     ParcelUuid uuid = ParcelUuid.fromString(uuidStr);
                     Log.d(TAG, "Convert string to parceluuid : " + uuid);
                     callback.onGattReadByTypeRequest(config, uuid, start, end, auth, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Exception:" + e);
+                    Log.e(TAG, "Remote Exception:" + e);
+                    if (e instanceof DeadObjectException)
+                        serverDisable(path);
                 } catch (NullPointerException e) {
                     Log.e(TAG, "Exception:" + e);
                 }
@@ -731,18 +764,19 @@ final class BluetoothGattProfileHandler {
          }
      }
 
-     /*package*/ synchronized void onGattReadRequest(String gattObjPath, String auth,
+     /*package*/ synchronized void onGattReadRequest(String path, String auth,
                                                      int handle, int reqHandle) {
-         Log.d(TAG, "Gatt object path : "  + "handle :  " + handle + " auth : " + auth);
-         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjPath);
-         Log.d(TAG, "Config " + config);
+         Log.d(TAG, "onGattReadRequest - path : "  + "handle :  " + handle + " auth : " + auth);
+         BluetoothGattAppConfiguration config = mAppConfigs.get(path);
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
-             if (callback != null) {
+             if (callback != null && isServerEnabled(path)) {
                 try {
                     callback.onGattReadRequest(config, handle, auth, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Exception:" + e);
+                    Log.e(TAG, "Remote Exception:" + e);
+                    if (e instanceof DeadObjectException)
+                        serverDisable(path);
                 } catch (NullPointerException e) {
                     Log.e(TAG, "Exception:" + e);
                 }
@@ -750,18 +784,20 @@ final class BluetoothGattProfileHandler {
          }
      }
 
-     /*package*/ synchronized void onGattWriteRequest(String gattObjectPath, String auth,
+     /*package*/ synchronized void onGattWriteRequest(String path, String auth,
                                                       int attrHandle, byte[] value) {
-         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjectPath);
-         Log.d(TAG, "Gatt object path : "  + gattObjectPath + ", config " + config + ", auth " + auth);
+         BluetoothGattAppConfiguration config = mAppConfigs.get(path);
+         Log.d(TAG, "onGattWriteRequest - path : "  + path + ", config " + config + ", auth " + auth);
 
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
-             if (callback != null) {
+             if (callback != null && isServerEnabled(path)) {
                 try {
                     callback.onGattWriteRequest(config, attrHandle, value, auth);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Exception:" + e);
+                    Log.e(TAG, "Remote Exception:" + e);
+                    if (e instanceof DeadObjectException)
+                        serverDisable(path);
                 } catch (NullPointerException e) {
                     Log.e(TAG, "Exception:" + e);
                 }
@@ -769,17 +805,19 @@ final class BluetoothGattProfileHandler {
          }
      }
 
-     /*package*/ synchronized void onGattReliableWriteRequest(String gattObjectPath, String auth,
+     /*package*/ synchronized void onGattReliableWriteRequest(String path, String auth,
                                                               int attrHandle, byte[] value, int sessionHandle, int reqHandle) {
-         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjectPath);
-         Log.d(TAG, "Gatt object path : "  + gattObjectPath + ", config " + config);
+         BluetoothGattAppConfiguration config = mAppConfigs.get(path);
+         Log.d(TAG, "onGattReliableWriteRequest - path : "  + path + ", config " + config);
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
-             if (callback != null) {
+             if (callback != null && isServerEnabled(path)) {
                 try {
                     callback.onGattReliableWriteRequest(config, attrHandle, value, auth, sessionHandle, reqHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Exception:" + e);
+                    Log.e(TAG, "Remote Exception:" + e);
+                    if (e instanceof DeadObjectException)
+                        serverDisable(path);
                 } catch (NullPointerException e) {
                     Log.e(TAG, "Exception:" + e);
                 }
@@ -787,34 +825,25 @@ final class BluetoothGattProfileHandler {
          }
      }
 
-    /*package*/ synchronized void onGattSetClientConfigDescriptor(String gattObjPath,
+    /*package*/ synchronized void onGattSetClientConfigDescriptor(String path,
                                                                   int sessionHandle, int attrHandle, byte[] value) {
-         BluetoothGattAppConfiguration config = getConfigFromPath(gattObjPath);
-         Log.d(TAG, "Gatt object path : "  + gattObjPath + ", config " + config);
-
+         BluetoothGattAppConfiguration config = mAppConfigs.get(path);
+         Log.d(TAG, "onGattSetClientConfigDescriptor - path : "  + path + ", config " + config);
          if (config != null) {
              IBluetoothGattCallback callback = mCallbacks.get(config);
-             if (callback != null) {
+             if (callback != null && isServerEnabled(path)) {
                 try {
                     callback.onGattSetClientConfigDescriptor(config, attrHandle, value, sessionHandle);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "Exception:" + e);
+                    Log.e(TAG, "Remote Exception:" + e);
+                    if (e instanceof DeadObjectException)
+                        serverDisable(path);
                 } catch (NullPointerException e) {
                     Log.e(TAG, "Exception:" + e);
                 }
              }
          }
      }
-
-    private BluetoothGattAppConfiguration getConfigFromPath(String path) {
-        BluetoothGattAppConfiguration config = null;
-        for(Entry<BluetoothGattAppConfiguration, String> entry : mAppConfigs.entrySet()) {
-             if (path.equals(entry.getValue())) {
-                 return entry.getKey();
-             }
-        }
-        return config;
-    }
 
     private void callGattApplicationStatusCallback(
             BluetoothGattAppConfiguration config, int status) {
@@ -825,7 +854,9 @@ final class BluetoothGattProfileHandler {
             try {
                 callback.onGattAppConfigurationStatusChange(config, status);
             } catch (RemoteException e) {
-                Log.e(TAG, "Exception:" + e);
+                Log.e(TAG, "Remote Exception:" + e);
+                if (e instanceof DeadObjectException)
+                    serverDisable(config.getPath());
             } catch (NullPointerException e) {
                 Log.e(TAG, "Exception:" + e);
             }
@@ -836,11 +867,13 @@ final class BluetoothGattProfileHandler {
                                                BluetoothGattAppConfiguration config, String action, int status) {
         Log.d(TAG, "GATT Action: " + action + " status:" + status);
         IBluetoothGattCallback callback = mCallbacks.get(config);
-        if (callback != null) {
+        if (callback != null && isServerEnabled(config.getPath())) {
             try {
                 callback.onGattActionComplete(config, action, status);
             } catch (RemoteException e) {
-                Log.e(TAG, "Exception:" + e);
+                Log.e(TAG, "Remote Exception:" + e);
+                if (e instanceof DeadObjectException)
+                    serverDisable(config.getPath());
             } catch (NullPointerException e) {
                 Log.e(TAG, "Exception:" + e);
             }
@@ -920,5 +953,34 @@ final class BluetoothGattProfileHandler {
             errorString = errorString + "." + Integer.toHexString(handle);
 
         return errorString;
+    }
+
+    private void loadRegisteredServers(String[] servers) {
+        for (int i = 0; i < servers.length; i++)
+             mRegisteredServers.put(servers[i], true);
+    }
+
+    private void removeRegisteredServer(String path) {
+        if (mRegisteredServers.containsKey(path))
+            mRegisteredServers.remove(path);
+    }
+
+    private boolean isServerEnabled(String path) {
+        if (mRegisteredServers.containsKey(path))
+            return mRegisteredServers.get(path);
+        return false;
+    }
+
+    private void serverDisable(String path) {
+        if (mRegisteredServers.containsKey(path))
+            mRegisteredServers.remove(path);
+        mRegisteredServers.put(path, false);
+        mBluetoothService.unregisterGattServerNative(path, false);
+    }
+
+    private void serverEnable(String path) {
+        if (mRegisteredServers.containsKey(path))
+            mRegisteredServers.remove(path);
+        mRegisteredServers.put(path, true);
     }
 }

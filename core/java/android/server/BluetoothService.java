@@ -4901,8 +4901,9 @@ public class BluetoothService extends IBluetooth.Stub {
     private native boolean disconnectAllConnectionsNative();
 
     //GattServer API
-    native boolean registerGattServerNative(String objPath, int handleCount);
-    native boolean unregisterGattServerNative(String objPath);
+    native Object[] getGattServersNative();
+    native boolean registerGattServerNative(String objPath, int handleCount, boolean isNew);
+    native boolean unregisterGattServerNative(String objPath, boolean complete);
     native boolean addPrimarySdpNative(String objPath, String svcName, String uuidStr, int startHandle, int endHandle, boolean eir);
     native boolean notifyNative(String objPath, int sessionHandle, int handle, byte[] payload, int cnt);
     native boolean indicateNative(String objPath, int sessionHandle, int handle, byte[] payload, int cnt);

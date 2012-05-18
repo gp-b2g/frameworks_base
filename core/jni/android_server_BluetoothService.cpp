@@ -1690,8 +1690,45 @@ static jstring registerHealthApplicationNative(JNIEnv *env, jobject object,
     return path;
 }
 
+static jobjectArray getGattServersNative(JNIEnv *env, jobject object) {
+    LOGE("%s", __FUNCTION__);
+    jobjectArray strArray = NULL;
+
+#ifdef HAVE_BLUETOOTH
+    native_data_t *nat = get_native_data(env, object);
+    if (nat) {
+        const char *c_name = FRAMEWORKS_BASE_IFC;
+        const char *c_obj_path;
+        DBusMessage *msg, *reply;
+        DBusError err;
+        dbus_error_init(&err);
+
+        msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC,
+                                           get_adapter_path(env, object),
+                                           DBUS_GATT_SERVER_INTERFACE,
+                                           "GetRegisteredServers");
+        if (msg == NULL) {
+            LOGE("%s Could not allocate D-Bus message object!",  __FUNCTION__);
+            return NULL;
+        }
+
+        /* Make the call. */
+        reply = dbus_connection_send_with_reply_and_block(nat->conn, msg, -1, &err);
+
+        if (!reply) {
+            if (dbus_error_is_set(&err))
+                LOG_AND_FREE_DBUS_ERROR(&err);
+        } else {
+            strArray = dbus_returns_array_of_object_path(env, reply);
+        }
+    }
+#endif
+    return strArray;
+}
+
 static jboolean registerGattServerNative(JNIEnv *env, jobject object,
-                                           jstring objPath, jint handleCount) {
+                                         jstring objPath, jint handleCount,
+                                         jboolean isNew) {
     LOGV("%s", __FUNCTION__);
     jboolean result = JNI_FALSE;
 #ifdef HAVE_BLUETOOTH
@@ -1702,45 +1739,52 @@ static jboolean registerGattServerNative(JNIEnv *env, jobject object,
         const char *c_restriction = "None";
         DBusMessage *msg, *reply;
         DBusError err;
-        dbus_error_init(&err);
+        event_loop_native_data_t *event_nat;
 
-        msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC,
-                                            get_adapter_path(env, object),
-                                            DBUS_GATT_SERVER_INTERFACE,
-                                            "RegisterServer");
+        if (isNew) {
+            dbus_error_init(&err);
 
-        if (msg == NULL) {
-            LOGE("Could not allocate D-Bus message object!");
-            return JNI_FALSE;
+            msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC,
+                                               get_adapter_path(env, object),
+                                               DBUS_GATT_SERVER_INTERFACE,
+                                               "RegisterServer");
+
+            if (msg == NULL) {
+                LOGE("Could not allocate D-Bus message object!");
+                return JNI_FALSE;
+            }
         }
 
         c_obj_path = env->GetStringUTFChars(objPath, NULL);
 
-        /* Append arguments */
-        dbus_message_append_args(msg,
-                                 DBUS_TYPE_STRING, &c_name,
-                                 DBUS_TYPE_OBJECT_PATH, &c_obj_path,
-                                 DBUS_TYPE_UINT16, &handleCount,
-                                 DBUS_TYPE_STRING, &c_restriction,
-                                 DBUS_TYPE_INVALID);
+        if (isNew) {
+            /* Append arguments */
+            dbus_message_append_args(msg,
+                                     DBUS_TYPE_STRING, &c_name,
+                                     DBUS_TYPE_OBJECT_PATH, &c_obj_path,
+                                     DBUS_TYPE_UINT16, &handleCount,
+                                     DBUS_TYPE_STRING, &c_restriction,
+                                     DBUS_TYPE_INVALID);
 
-        /* Make the call. */
-        reply = dbus_connection_send_with_reply_and_block(nat->conn, msg, -1, &err);
+            /* Make the call. */
+            reply = dbus_connection_send_with_reply_and_block(
+                                         nat->conn, msg, -1, &err);
 
-        if (!reply) {
-            if (dbus_error_is_set(&err))
-                LOG_AND_FREE_DBUS_ERROR(&err);
-        } else {
-            event_loop_native_data_t *event_nat =
-                get_EventLoop_native_data(env, env->GetObjectField(object, field_mEventLoop));
-
-            int reg_path_result = register_gatt_path(event_nat, c_obj_path);
-            if(reg_path_result) {
-                LOGE("%s: register_gatt_path failed!", __FUNCTION__);
-                result = JNI_FALSE;
-            } else {
-                result = JNI_TRUE;
+            if (!reply) {
+                if (dbus_error_is_set(&err))
+                    LOG_AND_FREE_DBUS_ERROR(&err);
+                env->ReleaseStringUTFChars(objPath, c_obj_path);
+                return JNI_FALSE;
             }
+        }
+
+        event_nat = get_EventLoop_native_data(env,
+                                   env->GetObjectField(object, field_mEventLoop));
+        if(register_gatt_path(event_nat, c_obj_path)) {
+            LOGE("%s: register_gatt_path failed!", __FUNCTION__);
+            result = JNI_FALSE;
+        } else {
+            result = JNI_TRUE;
         }
         env->ReleaseStringUTFChars(objPath, c_obj_path);
     }
@@ -2442,39 +2486,42 @@ static jboolean unregisterHealthApplicationNative(JNIEnv *env, jobject object,
 }
 
 static jboolean unregisterGattServerNative(JNIEnv *env, jobject object,
-                                                    jstring ObjPath) {
+                                           jstring ObjPath, jboolean complete) {
     LOGV("%s", __FUNCTION__);
     jboolean result = JNI_FALSE;
 #ifdef HAVE_BLUETOOTH
     native_data_t *nat = get_native_data(env, object);
     if (nat) {
         const char *c_obj_path = env->GetStringUTFChars(ObjPath, NULL);
-        DBusError err;
-        dbus_error_init(&err);
-        DBusMessage *reply =
+
+        if (complete == JNI_TRUE) {
+            DBusError err;
+            dbus_error_init(&err);
+            DBusMessage *reply =
             dbus_func_args_timeout(env, nat->conn, -1,
                                    get_adapter_path(env, object),
                                    DBUS_GATT_SERVER_INTERFACE, "DeregisterServer",
                                    DBUS_TYPE_OBJECT_PATH, &c_obj_path,
                                    DBUS_TYPE_INVALID);
-
-        if (!reply) {
-            if (dbus_error_is_set(&err))
-                LOG_AND_FREE_DBUS_ERROR(&err);
-        } else {
-
-            event_loop_native_data_t *event_nat =
-                get_EventLoop_native_data(env, env->GetObjectField(object, field_mEventLoop));
-
-            int unreg_gatt_result = unregister_gatt_path(event_nat, c_obj_path);
-            if(unreg_gatt_result) {
-                LOGE("%s: Can't unregister gatt object path!",
-              __FUNCTION__);
-                result = JNI_FALSE;
-            } else {
-                result = JNI_TRUE;
+            if (!reply) {
+                if (dbus_error_is_set(&err))
+                    LOG_AND_FREE_DBUS_ERROR(&err);
+                env->ReleaseStringUTFChars(ObjPath, c_obj_path);
+                return JNI_FALSE;
             }
         }
+
+        event_loop_native_data_t *event_nat =
+        get_EventLoop_native_data(env, env->GetObjectField(object, field_mEventLoop));
+
+        if(unregister_gatt_path(event_nat, c_obj_path)) {
+            LOGE("%s: Can't unregister gatt object path!",
+                 __FUNCTION__);
+            result = JNI_FALSE;
+        } else {
+            result = JNI_TRUE;
+        }
+
         env->ReleaseStringUTFChars(ObjPath, c_obj_path);
     }
 #endif
@@ -3322,8 +3369,9 @@ static JNINativeMethod sMethods[] = {
     {"listConnectionNative", "()I", (void*)listConnectionNative},
     {"disconnectAllConnectionsNative", "()Z", (void*)disconnectAllConnectionsNative},
     //Gatt Server
-    {"registerGattServerNative", "(Ljava/lang/String;I)Z", (void *)registerGattServerNative},
-    {"unregisterGattServerNative", "(Ljava/lang/String;)Z", (void *)unregisterGattServerNative},
+    {"getGattServersNative", "()[Ljava/lang/Object;", (void *)getGattServersNative},
+    {"registerGattServerNative", "(Ljava/lang/String;IZ)Z", (void *)registerGattServerNative},
+    {"unregisterGattServerNative", "(Ljava/lang/String;Z)Z", (void *)unregisterGattServerNative},
     {"addPrimarySdpNative", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IIZ)Z", (void *)addPrimarySdpNative},
     {"notifyNative", "(Ljava/lang/String;II[BI)Z", (void *)notifyNative},
     {"indicateNative", "(Ljava/lang/String;II[BI)Z", (void *)indicateNative},
