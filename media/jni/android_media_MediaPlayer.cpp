@@ -774,7 +774,7 @@ static JNINativeMethod gMethods[] = {
     {"_stop",               "()V",                              (void *)android_media_MediaPlayer_stop},
     {"getVideoWidth",       "()I",                              (void *)android_media_MediaPlayer_getVideoWidth},
     {"getVideoHeight",      "()I",                              (void *)android_media_MediaPlayer_getVideoHeight},
-    {"seekTo",              "(I)V",                             (void *)android_media_MediaPlayer_seekTo},
+    {"_seekTo",              "(I)V",                             (void *)android_media_MediaPlayer_seekTo},
     {"_pause",              "()V",                              (void *)android_media_MediaPlayer_pause},
     {"isPlaying",           "()Z",                              (void *)android_media_MediaPlayer_isPlaying},
     {"getCurrentPosition",  "()I",                              (void *)android_media_MediaPlayer_getCurrentPosition},

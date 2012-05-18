@@ -527,6 +527,26 @@ public class MediaPlayer
     private static final String ACTION_METADATA_CHANGED  =
         "android.media.MediaPlayer.action.METADATA_CHANGED";
 
+    /* {@hide}
+     */
+    private static final int PLAYSTATUS_STOPPED = 0x0;
+
+    /* {@hide}
+     */
+    private static final int PLAYSTATUS_PLAYING = 0x1;
+
+    /* {@hide}
+     */
+    private static final int PLAYSTATUS_PAUSED = 0x2;
+
+    /* {@hide}
+     */
+    private static final int PLAYSTATUS_SEEKFWD = 0x3;
+
+    /* {@hide}
+     */
+    private static final int PLAYSTATUS_REWIND = 0x4;
+
     /**
        Constant to disable the metadata filter during retrieval.
        // FIXME: unhide.
@@ -937,7 +957,7 @@ public class MediaPlayer
            intent.putExtra("position", getCurrentPosition());
            Log.d(TAG, "start() mUri is " + mUri);
            intent.putExtra("uripath", mUri);
-           intent.putExtra("playstate", 1);
+           intent.putExtra("playstate", PLAYSTATUS_PLAYING);
            mContext.sendBroadcast(intent);
         }
 
@@ -962,7 +982,7 @@ public class MediaPlayer
            intent.putExtra("position", getCurrentPosition());
            Log.d(TAG, "stop() mUri is " + mUri);
            intent.putExtra("uripath", mUri);
-           intent.putExtra("playstate", 0);
+           intent.putExtra("playstate", PLAYSTATUS_STOPPED);
            mContext.sendBroadcast(intent);
         }
 
@@ -986,7 +1006,7 @@ public class MediaPlayer
            intent.putExtra("position", getCurrentPosition());
            Log.d(TAG, "pause() mUri is " + mUri);
            intent.putExtra("uripath", mUri);
-           intent.putExtra("playstate", 2);
+           intent.putExtra("playstate", PLAYSTATUS_PAUSED);
            mContext.sendBroadcast(intent);
         }
 
@@ -1103,8 +1123,25 @@ public class MediaPlayer
      * @throws IllegalStateException if the internal player engine has not been
      * initialized
      */
-    public native void seekTo(int msec) throws IllegalStateException;
+    public void seekTo(int msec) throws IllegalStateException {
+        if (mContext != null) {
+           Intent intent = new Intent(ACTION_METADATA_CHANGED);
+           intent.putExtra("duration", getDuration());
+           intent.putExtra("time", System.currentTimeMillis());
+           intent.putExtra("position", msec);
+           Log.d(TAG, "seekTo() mUri is " + mUri);
+           intent.putExtra("uripath", mUri);
+           if (msec > getCurrentPosition()) {
+               intent.putExtra("playstate", PLAYSTATUS_SEEKFWD);
+           } else {
+               intent.putExtra("playstate", PLAYSTATUS_REWIND);
+           }
+           mContext.sendBroadcast(intent);
+        }
+        _seekTo(msec);
+    }
 
+    private native void _seekTo(int msec) throws IllegalStateException;
     /**
      * Gets the current playback position.
      *
