@@ -4574,15 +4574,6 @@ public class BluetoothService extends IBluetooth.Stub {
         }
     }
 
-    public boolean addPrimarySdp(BluetoothGattAppConfiguration config, ParcelUuid uuid,
-                                 int start, int end, boolean eir) {
-        mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
-                "Need BLUETOOTH permission");
-        synchronized (mBluetoothGattProfileHandler) {
-            return mBluetoothGattProfileHandler.addPrimarySdp(config, uuid, start, end, eir);
-        }
-    }
-
     public boolean sendIndication(BluetoothGattAppConfiguration config,
                                   int handle, byte[] value, boolean notify, int sessionHandle) {
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
@@ -4594,7 +4585,7 @@ public class BluetoothService extends IBluetooth.Stub {
 
     public boolean discoverPrimaryResponse(BluetoothGattAppConfiguration config,
                                    ParcelUuid uuid, int handle, int end, int status, int reqHandle) {
-        Log.d(TAG, "Inside discoverPrimaryResponse");
+        Log.d(TAG, "discoverPrimaryResponse");
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
                 "Need BLUETOOTH permission");
 
@@ -4623,7 +4614,7 @@ public class BluetoothService extends IBluetooth.Stub {
 
     public boolean discoverPrimaryByUuidResponse(BluetoothGattAppConfiguration config,
                                                  int handle, int end, int status, int reqHandle) {
-        Log.d(TAG, "Inside discoverPrimaryByUuidResponse");
+        Log.d(TAG, "discoverPrimaryByUuidResponse");
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
                 "Need BLUETOOTH permission");
 
@@ -4644,7 +4635,7 @@ public class BluetoothService extends IBluetooth.Stub {
 
     public boolean findIncludedResponse(BluetoothGattAppConfiguration config, ParcelUuid uuid,
                                         int handle, int start, int end, int status, int reqHandle) {
-        Log.d(TAG, "Inside findIncludedResponse");
+        Log.d(TAG, "findIncludedResponse");
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
                 "Need BLUETOOTH permission");
 
@@ -4670,7 +4661,7 @@ public class BluetoothService extends IBluetooth.Stub {
 
     public boolean discoverCharacteristicResponse(BluetoothGattAppConfiguration config, ParcelUuid uuid,
                                         int handle, byte property, int valueHandle, int status, int reqHandle) {
-        Log.d(TAG, "Inside discoverCharacteristicResponse");
+        Log.d(TAG, "discoverCharacteristicResponse");
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
                 "Need BLUETOOTH permission");
 
@@ -4694,9 +4685,9 @@ public class BluetoothService extends IBluetooth.Stub {
             }
     }
 
-    public boolean discoverCharacteristicDescriptorResponse(BluetoothGattAppConfiguration config, ParcelUuid uuid,
-                                        int handle, int status, int reqHandle) {
-        Log.d(TAG, "Inside discoverCharacteristicDescriptorResponse");
+    public boolean findInfoResponse(BluetoothGattAppConfiguration config, ParcelUuid uuid,
+                                    int handle, int status, int reqHandle) {
+        Log.d(TAG, "findInfoResponse");
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
                 "Need BLUETOOTH permission");
 
@@ -4714,15 +4705,15 @@ public class BluetoothService extends IBluetooth.Stub {
                 uuidStr = uuid.toString();
             }
 
-            return mBluetoothGattProfileHandler.discoverCharacteristicDescriptorResponse(config, uuidStr,
-                                                                                         handle,
-                                                                                         status, reqHandle);
+            return mBluetoothGattProfileHandler.findInfoResponse(config, uuidStr,
+                                                                 handle,
+                                                                 status, reqHandle);
             }
     }
 
     public boolean readByTypeResponse(BluetoothGattAppConfiguration config, int handle, ParcelUuid uuid,
                                         byte[] payload, int status, int reqHandle) {
-        Log.d(TAG, "Inside discoverCharacteristicDescriptorResponse");
+        Log.d(TAG, "readByTypeResponse");
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
                 "Need BLUETOOTH permission");
 
@@ -4747,7 +4738,7 @@ public class BluetoothService extends IBluetooth.Stub {
 
     public boolean readResponse(BluetoothGattAppConfiguration config, ParcelUuid uuid,
                                 byte[] payload, int status, int reqHandle) {
-        Log.d(TAG, "Inside readResponse");
+        Log.d(TAG, "readResponse");
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
                 "Need BLUETOOTH permission");
 
@@ -4772,7 +4763,7 @@ public class BluetoothService extends IBluetooth.Stub {
 
     public boolean writeResponse(BluetoothGattAppConfiguration config, ParcelUuid uuid,
                                  int status, int reqHandle) {
-        Log.d(TAG, "Inside writeResponse");
+        Log.d(TAG, "writeResponse");
         mContext.enforceCallingOrSelfPermission(BLUETOOTH_PERM,
                 "Need BLUETOOTH permission");
 
@@ -4904,14 +4895,13 @@ public class BluetoothService extends IBluetooth.Stub {
     native Object[] getGattServersNative();
     native boolean registerGattServerNative(String objPath, int handleCount, boolean isNew);
     native boolean unregisterGattServerNative(String objPath, boolean complete);
-    native boolean addPrimarySdpNative(String objPath, String svcName, String uuidStr, int startHandle, int endHandle, boolean eir);
     native boolean notifyNative(String objPath, int sessionHandle, int handle, byte[] payload, int cnt);
     native boolean indicateNative(String objPath, int sessionHandle, int handle, byte[] payload, int cnt);
     native boolean discoverPrimaryResponseNative(String uuid, String status, int handle, int end, int nativeData);
     native boolean discoverPrimaryByUuidResponseNative(String status, int handle, int end, int nativeData);
     native boolean findIncludedResponseNative(String uuid, String status, int handle, int start, int end, int nativeData);
     native boolean discoverCharacteristicsResponseNative(String uuid, String status, int handle, int property, int valueHandle, int nativeData);
-    native boolean discoverCharacteristicDescriptorResponseNative(String uuid, String status, int handle, int nativeData);
+    native boolean findInfoResponseNative(String uuid, String status, int handle, int nativeData);
     native boolean readByTypeResponseNative(String uuid, String status, int handle, byte[] payload, int cnt, int nativeData);
     native boolean readResponseNative(String uuid, String status, byte[] payload, int cnt, int nativeData);
     native boolean writeResponseNative(String uuid, String status, int nativeData);

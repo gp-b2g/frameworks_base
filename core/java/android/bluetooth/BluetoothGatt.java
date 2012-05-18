@@ -185,31 +185,6 @@ public final class BluetoothGatt implements BluetoothProfile {
         return result;
     }
 
-    public boolean addPrimaryAdv(BluetoothGattAppConfiguration config, ParcelUuid uuid ) {
-        return true;
-    }
-
-    public boolean addPrimarySdp(BluetoothGattAppConfiguration config, ParcelUuid uuid, int start, int end, boolean eir) {
-        boolean result = false;
-
-        if (config == null || !rangeCheck(start) || !rangeCheck(end))
-            return false;
-
-        if (mService != null) {
-            try {
-                result = mService.addPrimarySdp(config, uuid, (int)start, (int)end, eir) ;
-            } catch (RemoteException e) {
-                Log.e(TAG, e.toString());
-            }
-            result = true;
-        } else {
-            Log.w(TAG, "Proxy not attached to service");
-            Log.d(TAG, Log.getStackTraceString(new Throwable()));
-        }
-
-        return result;
-    }
-
     public boolean sendIndication(BluetoothGattAppConfiguration config,
                                   int handle, byte[] value, boolean notify, int sessionHandle) {
         boolean result = false;
@@ -312,10 +287,10 @@ public final class BluetoothGatt implements BluetoothProfile {
 
     }
 
-    public boolean discoverCharacteristicDescriptorResponse(BluetoothGattAppConfiguration config,
-                                                            int requestHandle, int errorCode, int handle, ParcelUuid uuid) {
+    public boolean findInfoResponse(BluetoothGattAppConfiguration config,
+                                    int requestHandle, int errorCode, int handle, ParcelUuid uuid) {
 
-        Log.d(TAG, "discoverCharacteristicDescriptorResponse");
+        Log.d(TAG, "findInfoResponse");
         boolean result = false;
 
         if (config == null)
@@ -324,8 +299,8 @@ public final class BluetoothGatt implements BluetoothProfile {
         if (mService != null) {
             try {
                 /*Remove this when the api change*/
-                result = mService.discoverCharacteristicDescriptorResponse(config, uuid, handle,
-                                                                           errorCode, requestHandle);
+                result = mService.findInfoResponse(config, uuid, handle,
+                                                   errorCode, requestHandle);
             } catch (RemoteException e) {
                 Log.e(TAG, e.toString());
             }
@@ -520,10 +495,10 @@ public final class BluetoothGatt implements BluetoothProfile {
         }
 
         @Override
-        public void onGattDiscoverCharacteristicDescriptorRequest(BluetoothGattAppConfiguration config,
-                                                           int start, int end, int requestHandle) {
-            Log.d(TAG, "onGattDiscoverCharacteristicDescriptorRequest: " + config + " range " + start + " - " + end);
-            mCallback.onGattDiscoverCharacteristicDescriptorRequest(config, start, end, requestHandle);
+        public void onGattFindInfoRequest(BluetoothGattAppConfiguration config,
+                                      int start, int end, int requestHandle) {
+            Log.d(TAG, "onGattFindInfoRequest: " + config + " range " + start + " - " + end);
+            mCallback.onGattFindInfoRequest(config, start, end, requestHandle);
         }
 
         @Override
@@ -551,19 +526,19 @@ public final class BluetoothGatt implements BluetoothProfile {
         }
 
         @Override
-        public void onGattWriteRequest(BluetoothGattAppConfiguration config, int handle, byte value[],
+        public void onGattWriteCommand(BluetoothGattAppConfiguration config, int handle, byte value[],
                                        String authentication)  {
-            Log.d(TAG, "onGattWriteRequest: " + config + ", handle " + handle +
+            Log.d(TAG, "onGattWriteCommand: " + config + ", handle " + handle +
               ", authentication " + authentication);
-            mCallback.onGattWriteRequest(config, handle, value, authentication);
+            mCallback.onGattWriteCommand(config, handle, value, authentication);
         }
 
         @Override
-        public void onGattReliableWriteRequest(BluetoothGattAppConfiguration config, int handle, byte value[],
+        public void onGattWriteRequest(BluetoothGattAppConfiguration config, int handle, byte value[],
                                                String authentication, int sessionHandle, int requestHandle)  {
-            Log.d(TAG, "onGattReliableWriteRequest: " + config + ", handle " + handle +
+            Log.d(TAG, "onGattWriteRequest: " + config + ", handle " + handle +
               ", authentication " + authentication + ", session " + sessionHandle);
-            mCallback.onGattReliableWriteRequest(config, handle, value, authentication, sessionHandle, requestHandle);
+            mCallback.onGattWriteRequest(config, handle, value, authentication, sessionHandle, requestHandle);
         }
 
         @Override

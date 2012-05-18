@@ -87,9 +87,9 @@ public abstract class BluetoothGattCallback {
     }
 
 
-    public void onGattDiscoverCharacteristicDescriptorRequest(BluetoothGattAppConfiguration config,
-                                                       int start, int end, int requestHandle) {
-        Log.d(TAG, "onGattDiscoverCharacteristicDescriptorRequest: " + config + " range " + start + " - " + end);
+    public void onGattFindInfoRequest(BluetoothGattAppConfiguration config,
+                                      int start, int end, int requestHandle) {
+        Log.d(TAG, "onGattFindInfoRequest: " + config + " range " + start + " - " + end);
     }
 
     public void onGattDiscoverCharacteristicRequest(BluetoothGattAppConfiguration config,
@@ -109,17 +109,17 @@ public abstract class BluetoothGattCallback {
               " link authentication: " + authentication);
     }
 
-    public void onGattWriteRequest(BluetoothGattAppConfiguration config, int handle, byte[] value,
+    public void onGattWriteCommand(BluetoothGattAppConfiguration config, int handle, byte[] value,
                                    String authentication) {
 
-        Log.d(TAG, "onGattWriteRequest: " + config + " handle " + handle +
+        Log.d(TAG, "onGattWriteCommand: " + config + " handle " + handle +
               " link authentication: " + authentication);
     }
 
-    public void onGattReliableWriteRequest(BluetoothGattAppConfiguration config, int handle, byte[] value,
+    public void onGattWriteRequest(BluetoothGattAppConfiguration config, int handle, byte[] value,
                                    String authentication, int sessionHandle, int requestHandle) {
 
-        Log.d(TAG, "onGattReliableWriteRequest: " + config + " handle " + handle +
+        Log.d(TAG, "onGattWriteRequest: " + config + " handle " + handle +
               " link authentication: " + authentication + ", session " + sessionHandle);
     }
 

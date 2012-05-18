@@ -1329,15 +1329,15 @@ class BluetoothEventLoop {
         gattProfileHandler.onGattDiscoverCharacteristicsRequest(gattObjectPath, start, end, reqHandle);
     }
 
-    private void onGattDiscoverCharacteristicDescriptorRequest(String gattObjectPath, int start,
-                                                    int end, int reqHandle) {
-        Log.d(TAG, "Inside onGattDiscoverCharacteristicDescriptorRequest");
+    private void onGattFindInfoRequest(String gattObjectPath, int start,
+                                       int end, int reqHandle) {
+        Log.d(TAG, "Inside onGattFindInfoRequest");
 
         mGattRequestData.add(new Integer(reqHandle));
 
         BluetoothGattProfileHandler gattProfileHandler =
             BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
-        gattProfileHandler.onGattDiscoverCharacteristicDescriptorRequest(gattObjectPath, start, end, reqHandle);
+        gattProfileHandler.onGattFindInfoRequest(gattObjectPath, start, end, reqHandle);
     }
 
     private void onGattReadByTypeRequest(String gattObjectPath, String uuid,
@@ -1363,26 +1363,26 @@ class BluetoothEventLoop {
         gattProfileHandler.onGattReadRequest(gattObjectPath, auth, handle, reqHandle);
     }
 
-    private void onGattReliableWriteRequest(String gattObjectPath, String auth,
-                                    int attrHandle, byte[] value,
-                                    int sessionHandle, int reqHandle) {
-        Log.d(TAG, "onGattReliableWriteRequest");
+    private void onGattWriteRequest(String gattObjectPath, String auth,
+                                      int attrHandle, byte[] value,
+                                      int sessionHandle, int reqHandle) {
+        Log.d(TAG, "onGattWriteRequest");
 
         mGattRequestData.add(new Integer(reqHandle));
 
         BluetoothGattProfileHandler gattProfileHandler =
             BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
-        gattProfileHandler.onGattReliableWriteRequest(gattObjectPath, auth,
+        gattProfileHandler.onGattWriteRequest(gattObjectPath, auth,
                                               attrHandle, value, sessionHandle, reqHandle);
     }
 
-    private void onGattWriteRequest(String gattObjectPath, String auth,
+    private void onGattWriteCommand(String gattObjectPath, String auth,
                                     int attrHandle, byte[] value) {
-        Log.d(TAG, "onGattWriteRequest");
+        Log.d(TAG, "onGattWriteCommand");
 
         BluetoothGattProfileHandler gattProfileHandler =
             BluetoothGattProfileHandler.getInstance(mContext, mBluetoothService);
-        gattProfileHandler.onGattWriteRequest(gattObjectPath, auth,
+        gattProfileHandler.onGattWriteCommand(gattObjectPath, auth,
                                               attrHandle, value);
     }
 

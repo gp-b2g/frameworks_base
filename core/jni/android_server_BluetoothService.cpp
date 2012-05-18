@@ -1792,61 +1792,6 @@ static jboolean registerGattServerNative(JNIEnv *env, jobject object,
     return result;
 }
 
-static jboolean addPrimarySdpNative(JNIEnv *env, jobject object,
-                                           jstring objPath, jstring svcName,
-                                           jstring uuidStr, jint startHandle,
-                                           jint endHandle, jboolean eir) {
-    LOGV("%s", __FUNCTION__);
-    jboolean result = JNI_FALSE;
-#ifdef HAVE_BLUETOOTH
-    native_data_t *nat = get_native_data(env, object);
-    if (nat) {
-        const char *c_obj_path = env->GetStringUTFChars(objPath, NULL);
-        const char *c_svc_name = env->GetStringUTFChars(svcName, NULL);
-        const char *c_uuid_str = env->GetStringUTFChars(uuidStr, NULL);
-        DBusMessage *msg, *reply;
-        DBusError err;
-        dbus_error_init(&err);
-
-        msg = dbus_message_new_method_call(BLUEZ_DBUS_BASE_IFC,
-                                            get_adapter_path(env, object),
-                                            DBUS_GATT_SERVER_INTERFACE,
-                                            "AddPrimarySdp");
-
-        if (msg == NULL) {
-            LOGE("Could not allocate D-Bus message object!");
-            return NULL;
-        }
-
-        /* append arguments */
-        dbus_message_append_args(msg,
-                                 DBUS_TYPE_OBJECT_PATH, &c_obj_path,
-                                 DBUS_TYPE_STRING, &c_svc_name,
-                                 DBUS_TYPE_STRING, &c_uuid_str,
-                                 DBUS_TYPE_UINT16, &startHandle,
-                                 DBUS_TYPE_UINT16, &endHandle,
-                                 DBUS_TYPE_BOOLEAN, &eir,
-                                 DBUS_TYPE_INVALID);
-
-        /* Make the call. */
-        reply = dbus_connection_send_with_reply_and_block(nat->conn, msg, -1, &err);
-
-        env->ReleaseStringUTFChars(objPath, c_obj_path);
-        env->ReleaseStringUTFChars(svcName, c_svc_name);
-        env->ReleaseStringUTFChars(uuidStr, c_uuid_str);
-
-        if (!reply) {
-            if (dbus_error_is_set(&err)) {
-                LOG_AND_FREE_DBUS_ERROR(&err);
-            }
-        } else {
-            result = JNI_TRUE;
-        }
-    }
-#endif
-    return result;
-}
-
 static jboolean notifyNative(JNIEnv *env, jobject object,
                              jstring objPath, jint sessionHandle,
                              jint handle, jbyteArray payload,
@@ -2186,11 +2131,11 @@ static jboolean discoverCharacteristicsResponseNative(JNIEnv *env, jobject objec
     return JNI_FALSE;
 }
 
-static jboolean discoverCharacteristicDescriptorResponseNative(JNIEnv *env, jobject object,
-                                           jstring uuid,
-                                           jstring errorString,
-                                           jint handle,
-                                           int nativeData) {
+static jboolean findInfoResponseNative(JNIEnv *env, jobject object,
+                                       jstring uuid,
+                                       jstring errorString,
+                                       jint handle,
+                                       int nativeData) {
 #ifdef HAVE_BLUETOOTH
     LOGV("%s", __FUNCTION__);
     native_data_t *nat = get_native_data(env, object);
@@ -3372,14 +3317,13 @@ static JNINativeMethod sMethods[] = {
     {"getGattServersNative", "()[Ljava/lang/Object;", (void *)getGattServersNative},
     {"registerGattServerNative", "(Ljava/lang/String;IZ)Z", (void *)registerGattServerNative},
     {"unregisterGattServerNative", "(Ljava/lang/String;Z)Z", (void *)unregisterGattServerNative},
-    {"addPrimarySdpNative", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IIZ)Z", (void *)addPrimarySdpNative},
     {"notifyNative", "(Ljava/lang/String;II[BI)Z", (void *)notifyNative},
     {"indicateNative", "(Ljava/lang/String;II[BI)Z", (void *)indicateNative},
     {"discoverPrimaryResponseNative", "(Ljava/lang/String;Ljava/lang/String;III)Z", (void *)discoverPrimaryResponseNative},
     {"discoverPrimaryByUuidResponseNative", "(Ljava/lang/String;III)Z", (void *)discoverPrimaryByUuidResponseNative},
     {"findIncludedResponseNative", "(Ljava/lang/String;Ljava/lang/String;IIII)Z", (void *)findIncludedResponseNative},
     {"discoverCharacteristicsResponseNative", "(Ljava/lang/String;Ljava/lang/String;IIII)Z", (void *)discoverCharacteristicsResponseNative},
-    {"discoverCharacteristicDescriptorResponseNative", "(Ljava/lang/String;Ljava/lang/String;II)Z", (void *)discoverCharacteristicDescriptorResponseNative},
+    {"findInfoResponseNative", "(Ljava/lang/String;Ljava/lang/String;II)Z", (void *)findInfoResponseNative},
     {"readByTypeResponseNative", "(Ljava/lang/String;Ljava/lang/String;I[BII)Z", (void *)readByTypeResponseNative},
     {"readResponseNative", "(Ljava/lang/String;Ljava/lang/String;[BII)Z", (void *)readResponseNative},
     {"writeResponseNative", "(Ljava/lang/String;Ljava/lang/String;I)Z", (void *)writeResponseNative},

@@ -69,11 +69,11 @@ static jmethodID method_onGattDiscoverPrimaryRequest;
 static jmethodID method_onGattDiscoverPrimaryByUuidRequest;
 static jmethodID method_onGattDiscoverIncludedRequest;
 static jmethodID method_onGattDiscoverCharacteristicsRequest;
-static jmethodID method_onGattDiscoverCharacteristicDescriptorRequest;
+static jmethodID method_onGattFindInfoRequest;
 static jmethodID method_onGattReadByTypeRequest;
 static jmethodID method_onGattReadRequest;
+static jmethodID method_onGattWriteCommand;
 static jmethodID method_onGattWriteRequest;
-static jmethodID method_onGattReliableWriteRequest;
 static jmethodID method_onGattSetClientConfigDescriptor;
 static jmethodID method_onIndicateResponse;
 
@@ -161,15 +161,15 @@ static void classInitNative(JNIEnv* env, jclass clazz) {
                                                          "(Ljava/lang/String;III)V");
     method_onGattDiscoverCharacteristicsRequest = env->GetMethodID(clazz, "onGattDiscoverCharacteristicsRequest",
                                                          "(Ljava/lang/String;III)V");
-    method_onGattDiscoverCharacteristicDescriptorRequest = env->GetMethodID(clazz, "onGattDiscoverCharacteristicDescriptorRequest",
+    method_onGattFindInfoRequest = env->GetMethodID(clazz, "onGattFindInfoRequest",
                                                          "(Ljava/lang/String;III)V");
     method_onGattReadByTypeRequest = env->GetMethodID(clazz, "onGattReadByTypeRequest",
                                                          "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;III)V");
     method_onGattReadRequest = env->GetMethodID(clazz, "onGattReadRequest",
                                                          "(Ljava/lang/String;Ljava/lang/String;II)V");
-    method_onGattWriteRequest = env->GetMethodID(clazz, "onGattWriteRequest",
+    method_onGattWriteCommand = env->GetMethodID(clazz, "onGattWriteCommand",
                                                          "(Ljava/lang/String;Ljava/lang/String;I[B)V");
-    method_onGattReliableWriteRequest = env->GetMethodID(clazz, "onGattReliableWriteRequest",
+    method_onGattWriteRequest = env->GetMethodID(clazz, "onGattWriteRequest",
                                                          "(Ljava/lang/String;Ljava/lang/String;I[BII)V");
     method_onGattSetClientConfigDescriptor = env->GetMethodID(clazz, "onGattSetClientConfigDescriptor",
                                                          "(Ljava/lang/String;II[B)V");
@@ -1766,7 +1766,7 @@ DBusHandlerResult gatt_event_filter(DBusConnection *conn,
 
         dbus_message_ref(msg);  // increment refcount because we pass to java
 
-        env->CallVoidMethod(nat->me, method_onGattDiscoverCharacteristicDescriptorRequest,
+        env->CallVoidMethod(nat->me, method_onGattFindInfoRequest,
                             env->NewStringUTF(objPath),
                             start, end,
                             int(msg)
@@ -1835,7 +1835,7 @@ DBusHandlerResult gatt_event_filter(DBusConnection *conn,
 
         dbus_message_ref(msg);  // increment refcount because we pass to java
 
-        env->CallVoidMethod(nat->me, method_onGattReliableWriteRequest,
+        env->CallVoidMethod(nat->me, method_onGattWriteRequest,
                             env->NewStringUTF(objPath),
                             env->NewStringUTF(auth),
                             handle,
@@ -1875,7 +1875,7 @@ DBusHandlerResult gatt_event_filter(DBusConnection *conn,
         } else
             goto failure;
 
-        env->CallVoidMethod(nat->me, method_onGattWriteRequest,
+        env->CallVoidMethod(nat->me, method_onGattWriteCommand,
                             env->NewStringUTF(objPath),
                             env->NewStringUTF(auth),
                             handle,

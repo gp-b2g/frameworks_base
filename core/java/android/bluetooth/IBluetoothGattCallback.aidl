@@ -44,18 +44,18 @@ interface IBluetoothGattCallback
                                                    in int start, in int end, in ParcelUuid uuid, in int requestHandle);
     void onGattFindIncludedServiceRequest(in BluetoothGattAppConfiguration config,
                                           in int start, in int end, in int requestHandle);
-    void onGattDiscoverCharacteristicDescriptorRequest(in BluetoothGattAppConfiguration config,
-                                                       in int start, in int end, in int requestHandle);
+    void onGattFindInfoRequest(in BluetoothGattAppConfiguration config,
+                               in int start, in int end, in int requestHandle);
     void onGattDiscoverCharacteristicRequest(in BluetoothGattAppConfiguration config,
                                              in int start, in int end, in int requestHandle);
     void onGattReadByTypeRequest(in BluetoothGattAppConfiguration config,
                                  in ParcelUuid uuid, in int start, in int end, in String authentication, in int requestHandle);
     void onGattReadRequest(in BluetoothGattAppConfiguration config,
                            in int handle, in String authentication, in int requestHandle);
-    void onGattWriteRequest(in BluetoothGattAppConfiguration config, in int handle, in byte[] value,
+    void onGattWriteCommand(in BluetoothGattAppConfiguration config, in int handle, in byte[] value,
                             in String authentication);
-    void onGattReliableWriteRequest(in BluetoothGattAppConfiguration config, in int handle, in byte[] value,
-                                    in String authentication, in int sessionHandle, in int requestHandle);
+    void onGattWriteRequest(in BluetoothGattAppConfiguration config, in int handle, in byte[] value,
+                            in String authentication, in int sessionHandle, in int requestHandle);
     void onGattSetClientConfigDescriptor(in BluetoothGattAppConfiguration config, in int handle, in byte[] value,
                                      in int sessionHandle);
     void onGattIndicateResponse(in BluetoothGattAppConfiguration config, in boolean result);

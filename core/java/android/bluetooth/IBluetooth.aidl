@@ -168,8 +168,6 @@ interface IBluetooth
     boolean registerGattAppConfiguration(in BluetoothGattAppConfiguration config,
                                          in IBluetoothGattCallback callback);
     boolean unregisterGattAppConfiguration(in BluetoothGattAppConfiguration config);
-    boolean addPrimarySdp(in BluetoothGattAppConfiguration config, in ParcelUuid uuid, in int start,
-                          in int end, in boolean eir);
     boolean sendIndication(in BluetoothGattAppConfiguration config,
                            in int handle, in byte[] value, in boolean notify, in int sessionHandle);
     boolean discoverPrimaryResponse(in BluetoothGattAppConfiguration config, in ParcelUuid uuid,
@@ -180,7 +178,7 @@ interface IBluetooth
                         in int handle, in int start, in int end, in int status, in int reqHandle);
     boolean discoverCharacteristicResponse(in BluetoothGattAppConfiguration config, in ParcelUuid uuid,
                         in int handle, in byte property, in int valueHandle, in int status, in int reqHandle);
-    boolean discoverCharacteristicDescriptorResponse(in BluetoothGattAppConfiguration config, in ParcelUuid uuid,
+    boolean findInfoResponse(in BluetoothGattAppConfiguration config, in ParcelUuid uuid,
                         in int handle, in int status, in int reqHandle);
     boolean readByTypeResponse(in BluetoothGattAppConfiguration config, in int handle, in ParcelUuid uuid,
                         in byte[] payload, in int status, in int reqHandle);
