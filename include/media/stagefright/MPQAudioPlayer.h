@@ -33,6 +33,9 @@
 
 #include <include/TimedEventQueue.h>
 #include <hardware/audio.h>
+#include <binder/BinderService.h>
+#include <binder/MemoryDealer.h>
+#include <powermanager/IPowerManager.h>
 
 // Pause timeout = 3sec
 #define MPQ_AUDIO_PAUSE_TIMEOUT_USEC 3000000
@@ -102,6 +105,33 @@ private:
 	A2DP_DISCONNECT
     }mA2DpState;
 
+    void clearPowerManager();
+
+    class PMDeathRecipient : public IBinder::DeathRecipient {
+        public:
+                        PMDeathRecipient(void *obj){parentClass = ( MPQAudioPlayer *)obj;}
+            virtual     ~PMDeathRecipient() {}
+
+            // IBinder::DeathRecipient
+            virtual     void        binderDied(const wp<IBinder>& who);
+
+        private:
+                        MPQAudioPlayer *parentClass;
+                        PMDeathRecipient(const PMDeathRecipient&);
+                        PMDeathRecipient& operator = (const PMDeathRecipient&);
+
+        friend class  MPQAudioPlayer;
+    };
+
+    friend class PMDeathRecipient;
+
+    void        acquireWakeLock();
+    void        releaseWakeLock();
+
+    sp<IPowerManager>       mPowerManager;
+    sp<IBinder>             mWakeLockToken;
+    sp<PMDeathRecipient>    mDeathRecipient;
+
     void * mLocalBuf;
 
     //Structure to recieve the BT notification from the flinger.
@@ -157,6 +187,7 @@ private:
     Condition mA2dpNotificationCv;
 
     //global lock for MPQ Audio Player
+    Mutex pmLock;
     Mutex mLock;
     Mutex mSeekLock;
 

@@ -49,6 +49,8 @@ extern "C" {
 #include <include/linux/msm_audio.h>
 
 #include "include/AwesomePlayer.h"
+#include <powermanager/PowerManager.h>
+static const char   mName[] = "MPQAudioPlayer";
 
 //Required for A2DP
 #define PMEM_CAPTURE_BUFFER_SIZE 4096
@@ -133,6 +135,60 @@ mObserver(observer) {
     mFirstEncodedBuffer = false;
     mHasVideo = hasVideo;
     initCheck = true;
+    mDeathRecipient = new PMDeathRecipient(this);
+}
+
+void MPQAudioPlayer::acquireWakeLock()
+{
+    Mutex::Autolock _l(pmLock);
+
+    if (mPowerManager == 0) {
+        // use checkService() to avoid blocking if power service is not up yet
+        sp<IBinder> binder =
+            defaultServiceManager()->checkService(String16("power"));
+        if (binder == 0) {
+            LOGW("Thread %s cannot connect to the power manager service", mName);
+        } else {
+            mPowerManager = interface_cast<IPowerManager>(binder);
+            binder->linkToDeath(mDeathRecipient);
+        }
+    }
+    if (mPowerManager != 0 && mWakeLockToken == 0) {
+        sp<IBinder> binder = new BBinder();
+        status_t status = mPowerManager->acquireWakeLock(POWERMANAGER_PARTIAL_WAKE_LOCK,
+                                                         binder,
+                                                         String16(mName));
+        if (status == NO_ERROR) {
+            mWakeLockToken = binder;
+        }
+        LOGV("acquireWakeLock() %s status %d", mName, status);
+    }
+}
+
+void MPQAudioPlayer::releaseWakeLock()
+{
+    Mutex::Autolock _l(pmLock);
+
+    if (mWakeLockToken != 0) {
+        LOGV("releaseWakeLock() %s", mName);
+        if (mPowerManager != 0) {
+            mPowerManager->releaseWakeLock(mWakeLockToken, 0);
+        }
+        mWakeLockToken.clear();
+    }
+}
+
+void MPQAudioPlayer::clearPowerManager()
+{
+    Mutex::Autolock _l(pmLock);
+    releaseWakeLock();
+    mPowerManager.clear();
+}
+
+void MPQAudioPlayer::PMDeathRecipient::binderDied(const wp<IBinder>& who)
+{
+    parentClass->clearPowerManager();
+    LOGW("power manager service died !!!");
 }
 
 MPQAudioPlayer::~MPQAudioPlayer() {
@@ -145,6 +201,12 @@ MPQAudioPlayer::~MPQAudioPlayer() {
     mAudioFlinger->deregisterClient(mAudioFlingerClient);
     if(mMPQAudioObjectsAlive > 0)
         mMPQAudioObjectsAlive--;
+
+    releaseWakeLock();
+    if (mPowerManager != 0) {
+        sp<IBinder> binder = mPowerManager->asBinder();
+        binder->unlinkToDeath(mDeathRecipient);
+    }
 }
 
 void MPQAudioPlayer::getAudioFlinger() {
@@ -321,6 +383,7 @@ status_t MPQAudioPlayer::start(bool sourceAlreadyStarted) {
             LOGE("Opening a routing session failed");
             return err;
         }
+        acquireWakeLock();
         mIsAudioRouted = true;
     }
     else if (mA2DpState == A2DP_ENABLED){
@@ -573,7 +636,6 @@ status_t MPQAudioPlayer::pauseHardwareDecoderPlayback() {
         }
         //TODO : Add time out if needed.Check tunnel Player
         if(mA2DpState == A2DP_DISABLED) {
-                acquire_wake_lock(PARTIAL_WAKE_LOCK, "MPQ_AUDIO_LOCK");
             if (mAudioSink.get() != NULL)
                 mAudioSink->pauseSession();
         }
@@ -595,8 +657,6 @@ status_t MPQAudioPlayer::pauseHardwareDecoderPlayback() {
                 return err;
             }
             if(mA2DpState == A2DP_DISABLED) {
-                    acquire_wake_lock(PARTIAL_WAKE_LOCK, "MPQ_AUDIO_LOCK");
-
                 if (mAudioSink.get() != NULL) {
                     mAudioSink->pauseSession();
                 }
@@ -669,6 +729,7 @@ status_t MPQAudioPlayer::resumeSoftwareDecoderPlayback() {
                 LOGE("openSession - resume = %d",err);
                 return err;
             }
+            acquireWakeLock();
             mIsAudioRouted = true;
             mPCMStream = mAudioFlinger->getOutputSession();
         }
@@ -704,6 +765,7 @@ status_t MPQAudioPlayer::resumeMS11DecoderPlayback() {
                 LOGE("openSession - resume = %d",err);
                 return err;
             }
+            acquireWakeLock();
             mIsAudioRouted = true;
             mPCMStream = mAudioFlinger->getOutputSession();
         }
@@ -733,9 +795,6 @@ status_t MPQAudioPlayer::resumeHardwareDecoderPlayback() {
         CHECK(mStarted);
           if (mA2DpState == A2DP_DISABLED) {
             LOGV("MPQ Audio Player::resume - Resuming Driver");
-                release_wake_lock("MPQ_AUDIO_LOCK");
-
-
             if (!mIsAudioRouted) {
                 LOGV("Opening a session for MPQ Audio playback");
                 status_t err = mAudioSink->openSession(mAudioFormat, TUNNEL_SESSION_ID,
@@ -744,6 +803,7 @@ status_t MPQAudioPlayer::resumeHardwareDecoderPlayback() {
                     LOGE("openSession - resume = %d",err);
                     return err;
                 }
+                acquireWakeLock();
                 mIsAudioRouted = true;
             }
             LOGV("Attempting Sync resume\n");
@@ -1072,6 +1132,7 @@ void MPQAudioPlayer::A2DPNotificationThreadEntry() {
                 if (mAudioSink.get() != NULL) {
                     mAudioSink->closeSession();
                     LOGV("mAudioSink close session");
+                    releaseWakeLock();
                     mIsAudioRouted = false;
                 } else {
                     LOGE("close session NULL");
@@ -1153,7 +1214,7 @@ void MPQAudioPlayer::A2DPNotificationThreadEntry() {
             if (mAudioSink.get() != NULL) {
                 mAudioSink->pauseSession();
             }
-
+            acquireWakeLock();
             // stop capture device
             //TODO : De allocate the buffer for capture side
             pcm_close((struct pcm *)mCaptureHandle);
