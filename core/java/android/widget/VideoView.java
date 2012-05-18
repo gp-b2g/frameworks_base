@@ -121,11 +121,18 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
                         //width+"/"+height+"="+
                         //mVideoWidth+"/"+mVideoHeight);
             }
-            mPreviousWidth = width;
-            mPreviousHeight = height;
+            mPreviousWidth = mVideoWidth;
+            mPreviousHeight = mVideoHeight;
         } else if (mPreviousWidth > 0 && mPreviousHeight > 0) {
-            width = mPreviousWidth;
-            height = mPreviousHeight;
+            width = getDefaultSize(mPreviousWidth, widthMeasureSpec);
+            height = getDefaultSize(mPreviousHeight, heightMeasureSpec);
+            if ( mPreviousWidth * height > width * mPreviousHeight ) {
+               Log.i("VideoView", "image too tall, correcting");
+               height = width * mPreviousHeight / mPreviousWidth;
+            } else if ( mPreviousWidth * height < width * mPreviousHeight ) {
+               Log.i("VideoView", "image too wide, correcting");
+               width = height * mPreviousWidth / mPreviousHeight;
+            }
         }
         //Log.i("@@@@@@@@@@", "setting size: " + width + 'x' + height);
         setMeasuredDimension(width, height);
