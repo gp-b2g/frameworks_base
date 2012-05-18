@@ -1817,7 +1817,9 @@ public abstract class DataConnection extends StateMachine {
         QosIndication ind = new QosIndication();
 
         try {
-            ind.setQosId(Integer.parseInt(qosInd[0]));
+            int qosId = Integer.parseInt(qosInd[0]);
+
+            ind.setQosId(qosId);
 
             // Converting RIL's definition of QoS state into the one defined in QosSpec
             int qosState = Integer.parseInt(qosInd[1]);
@@ -1842,6 +1844,13 @@ public abstract class DataConnection extends StateMachine {
                     log("Invalid Qos State, ignoring indication!");
                     break;
             }
+
+            if (qosIndState == QosSpec.QosIndStates.RELEASED ||
+                    qosIndState == QosSpec.QosIndStates.RELEASED_NETWORK) {
+                if (DBG) log("QoS connection dropped, qosId:" + qosId);
+                mQosFlowIds.remove(mQosFlowIds.indexOf(qosId));
+            }
+
         } catch (NumberFormatException e) {
             if (DBG) log("Exception processing indication:" + e);
         } catch (NullPointerException e) {
