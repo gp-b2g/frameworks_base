@@ -86,6 +86,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Iterator;
@@ -179,7 +180,7 @@ public class BluetoothService extends IBluetooth.Stub {
     private final HashMap<String, Map<String, String>> mDeviceFeatureCache;
 
     private final ArrayList<String> mUuidIntentTracker;
-    private final HashMap<RemoteService, IBluetoothCallback> mUuidCallbackTracker;
+    private final ConcurrentHashMap<RemoteService, IBluetoothCallback> mUuidCallbackTracker;
 
     private final HashMap<String, ArrayList<ParcelUuid>> mGattIntentTracker;
     private final HashMap<String, IBluetoothGattService> mGattServiceTracker;
@@ -379,7 +380,7 @@ public class BluetoothService extends IBluetooth.Stub {
         mDeviceOobData = new HashMap<String, Pair<byte[], byte[]>>();
         mDeviceL2capPsmCache = new HashMap<String, Map<ParcelUuid, Integer>>();
         mUuidIntentTracker = new ArrayList<String>();
-        mUuidCallbackTracker = new HashMap<RemoteService, IBluetoothCallback>();
+        mUuidCallbackTracker = new ConcurrentHashMap<RemoteService, IBluetoothCallback>();
         mGattIntentTracker = new HashMap<String, ArrayList<ParcelUuid>>();
         mGattServiceTracker = new HashMap<String, IBluetoothGattService>();
         mGattWatcherTracker = new HashMap<String, IBluetoothGattService>();
