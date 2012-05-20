@@ -27,6 +27,7 @@
 
 #include <AudioFlinger.h>
 #include <CameraService.h>
+#include <GestureDeviceService.h>
 #include <MediaPlayerService.h>
 #include <AudioPolicyService.h>
 #include <dlfcn.h>
@@ -84,6 +85,8 @@ int main(int argc, char** argv)
 	    mpqsInstantaite();
 	}
     }
+    waitBeforeAdding( String16("media.gestures") );
+    GestureDeviceService::instantiate();
     ProcessState::self()->startThreadPool();
     IPCThreadState::self()->joinThreadPool();
 }

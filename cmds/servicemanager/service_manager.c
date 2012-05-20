@@ -33,6 +33,7 @@ static struct {
     { AID_MEDIA, "media.audio_flinger" },
     { AID_MEDIA, "media.player" },
     { AID_MEDIA, "media.camera" },
+    { AID_MEDIA, "media.gestures" },
     { AID_MEDIA, "media.audio_policy" },
     { AID_MEDIA, "media.tvservice.TvService" },
     { AID_DRM,   "drm.drmManager" },
