@@ -47,6 +47,7 @@ static jfieldID field_mAlbumName;
 static jfieldID field_mMediaNumber;
 static jfieldID field_mMediaCount;
 static jfieldID field_mDuration;
+static jfieldID field_mGenre;
 
 typedef struct {
     JavaVM *vm;
@@ -232,7 +233,8 @@ static jboolean sendMetaDataNative(JNIEnv *env, jobject obj,
     LOGV(__FUNCTION__);
     if (nat) {
         jstring title, artist, album, media_number, total_media_count, playing_time;
-        const char *c_title, *c_artist, *c_album, *c_media_number;
+        jstring genre;
+        const char *c_title, *c_artist, *c_album, *c_media_number, *c_genre;
         const char *c_total_media_count, *c_playing_time;
         const char *c_path = env->GetStringUTFChars(path, NULL);
         title = (jstring) env->GetObjectField(obj, field_mTrackName);
@@ -241,6 +243,7 @@ static jboolean sendMetaDataNative(JNIEnv *env, jobject obj,
         media_number = (jstring) env->GetObjectField(obj, field_mMediaNumber);
         total_media_count = (jstring) env->GetObjectField(obj, field_mMediaCount);
         playing_time = (jstring) env->GetObjectField(obj, field_mDuration);
+        genre = (jstring) env->GetObjectField(obj, field_mGenre);
 
         c_title = env->GetStringUTFChars(title, NULL);
         c_artist = env->GetStringUTFChars(artist, NULL);
@@ -248,6 +251,7 @@ static jboolean sendMetaDataNative(JNIEnv *env, jobject obj,
         c_media_number = env->GetStringUTFChars(media_number, NULL);
         c_total_media_count = env->GetStringUTFChars(total_media_count, NULL);
         c_playing_time = env->GetStringUTFChars(playing_time, NULL);
+        c_genre = env->GetStringUTFChars(genre, NULL);
 
         bool ret = dbus_func_args_async(env, nat->conn, -1, onStatusReply, NULL, nat,
                            c_path, "org.bluez.Control", "UpdateMetaData",
@@ -257,6 +261,7 @@ static jboolean sendMetaDataNative(JNIEnv *env, jobject obj,
                            DBUS_TYPE_STRING, &c_media_number,
                            DBUS_TYPE_STRING, &c_total_media_count,
                            DBUS_TYPE_STRING, &c_playing_time,
+                           DBUS_TYPE_STRING, &c_genre,
                            DBUS_TYPE_INVALID);
 
         env->ReleaseStringUTFChars(path, c_path);
@@ -266,6 +271,7 @@ static jboolean sendMetaDataNative(JNIEnv *env, jobject obj,
         env->ReleaseStringUTFChars(media_number, c_media_number);
         env->ReleaseStringUTFChars(total_media_count, c_total_media_count);
         env->ReleaseStringUTFChars(playing_time, c_playing_time);
+        env->ReleaseStringUTFChars(genre, c_genre);
 
         return ret ? JNI_TRUE : JNI_FALSE;
     }
@@ -462,6 +468,7 @@ int register_android_server_BluetoothA2dpService(JNIEnv *env) {
     field_mMediaNumber = env->GetFieldID(clazz, "mMediaNumber", "Ljava/lang/String;");
     field_mMediaCount = env->GetFieldID(clazz, "mMediaCount", "Ljava/lang/String;");
     field_mDuration = env->GetFieldID(clazz, "mDuration", "Ljava/lang/String;");
+    field_mGenre = env->GetFieldID(clazz, "mGenre", "Ljava/lang/String;");
 #endif
 
     return AndroidRuntime::registerNativeMethods(env,

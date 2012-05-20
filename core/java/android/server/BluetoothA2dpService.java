@@ -52,6 +52,7 @@ import java.util.List;
 
 import android.database.Cursor;
 import android.provider.MediaStore;
+import android.media.MediaMetadataRetriever;
 
 
 public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
@@ -83,6 +84,7 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
     private String mMediaNumber = DEFAULT_METADATA_NUMBER;
     private String mMediaCount = DEFAULT_METADATA_NUMBER;
     private String mDuration = DEFAULT_METADATA_NUMBER;
+    private String mGenre = DEFAULT_METADATA_STRING;
     private Long mReportTime = System.currentTimeMillis();
     private Uri mUri = null;
     private int mPlayStatus = STATUS_STOPPED;
@@ -314,6 +316,9 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
 
                 mUri = uri;
                 try {
+                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                    mmr.setDataSource(mContext, mUri);
+                    mGenre = mmr.extractMetadata(mmr.METADATA_KEY_GENRE);
                     Cursor mCursor = mContext.getContentResolver().query(mUri, mCursorCols,
                                         null, null, null);
                     mCursor.moveToFirst();
@@ -338,6 +343,7 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
                     log("Artist is " + mArtistName);
                     log("Album is " + mAlbumName);
                     log("ID is " + mMediaNumber);
+                    log("Genre is " + mGenre);
                     mCursor.close();
                     Long tmpId = (Long)getTrackId(mTrackName);
                     log("tmpId is " + tmpId);
@@ -381,12 +387,15 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
             mArtistName = DEFAULT_METADATA_STRING;
         if (mAlbumName == null || mAlbumName.isEmpty())
             mAlbumName = DEFAULT_METADATA_STRING;
+        if (mGenre == null || mGenre.isEmpty())
+            mGenre = DEFAULT_METADATA_STRING;
 
         if(DBG) {
             Log.d(TAG, "sendMetaData "+ path);
             Log.d(TAG, "Meta data info is trackname: "+ mTrackName+" artist: "+mArtistName);
             Log.d(TAG, "mMediaNumber: "+mMediaNumber+" mediaCount "+mMediaCount);
             Log.d(TAG, "mPostion "+ mPosition+" album: "+mAlbumName+ "duration "+mDuration);
+            Log.d(TAG, "mGenre "+ mGenre);
         }
         sendMetaDataNative(path);
     }
