@@ -2052,8 +2052,13 @@ public class BluetoothService extends IBluetooth.Stub {
             return value.get(uuid);
 
         Log.w(TAG, "Server Channel is -1, updating the cache");
-        updateDeviceServiceChannelCache(address);
-        return -1;
+        int channel = getDeviceServiceChannelForUuid(address, uuid);
+        Map <ParcelUuid, Integer> rfcommValue = new HashMap<ParcelUuid, Integer>();
+        if (channel > 0) {
+            rfcommValue.put(uuid, channel);
+            mDeviceServiceChannelCache.put(address, rfcommValue);
+        }
+        return channel;
     }
 
 
@@ -2240,7 +2245,9 @@ public class BluetoothService extends IBluetooth.Stub {
     }
 
     /*package*/ void updateDeviceServiceChannelCache(String address) {
-        if (!isEnabledInternal()) {
+        int state = getBluetoothStateInternal();
+        if ( state != BluetoothAdapter.STATE_ON &&
+             state != BluetoothAdapter.STATE_TURNING_ON) {
             log("Bluetooth is not on");
             return;
         }
