@@ -396,7 +396,7 @@ public class MSimLockPatternKeyguardView extends LockPatternKeyguardView impleme
     View createUnlockScreenFor(UnlockMode unlockMode) {
         View unlockView = null;
 
-        if (DEBUG) Log.d(TAG,
+        Log.d(TAG,
                 "createUnlockScreenFor(" + unlockMode + "): mEnableFallback=" + mEnableFallback);
 
         if (unlockMode == UnlockMode.Pattern) {

@@ -938,7 +938,7 @@ public class LockPatternKeyguardView extends KeyguardViewBase implements Handler
     View createUnlockScreenFor(UnlockMode unlockMode) {
         View unlockView = null;
 
-        if (DEBUG) Log.d(TAG,
+        Log.d(TAG,
                 "createUnlockScreenFor(" + unlockMode + "): mEnableFallback=" + mEnableFallback);
 
         if (unlockMode == UnlockMode.Pattern) {

@@ -479,7 +479,7 @@ class KeyguardStatusViewManager implements OnClickListener {
      * @param simState
      */
     private void updateCarrierStateWithSimStatus(State simState) {
-        if (DEBUG) Log.d(TAG, "updateCarrierStateWithSimStatus(), simState = " + simState);
+        Log.d(TAG, "updateCarrierStateWithSimStatus(), simState = " + simState);
 
         CharSequence carrierText = null;
         int carrierHelpTextId = 0;
@@ -547,6 +547,8 @@ class KeyguardStatusViewManager implements OnClickListener {
                 break;
         }
 
+        Log.d(TAG, "updateCarrierStateWithSimStatus(): Sim Status = " + mStatus
+                + ", Carrier = " + carrierText);
         setCarrierText(carrierText);
         setCarrierHelpText(carrierHelpTextId);
         updateEmergencyCallButtonState(mPhoneState);

@@ -582,6 +582,7 @@ public final class CallManager {
 
                 if (offhookPhone instanceof SipPhone) {
                     // enable IN_COMMUNICATION audio mode for sipPhone
+                    Log.d(LOG_TAG, "setAudioMode Set audio mode for SIP call!");
                     mode = AudioManager.MODE_IN_COMMUNICATION;
                 } else {
                     // enable IN_CALL audio mode for telephony
@@ -591,7 +592,12 @@ public final class CallManager {
         }
         // calling audioManager.setMode() multiple times in a short period of
         // time seems to break the audio recorder in in-call mode
-        if (audioManager.getMode() != mode) audioManager.setMode(mode);
+        int currMode = audioManager.getMode();
+        if (currMode != mode) {
+            Log.d(LOG_TAG, "setAudioMode Setting audio mode from "
+                    + currMode + " to " + mode);
+            audioManager.setMode(mode);
+        }
     }
 
     private Context getContext() {
