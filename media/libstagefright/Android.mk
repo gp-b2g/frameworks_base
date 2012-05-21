@@ -29,6 +29,10 @@ ifeq ($(BOARD_USES_ALSA_AUDIO),true)
     endif
 endif
 
+ifeq ($(strip $(TARGET_USES_ION)),true)
+    LOCAL_CFLAGS += -DUSE_ION
+endif
+
 
 include frameworks/base/media/libstagefright/codecs/common/Config.mk
 
