@@ -953,7 +953,11 @@ public class MSimNetworkController extends NetworkController {
                     mHasMobileDataFeature ? mMSimDataSignalIconId[subscription] : mWifiIconId;
             mMSimContentDescriptionCombinedSignal[subscription] = mHasMobileDataFeature
                     ? mMSimContentDescriptionDataType[subscription] : mContentDescriptionWifi;
+        }
 
+        if (!mMSimDataConnected[subscription]) {
+            Slog.d(TAG, "refreshViews: SUB:" + subscription
+                    + " - Data not connected!! Set no data type icon");
             if ((isCdma(subscription) && isCdmaEri(subscription)) ||
                     ((MSimTelephonyManager)mPhone).isNetworkRoaming(subscription)) {
                 mMSimDataTypeIconId[subscription] = R.drawable.stat_sys_data_connected_roam;
