@@ -159,7 +159,8 @@ LOCAL_SRC_FILES:= \
 	android_content_res_Configuration.cpp \
 	android_animation_PropertyValuesHolder.cpp \
 	com_android_internal_app_ActivityTrigger.cpp \
-	org_codeaurora_Performance.cpp
+	org_codeaurora_Performance.cpp \
+	android_hardware_GestureDevice.cpp
 
 ifeq ($(call is-vendor-board-platform,QCOM),true)
 LOCAL_SRC_FILES += android_hardware_fm.cpp
@@ -247,6 +248,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libharfbuzz \
 	libz \
 	libqrdinside \
+	libgesture_client
 
 ifeq ($(TARGET_USES_TESTFRAMEWORK),true)
 	LOCAL_CFLAGS += -DCUSTOM_EVENTS_TESTFRAMEWORK

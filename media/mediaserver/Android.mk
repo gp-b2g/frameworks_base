@@ -10,14 +10,16 @@ LOCAL_SHARED_LIBRARIES := \
 	libmediaplayerservice \
 	libdl      \
 	libutils \
-	libbinder
+	libbinder \
+	libgestureservice
 
 base := $(LOCAL_PATH)/../..
 
 LOCAL_C_INCLUDES := \
     $(base)/services/audioflinger \
     $(base)/services/camera/libcameraservice \
-    $(base)/media/libmediaplayerservice
+    $(base)/media/libmediaplayerservice \
+    $(base)/services/gestures/libgestureservice
 
 LOCAL_MODULE:= mediaserver
 
