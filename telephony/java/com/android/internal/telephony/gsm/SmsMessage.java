@@ -75,8 +75,8 @@ public class SmsMessage extends SmsMessageBase {
     /** True if Status Report is for SMS-SUBMIT; false for SMS-COMMAND. */
     private boolean forSubmit;
 
-    /** The address of the receiver. */
-    private GsmSmsAddress recipientAddress;
+//    /** The address of the receiver. */
+//    private GsmSmsAddress recipientAddress;
 
     /** Time when SMS-SUBMIT was delivered from SC to MSE. */
     private long dischargeTimeMillis;

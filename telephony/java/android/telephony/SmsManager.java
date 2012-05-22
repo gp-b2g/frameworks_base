@@ -19,11 +19,13 @@ package android.telephony;
 import android.app.PendingIntent;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.ISms;
 import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.SmsRawData;
+import com.android.internal.telephony.TelephonyProperties;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,6 +45,10 @@ import java.util.List;
 public final class SmsManager {
     /** Singleton object constructed during class initialization. */
     private static final SmsManager sInstance = new SmsManager();
+
+    /** @hide */
+    protected static boolean isMultiSimEnabled
+    = SystemProperties.getBoolean(TelephonyProperties.PROPERTY_MULTI_SIM_ENABLED, false);
 
     /**
      * Send a text based SMS.
@@ -626,6 +632,11 @@ public final class SmsManager {
             }
         }
         return messages;
+    }
+
+    /** @hide */
+    public static boolean isMultiSimEnabled() {
+        return isMultiSimEnabled;
     }
 
     // see SmsMessage.getStatusOnIcc
