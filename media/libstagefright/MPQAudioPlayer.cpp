@@ -829,6 +829,13 @@ void MPQAudioPlayer::reset() {
     LOGD("Reset called!!!!!");
     mAsyncReset = true;
 
+    if (mPCMStream) {
+        mPCMStream->pause(mPCMStream);
+        LOGV("Close the PCM Stream");
+        mPCMStream->stop(mPCMStream);
+    }
+    mPCMStream = NULL;
+
     // make sure Extractor thread has exited
     requestAndWaitForExtractorThreadExit();
     LOGV("Extractor Thread killed");
@@ -837,16 +844,6 @@ void MPQAudioPlayer::reset() {
     requestAndWaitForA2DPThreadExit();
 
     requestAndWaitForA2DPNotificationThreadExit();
-
-    if(mDecoderType == ESoftwareDecoder || mDecoderType== EMS11Decoder ||
-        mDecoderType == EHardwareDecoder) {
-        if(mPCMStream) {
-            mPCMStream->pause(mPCMStream);
-            LOGV("Close the PCM Stream");
-            mPCMStream->stop(mPCMStream);
-        }
-        mPCMStream = NULL;
-    }
 
     // Close the audiosink after all the threads exited to make sure
     // there is no thread writing data to audio sink or applying effect
