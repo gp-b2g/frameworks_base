@@ -131,6 +131,9 @@ void SurfaceFlinger::init()
     property_get("debug.sf.hw", value, "1");
     mDebugDisableHWC = (atoi(value) == 0) ? 1:0;
 
+    property_get("debug.sf.disablehwc", value, "0");
+    mDebugDisableHWC |= (atoi(value));
+
     LOGI_IF(mDebugRegion,       "showupdates enabled");
     LOGI_IF(mDebugBackground,   "showbackground enabled");
     LOGI_IF(mDebugDDMS,         "DDMS debugging enabled");
