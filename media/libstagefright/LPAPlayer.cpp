@@ -908,9 +908,11 @@ void LPAPlayer::decoderThreadEntry() {
 
                     pthread_mutex_unlock(&apply_effect_mutex);
 
-                    LOGV("decoderThread: Writing buffer to driver with mem fd %d", buf.memFd);
-                    if ( ioctl(afd, AUDIO_ASYNC_WRITE, &aio_buf_local) < 0 ) {
-                        LOGE("error on async write\n");
+                    if(mIsDriverStarted){
+                        LOGV("decoderThread: Writing buffer to driver with mem fd %d", buf.memFd);
+                        if ( ioctl(afd, AUDIO_ASYNC_WRITE, &aio_buf_local) < 0 ) {
+                            LOGE("error on async write\n");
+                        }
                     }
                 }
             }
