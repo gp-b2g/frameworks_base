@@ -150,7 +150,7 @@ public class SmsMessage {
         String format = (PHONE_TYPE_CDMA == activePhone) ? FORMAT_3GPP2 : FORMAT_3GPP;
         message = createFromPdu(pdu, format);
 
-        if (null == message) {
+        if (null == message || null == message.mWrappedSmsMessage) {
             // decoding pdu failed based on activePhone type, must be other encoding
             format = (PHONE_TYPE_CDMA == activePhone) ? FORMAT_3GPP : FORMAT_3GPP2;
             message = createFromPdu(pdu, format);

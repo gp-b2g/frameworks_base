@@ -111,6 +111,9 @@ public class SmsMessage extends SmsMessageBase {
         } catch (RuntimeException ex) {
             Log.e(LOG_TAG, "SMS PDU parsing failed: ", ex);
             return null;
+        } catch (OutOfMemoryError e) {
+            Log.e(LOG_TAG, "SMS PDU parsing failed with out of memory: ", e);
+            return null;
         }
     }
 
@@ -543,6 +546,13 @@ public class SmsMessage extends SmsMessageBase {
 
             length = dis.readByte();
             addr.numberOfDigits = length;
+
+            // sanity check on the length
+            if (length > pdu.length) {
+                throw new RuntimeException(
+                        "createFromPdu: Invalid pdu, addr.numberOfDigits " + length
+                        + " > pdu len " + pdu.length);
+            }
             addr.origBytes = new byte[length];
             dis.read(addr.origBytes, 0, length); // digits
 
@@ -554,11 +564,18 @@ public class SmsMessage extends SmsMessageBase {
 
             //encoded BearerData:
             bearerDataLength = dis.readInt();
+            // sanity check on the length
+            if (bearerDataLength > pdu.length) {
+                throw new RuntimeException(
+                        "createFromPdu: Invalid pdu, bearerDataLength " + bearerDataLength
+                        + " > pdu len " + pdu.length);
+            }
             env.bearerData = new byte[bearerDataLength];
             dis.read(env.bearerData, 0, bearerDataLength);
             dis.close();
-        } catch (Exception ex) {
-            Log.e(LOG_TAG, "createFromPdu: conversion from byte array to object failed: " + ex);
+        } catch (IOException ex) {
+            throw new RuntimeException(
+                    "createFromPdu: conversion from byte array to object failed: " + ex, ex);
         }
 
         // link the filled objects to this SMS

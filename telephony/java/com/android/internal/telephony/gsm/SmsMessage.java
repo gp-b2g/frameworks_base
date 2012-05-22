@@ -110,6 +110,9 @@ public class SmsMessage extends SmsMessageBase {
         } catch (RuntimeException ex) {
             Log.e(LOG_TAG, "SMS PDU parsing failed: ", ex);
             return null;
+        } catch (OutOfMemoryError e) {
+            Log.e(LOG_TAG, "SMS PDU parsing failed with out of memory: ", e);
+            return null;
         }
     }
 
@@ -1335,7 +1338,7 @@ public class SmsMessage extends SmsMessageBase {
         }
         return mVoiceMailCount;
     }
-    
+
     /**
      * Returns true if this is a (U)SIM data download type SM.
      * See 3GPP TS 31.111 section 9.1 and TS 23.040 section 9.2.3.9.
