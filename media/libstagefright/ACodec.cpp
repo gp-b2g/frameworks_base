@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +55,10 @@ Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
 
 
 namespace android {
+
+//The max resolution which 8x25 Decoder supported
+static int64_t kMaxResolutionWidth = 864;
+static int64_t kMaxResolutionHeight = 480;
 
 template<class T>
 static void InitOMXParams(T *params) {
@@ -2120,6 +2125,15 @@ void ACodec::UninitializedState::onSetup(
     for (size_t matchIndex = 0; matchIndex < matchingCodecs.size();
             ++matchIndex) {
         componentName = matchingCodecs.itemAt(matchIndex).string();
+        if ((componentName.startsWith("OMX.qcom.video.decoder.avc") || componentName.startsWith("OMX.qcom.video.decoder.mpeg4"))) {
+            int32_t width, height;
+            CHECK(msg->findInt32("width", &width));
+            CHECK(msg->findInt32("height", &height));
+
+            if (width > kMaxResolutionWidth || height > kMaxResolutionHeight) {
+                continue;
+            }
+        }
 
         pid_t tid = androidGetTid();
         int prevPriority = androidGetThreadPriority(tid);
