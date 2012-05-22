@@ -28,6 +28,7 @@ import android.util.AttributeSet;
 import android.util.Slog;
 import android.view.View;
 import android.widget.TextView;
+import android.util.LocaleNamesParser;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -44,6 +45,11 @@ public class CarrierLabel extends TextView {
     private static final int DEFAULT_SUB = 0;
     private boolean mAttached;
     private int mSubscription;
+    private Context mContext;
+    private boolean mShowSpn;
+    private String mSpn;
+    private boolean mShowPlmn;
+    private String mPlmn;
 
     public CarrierLabel(Context context) {
         this(context, null);
@@ -55,6 +61,7 @@ public class CarrierLabel extends TextView {
 
     public CarrierLabel(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+        mContext = context;
         TypedArray a = context.obtainStyledAttributes(attrs,
                 com.android.systemui.R.styleable.CarrierLabel, 0, R.style.Widget_TextView);
         mSubscription = a.getInt(com.android.systemui.R.styleable.CarrierLabel_subscription, DEFAULT_SUB);
@@ -71,6 +78,7 @@ public class CarrierLabel extends TextView {
             mAttached = true;
             IntentFilter filter = new IntentFilter();
             filter.addAction(Telephony.Intents.SPN_STRINGS_UPDATED_ACTION);
+            filter.addAction(Intent.ACTION_LOCALE_CHANGED);
             getContext().registerReceiver(mIntentReceiver, filter, null, getHandler());
         }
     }
@@ -92,11 +100,15 @@ public class CarrierLabel extends TextView {
             if (Telephony.Intents.SPN_STRINGS_UPDATED_ACTION.equals(action)) {
                 subscription = intent.getIntExtra(MSimConstants.SUBSCRIPTION_KEY, subscription);
                 if (subscription == mSubscription) {
-                    updateNetworkName(intent.getBooleanExtra(Telephony.Intents.EXTRA_SHOW_SPN, false),
-                            intent.getStringExtra(Telephony.Intents.EXTRA_SPN),
-                            intent.getBooleanExtra(Telephony.Intents.EXTRA_SHOW_PLMN, false),
-                            intent.getStringExtra(Telephony.Intents.EXTRA_PLMN));
+                    mShowSpn = intent.getBooleanExtra(Telephony.Intents.EXTRA_SHOW_SPN, false);
+                    mSpn = intent.getStringExtra(Telephony.Intents.EXTRA_SPN);
+                    mShowPlmn = intent.getBooleanExtra(Telephony.Intents.EXTRA_SHOW_PLMN, false);
+                    mPlmn = intent.getStringExtra(Telephony.Intents.EXTRA_PLMN);
+                    updateNetworkName(mShowSpn, mSpn, mShowPlmn, mPlmn);
                 }
+            }else if(Intent.ACTION_LOCALE_CHANGED.equals(action)){
+                int subscription1 = intent.getIntExtra(MSimConstants.SUBSCRIPTION_KEY, 0);
+                updateNetworkName(mShowSpn, mSpn, mShowPlmn, mPlmn);
             }
         }
     };
@@ -106,6 +118,9 @@ public class CarrierLabel extends TextView {
             Slog.d("CarrierLabel", "updateNetworkName showSpn=" + showSpn + " spn=" + spn
                     + " showPlmn=" + showPlmn + " plmn=" + plmn);
         }
+        LocaleNamesParser.init(mContext, plmn,
+                com.android.internal.R.array.origin_carrier_names,
+                com.android.internal.R.array.locale_carrier_names);
         StringBuilder str = new StringBuilder();
         boolean something = false;
 
@@ -124,7 +139,7 @@ public class CarrierLabel extends TextView {
             something = true;
         }
         if (something) {
-            setText(str.toString());
+            setText(LocaleNamesParser.getLocaleName(str.toString()));
         } else {
             setText(com.android.internal.R.string.lockscreen_carrier_default);
         }
