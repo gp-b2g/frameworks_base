@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -203,6 +203,7 @@ class ServerThread extends Thread {
 
             Slog.i(TAG, "Lights Service");
             lights = new LightsService(context);
+            ServiceManager.addService("light", lights);
 
             Slog.i(TAG, "Battery Service");
             battery = new BatteryService(context, lights);

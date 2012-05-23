@@ -20,14 +20,16 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.IHardwareService;
+import android.os.ILightService;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.os.Message;
 import android.util.Slog;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 
-public class LightsService {
+public class LightsService  extends ILightService.Stub {
     private static final String TAG = "LightsService";
     private static final boolean DEBUG = false;
 
@@ -56,6 +58,40 @@ public class LightsService {
     static final int BRIGHTNESS_MODE_SENSOR = 1;
 
     private final Light mLights[] = new Light[LIGHT_ID_COUNT];
+
+    public final String PERSIST_BUTTON_LIGHT_TIMEOUT = "persist.sys.timeout.light.but";
+    public final int BUTTON_LIGHT_TIMEOUT_DEFAULT = 1500;
+    private int mButtonLightTimeout = BUTTON_LIGHT_TIMEOUT_DEFAULT;
+    private final int MSG_BUTTON_LIGHT_TIMEOUT = 1;
+    private Handler mLightHandler = null;
+
+	public void turnOnButtonLight() {
+        setBrightnessButtonLight(255);
+    }
+
+    public void setBrightnessButtonLight(int brightness) {
+        getLight(LIGHT_ID_BUTTONS).setBrightness(brightness);
+    }
+
+	public void turnOffButtonLight() {
+        setBrightnessButtonLight(0);
+    }
+
+    public void turnOnButtonLightOneShot() {
+        setBrightnessButtonLightOneShot(255);
+    }
+
+    public void setBrightnessButtonLightOneShot(int brightness) {
+        if(brightness > 0) {
+            mLightHandler.removeMessages(MSG_BUTTON_LIGHT_TIMEOUT);
+            setBrightnessButtonLight(brightness);
+            mLightHandler.sendMessageDelayed(
+                    mLightHandler.obtainMessage(MSG_BUTTON_LIGHT_TIMEOUT),
+                    mButtonLightTimeout);
+        } else {
+            turnOffButtonLight();
+        }
+    }
 
     public final class Light {
 
@@ -176,6 +212,20 @@ public class LightsService {
 
         mNativePointer = init_native();
         mContext = context;
+        mButtonLightTimeout = SystemProperties.getInt(PERSIST_BUTTON_LIGHT_TIMEOUT,
+                BUTTON_LIGHT_TIMEOUT_DEFAULT);
+
+        mLightHandler = new Handler() {
+            public void handleMessage(Message msg) {
+                synchronized(this) {
+                    switch(msg.what) {
+                    case MSG_BUTTON_LIGHT_TIMEOUT:
+                        turnOffButtonLight();
+                        break;
+                    }
+                }
+            }
+        };
 
         ServiceManager.addService("hardware", mLegacyFlashlightHack);
 

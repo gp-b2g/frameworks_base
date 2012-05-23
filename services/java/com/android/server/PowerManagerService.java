@@ -1903,10 +1903,7 @@ public class PowerManagerService extends IPowerManager.Stub
                         // enqueued and thus will delay turning on the screen light
                         // until the windows are correctly displayed.
                         if (stateChanged) {
-                            // Force button light be lit while screen is on.
-                            // This is just a temporary action aim for enabling button light before cs.
-                            // delete this change after new file's code scan.
-                            updateLightsLocked(newState | BUTTON_BRIGHT_BIT, BUTTON_BRIGHT_BIT);
+                            updateLightsLocked(newState, 0);
                         }
                         mPowerState |= SCREEN_ON_BIT;
                     }
@@ -2622,7 +2619,7 @@ public class PowerManagerService extends IPowerManager.Stub
                     }
                 }
                 if (mButtonBrightnessOverride < 0) {
-                    mButtonLight.setBrightness(buttonValue);
+                    mLightsService.setBrightnessButtonLightOneShot(buttonValue);
                 }
                 if (mButtonBrightnessOverride < 0 || !mKeyboardVisible) {
                     mKeyboardLight.setBrightness(keyboardValue);
@@ -3015,7 +3012,7 @@ public class PowerManagerService extends IPowerManager.Stub
             brightness = Math.max(brightness, mScreenBrightnessDim);
             mLcdLight.setBrightness(brightness);
             mKeyboardLight.setBrightness(mKeyboardVisible ? brightness : 0);
-            mButtonLight.setBrightness(brightness);
+            mLightsService.setBrightnessButtonLightOneShot(brightness);
             long identity = Binder.clearCallingIdentity();
             try {
                 mBatteryStats.noteScreenBrightness(brightness);

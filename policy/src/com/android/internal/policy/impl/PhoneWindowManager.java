@@ -44,6 +44,7 @@ import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.ILightService;
 import android.os.IRemoteCallback;
 import android.os.LocalPowerManager;
 import android.os.Message;
@@ -296,6 +297,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     IStatusBarService mStatusBarService;
 
     Vibrator mVibrator; // Vibrator for giving feedback of orientation changes
+
+    ILightService mLight;
 
     // Vibrator pattern for haptic feedback of a long press.
     long[] mLongPressVibePattern;
@@ -882,6 +885,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                                       mWifiDisplayReceiver, wifiDisplayFilter);
 
         mVibrator = new Vibrator();
+        mLight = ILightService.Stub.asInterface(
+                ServiceManager.getService("light"));
         mLongPressVibePattern = getLongIntArray(mContext.getResources(),
                 com.android.internal.R.array.config_longPressVibePattern);
         mVirtualKeyVibePattern = getLongIntArray(mContext.getResources(),
@@ -4034,7 +4039,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             }
         }
     }
-
     public boolean performHapticFeedbackLw(WindowState win, int effectId, boolean always) {
         final boolean hapticsDisabled = Settings.System.getInt(mContext.getContentResolver(),
                 Settings.System.HAPTIC_FEEDBACK_ENABLED, 0) == 0;
@@ -4048,6 +4052,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 break;
             case HapticFeedbackConstants.VIRTUAL_KEY:
                 pattern = mVirtualKeyVibePattern;
+                try {
+                    mLight.turnOnButtonLightOneShot();
+                } catch(RemoteException e) {
+                    Slog.e(TAG, "remote call for turn on button light failed.");
+                }
                 break;
             case HapticFeedbackConstants.KEYBOARD_TAP:
                 pattern = mKeyboardTapVibePattern;
