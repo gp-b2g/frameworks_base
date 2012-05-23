@@ -371,7 +371,8 @@ static void InitOMXParams(T *params) {
 
 static bool IsSoftwareCodec(const char *componentName) {
     if (!strncmp("OMX.google.", componentName, 11)
-	    || !strncmp("OMX.PV.", componentName, 7)) {
+	    || !strncmp("OMX.PV.", componentName, 7)
+	    || !strncmp("OMX.ittiam.", componentName, 11)) {   //Ittiam also is a S/W decoder, can be used to generate the thumbnail
         return true;
     }
 
