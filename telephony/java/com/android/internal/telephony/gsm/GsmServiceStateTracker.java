@@ -702,6 +702,7 @@ class GsmServiceStateTracker extends ServiceStateTracker {
                     int regState = -1;
                     int reasonRegStateDenied = -1;
                     int psc = -1;
+                    int ttype = 0;
                     if (states.length > 0) {
                         try {
                             regState = Integer.parseInt(states[0]);
@@ -711,6 +712,9 @@ class GsmServiceStateTracker extends ServiceStateTracker {
                                 }
                                 if (states[2] != null && states[2].length() > 0) {
                                     cid = Integer.parseInt(states[2], 16);
+                                }
+                                if (states.length >= 4 && states[3] != null) {
+                                    ttype = Integer.parseInt(states[3]);
                                 }
                             }
                             if (states.length > 14) {
@@ -742,6 +746,9 @@ class GsmServiceStateTracker extends ServiceStateTracker {
                     }
 
                     newSS.setState (regCodeToServiceState(regState));
+
+                    mNewRadioTechnology = ttype;
+                    newSS.setRadioTechnology(ttype);
 
                     if (regState == 10 || regState == 12 || regState == 13 || regState == 14) {
                         mEmergencyOnly = true;
