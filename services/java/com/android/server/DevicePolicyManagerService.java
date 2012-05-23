@@ -440,6 +440,7 @@ public class DevicePolicyManagerService extends IDevicePolicyManager.Stub {
                     validatePasswordOwnerLocked();
                     syncDeviceCapabilitiesLocked();
                     saveSettingsLocked();
+                    updateMaximumTimeToLock();
                 }
             }
         }
@@ -606,6 +607,7 @@ public class DevicePolicyManagerService extends IDevicePolicyManager.Stub {
                                     resetGlobalProxy();
                                 }
                                 saveSettingsLocked();
+                                updateMaximumTimeToLock();
                             }
                         }
             });
@@ -652,7 +654,6 @@ public class DevicePolicyManagerService extends IDevicePolicyManager.Stub {
     }
 
     private void saveSettingsLocked() {
-        updateMaximumTimeToLock();
         JournaledFile journal = makeJournaledFile();
         FileOutputStream stream = null;
         try {
@@ -970,6 +971,7 @@ public class DevicePolicyManagerService extends IDevicePolicyManager.Stub {
                     mAdminList.set(replaceIndex, newAdmin);
                 }
                 saveSettingsLocked();
+                updateMaximumTimeToLock();
                 sendAdminCommandLocked(newAdmin, DeviceAdminReceiver.ACTION_DEVICE_ADMIN_ENABLED);
             } finally {
                 Binder.restoreCallingIdentity(ident);
