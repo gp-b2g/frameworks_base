@@ -30,6 +30,14 @@ import android.telephony.MSimTelephonyManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
+import android.provider.Settings;
+import android.provider.Settings.SettingNotFoundException;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Handler;
+import android.os.Message;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 
 /***
  * Manages a number of views inside of LockScreen layouts. See below for a list of widgets
@@ -50,6 +58,11 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
     // last known SIM state
     private State[] mMSimState;
 
+    //flag whether airplane mode is on
+    private boolean mAirplaneMode;
+    private static final int MSG_AIRPLANE_MODE_CHANGED = 1;
+
+
     public MSimKeyguardStatusViewManager(View view, KeyguardUpdateMonitor updateMonitor,
                 LockPatternUtils lockPatternUtils, KeyguardScreenCallback callback,
                 boolean emergencyButtonEnabledInScreen) {
@@ -61,6 +74,13 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
         mMSimSpn = new CharSequence[mNumPhones];
         mMSimState = new State[mNumPhones];
         mMSimStatus = new StatusMode[mNumPhones];
+
+        try {
+            mAirplaneMode = Settings.System.getInt(getContext().getContentResolver(),
+                            Settings.System.AIRPLANE_MODE_ON) == 1;
+        } catch (SettingNotFoundException snfe) {
+            Log.w(TAG,"get airplane mode exception");
+        }
 
         // Sim States for the subscription
         for (int i = 0; i < mNumPhones; i++) {
@@ -78,6 +98,11 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
         mPlmn = mMSimPlmn[MSimTelephonyManager.getDefault().getDefaultSubscription()];
         mSpn = mMSimSpn[MSimTelephonyManager.getDefault().getDefaultSubscription()];
         mSimState = mMSimState[MSimTelephonyManager.getDefault().getDefaultSubscription()];
+
+
+        final IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED);
+        getContext().registerReceiver(mAirplaneReceiver, filter);
     }
 
     @Override
@@ -120,71 +145,78 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
         mEmergencyButtonEnabledBecauseSimLocked = false;
         mMSimStatus[subscription] = getStatusForIccState(simState);
         mMSimState[subscription] = simState;
-        switch (mMSimStatus[subscription]) {
-            case Normal:
-                mCarrierTextSub[subscription] = makeCarierString(mMSimPlmn[subscription],
-                        mMSimSpn[subscription]);
-                break;
 
-            case PersoLocked:
-                mCarrierTextSub[subscription] = makeCarrierStringOnEmergencyCapable(
-                        getContext().getText(R.string.lockscreen_perso_locked_message),
-                        mMSimPlmn[subscription]);
-                carrierHelpTextId = R.string.lockscreen_instructions_when_pattern_disabled;
-                break;
+        //if airplane mode is on, show "airplane mode"
+        if (mAirplaneMode) {
+            mCarrierTextSub[subscription] = getContext().getText(R.string.airplane_mode_on_message);
+            carrierHelpTextId = R.string.airplane_mode_on_message;
+        } else {
+            switch (mMSimStatus[subscription]) {
+                case Normal:
+                    mCarrierTextSub[subscription] = makeCarierString(mMSimPlmn[subscription],
+                            mMSimSpn[subscription]);
+                    break;
 
-            case SimMissing:
-                // Shows "No SIM card | Emergency calls only" on devices that are voice-capable.
-                // This depends on mPlmn containing the text "Emergency calls only" when the radio
-                // has some connectivity. Otherwise, it should be null or empty and just show
-                // "No SIM card"
-                mCarrierTextSub[subscription] =  makeCarrierStringOnEmergencyCapable(
-                        getContext().getText(R.string.lockscreen_missing_sim_message_short),
-                        mMSimPlmn[subscription]);
-                carrierHelpTextId = R.string.lockscreen_missing_sim_instructions_long;
-                break;
+                case PersoLocked:
+                    mCarrierTextSub[subscription] = makeCarrierStringOnEmergencyCapable(
+                            getContext().getText(R.string.lockscreen_perso_locked_message),
+                            mMSimPlmn[subscription]);
+                    carrierHelpTextId = R.string.lockscreen_instructions_when_pattern_disabled;
+                    break;
 
-            case SimPermDisabled:
-                mCarrierTextSub[subscription] = getContext().getText
-                    (R.string.lockscreen_missing_sim_message_short);
-                carrierHelpTextId = R.string.lockscreen_permanent_disabled_sim_instructions;
-                mEmergencyButtonEnabledBecauseSimLocked = true;
-                break;
+                case SimMissing:
+                    // Shows "No SIM card | Emergency calls only" on devices that are voice-capable.
+                    // This depends on mPlmn containing the text "Emergency calls only" when the radio
+                    // has some connectivity. Otherwise, it should be null or empty and just show
+                    // "No SIM card"
+                    mCarrierTextSub[subscription] =  makeCarrierStringOnEmergencyCapable(
+                            getContext().getText(R.string.lockscreen_missing_sim_message_short),
+                            mMSimPlmn[subscription]);
+                    carrierHelpTextId = R.string.lockscreen_missing_sim_instructions_long;
+                    break;
 
-            case SimMissingLocked:
-                mCarrierTextSub[subscription] =  makeCarrierStringOnEmergencyCapable(
-                        getContext().getText(R.string.lockscreen_missing_sim_message_short),
-                        mMSimPlmn[subscription]);
-                carrierHelpTextId = R.string.lockscreen_missing_sim_instructions;
-                mEmergencyButtonEnabledBecauseSimLocked = true;
-                break;
-
-            case SimLocked:
-                mCarrierTextSub[subscription] = makeCarrierStringOnEmergencyCapable(
-                        getContext().getText(R.string.lockscreen_sim_locked_message),
-                        mMSimPlmn[subscription]);
-                mEmergencyButtonEnabledBecauseSimLocked = true;
-                break;
-
-            case SimPukLocked:
-                mCarrierTextSub[subscription] = makeCarrierStringOnEmergencyCapable(
-                        getContext().getText(R.string.lockscreen_sim_puk_locked_message),
-                        mMSimPlmn[subscription]);
-                if (!mLockPatternUtils.isPukUnlockScreenEnable()) {
-                    // This means we're showing the PUK unlock screen
+                case SimPermDisabled:
+                    mCarrierTextSub[subscription] = getContext().getText
+                        (R.string.lockscreen_missing_sim_message_short);
+                    carrierHelpTextId = R.string.lockscreen_permanent_disabled_sim_instructions;
                     mEmergencyButtonEnabledBecauseSimLocked = true;
-                }
-                break;
+                    break;
 
-            case SimIOError:
-                mCarrierTextSub[subscription] = makeCarierString(mMSimPlmn[subscription],
-                        getContext().getText(R.string.lockscreen_sim_error_message_short));
-                mEmergencyButtonEnabledBecauseSimLocked = true;
-                break;
-            case SimDeactivated:
-                mCarrierTextSub[subscription] = getContext().getText(R.string.lockscreen_sim_deactivate);
-                carrierHelpTextId = R.string.lockscreen_sim_deactivate;
-                break;
+                case SimMissingLocked:
+                    mCarrierTextSub[subscription] =  makeCarrierStringOnEmergencyCapable(
+                            getContext().getText(R.string.lockscreen_missing_sim_message_short),
+                       mMSimPlmn[subscription]);
+                    carrierHelpTextId = R.string.lockscreen_missing_sim_instructions;
+                    mEmergencyButtonEnabledBecauseSimLocked = true;
+                    break;
+
+                case SimLocked:
+                    mCarrierTextSub[subscription] = makeCarrierStringOnEmergencyCapable(
+                           getContext().getText(R.string.lockscreen_sim_locked_message),
+                           mMSimPlmn[subscription]);
+                    mEmergencyButtonEnabledBecauseSimLocked = true;
+                    break;
+
+                case SimPukLocked:
+                    mCarrierTextSub[subscription] = makeCarrierStringOnEmergencyCapable(
+                            getContext().getText(R.string.lockscreen_sim_puk_locked_message),
+                            mMSimPlmn[subscription]);
+                    if (!mLockPatternUtils.isPukUnlockScreenEnable()) {
+                        // This means we're showing the PUK unlock screen
+                        mEmergencyButtonEnabledBecauseSimLocked = true;
+                    }
+                    break;
+
+                case SimIOError:
+                    mCarrierTextSub[subscription] = makeCarierString(mMSimPlmn[subscription],
+                            getContext().getText(R.string.lockscreen_sim_error_message_short));
+                    mEmergencyButtonEnabledBecauseSimLocked = true;
+                    break;
+                case SimDeactivated:
+                    mCarrierTextSub[subscription] = getContext().getText(R.string.lockscreen_sim_deactivate);
+                    carrierHelpTextId = R.string.lockscreen_sim_deactivate;
+                    break;
+            }
         }
         setCarrierText();
         setCarrierHelpText(carrierHelpTextId);
@@ -244,6 +276,35 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
 
         public void onSimStateChanged(State simState, int subscription) {
             updateCarrierStateWithSimStatus(simState, subscription);
+        }
+    };
+
+    private BroadcastReceiver mAirplaneReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            Log.d(TAG, "received broadcast " + action);
+            if(Intent.ACTION_AIRPLANE_MODE_CHANGED.equals(action)) {
+                handleAirplaneModeChanged(intent);
+            }
+        }
+    };
+
+    public void handleAirplaneModeChanged(Intent intent) {
+        mAirplaneMode = intent.getBooleanExtra("state", false);
+        mHandler.sendEmptyMessage(MSG_AIRPLANE_MODE_CHANGED);
+    }
+
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+            case MSG_AIRPLANE_MODE_CHANGED:
+                Log.d(TAG, "handle message MSG_AIRPLANE_MODE_CHANGED");
+                for (int i = 0; i < MSimConstants.MAX_PHONE_COUNT_DS; i++) {
+                    updateCarrierStateWithSimStatus(mMSimState[i], i);
+                }
+                break;
+            }
         }
     };
 

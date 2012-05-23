@@ -36,6 +36,8 @@ import java.util.TimeZone;
 
 import com.android.internal.R;
 import com.android.internal.telephony.MSimConstants;
+import android.provider.Settings;
+import android.provider.Settings.SettingNotFoundException;
 
 /**
  * This widget display an analogic clock with two hands for hours and
@@ -50,6 +52,8 @@ public class CarrierLabel extends TextView {
     private String mSpn;
     private boolean mShowPlmn;
     private String mPlmn;
+    private boolean mAirplaneMode;
+    private CharSequence mDisplayCarrierStr = null;
 
     public CarrierLabel(Context context) {
         this(context, null);
@@ -67,7 +71,10 @@ public class CarrierLabel extends TextView {
         mSubscription = a.getInt(com.android.systemui.R.styleable.CarrierLabel_subscription, DEFAULT_SUB);
         a.recycle();
 
-        updateNetworkName(false, null, false, null);
+        mAirplaneMode = Settings.System.getInt(context.getContentResolver(),
+                        Settings.System.AIRPLANE_MODE_ON, 0) == 1;
+
+        updateDisplay();
     }
 
     @Override
@@ -79,6 +86,7 @@ public class CarrierLabel extends TextView {
             IntentFilter filter = new IntentFilter();
             filter.addAction(Telephony.Intents.SPN_STRINGS_UPDATED_ACTION);
             filter.addAction(Intent.ACTION_LOCALE_CHANGED);
+            filter.addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED);
             getContext().registerReceiver(mIntentReceiver, filter, null, getHandler());
         }
     }
@@ -106,10 +114,14 @@ public class CarrierLabel extends TextView {
                     mPlmn = intent.getStringExtra(Telephony.Intents.EXTRA_PLMN);
                     updateNetworkName(mShowSpn, mSpn, mShowPlmn, mPlmn);
                 }
-            }else if(Intent.ACTION_LOCALE_CHANGED.equals(action)){
+            } else if(Intent.ACTION_LOCALE_CHANGED.equals(action)){
                 int subscription1 = intent.getIntExtra(MSimConstants.SUBSCRIPTION_KEY, 0);
                 updateNetworkName(mShowSpn, mSpn, mShowPlmn, mPlmn);
+            } else if (Intent.ACTION_AIRPLANE_MODE_CHANGED.equals(action)) {
+                mAirplaneMode = intent.getBooleanExtra("state", false);
             }
+
+            updateDisplay();
         }
     };
 
@@ -139,12 +151,19 @@ public class CarrierLabel extends TextView {
             something = true;
         }
         if (something) {
-            setText(LocaleNamesParser.getLocaleName(str.toString()));
+           mDisplayCarrierStr = LocaleNamesParser.getLocaleName(str.toString());
+        }
+    }
+
+    private void updateDisplay() {
+        if (mAirplaneMode) {
+            setText(com.android.internal.R.string.airplane_mode_on_message);
+        } else if (mDisplayCarrierStr != null) {
+            setText(mDisplayCarrierStr);
         } else {
             setText(com.android.internal.R.string.lockscreen_carrier_default);
         }
     }
-
     
 }
 

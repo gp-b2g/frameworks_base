@@ -1912,6 +1912,8 @@
     <string name="lockscreen_sim_error_message">SIM card is Invalid.</string>
     <!-- Show in the lock screen when the SIM is deactivated. -->
     <string name="lockscreen_sim_deactivate">SIM deactivated</string>
+    <!-- Shown in the lock screen to tell the user that phone is in airplane mode-->
+    <string name="airplane_mode_on_message">Airplane Mode</string>
 
     <!-- When the user inserts a sim card from an unsupported network, it becomes network
          locked -->
