@@ -70,6 +70,25 @@ public class EncodedStringValue implements Cloneable {
         this(CharacterSets.DEFAULT_CHARSET, data);
     }
 
+    public EncodedStringValue(int charSet, String data) {
+        try {
+            mData = data.getBytes(CharacterSets.getMimeName(charSet));
+            mCharacterSet = charSet;
+        } catch (UnsupportedEncodingException e) {
+            if (LOCAL_LOGV) {
+                Log.v(TAG, e.getMessage(), e);
+            }
+            try {
+                // see getString(), it will use iso-8859-1 to encode if charset is null or unsupported
+                mData = data.getBytes(CharacterSets.MIMENAME_ISO_8859_1);
+                mCharacterSet = CharacterSets.ISO_8859_1;
+            } catch (UnsupportedEncodingException _) {
+                mData = data.getBytes(); // system default encoding
+                mCharacterSet = CharacterSets.ANY_CHARSET;
+            }
+        }
+    }
+
     public EncodedStringValue(String data) {
         try {
             mData = data.getBytes(CharacterSets.DEFAULT_CHARSET_NAME);

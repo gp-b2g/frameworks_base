@@ -424,8 +424,26 @@ public class PduPersister {
                     if (ContentType.TEXT_PLAIN.equals(type) || ContentType.APP_SMIL.equals(type)
                             || ContentType.TEXT_HTML.equals(type)) {
                         String text = c.getString(PART_COLUMN_TEXT);
-                        byte [] blob = new EncodedStringValue(text != null ? text : "")
-                            .getTextString();
+                        byte [] blob;
+                        // we will use default encoding when charset is null or not supported
+                        if (charset != null) {
+                            String charsetName = null;
+                            try {
+                                charsetName = CharacterSets.getMimeName(charset);
+                            } catch (UnsupportedEncodingException e) {
+                                Log.d(TAG, "charset " + charset + " is not supported");
+                            }
+                            if (charsetName != null) {
+                                blob = new EncodedStringValue(charset, text != null ? text : "")
+                                    .getTextString();
+                            } else {
+                                blob = new EncodedStringValue(text != null ? text : "")
+                                    .getTextString();
+                            }
+                        } else {
+                            blob = new EncodedStringValue(text != null ? text : "")
+                                .getTextString();
+                        }
                         baos.write(blob, 0, blob.length);
                     } else {
 
@@ -747,7 +765,28 @@ public class PduPersister {
                     || ContentType.APP_SMIL.equals(contentType)
                     || ContentType.TEXT_HTML.equals(contentType)) {
                 ContentValues cv = new ContentValues();
-                cv.put(Telephony.Mms.Part.TEXT, new EncodedStringValue(data).getString());
+                if (data == null) {
+                    Log.w(TAG, "Part data is null. contentType: " + contentType);
+                    cv.put(Telephony.Mms.Part.TEXT, "");
+                } else {
+                    // we will use default encoding when charset is 0 or not supported
+                    int charset = part.getCharset();
+                    if (charset != 0) {
+                        String charsetName = null;
+                        try {
+                            charsetName = CharacterSets.getMimeName(charset);
+                        } catch (UnsupportedEncodingException e) {
+                            Log.d(TAG, "charset " + charset + " is not supported");
+                        }
+                        if (charsetName != null) {
+                            cv.put(Telephony.Mms.Part.TEXT, new EncodedStringValue(charset, data).getString());
+                        } else {
+                            cv.put(Telephony.Mms.Part.TEXT, new EncodedStringValue(data).getString());
+                        }
+                    } else {
+                        cv.put(Telephony.Mms.Part.TEXT, new EncodedStringValue(data).getString());
+                    }
+                }
                 if (mContentResolver.update(uri, cv, null, null) != 1) {
                     throw new MmsException("unable to update " + uri.toString());
                 }
