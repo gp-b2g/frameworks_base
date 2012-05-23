@@ -83,6 +83,7 @@ import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.internal.telephony.TelephonyIntents;
 
 import java.net.InetAddress;
 import java.net.Inet6Address;
@@ -143,6 +144,14 @@ public class WifiStateMachine extends StateMachine {
     private boolean mScanResultIsPending = false;
 
     private boolean mBluetoothConnectionActive = false;
+
+    /**@hide*/
+    private int startChannel = 0;
+
+    /**@hide*/
+    private int endChannel = 0;
+
+
 
     /**
      * Interval in milliseconds between polling for RSSI
@@ -645,6 +654,34 @@ public class WifiStateMachine extends StateMachine {
                 }
             },new IntentFilter(ConnectivityManager.ACTION_TETHER_STATE_CHANGED));
 
+       IntentFilter filter = new IntentFilter();
+       filter.addAction(TelephonyIntents.ACTION_SAFE_WIFI_CHANNELS_CHANGED);
+
+       mContext.registerReceiver(
+            new BroadcastReceiver() {
+                @Override
+              public void onReceive(Context context, Intent intent) {
+
+                  if (intent.getAction().equals(
+                            TelephonyIntents.ACTION_SAFE_WIFI_CHANNELS_CHANGED)) {
+                            int currentChannel = intent.getIntExtra("current_channel", -1);
+                            int startSafeChannel = intent.getIntExtra("start_safe_channel", -1);
+                            int endSafeChannel = intent.getIntExtra("end_safe_channel", -1);
+                            Log.e(TAG, "Received WIFI_CHANNELS_CHANGED broadcast--WifiStateMachine");
+                            if (currentChannel >= 0 &&
+                                (currentChannel < startSafeChannel ||
+                                 currentChannel > endSafeChannel)){
+
+                                 startChannel = startSafeChannel;
+                                 endChannel = endSafeChannel;
+
+                                Log.e(TAG, "Operating on restricted channel. Restarting softAp--wifiStateMachine");
+                                restartSoftApIfOn();
+                            }
+                        }
+                }
+            },new IntentFilter(TelephonyIntents.ACTION_SAFE_WIFI_CHANNELS_CHANGED));
+
         mContext.registerReceiver(
                 new BroadcastReceiver() {
                     @Override
@@ -783,6 +820,18 @@ public class WifiStateMachine extends StateMachine {
         WifiConfiguration ret = (WifiConfiguration) resultMsg.obj;
         resultMsg.recycle();
         return ret;
+    }
+
+    /**
+     * Function to set Channel range.
+     */
+    public void setChannelRange(int startchannel, int endchannel, int band) {
+       try {
+              Log.e(TAG, "setChannelRange");
+              mNwService.setChannelRange(startchannel, endchannel, band);
+           } catch(Exception e) {
+             loge("Exception in setChannelRange");
+           }
     }
 
     /**
@@ -1943,6 +1992,9 @@ public class WifiStateMachine extends StateMachine {
                     loge("Exception in softap start " + e);
                     try {
                         mNwService.stopAccessPoint(mInterfaceName);
+                        Log.e(TAG, "Calling setChannelRange ---startSoftApWithConfig()");
+                        if (startChannel!=0)
+                           setChannelRange(startChannel, endChannel, 0);
                         mNwService.startAccessPoint(config, mInterfaceName, SOFTAP_IFACE);
                     } catch (Exception e1) {
                         loge("Exception in softap re-start " + e1);
@@ -3519,6 +3571,10 @@ public class WifiStateMachine extends StateMachine {
                 final WifiConfiguration config = (WifiConfiguration) message.obj;
 
                 if (config == null) {
+                    if (startChannel!=0) {
+                        Log.e(TAG, "Calling setChannelRange ---CMD_START_AP SoftApStartingState()");
+                        setChannelRange(startChannel, endChannel, 0);
+                    }
                     mWifiApConfigChannel.sendMessage(CMD_REQUEST_AP_CONFIG);
                 } else {
                     mWifiApConfigChannel.sendMessage(CMD_SET_AP_CONFIG, config);
@@ -3814,6 +3870,19 @@ public class WifiStateMachine extends StateMachine {
             }
             EventLog.writeEvent(EVENTLOG_WIFI_EVENT_HANDLED, message.what);
             return HANDLED;
+        }
+    }
+
+    private void restartSoftApIfOn() {
+        int state = syncGetWifiApState();
+        Log.e(TAG, "Restarting soft ap if needed. WifiAp state is " + state);
+        if (state == WIFI_AP_STATE_ENABLED
+                || state == WIFI_AP_STATE_ENABLING) {
+            Log.e(TAG, "Disabling wifi ap");
+            setWifiApEnabled(null, false);
+            Log.e(TAG, "Enabling wifi ap");
+            setWifiApEnabled(null, true);
+            Log.e(TAG, "Restart softap Done");
         }
     }
 

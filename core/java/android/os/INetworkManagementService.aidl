@@ -396,4 +396,10 @@ interface INetworkManagementService
      * Request router solicitation for the interface
      */
     String getIpv6Gateway(String iface);
+
+    /**
+     * set Channel Range
+    */
+    void setChannelRange(int startchannel, int endchannel, int band);
+
 }

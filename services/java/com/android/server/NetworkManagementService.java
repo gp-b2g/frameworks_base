@@ -1264,6 +1264,23 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         }
     }
 
+    public void setChannelRange(int startchannel, int endchannel, int band)
+            throws IllegalStateException {
+        mContext.enforceCallingOrSelfPermission(
+                android.Manifest.permission.CHANGE_NETWORK_STATE, "NetworkManagementService");
+        mContext.enforceCallingOrSelfPermission(
+            android.Manifest.permission.CHANGE_WIFI_STATE, "NetworkManagementService");
+
+         try {
+            Slog.e(TAG, "set Channel Range");
+            String str = String.format("softap qccmd set setchannelrange=" + startchannel + " " + endchannel + " " + band);
+            mConnector.doCommand(str);
+        } catch (NativeDaemonConnectorException e) {
+            throw new IllegalStateException("Error communicating to native daemon to set channel range",
+                    e);
+        }
+    }
+
     public void setAccessPoint(WifiConfiguration wifiConfig, String wlanIface, String softapIface)
             throws IllegalStateException {
         mContext.enforceCallingOrSelfPermission(
