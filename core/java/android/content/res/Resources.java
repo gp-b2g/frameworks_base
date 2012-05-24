@@ -2012,7 +2012,7 @@ public class Resources {
 
 						if (bNeedFallback) {
 
-						android.util.Log.e("filePathInTheme", "fallback to res");	
+						//android.util.Log.e("filePathInTheme", "fallback to res");	
 						
                         InputStream is = mAssets.openNonAsset(
                                 value.assetCookie, file, AssetManager.ACCESS_STREAMING);
