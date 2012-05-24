@@ -1896,7 +1896,10 @@ public class PowerManagerService extends IPowerManager.Stub
                         // enqueued and thus will delay turning on the screen light
                         // until the windows are correctly displayed.
                         if (stateChanged) {
-                            updateLightsLocked(newState, 0);
+                            // Force button light be lit while screen is on.
+                            // This is just a temporary action aim for enabling button light before cs.
+                            // delete this change after new file's code scan.
+                            updateLightsLocked(newState | BUTTON_BRIGHT_BIT, BUTTON_BRIGHT_BIT);
                         }
                         mPowerState |= SCREEN_ON_BIT;
                     }
@@ -1932,6 +1935,7 @@ public class PowerManagerService extends IPowerManager.Stub
                 }
             } else if (stateChanged) {
                 // Screen on/off didn't change, but lights may have.
+
                 updateLightsLocked(newState, 0);
             }
 
