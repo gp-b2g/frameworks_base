@@ -147,6 +147,336 @@ public class MSimTelephonyManager extends TelephonyManager {
         }
     }
 
+    private int getPreferredSubscription() {
+        for (int i = 0; i < 2; i++) {
+            if (SIM_STATE_ABSENT != getSimState(i)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getDeviceId() {
+        if (!isMultiSimEnabled()) {
+            return super.getDeviceId();
+        } else {
+            return getDeviceId(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public CellLocation getCellLocation() {
+        if (!isMultiSimEnabled()) {
+            return super.getCellLocation();
+        } else {
+            return getCellLocation(getPreferredSubscription());
+        }
+
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getCurrentPhoneType() {
+        if (!isMultiSimEnabled()) {
+            return super.getCurrentPhoneType();
+        } else {
+            return getCurrentPhoneType(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getNetworkOperatorName() {
+        if (!isMultiSimEnabled()) {
+            return super.getNetworkOperatorName();
+        } else {
+            return getNetworkOperatorName(getPreferredSubscription());
+        }
+
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getNetworkOperator() {
+        if (!isMultiSimEnabled()) {
+            return super.getNetworkOperator();
+        } else {
+            return getNetworkOperator(getPreferredSubscription());
+        }
+
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public boolean isNetworkRoaming() {
+        if (!isMultiSimEnabled()) {
+            return super.isNetworkRoaming();
+        } else {
+            return isNetworkRoaming(getPreferredSubscription());
+        }
+
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getNetworkType() {
+        if (!isMultiSimEnabled()) {
+            return super.getNetworkType();
+        } else {
+            return getNetworkType(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getNetworkTypeName() {
+        if (!isMultiSimEnabled()) {
+            return super.getNetworkTypeName();
+        } else {
+            return getNetworkTypeName(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public boolean hasIccCard() {
+        if (!isMultiSimEnabled()) {
+            return super.hasIccCard();
+        } else {
+            return hasIccCard(getPreferredSubscription());
+        }
+
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getSimState() {
+        if (!isMultiSimEnabled()) {
+            return super.getSimState();
+        } else {
+            return getSimState(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getSimOperator() {
+        if (!isMultiSimEnabled()) {
+            return super.getSimOperator();
+        } else {
+            return getSimOperator(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getSimOperatorName() {
+        if (!isMultiSimEnabled()) {
+            return super.getSimOperatorName();
+        } else {
+            return getSimOperatorName(getPreferredSubscription());
+        }
+
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getSimSerialNumber() {
+        if (!isMultiSimEnabled()) {
+            return super.getSimSerialNumber();
+        } else {
+            return getSimSerialNumber(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getLteOnCdmaMode() {
+        if (!isMultiSimEnabled()) {
+            return super.getLteOnCdmaMode();
+        } else {
+            return getLteOnCdmaMode(getPreferredSubscription());
+        }
+
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getSubscriberId() {
+        if (!isMultiSimEnabled()) {
+            return super.getSubscriberId();
+        } else {
+            return getSubscriberId(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getCardType() {
+        if (!isMultiSimEnabled()) {
+            return super.getCardType();
+        } else {
+            return getCardType(getPreferredSubscription());
+        }
+
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getLine1Number() {
+        if (!isMultiSimEnabled()) {
+            return super.getLine1Number();
+        } else {
+            return getLine1Number(getPreferredSubscription());
+        }
+
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getLine1AlphaTag() {
+        if (!isMultiSimEnabled()) {
+            return super.getLine1AlphaTag();
+        } else {
+            return getLine1AlphaTag(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getVoiceMailNumber() {
+        if (!isMultiSimEnabled()) {
+            return super.getVoiceMailNumber();
+        } else {
+            return getVoiceMailNumber(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getCompleteVoiceMailNumber() {
+        if (!isMultiSimEnabled()) {
+            return super.getCompleteVoiceMailNumber();
+        } else {
+            return getCompleteVoiceMailNumber(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getVoiceMessageCount() {
+        if (!isMultiSimEnabled()) {
+            return super.getVoiceMessageCount();
+        } else {
+            return getVoiceMessageCount(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getVoiceMailAlphaTag() {
+        if (!isMultiSimEnabled()) {
+            return super.getVoiceMailAlphaTag();
+        } else {
+            return getVoiceMailAlphaTag(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getCallState() {
+        if (!isMultiSimEnabled()) {
+            return super.getCallState();
+        } else {
+            return getCallState(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getCdmaEriIconIndex() {
+        if (!isMultiSimEnabled()) {
+            return super.getCdmaEriIconIndex();
+        } else {
+            return getCdmaEriIconIndex(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getCdmaEriIconMode() {
+        if (!isMultiSimEnabled()) {
+            return super.getCdmaEriIconMode();
+        } else {
+            return getCdmaEriIconMode(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getCdmaEriText() {
+        if (!isMultiSimEnabled()) {
+            return super.getCdmaEriText();
+        } else {
+            return getCdmaEriText(getPreferredSubscription());
+        }
+    }
+
     /**
      * Returns a constant indicating the device phone type for a subscription.
      *
