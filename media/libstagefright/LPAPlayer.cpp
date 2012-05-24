@@ -862,8 +862,10 @@ void LPAPlayer::decoderThreadEntry() {
             if (bIsA2DPEnabled && !mAudioSinkOpen) {
                 LOGV("Close Session");
                 if (mAudioSink.get() != NULL) {
+                    pthread_mutex_lock(&apply_effect_mutex);
                     mAudioSink->closeSession();
                     LOGV("mAudioSink close session");
+                    pthread_mutex_unlock(&apply_effect_mutex);
                 } else {
                     LOGE("close session NULL");
                 }
@@ -973,10 +975,12 @@ void LPAPlayer::eventThreadEntry() {
                     mObserver->postAudioEOS();
                 }
                 if (memBuffersResponseQueue.empty() && bIsA2DPEnabled && !mAudioSinkOpen) {
-                    LOGV("Close Session");
+                    LOGV("event thread:Close Session");
                     if (mAudioSink.get() != NULL) {
+                        pthread_mutex_lock(&apply_effect_mutex);
                         mAudioSink->closeSession();
                         LOGV("mAudioSink close session");
+                        pthread_mutex_unlock(&apply_effect_mutex);
                     } else {
                         LOGE("close session NULL");
                     }
