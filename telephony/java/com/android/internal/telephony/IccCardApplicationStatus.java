@@ -106,8 +106,12 @@ public class IccCardApplicationStatus {
     public String         app_label;
     // applicable to USIM and CSIM
     public int            pin1_replaced;
-    public PinState            pin1;
-    public PinState            pin2;
+    public PinState       pin1;
+    public int            pin1_num_retries;
+    public int            puk1_num_retries;
+    public PinState       pin2;
+    public int            pin2_num_retries;
+    public int            puk2_num_retries;
 
     AppType AppTypeFromRILInt(int type) {
         AppType newType;

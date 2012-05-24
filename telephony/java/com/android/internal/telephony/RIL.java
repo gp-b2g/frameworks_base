@@ -3603,7 +3603,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             ca.app_label      = p.readString();
             ca.pin1_replaced  = p.readInt();
             ca.pin1           = ca.PinStateFromRILInt(p.readInt());
+            ca.pin1_num_retries = p.readInt();
+            ca.puk1_num_retries = p.readInt();
             ca.pin2           = ca.PinStateFromRILInt(p.readInt());
+            ca.pin2_num_retries = p.readInt();
+            ca.puk2_num_retries = p.readInt();
             status.mApplications[i] = ca;
         }
         return status;
