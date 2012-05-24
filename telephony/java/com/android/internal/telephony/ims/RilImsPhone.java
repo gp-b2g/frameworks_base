@@ -63,6 +63,7 @@ public class RilImsPhone extends PhoneBase {
     static final int MAX_CONNECTIONS_PER_CALL = 5;
 
     private State state = Phone.State.IDLE; // phone state for IMS phone
+    private ServiceState mServiceState;
 
     public RilImsPhone(Context context, PhoneNotifier notifier, CallTracker tracker,
             CommandsInterface cm) {
@@ -71,6 +72,36 @@ public class RilImsPhone extends PhoneBase {
         mCT= tracker;
         mCT.imsPhone = this;
         mCT.createImsCalls();
+        cm.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
+
+        // Query for registration state in case we have missed the UNSOL
+        cm.getImsRegistrationState(this.obtainMessage(EVENT_IMS_STATE_DONE));
+        mServiceState = new ServiceState();
+        mServiceState.setStateOutOfService();
+    }
+
+    public void handleMessage(Message msg) {
+        Log.d(LOG_TAG, "Received event:" + msg.what);
+        switch (msg.what) {
+            case EVENT_IMS_STATE_CHANGED:
+                mCM.getImsRegistrationState(this.obtainMessage(EVENT_IMS_STATE_DONE));
+                break;
+            case EVENT_IMS_STATE_DONE:
+                AsyncResult ar = (AsyncResult) msg.obj;
+                if (ar.exception == null && ar.result != null && ((int[]) ar.result).length >= 1) {
+                    int[] responseArray = (int[]) ar.result;
+                    Log.d(LOG_TAG, "IMS registration state is: " + responseArray[0]);
+                    if (responseArray[0] == 0)
+                        mServiceState.setState(ServiceState.STATE_OUT_OF_SERVICE);
+                    else if (responseArray[0] == 1)
+                        mServiceState.setState(ServiceState.STATE_IN_SERVICE);
+                } else {
+                    Log.e(LOG_TAG, "IMS State query failed!");
+                }
+                break;
+            default:
+                super.handleMessage(msg);
+        }
     }
 
     @Override
@@ -101,10 +132,8 @@ public class RilImsPhone extends PhoneBase {
     }
 
     public boolean canDial() {
-        //TODO: Add checks to meet IMS call requirements
-        int serviceState = getServiceState().getState();
-        Log.v(LOG_TAG, "canDial(): serviceState = " + serviceState);
-        if (serviceState == ServiceState.STATE_POWER_OFF) return false;
+        Log.v(LOG_TAG, "canDial(): serviceState = " + mServiceState.getState());
+        if (mServiceState.getState() != ServiceState.STATE_IN_SERVICE) return false;
 
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
@@ -274,10 +303,7 @@ public class RilImsPhone extends PhoneBase {
     }
 
     public ServiceState getServiceState() {
-        // TODO: Query RIL Registration state and convert that to Service state
-        ServiceState s = new ServiceState();
-        s.setState(ServiceState.STATE_IN_SERVICE);
-        return s;
+        return mServiceState;
     }
 
     @Override
@@ -557,7 +583,7 @@ public class RilImsPhone extends PhoneBase {
         /**
          * See 22.001 Annex F.4 for mapping of cause codes to local tones
          */
-        int serviceState = getServiceState().getState();
+        int serviceState = mServiceState.getState();
         if (serviceState == ServiceState.STATE_POWER_OFF) {
             return DisconnectCause.POWER_OFF;
         } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE

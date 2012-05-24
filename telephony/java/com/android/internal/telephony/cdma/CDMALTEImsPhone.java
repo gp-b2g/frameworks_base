@@ -84,12 +84,6 @@ public class CDMALTEImsPhone extends CDMALTEPhone {
         mCM.setEmergencyCallbackMode(this, EVENT_EMERGENCY_CALLBACK_MODE_ENTER, null);
         mCM.registerForExitEmergencyCallbackMode(this, EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE,
                 null);
-        if (PhoneFactory.isCallOnImsEnabled()) {
-            mCM.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
-
-            // Query for registration state in case we have missed the UNSOL
-            mCM.getImsRegistrationState(this.obtainMessage(EVENT_IMS_STATE_DONE));
-        }
 
         PowerManager pm
             = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
@@ -127,28 +121,27 @@ public class CDMALTEImsPhone extends CDMALTEPhone {
 
         // Notify voicemails.
         //updateVoiceMail();
+
+        if (PhoneFactory.isCallOnImsEnabled()) {
+            /*
+             * Default phone is not registered yet. Post event to buy
+             * time and register imsphone, after PhoneApp onCreate completes
+             * registering default phone.
+             */
+            sendMessage(obtainMessage(EVENT_INIT_COMPLETE));
+        }
     }
 
     @Override
-    public void handleMessage(Message msg) {
+    public void handleMessage (Message msg) {
+        Log.d(LOG_TAG, "Received event:" + msg.what);
         switch (msg.what) {
-        // handle the select network completion callbacks.
-            case EVENT_IMS_STATE_CHANGED:
-                mCM.getImsRegistrationState(this.obtainMessage(EVENT_IMS_STATE_DONE));
-                break;
-            case EVENT_IMS_STATE_DONE:
-                AsyncResult ar = (AsyncResult) msg.obj;
-                if (ar.exception == null) {
-                    int[] responseArray = (int[]) ar.result;
-                    Log.d(LOG_TAG, "IMS registration state is: " + responseArray[0]);
-                    if (responseArray[0] == 1) { // IMS is registered
-                        createImsPhone();
-                    } else {
-                        destroyImsPhone(); // IMS is unregistered
-                    }
-                } else {
-                    Log.e(LOG_TAG, "IMS State query failed!");
-                }
+            case EVENT_INIT_COMPLETE:
+                /*
+                 * Register imsPhone after CDMALTEIMSPhone is registered as defaultphone
+                 * through PhoneApp OnCreate.
+                 */
+                createImsPhone();
                 break;
             default:
                 super.handleMessage(msg);
@@ -188,6 +181,8 @@ public class CDMALTEImsPhone extends CDMALTEPhone {
             } else {
                 Log.e(LOG_TAG, "Null call tracker!!! Unable to create RilImsPhone");
             }
+        } else {
+            Log.e(LOG_TAG, "ImsPhone present already");
         }
     }
 

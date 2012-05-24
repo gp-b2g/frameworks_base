@@ -947,27 +947,25 @@ public class ConnectionBase extends Connection {
     }
 
     private Call
-    imsParentFromDCState (DriverCall.State state) {
-        if (owner.imsPhone != null) {
-            switch (state) {
-                case ACTIVE:
-                case DIALING:
-                case ALERTING:
-                    return owner.imsPhone.getForegroundCall();
+    imsParentFromDCState(DriverCall.State state) {
+        switch (state) {
+            case ACTIVE:
+            case DIALING:
+            case ALERTING:
+                return owner.imsPhone.getForegroundCall();
 
-                case HOLDING:
-                    return owner.imsPhone.getBackgroundCall();
+            case HOLDING:
+                return owner.imsPhone.getBackgroundCall();
 
-                case INCOMING:
-                case WAITING:
-                    return owner.imsPhone.getRingingCall();
+            case INCOMING:
+            case WAITING:
+                return owner.imsPhone.getRingingCall();
 
-                default:
-                    throw new RuntimeException("illegal call state: " + state);
-            }
-        } else
-            return null;
+            default:
+                throw new RuntimeException("illegal call state: " + state);
+        }
     }
+
     /**
      * Set post dial state and acquire wake lock while switching to "started" or "wait"
      * state, the wake lock will be released if state switches out of "started" or "wait"

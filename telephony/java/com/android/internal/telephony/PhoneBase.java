@@ -120,6 +120,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_GET_NETWORKS_DONE              = 32;
     protected static final int EVENT_IMS_STATE_CHANGED              = 36;
     protected static final int EVENT_IMS_STATE_DONE                 = 37;
+    protected static final int EVENT_INIT_COMPLETE                  = 38;
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";

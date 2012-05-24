@@ -112,13 +112,10 @@ public final class CdmaImsCallTracker extends CallTracker {
     }
 
     public void createImsCalls() {
-        // These are calls of ImsPhone..move this to createimsphone
-        if (imsPhone != null) {
-            ringingCallIms = new CallBase(imsPhone);
-            foregroundCallIms = new CallBase(imsPhone);
-            backgroundCallIms = new CallBase(imsPhone);
-            foregroundCallIms.setGeneric(false);
-        }
+        ringingCallIms = new CallBase(imsPhone);
+        foregroundCallIms = new CallBase(imsPhone);
+        backgroundCallIms = new CallBase(imsPhone);
+        foregroundCallIms.setGeneric(false);
     }
 
     public void dispose() {
@@ -179,7 +176,7 @@ public final class CdmaImsCallTracker extends CallTracker {
         Registrant r = new Registrant(h, what, obj);
         imsCallStartedRegistrants.add(r);
         // Notify if in call when registering
-        if (imsPhone!= null && (imsPhone.getState() != Phone.State.IDLE)) {
+        if (imsPhone.getState() != Phone.State.IDLE) {
             r.notifyRegistrant(new AsyncResult(null, null, null));
         }
     }
@@ -673,7 +670,7 @@ public final class CdmaImsCallTracker extends CallTracker {
             }
             log("update phone state, old=" + oldState + " new=" + curState);
 
-        } else if (imsPhone!= null && incomingPhone == imsPhone) {
+        } else if (incomingPhone == imsPhone) {
 
             incomingPhone.setState(curState);
 
@@ -840,7 +837,7 @@ public final class CdmaImsCallTracker extends CallTracker {
                     // This case means the RIL has no more active call anymore and
                     // we need to clean up the foregroundCall and ringingCall.
                     cleanupCalls(phone);
-                    if (imsPhone != null ) cleanupCalls(imsPhone);
+                    cleanupCalls(imsPhone);
                 }
 
                 // Re-start Ecm timer when the connected emergency call ends
