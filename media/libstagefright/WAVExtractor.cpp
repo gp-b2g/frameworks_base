@@ -174,7 +174,7 @@ status_t WAVExtractor::init() {
             }
 
             mNumChannels = U16_LE_AT(&formatSpec[2]);
-            if (mNumChannels != 1 && mNumChannels != 2) {
+            if (mNumChannels != 1 && mNumChannels != 2 && mNumChannels != 4) {
                 return ERROR_UNSUPPORTED;
             }
 
@@ -204,6 +204,9 @@ status_t WAVExtractor::init() {
             if (mValidFormat) {
                 mDataOffset = offset;
                 mDataSize = chunkSize;
+                off64_t dataSourceSize = 0;
+                if (OK == mDataSource->getSize(&dataSourceSize) && mDataSize > (dataSourceSize - offset))
+                    mDataSize = dataSourceSize - offset;
 
                 mTrackMeta = new MetaData;
 
