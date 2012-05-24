@@ -1763,6 +1763,13 @@ public class PowerManagerService extends IPowerManager.Stub
             }
         }
         int err = Power.setScreenState(on);
+        if (on) {
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Sleep Exception");
+            }
+        }
         if (err == 0) {
             mLastScreenOnTime = (on ? SystemClock.elapsedRealtime() : 0);
             if (mUseSoftwareAutoBrightness) {
