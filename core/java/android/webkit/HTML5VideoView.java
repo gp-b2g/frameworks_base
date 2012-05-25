@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -54,7 +54,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
-
+import android.content.Intent;
 /**
  * @hide This is only used by the browser
  */
@@ -299,6 +299,9 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
     }
 
     public void prepareDataAndDisplayMode() {
+        Intent i = new Intent("com.android.music.musicservicecommand");
+        i.putExtra("command","pause");
+        mProxy.getContext().sendBroadcast(i);
         decideDisplayMode();
 
         mPlayer.setOnCompletionListener(mProxy);
