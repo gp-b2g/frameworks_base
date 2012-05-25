@@ -1622,7 +1622,6 @@ public class PhoneNumberUtils
                 }
             }
             // no matches found against the list!
-            return false;
         }
 
         // No ecclist system property, so use our own list.
