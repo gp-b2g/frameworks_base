@@ -18,6 +18,7 @@ package com.android.internal.widget;
 
 import com.android.internal.R;
 import com.android.internal.telephony.ITelephony;
+import com.android.internal.telephony.ITelephonyMSim;
 import com.google.android.collect.Lists;
 
 import android.app.admin.DevicePolicyManager;
@@ -1073,15 +1074,34 @@ public class LockPatternUtils {
      * @return true if we were able to tell InCallScreen to show.
      */
     public boolean resumeCall() {
-        ITelephony phone = ITelephony.Stub.asInterface(ServiceManager.checkService("phone"));
         try {
+            ITelephonyMSim phone = ITelephonyMSim.Stub.asInterface(ServiceManager
+                    .checkService(Context.MSIM_TELEPHONY_SERVICE));
             if (phone != null && phone.showCallScreen()) {
                 return true;
             }
         } catch (RemoteException e) {
-            // What can we do?
+            Log.w(TAG, "phone.showCallScreen() failed", e);
         }
         return false;
+    }
+
+    public boolean phoneIsInUse() {
+        boolean phoneInUse = false;
+        int phoneCount = TelephonyManager.getDefault().getPhoneCount();
+        try {
+            ITelephonyMSim phone = ITelephonyMSim.Stub.asInterface(ServiceManager
+                    .checkService(Context.MSIM_TELEPHONY_SERVICE));
+            if (phone != null)
+                for (int i = 0; i < phoneCount; i++) {
+                    phoneInUse = !phone.isIdle(i);
+                    if (phoneInUse)
+                        break;
+                }
+        } catch (RemoteException e) {
+            Log.w(TAG, "phone.isIdle() failed", e);
+        }
+        return phoneInUse;
     }
 
     private void finishBiometricWeak() {
