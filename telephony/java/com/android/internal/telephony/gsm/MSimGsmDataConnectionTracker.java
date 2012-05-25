@@ -32,6 +32,7 @@ import com.android.internal.telephony.ApnContext;
 import com.android.internal.telephony.DataConnection;
 import com.android.internal.telephony.DataConnectionAc;
 import com.android.internal.telephony.DataProfile;
+import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.Subscription;
@@ -130,6 +131,7 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
             loge("Ignore GSM msgs since GSM phone is not the current DDS");
             return;
         }
+        AsyncResult ar;
         switch (msg.what) {
             case EVENT_SET_INTERNAL_DATA_ENABLE:
                 boolean enabled = (msg.arg1 == ENABLED) ? true : false;
@@ -137,6 +139,30 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
                 break;
             case EVENT_CHECK_DATA_ACTIVITY:
                 onCheckDataActivity();
+                break;
+            case EVENT_SET_PREFERRED_NETWORK_TYPE:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception != null) {
+                    log("EVENT_SET_PREFERRED_NETWORK_TYPE failed: ar.exception="+ar.exception);
+                } else {
+                    log("EVENT_SET_PREFERRED_NETWORK_TYPE succeed.");
+                }
+                break;
+            case EVENT_GET_PREFERRED_NETWORK_TYPE:
+                log("EVENT_GET_PREFERRED_NETWORK_TYPE");
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null) {
+                    int type = ((int[])ar.result)[0];
+                    log("current network preferred mode: type="+type);
+                    if (type!= Phone.NT_MODE_GSM_ONLY) {
+                        MSimPhoneFactory.getPhone(0).setPreferredNetworkType(Phone.NT_MODE_GSM_ONLY,
+                            obtainMessage(EVENT_SET_PREFERRED_NETWORK_TYPE));
+                        log("send request to set to GSM only");
+                    }
+                } else {
+                    // Weird state, disable the setting
+                    Log.i(LOG_TAG, "get preferred network type, exception="+ar.exception);
+                }
                 break;
             default:
                 super.handleMessage(msg);
@@ -293,6 +319,27 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
             notifyDataDisconnectComplete();
             notifyAllDataDisconnected();
         }
+    }
+
+
+    @Override
+    protected void onDataSetupComplete(AsyncResult ar) {
+        if (DBG) log("onDataSetupComplete");
+        if (isDataSetupCompleteOk(ar)) {
+            if (DBG)
+                log("Setup Data Complete result ok");
+            // GTA
+            if ( 0 != mPhone.getSubscription()
+                    && MSimPhoneFactory.getPhone(0).getIccCard().getIccCardState() != IccCard.State.ABSENT
+                    && MSimPhoneFactory.getPhone(0).getIccCard().getIccCardState() != IccCard.State.UNKNOWN
+                    && MSimPhoneFactory.getPhone(0).getPhoneType() == Phone.PHONE_TYPE_GSM) {
+                // first check the current slot1's network preferred mode
+                MSimPhoneFactory.getPhone(0).getPreferredNetworkType(
+                            obtainMessage(EVENT_GET_PREFERRED_NETWORK_TYPE));
+                log("onDataSetupComplete sent EVENT_GET_PREFERRED_NETWORK_TYPE");
+            }
+        }
+        super.onDataSetupComplete(ar);
     }
 
     @Override

@@ -149,6 +149,9 @@ public abstract class DataConnectionTracker extends Handler {
     protected static final int EVENT_MODEM_DATA_PROFILE_READY = BASE + 37;
     protected static final int EVENT_RAT_CHANGED = BASE + 38;
     protected static final int EVENT_CHECK_DATA_ACTIVITY = BASE + 39;
+    protected static final int EVENT_SET_PREFERRED_NETWORK_TYPE = BASE + 40;
+    protected static final int EVENT_GET_PREFERRED_NETWORK_TYPE = BASE + 41;
+
 
     /***** Constants *****/
 
