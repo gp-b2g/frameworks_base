@@ -221,6 +221,7 @@ public class MSimPhoneFactory extends PhoneFactory {
             subscription = Settings.System.getInt(sContext.getContentResolver(),
                     Settings.System.DEFAULT_SUBSCRIPTION);
         } catch (SettingNotFoundException snfe) {
+            Log.e(LOG_TAG, "Settings Exception Reading Default Subscription");
         }
 
         return subscription;
@@ -280,16 +281,11 @@ public class MSimPhoneFactory extends PhoneFactory {
 
     /* Gets Current Data subscription setting*/
     public static int getDataSubscription() {
-        if (isMultiSimAvailable()) {
-            return getUserPreferredDDS();
-        } else {
-            SubscriptionManager sm = SubscriptionManager.getInstance();
-            Log.d(LOG_TAG,"sm="+sm);
-            if (sm == null){
-                return 0;
-            }else{
-                return sm.getActiveDDS();
-            }
+        SubscriptionManager sm = SubscriptionManager.getInstance();
+        if (sm == null){
+            return 0;
+        }else{
+            return sm.getActiveDDS();
         }
     }
 
@@ -317,11 +313,9 @@ public class MSimPhoneFactory extends PhoneFactory {
     }
 
     static public void setDataSubscription(int subscription) {
-        if (isMultiSimAvailable()) {
-            Settings.System.putInt(sContext.getContentResolver(),
-                    Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subscription);
-            Log.d(LOG_TAG, "setDataSubscription: " + subscription);
-        }
+        Settings.System.putInt(sContext.getContentResolver(),
+                Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subscription);
+        Log.d(LOG_TAG, "setDataSubscription: " + subscription);
     }
 
     static public void setSMSSubscription(int subscription) {

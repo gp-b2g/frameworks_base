@@ -396,8 +396,6 @@ public class SubscriptionManager extends Handler {
         //if SUCCESS
         if (ar.exception == null) {
             // Mark this as the current dds
-            MSimPhoneFactory.setDataSubscription(mQueuedDds);
-
             mCurrentDds = mQueuedDds;
 
             // Update the DCT corresponds to the new DDS.
@@ -481,12 +479,12 @@ public class SubscriptionManager extends Handler {
         if (actStatus == SUB_STATUS_ACTIVATED) { // Subscription Activated
             // Shall update the DDS here
             if (mSetDdsRequired) {
-                if (subId == mCurrentDds) {
-                    logd("setDataSubscription on " + mCurrentDds);
+                if (subId == mQueuedDds) {
+                    logd("setDataSubscription on " + mQueuedDds);
                     // Set mQueuedDds so that when the set data sub src is done, it will
                     // update the system property and enable the data connectivity.
                     //mQueuedDds = mCurrentDds;
-                    setDataSubscription(mCurrentDds,null);
+                    setDataSubscription(mQueuedDds,null);
                     mSetDdsRequired = false;
                 }
             }
@@ -700,12 +698,12 @@ public class SubscriptionManager extends Handler {
                     // Set the flag and update the mCurrentDds, so that when subscription
                     // ready event receives, it will set the dds properly.
                     mSetDdsRequired = true;
-                    mCurrentDds = activeSub.subId;
+                    mQueuedDds = activeSub.subId;
                     //MSimPhoneFactory.setDataSubscription(mCurrentDds);
                 }
             }
         }else if (activeSubCount > 1){
-            int preferredDataSub = MSimPhoneFactory.getDataSubscription();
+            int preferredDataSub = MSimPhoneFactory.getUserPreferredDDS();
             logd("active sub count = "+ activeSubCount+",mCurrentDds = "+mCurrentDds+",preferredDataSub = "+preferredDataSub);
             if (mCurrentDds != preferredDataSub){
                 logd("current dds is "+mCurrentDds+",preferred one is "+preferredDataSub);
@@ -718,7 +716,7 @@ public class SubscriptionManager extends Handler {
                 }else{
                     logd("updata dds later");
                     mSetDdsRequired = true;
-                    mCurrentDds = preferredDataSub;
+                    mQueuedDds = preferredDataSub;
                 }
             }
         }
