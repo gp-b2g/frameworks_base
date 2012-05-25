@@ -39,6 +39,7 @@
 #include "SurfaceFlinger.h"
 #include "SurfaceTextureLayer.h"
 #include <qcom_ui.h>
+#include <utils/comptype.h>
 
 #define DEBUG_RESIZE    0
 #define SHIFT_SRC_TRANSFORM 4
@@ -186,11 +187,12 @@ void Layer::setGeometry(hwc_layer_t* hwcl)
     hwcl->flags &= ~HWC_SKIP_LAYER;
 
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
-    // we can't do alpha-fade with the hwc HAL. C2D composition
-    // can handle fade cases
+    // we can't do alpha-fade with the hwc HAL,
+    // unless we are using C2D
     const State& s(drawingState());
     if (s.alpha < 0xFF) {
-        if ((DisplayHardware::C2D_COMPOSITION & hw.getFlags()) && (!isOpaque())) {
+        if ((QCCompositionType::getInstance().getCompositionType() & COMPOSITION_TYPE_C2D)
+            && (!isOpaque())) {
             hwcl->blending = mPremultipliedAlpha ?
                 HWC_BLENDING_PREMULT : HWC_BLENDING_COVERAGE;
         } else {
