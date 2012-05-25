@@ -109,6 +109,7 @@ public class SubscriptionManager extends Handler {
     private static final int EVENT_RADIO_ON = 10;
     private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 11;
     private static final int EVENT_EMER_CALL_END = 12;
+    private static final int EVENT_SET_PREFERRED_NETWORK_TYPE = 13;
 
     // Set Subscription Return status
     public static final String SUB_ACTIVATE_SUCCESS = "ACTIVATE SUCCESS";
@@ -333,6 +334,16 @@ public class SubscriptionManager extends Handler {
                 if (!mSetSubscriptionInProgress) {
                     processActivateRequests();
                 }
+                break;
+
+            case EVENT_SET_PREFERRED_NETWORK_TYPE:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception != null) {
+                    Log.d(LOG_TAG,"EVENT_SET_PREFERRED_NETWORK_TYPE failed: ar.exception="+ar.exception);
+                } else {
+                    Log.d(LOG_TAG,"EVENT_SET_PREFERRED_NETWORK_TYPE succeed");
+               }
+               break;
 
             default:
                 break;
@@ -362,6 +373,20 @@ public class SubscriptionManager extends Handler {
         }
     }
 
+    private void restoreGsmPhoneNWModeIfNeed() {
+        if (mCurrentDds == 0 &&
+            MSimPhoneFactory.getPhone(0).getPhoneType() == Phone.PHONE_TYPE_GSM ) {
+            int mode =  android.provider.Settings.System.getInt(
+                    MSimPhoneFactory.getPhone(0).getContext().getContentResolver(),
+                    android.provider.Settings.System.SLOT1_USER_PRE_MODE, Phone.NT_MODE_WCDMA_PREF);
+            if (mode == Phone.NT_MODE_WCDMA_PREF) {
+                // restore previous user-selected slot1's preferred network mode
+                MSimPhoneFactory.getPhone(0).setPreferredNetworkType(Phone.NT_MODE_WCDMA_PREF,
+                    obtainMessage(EVENT_SET_PREFERRED_NETWORK_TYPE));
+            }
+        }
+    }
+
     /**
      * Handles the SET_DATA_SUBSCRIPTION_DONE event
      * @param ar
@@ -378,6 +403,8 @@ public class SubscriptionManager extends Handler {
             // Update the DCT corresponds to the new DDS.
             MSimProxyManager.getInstance().updateDataConnectionTracker(0);
             MSimProxyManager.getInstance().updateDataConnectionTracker(1);
+
+            restoreGsmPhoneNWModeIfNeed();
 
             // Enable the data connectivity on new dds.
             logd("setDataSubscriptionSource is Successful"

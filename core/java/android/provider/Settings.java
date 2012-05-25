@@ -1397,6 +1397,12 @@ public final class Settings {
           */
          public static final String FMC_STATUS = "fmc_status";
 
+        /**
+          * Int value to specify user preferred network mode (only for GSM phone)
+          * This value is only used to record use choise from Settings UI
+          * @hide
+          */
+         public static final String SLOT1_USER_PRE_MODE = "slot1_user_pre_mode";
 
         /**
          * The timeout before the screen turns off.
