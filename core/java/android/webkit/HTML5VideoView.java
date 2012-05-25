@@ -39,7 +39,6 @@ import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.media.Metadata;
 import android.net.Uri;
-import android.opengl.GLES20;
 import android.os.PowerManager;
 import android.util.Log;
 import android.view.Display;
@@ -123,10 +122,6 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
 
     private boolean mPauseDuringPreparing;
 
-    private int mVideoWidth;
-    private int mVideoHeight;
-    private int mDuration;
-
     private int mFullscreenWidth;
     private int mFullscreenHeight;
 
@@ -153,8 +148,6 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
 
     private SurfaceTexture mSurfaceTexture;
     private MyVideoTextureView mTextureView;
-    // m_textureNames is the texture bound with this SurfaceTexture.
-    private int[] mTextureNames;
     private boolean mSurfaceTextureReady;
 
     // common Video control FUNCTIONS:
@@ -298,13 +291,13 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
         try {
             retriever.setDataSource(mUri.toString(), mHeaders);
-            mVideoWidth = Integer.parseInt(retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
-            mVideoHeight = Integer.parseInt(retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
-            mDuration = Integer.parseInt(retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_DURATION));
-            proxy.updateSizeAndDuration(mVideoWidth, mVideoHeight, mDuration);
+            proxy.updateSizeAndDuration(
+                Integer.parseInt(retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)),
+                Integer.parseInt(retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)),
+                Integer.parseInt(retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_DURATION)));
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
         } catch (RuntimeException e) {
@@ -400,7 +393,10 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
             start();
 
         if (mIsFullscreen) {
-            attachMediaController();
+            // attachMediaController is needed here for slow networks where the
+            // fullscreen animation has finished before media is prepared.
+            if (mAnimationState == ANIMATION_STATE_FINISHED)
+                attachMediaController();
             if (mProgressView != null)
                 mProgressView.setVisibility(View.GONE);
         }
@@ -417,34 +413,21 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
     public SurfaceTexture getSurfaceTexture() {
         // Create the surface texture.
         if (mSurfaceTexture == null) {
-            if (mTextureNames == null) {
-                mTextureNames = new int[1];
-                GLES20.glGenTextures(1, mTextureNames, 0);
-            }
-            mSurfaceTexture = new SurfaceTexture(mTextureNames[0]);
+            mSurfaceTexture = new SurfaceTexture(mProxy.getTextureName());
         }
         return mSurfaceTexture;
     }
 
     public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
-        mVideoWidth = width;
-        mVideoHeight = height;
-        if (mTextureView != null) {
-            // Request layout now that mVideoWidth and mVideoHeight are known
+        if ((mProxy.getVideoWidth() != width || mProxy.getVideoHeight() != height)
+            && mTextureView != null) {
+            // Set visible if previously it was not visible due to width and height unknown
+            // Request layout now that video width and height are known
             // This will trigger onMeasure to get the display size right
             mTextureView.requestLayout();
         }
-        if (mProxy != null) {
+        if (mProxy != null)
             mProxy.onVideoSizeChanged(mp, width, height);
-        }
-    }
-
-    public int getTextureName() {
-        if (mTextureNames != null) {
-            return mTextureNames[0];
-        } else {
-            return 0;
-        }
     }
 
     // This is true only when the player is buffering and paused
@@ -475,18 +458,20 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
 
         @Override
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            mFullscreenWidth = getDefaultSize(mVideoWidth, widthMeasureSpec);
-            mFullscreenHeight = getDefaultSize(mVideoHeight, heightMeasureSpec);
-            if (mVideoWidth > 0 && mVideoHeight > 0) {
-                if ( mVideoWidth * mFullscreenHeight > mFullscreenWidth * mVideoHeight ) {
-                    mFullscreenHeight = mFullscreenWidth * mVideoHeight / mVideoWidth;
-                } else if ( mVideoWidth * mFullscreenHeight < mFullscreenWidth * mVideoHeight ) {
-                    mFullscreenWidth = mFullscreenHeight * mVideoWidth / mVideoHeight;
+            mFullscreenWidth = getDefaultSize(mProxy.getVideoWidth(), widthMeasureSpec);
+            mFullscreenHeight = getDefaultSize(mProxy.getVideoHeight(), heightMeasureSpec);
+            if (mProxy.getVideoWidth() > 0 && mProxy.getVideoHeight() > 0) {
+                if ( mProxy.getVideoWidth() * mFullscreenHeight > mFullscreenWidth * mProxy.getVideoHeight() ) {
+                    mFullscreenHeight = mFullscreenWidth * mProxy.getVideoHeight() / mProxy.getVideoWidth();
+                } else if ( mProxy.getVideoWidth() * mFullscreenHeight < mFullscreenWidth * mProxy.getVideoHeight() ) {
+                    mFullscreenWidth = mFullscreenHeight * mProxy.getVideoWidth() / mProxy.getVideoHeight();
                 }
             }
             setMeasuredDimension(mFullscreenWidth, mFullscreenHeight);
 
             if (mAnimationState == ANIMATION_STATE_NONE) {
+                // Make sure the view is visible
+                mTextureView.setVisibility(View.VISIBLE);
                 // Configuring VideoTextureView to inline bounds
                 mTextureView.setTranslationX(getInlineXOffset());
                 mTextureView.setTranslationY(getInlineYOffset());
@@ -541,7 +526,7 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
             mMediaController.setEnabled(true);
 
             // If paused, should show the controller for ever!
-            if (mAutoStart || isPlaying())
+            if (isPlaying())
                 mMediaController.show();
             else
                 mMediaController.show(0);
@@ -563,7 +548,7 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
         };
 
     public void onVideoTextureUpdated(SurfaceTexture surface) {
-        mSurfaceTextureReady = true;
+       mSurfaceTextureReady = true;
     }
 
     public void enterFullScreenVideoState(WebView webView, float x, float y, float w, float h) {
@@ -580,7 +565,7 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
 
         assert(mSurfaceTexture != null);
         mTextureView = new MyVideoTextureView(mProxy.getContext(), getSurfaceTexture(),
-                getTextureName(), mSurfaceTextureReady);
+                mProxy.getTextureName(), mSurfaceTextureReady);
         mTextureView.setOnTouchListener(this);
 
         mLayout = new FrameLayout(mProxy.getContext());
@@ -588,7 +573,14 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
                             ViewGroup.LayoutParams.WRAP_CONTENT,
                             ViewGroup.LayoutParams.WRAP_CONTENT,
                             Gravity.CENTER);
-        mTextureView.setVisibility(View.VISIBLE);
+
+        // Make fullscreen video visible here only if the size is known
+        // Otherwise incorrect aspect ratio may be shown
+        if (mProxy.getVideoWidth() > 0 && mProxy.getVideoHeight() > 0)
+            mTextureView.setVisibility(View.VISIBLE);
+        else
+            mTextureView.setVisibility(View.INVISIBLE);
+
         mTextureView.setVideoTextureListener(this);
 
         mLayout.addView(mTextureView, layoutParams);

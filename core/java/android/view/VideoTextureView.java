@@ -18,6 +18,7 @@
 package android.view;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
@@ -51,6 +52,7 @@ public class VideoTextureView extends View {
     @SuppressWarnings({"UnusedDeclaration"})
     private int mNativeWindow;
     private VideoTextureListener mListener;
+    private int mOrientation;
 
     /**
      * Creates a new VideoTextureView.
@@ -165,11 +167,11 @@ public class VideoTextureView extends View {
     }
 
     @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-        // Call to updateLayer is required to trigger an update on the
-        // VideoTextureView when the size of the view has changed.
-        updateLayer();
+    protected void onConfigurationChanged(Configuration newConfig) {
+        if (mOrientation != newConfig.orientation) {
+            mOrientation = newConfig.orientation;
+            updateLayer();
+        }
     }
 
     @Override
