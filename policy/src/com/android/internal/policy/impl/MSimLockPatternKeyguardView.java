@@ -202,8 +202,7 @@ public class MSimLockPatternKeyguardView extends LockPatternKeyguardView impleme
                 stopAndUnbindFromFaceLock();
 
                 pokeWakelock(EMERGENCY_CALL_TIMEOUT);
-                if (TelephonyManager.getDefault().getCallState()
-                        == TelephonyManager.CALL_STATE_OFFHOOK) {
+                if (mLockPatternUtils.phoneIsInUse()) {
                     mLockPatternUtils.resumeCall();
                 } else {
                     Intent intent = new Intent(ACTION_EMERGENCY_DIAL);
