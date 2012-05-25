@@ -115,16 +115,7 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
 
         mHeaderText.setText(R.string.keyguard_password_enter_puk_code);
 
-        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
-            mKeyguardStatusViewManager = new MSimKeyguardStatusViewManager(this, updateMonitor,
-                    lockpatternutils, callback, true);
-            String displayText = getContext().getString(pukStrIds[mSubscription]);
-            mHeaderText.setText(displayText);
-        } else {
-            mKeyguardStatusViewManager = new KeyguardStatusViewManager(this, updateMonitor,
-                    lockpatternutils, callback, true);
-            mHeaderText.setText(R.string.keyguard_password_enter_puk_code);
-        }
+        setHeaderText();
 
         mPinText.setFocusableInTouchMode(true);
         mPinText.setOnFocusChangeListener(this);
@@ -145,12 +136,7 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
     /** {@inheritDoc} */
     public void onResume() {
         // start fresh
-        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
-            String displayText = getContext().getString(pukStrIds[mSubscription]);
-            mHeaderText.setText(displayText);
-        } else {
-            mHeaderText.setText(R.string.keyguard_password_enter_puk_code);
-        }
+        setHeaderText();
 
         mKeyguardStatusViewManager.onResume();
     }
@@ -165,6 +151,34 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
         mUpdateMonitor.removeCallback(this);
     }
 
+    private void setHeaderText() {
+        String displayText = null;
+        int amptRemainding = 0;
+        //read retry count of puk
+        try {
+            if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                amptRemainding = ITelephonyMSim.Stub.asInterface
+                                   (ServiceManager.checkService("phone_msim"))
+                                   .getIccPin1RetryCount(mSubscription);
+            } else {
+                amptRemainding = ITelephony.Stub.asInterface(ServiceManager
+                                   .checkService("phone")).getIccPin1RetryCount();
+            }
+        } catch (RemoteException ex) {
+            Log.w("SimPukUnlockScreen", "read puk retry count exception");
+        }
+
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            displayText = getContext().getString(pukStrIds[mSubscription]);
+        } else {
+            displayText = getContext().getString(R.string.keyguard_password_enter_puk_code);
+        }
+        if (amptRemainding > 0) {
+            displayText = displayText + getContext().getString(R.string.pinpuk_attempts)
+                          + amptRemainding;
+        }
+        mHeaderText.setText(displayText);
+    }
 
     /**
      * Since the IPC can block, we want to run the request in a separate thread

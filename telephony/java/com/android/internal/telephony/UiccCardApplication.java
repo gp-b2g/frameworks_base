@@ -59,7 +59,11 @@ public class UiccCardApplication {
     private String        mAppLabel;
     private boolean       mPin1Replaced;
     private PinState      mPin1State;
+    private int           mPin1NumRetries;
+    private int           mPuk1NumRetries;
     private PinState      mPin2State;
+    private int           mPin2NumRetries;
+    private int           mPuk2NumRetries;
     private boolean       mIccFdnEnabled = false; // Default to disabled.
     private boolean       mIccFdnAvailable = true; // Default is enabled.
     private boolean mDesiredFdnEnabled;
@@ -87,7 +91,14 @@ public class UiccCardApplication {
         mAppLabel = as.app_label;
         mPin1Replaced = (as.pin1_replaced != 0);
         mPin1State = as.pin1;
+        mPin1NumRetries = as.pin1_num_retries;
+        mPuk1NumRetries = as.puk1_num_retries;
         mPin2State = as.pin2;
+        mPin2RetryCount = as.pin2_num_retries;
+        mPuk2NumRetries = as.puk2_num_retries;
+
+        mPin1RetryCount = mPin1NumRetries;
+        mPin2RetryCount = mPin2NumRetries;
 
         mContext = c;
         mCi = ci;
@@ -118,7 +129,13 @@ public class UiccCardApplication {
         mAppLabel = as.app_label;
         mPin1Replaced = (as.pin1_replaced != 0);
         mPin1State = as.pin1;
+        mPin1NumRetries = as.pin1_num_retries;
+        mPuk1NumRetries = as.puk1_num_retries;
+        mPin1RetryCount = mPin1NumRetries > 0 ? mPin1NumRetries : mPuk1NumRetries;
         mPin2State = as.pin2;
+        mPin2NumRetries = as.pin2_num_retries;
+        mPuk2NumRetries = as.puk2_num_retries;
+        mPin2RetryCount = mPin2NumRetries > 0 ? mPin2NumRetries : mPuk2NumRetries;
 
         if (mAppType != oldAppType) {
             mIccFh.dispose();

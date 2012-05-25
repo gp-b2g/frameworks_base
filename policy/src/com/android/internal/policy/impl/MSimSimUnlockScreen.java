@@ -41,7 +41,7 @@ import android.util.Log;
  */
 public class MSimSimUnlockScreen extends SimUnlockScreen implements KeyguardScreen,
         View.OnClickListener {
-
+    private static final String LOG_TAG = "MSimSimUnlockScreen";
     private int mSubscription = 0;
 
     private static final int[] pinStrIds = {R.string.keyguard_password_enter_sim1_pin_code,
@@ -54,12 +54,8 @@ public class MSimSimUnlockScreen extends SimUnlockScreen implements KeyguardScre
                 lockpatternutils);
         layoutType(context);
         mSubscription = subscription;
-        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
-            String displayText = getContext().getString(pinStrIds[mSubscription]);
-            mHeaderText.setText(displayText);
-        } else {
-            mHeaderText.setText(R.string.keyguard_password_enter_pin_code);
-        }
+
+        setHeaderText();
 
         if (TelephonyManager.getDefault().isMultiSimEnabled()) {
             mKeyguardStatusViewManager = new MSimKeyguardStatusViewManager(this, updateMonitor,
@@ -90,17 +86,37 @@ public class MSimSimUnlockScreen extends SimUnlockScreen implements KeyguardScre
             mCallback.goToUnlockScreen();
         }
         // start fresh
-        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
-            String displayText = getContext().getString(pinStrIds[mSubscription]);
-            mHeaderText.setText(displayText);
-        } else {
-           mHeaderText.setText(R.string.keyguard_password_enter_pin_code);
-        }
+        setHeaderText();
+
         // make sure that the number of entered digits is consistent when we
         // erase the SIM unlock code, including orientation changes.
         mPinText.setText("");
         mEnteredDigits = 0;
         mKeyguardStatusViewManager.onResume();
+    }
+
+    private void setHeaderText() {
+        String displayText = null;
+        int aptRemaining = 0;
+        try {
+            aptRemaining = ITelephonyMSim.Stub.asInterface(ServiceManager.checkService("phone_msim"))
+                          .getIccPin1RetryCount(mSubscription);
+            Log.d(LOG_TAG, "attemptsRemaining="+aptRemaining);
+        } catch (RemoteException ex) {
+            Log.w(LOG_TAG, "read remaining retry count happen exception");
+        }
+
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            displayText = getContext().getString(pinStrIds[mSubscription]);
+        } else {
+            displayText = getContext().getString(R.string.keyguard_password_enter_pin_code);
+        }
+
+        if (aptRemaining > 0) {
+            displayText = displayText + getContext().getString(R.string.pinpuk_attempts)
+                          + aptRemaining;
+        }
+        mHeaderText.setText(displayText);
     }
 
     /**
