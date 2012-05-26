@@ -28,6 +28,7 @@
 #include <media/stagefright/TimeSource.h>
 #include <utils/threads.h>
 #include <drm/DrmManagerClient.h>
+#include <include/postproc/PostProcFactory.h>
 
 namespace android {
 
@@ -240,6 +241,9 @@ private:
 
     sp<WVMExtractor> mWVMExtractor;
 
+    sp<PostProcNativeWindow> mPostProcNativeWindow;
+    PostProcController * mPostProcController;
+
     status_t setDataSource_l(
             const char *uri,
             const KeyedVector<String8, String8> *headers = NULL);
@@ -361,6 +365,8 @@ private:
 
     AwesomePlayer(const AwesomePlayer &);
     AwesomePlayer &operator=(const AwesomePlayer &);
+
+    bool isPostProcEnabled();
 };
 
 }  // namespace android

@@ -45,6 +45,7 @@ LOCAL_C_INCLUDES :=                                                 \
 	$(TOP)/frameworks/base/media/libstagefright/include             \
 	$(TOP)/frameworks/base/media/libstagefright/rtsp                \
         $(TOP)/external/tremolo/Tremolo \
+	$(TOP)/frameworks/base/media/libstagefright
 
 LOCAL_MODULE:= libmediaplayerservice
 
