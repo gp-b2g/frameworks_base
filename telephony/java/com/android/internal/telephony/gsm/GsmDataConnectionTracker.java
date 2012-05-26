@@ -170,13 +170,24 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
          * along with the retry request. This will be required to differentiate
          * a new connect request against a retry connect request.
          */
-        int partialRetry = 0;
+        int partialRetry = Phone.DUALIP_NOT_PARTIAL_RETRY;
         if (reason != null && reason.equals(Phone.REASON_DUALIP_PARTIAL_FAILURE_RETRY)) {
             if (DBG) log("reconnect request due to partial retry");
             partialRetry = Phone.DUALIP_PARTIAL_RETRY;
         }
 
         if (dcac != null) {
+            if (partialRetry == Phone.DUALIP_NOT_PARTIAL_RETRY &&
+                    dcac.getPartialSuccessStatusSync()) {
+                // When partial retry was scheduled we were supposed to cancel regular retry
+                // alarm. However, if regular retry was already sent then cancelling it had
+                // no effect and here we are receiving it while there is another
+                // partial retry alarm pending. So just ignore this one and wait
+                // for partial retry alarm.
+                if (DBG) log("Reconnect alarm: dc is in partial success, but received regular " +
+                        "retry. Ignore.");
+                return;
+            }
             // If ReconnectIntent in the data connection is null, then it indicates that
             // alarm was cancelled. This method was invoked due to a possible race condition.
             // If Reconnect alarm is cancelled, do not try to setup data call.
