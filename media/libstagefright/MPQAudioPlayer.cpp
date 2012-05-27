@@ -52,8 +52,6 @@ extern "C" {
 #include <powermanager/PowerManager.h>
 static const char   mName[] = "MPQAudioPlayer";
 
-//Required for A2DP
-#define PMEM_CAPTURE_BUFFER_SIZE 4096
 
 //Session Id to diff playback
 #define MPQ_AUDIO_SESSION_ID 3
@@ -96,7 +94,6 @@ mPlayPendingSamples(false),
 mSourcePaused(false),
 mAudioSinkOpen(false),
 mIsAudioRouted(false),
-mIsA2DPEnabled(false),
 mIsFirstBuffer(false),
 mFirstBufferResult(OK),
 mFirstBuffer(NULL),
@@ -105,7 +102,6 @@ mObserver(observer) {
     LOGV("MPQAudioPlayer::MPQAudioPlayer()");
 
     mAudioFlinger = NULL;
-    mAudioFlingerClient = NULL;
     if(mAudioSink->getSessionId())
         mMPQAudioObjectsAlive++;
 
@@ -117,10 +113,8 @@ mObserver(observer) {
 
     getAudioFlinger();
     LOGD("Registering client with AudioFlinger");
-    mAudioFlinger->registerClient(mAudioFlingerClient);
 
     mMimeType.setTo("");
-    mA2dpDisconnectPause = false;
 
     mTimePaused  = 0;
     mDurationUs = 0;
@@ -198,7 +192,6 @@ MPQAudioPlayer::~MPQAudioPlayer() {
     }
 
     reset();
-    mAudioFlinger->deregisterClient(mAudioFlingerClient);
     if(mMPQAudioObjectsAlive > 0)
         mMPQAudioObjectsAlive--;
 
@@ -210,7 +203,6 @@ MPQAudioPlayer::~MPQAudioPlayer() {
 }
 
 void MPQAudioPlayer::getAudioFlinger() {
-    Mutex::Autolock _l(mAudioFlingerLock);
 
     if ( mAudioFlinger.get() == 0 ) {
         sp<IServiceManager> sm = defaultServiceManager();
@@ -222,95 +214,9 @@ void MPQAudioPlayer::getAudioFlinger() {
             LOGW("AudioFlinger not published, waiting...");
             usleep(500000); // 0.5 s
         } while ( true );
-        if ( mAudioFlingerClient == NULL ) {
-            mAudioFlingerClient = new AudioFlingerMPQAudioDecodeClient(this);
-        }
-
-        binder->linkToDeath(mAudioFlingerClient);
         mAudioFlinger = interface_cast<IAudioFlinger>(binder);
     }
     LOGE_IF(mAudioFlinger==0, "no AudioFlinger!?");
-}
-
-MPQAudioPlayer::AudioFlingerMPQAudioDecodeClient::AudioFlingerMPQAudioDecodeClient(void *obj)
-{
-    LOGD("MPQAudioPlayer::AudioFlingerMPQAudioDecodeClient - Constructor");
-    pBaseClass = (MPQAudioPlayer*)obj;
-}
-
-void MPQAudioPlayer::AudioFlingerMPQAudioDecodeClient::binderDied(const wp<IBinder>& who) {
-    Mutex::Autolock _l(pBaseClass->mAudioFlingerLock);
-
-    pBaseClass->mAudioFlinger.clear();
-    LOGW("AudioFlinger server died!");
-}
-
-void MPQAudioPlayer::AudioFlingerMPQAudioDecodeClient::ioConfigChanged(int event, int ioHandle, void *param2) {
-    LOGV("ioConfigChanged() event %d", event);
-
-    if (event != AudioSystem::A2DP_OUTPUT_STATE) {
-        return;
-    }
-
-    switch ( event ) {
-    case AudioSystem::A2DP_OUTPUT_STATE:
-        {
-            if ( -1 == ioHandle ) {
-                if ( pBaseClass->mIsA2DPEnabled ) {
-                    pBaseClass->mIsA2DPEnabled = false;
-                    if (pBaseClass->mStarted) {
-                        pBaseClass->handleA2DPSwitch();
-                    }
-                    LOGV("ioConfigChanged:: A2DP Disabled");
-                }
-            } else {
-                if ( !pBaseClass->mIsA2DPEnabled ) {
-                    pBaseClass->mIsA2DPEnabled = true;
-                    if (pBaseClass->mStarted) {
-                        pBaseClass->handleA2DPSwitch();
-                    }
-                    LOGV("ioConfigChanged:: A2DP Enabled");
-                }
-            }
-        }
-        break;
-    default:
-        break;
-    }
-    LOGV("ioConfigChanged Out");
-}
-
-void MPQAudioPlayer::handleA2DPSwitch() {
-    Mutex::Autolock autoLock(mLock);
-
-    LOGV("handleA2dpSwitch()");
-    if(mIsA2DPEnabled) {
-
-        // 1.	If not paused - pause the driver
-        //TODO: CHECK if audio routed has to be checked
-        if (!mIsPaused) {
-            int err;
-            err = mPCMStream->pause(mPCMStream);
-            if(err != OK) {
-                LOGE("Pause returned error =%d",err);
-                return;
-            }
-        }
-        //2.	If not paused - Query the time. - Not reqd , time need not be stored
-
-        //TODO: Is Internal Seeking required ? I believe not
-	//3 Signal Notification thread
-        mA2dpNotificationCv.signal();
-
-    } else {
-        //TODO :
-        //If paused signal notification thread
-        if (mIsPaused)
-            mA2dpNotificationCv.signal();
-        //else flag a2dp disconnect- signal from pause()
-        else
-            mA2dpDisconnectPause = true;
-    }
 }
 
 void MPQAudioPlayer::setSource(const sp<MediaSource> &source) {
@@ -346,7 +252,7 @@ status_t MPQAudioPlayer::start(bool sourceAlreadyStarted) {
         return err;
     }
 
-    //Create event, extractor and a2dp thread and initialize all the
+    //Create event, extractor and initialize all the
     //mutexes and coditional variables
     LOGV("Creat threads ++");
     createThreads();
@@ -363,48 +269,21 @@ status_t MPQAudioPlayer::start(bool sourceAlreadyStarted) {
         sessionId = MPQ_AUDIO_SESSION_ID;
     }
 
-
-    if(mIsA2DPEnabled)
-        mA2DpState = A2DP_ENABLED;
-    else
-        mA2DpState = A2DP_DISABLED;
-
-    if(mA2DpState == A2DP_DISABLED) {
-        LOGD("Opening a routing session for audio playback:\
-                mSampleRate = %d mNumChannels =  %d",\
-                mSampleRate, mNumChannels);
-        err = mAudioSink->openSession(
-                mAudioFormat, sessionId, mSampleRate, mNumChannels);
-        if (err != OK) {
-            //TODO: Release first buffer if it is being handled
-            if (!sourceAlreadyStarted) {
-                mSource->stop();
-            }
-            LOGE("Opening a routing session failed");
-            return err;
+    LOGD("Opening a routing session for audio playback:\
+            mSampleRate = %d mNumChannels =  %d",\
+            mSampleRate, mNumChannels);
+    err = mAudioSink->openSession(
+            mAudioFormat, sessionId, mSampleRate, mNumChannels);
+    if (err != OK) {
+        //TODO: Release first buffer if it is being handled
+        if (!sourceAlreadyStarted) {
+            mSource->stop();
         }
-        acquireWakeLock();
-        mIsAudioRouted = true;
+        LOGE("Opening a routing session failed");
+        return err;
     }
-    else if (mA2DpState == A2DP_ENABLED){
-        LOGV("Before Audio Sink Open");
-        err = mAudioSink->open(
-                mSampleRate, mNumChannels,AUDIO_FORMAT_PCM_16_BIT,
-                DEFAULT_AUDIOSINK_BUFFERCOUNT);
-        if(err != OK) {
-            LOGE("Audio Sink -open failed = %d", err);
-            return err;
-        }
-        mAudioSink->start();
-        LOGV("After Audio Sink Open");
-        mAudioSinkOpen = true;
-
-        err = openAndConfigureCaptureDevice();
-        if(err) {
-           LOGE("openAndConfigureCaptureDevice return error  = %d",err);
-           return err;
-        }
-    }
+    acquireWakeLock();
+    mIsAudioRouted = true;
 
     err = configurePCM();
     if (err) {
@@ -469,19 +348,13 @@ status_t MPQAudioPlayer::seekSoftwareDecoderPlayback() {
     mTimePaused = 0;
     //Flush not called.
     //Currently play the buffer
-    if(mA2DpState == A2DP_DISABLED) {
-        err = mPCMStream->flush(mPCMStream);
-        if(err != OK) {
-            LOGE("flush returned error =%d",err);
-            return err;
-        }
-
-        mExtractorCv.signal();
+    err = mPCMStream->flush(mPCMStream);
+    if(err != OK) {
+        LOGE("flush returned error =%d",err);
+        return err;
     }
-    else if(mA2DpState == A2DP_ENABLED) {
-
-    }
-    return OK;
+    mExtractorCv.signal();
+    return err;
 }
 
 
@@ -492,17 +365,13 @@ status_t MPQAudioPlayer::seekMS11DecoderPlayback() {
     mPositionTimeRealUs = mPositionTimeMediaUs = -1;
     mNumFramesPlayed = 0;
     mTimePaused = 0;
-    if(mA2DpState == A2DP_DISABLED) {
-        if(!mIsAACFormatAdif) {
-            err = mPCMStream->flush(mPCMStream);
-            if(err != OK) {
-                LOGE("flush returned error =%d",err);
-                return err;
-            }
-            mExtractorCv.signal();
+    if(!mIsAACFormatAdif) {
+        err = mPCMStream->flush(mPCMStream);
+        if(err != OK) {
+            LOGE("flush returned error =%d",err);
+            return err;
         }
-    }
-    else if(mA2DpState == A2DP_ENABLED) {
+        mExtractorCv.signal();
     }
     return OK;
 }
@@ -515,18 +384,14 @@ status_t MPQAudioPlayer::seekHardwareDecoderPlayback() {
     mTimePaused = 0;
     LOGV("In seekHardwareDecoderPlayback mSeekTimeUs %lld",mSeekTimeUs);
 
-    if (mA2DpState == A2DP_DISABLED) {
-        if (mStarted) {
-            err = mPCMStream->flush(mPCMStream);
-            if(err != OK) {
-                LOGE("flush returned error =%d",err);
-                return err;
-            }
-            if (!mIsPaused)
-                mExtractorCv.signal();
-        }
-    } else if(mA2DpState == A2DP_ENABLED){
-
+    if (mStarted) {
+        err = mPCMStream->flush(mPCMStream);
+         if(err != OK) {
+             LOGE("flush returned error =%d",err);
+             return err;
+         }
+         if (!mIsPaused)
+            mExtractorCv.signal();
     }
     return err;
 }
@@ -635,37 +500,22 @@ status_t MPQAudioPlayer::pauseHardwareDecoderPlayback() {
             return err;
         }
         //TODO : Add time out if needed.Check tunnel Player
-        if(mA2DpState == A2DP_DISABLED) {
-            if (mAudioSink.get() != NULL)
-                mAudioSink->pauseSession();
-        }
-        else if(mA2DpState == A2DP_ENABLED){
-
-        }
+        if (mAudioSink.get() != NULL)
+            mAudioSink->pauseSession();
 
         mTimePaused = mSeekTimeUs + getAudioTimeStampUs();
     }
     else {
-        if (mA2dpDisconnectPause) {
-            mA2dpDisconnectPause = false;
-            mA2dpNotificationCv.signal();
-        } else {
-            LOGV("MPQAudioPlayer::Pause - Pause driver");
-            err = mPCMStream->pause(mPCMStream);
-            if(err != OK) {
-                LOGE("Pause returned error =%d",err);
-                return err;
-            }
-            if(mA2DpState == A2DP_DISABLED) {
-                if (mAudioSink.get() != NULL) {
-                    mAudioSink->pauseSession();
-                }
-            }
-            else if(mA2DpState == A2DP_ENABLED) {
-            }
-
-            mTimePaused = mSeekTimeUs + getAudioTimeStampUs();
+        LOGV("MPQAudioPlayer::Pause - Pause driver");
+        err = mPCMStream->pause(mPCMStream);
+        if(err != OK) {
+            LOGE("Pause returned error =%d",err);
+            return err;
         }
+        if (mAudioSink.get() != NULL) {
+               mAudioSink->pauseSession();
+        }
+        mTimePaused = mSeekTimeUs + getAudioTimeStampUs();
     }
     return err;
 }
@@ -793,32 +643,29 @@ status_t MPQAudioPlayer::resumeHardwareDecoderPlayback() {
 
     if (mIsPaused) {
         CHECK(mStarted);
-          if (mA2DpState == A2DP_DISABLED) {
-            LOGV("MPQ Audio Player::resume - Resuming Driver");
-            if (!mIsAudioRouted) {
-                LOGV("Opening a session for MPQ Audio playback");
-                status_t err = mAudioSink->openSession(mAudioFormat, TUNNEL_SESSION_ID,
-                         mSampleRate, mNumChannels);
-                if(err != OK) {
-                    LOGE("openSession - resume = %d",err);
-                    return err;
-                }
-                acquireWakeLock();
-                mIsAudioRouted = true;
-            }
-            LOGV("Attempting Sync resume\n");
-            // check for internal seeking
-            err = mPCMStream->resume(mPCMStream);
-            if (err != OK) {
-                LOGE("AUDIO Resume failed = %d", err);
+        LOGV("MPQ Audio Player::resume - Resuming Driver");
+            release_wake_lock("MPQ_AUDIO_LOCK");
+        if (!mIsAudioRouted) {
+            LOGV("Opening a session for MPQ Audio playback");
+            status_t err = mAudioSink->openSession(mAudioFormat, TUNNEL_SESSION_ID,
+                     mSampleRate, mNumChannels);
+            if(err != OK) {
+                LOGE("openSession - resume = %d",err);
                 return err;
             }
-            LOGV("Sync resume done\n");
-            if (mAudioSink.get() != NULL) {
-                mAudioSink->resumeSession();
-            }
-        } else if(mA2DpState == A2DP_ENABLED){
-
+            acquireWakeLock();
+            mIsAudioRouted = true;
+        }
+        LOGV("Attempting Sync resume\n");
+        // check for internal seeking
+            err = mPCMStream->resume(mPCMStream);
+        if (err != OK) {
+            LOGE("AUDIO Resume failed = %d", err);
+            return err;
+        }
+        LOGV("Sync resume done\n");
+        if (mAudioSink.get() != NULL) {
+            mAudioSink->resumeSession();
         }
     }
     return err;
@@ -841,28 +688,20 @@ void MPQAudioPlayer::reset() {
     LOGV("Extractor Thread killed");
     // make sure the event thread also has exited
 
-    requestAndWaitForA2DPThreadExit();
-
-    requestAndWaitForA2DPNotificationThreadExit();
+    if(mPCMStream) {
+        mPCMStream->pause(mPCMStream);
+        LOGV("Close the PCM Stream");
+        mPCMStream->stop(mPCMStream);
+        mPCMStream = NULL;
+    }
 
     // Close the audiosink after all the threads exited to make sure
     // there is no thread writing data to audio sink or applying effect
-    if (mA2DpState == A2DP_ENABLED) {
-        struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
-        mAudioSink->close();
-        mAudioSinkOpen = false;
-        //TODO : Deallocate the buffer for capture side
-        pcm_close(capture_handle);
-        mCaptureHandle = (void*)capture_handle;
-
-    } else if(mA2DpState == A2DP_DISABLED){
-        LOGE("A2DP not enabled");
-        if(mAudioSink.get() != NULL) {
-            LOGV("close session ++");
-            mAudioSink->closeSession();
-            LOGV("close session --");
-            mIsAudioRouted =  false;
-        }
+    if(mAudioSink.get() != NULL) {
+        LOGV("close session ++");
+        mAudioSink->closeSession();
+        LOGV("close session --");
+        mIsAudioRouted =  false;
     }
     mAudioSink.clear();
 
@@ -958,8 +797,7 @@ void MPQAudioPlayer::extractorThreadEntry() {
         if (mDecoderType ==ESoftwareDecoder || mDecoderType == EMS11Decoder) {
 
             mExtractorMutex.lock();
-            if(mPostedEOS || mIsPaused ||
-                    (mIsA2DPEnabled && !mAudioSinkOpen) || mAsyncReset) {
+            if(mPostedEOS || mIsPaused || mAsyncReset) {
                 LOGV("extractorThreadEntry: waiting on mExtractorCv");
                 mExtractorCv.wait(mExtractorMutex);
                 //TODO: Guess this should be removed plz verify
@@ -974,7 +812,7 @@ void MPQAudioPlayer::extractorThreadEntry() {
             else
                 bytesToWrite = fillBuffer(mLocalBuf, mInputBufferSize);
             LOGV("fillBuffer returned size %d",bytesToWrite);
-            if(mSeeking)
+            if(mSeeking || mIsPaused)
                 continue;
             //TODO : What if bytesWritetn is zero
             LOGV("write - pcm  ++  %p",mPCMStream);
@@ -1046,12 +884,10 @@ void MPQAudioPlayer::extractorThreadEntry() {
         }
         else if (mDecoderType == EHardwareDecoder) {
             mExtractorMutex.lock();
-            if (mReachedExtractorEOS || mIsPaused ||
-                    (mIsA2DPEnabled && !mAudioSinkOpen) || mAsyncReset ) {
-                LOGV("extractorThreadEntry: mIsPaused %d  mReachedExtractorEOS %d\
-                        mIsA2DPEnabled %d mAudioSinkOpen %d mAsyncReset %d ",\
-                        mIsPaused, mReachedExtractorEOS, mIsA2DPEnabled,\
-                        mAudioSinkOpen, mAsyncReset);
+            if (mReachedExtractorEOS || mIsPaused || mAsyncReset ) {
+                LOGV("extractorThreadEntry: mIsPaused %d\
+                        mReachedExtractorEOS %d mAsyncReset %d ",\
+                        mIsPaused, mReachedExtractorEOS, mAsyncReset);
                 LOGV("extractorThreadEntry: waiting on mExtractorCv");
                 mExtractorCv.wait(mExtractorMutex);
                 //TODO: Guess this should be removed plz verify
@@ -1064,7 +900,7 @@ void MPQAudioPlayer::extractorThreadEntry() {
             LOGV("Calling fillBuffer for size %d", mInputBufferSize);
             int bytesToWrite = fillBuffer(mLocalBuf, mInputBufferSize);
             LOGV("fillBuffer returned size %d", bytesToWrite);
-            if (mSeeking) {
+            if (mSeeking || mIsPaused ) {
                 continue;
             }
             mPCMStream->write(mPCMStream, mLocalBuf, bytesToWrite);
@@ -1073,15 +909,13 @@ void MPQAudioPlayer::extractorThreadEntry() {
                 LOGD("mInputBufferSize = %d",mInputBufferSize);
                 bufferAlloc(mInputBufferSize);
             }
-            if (mIsA2DPEnabled)
-                mA2dpCv.signal();
-                if (bytesToWrite <= 0)
-                    continue;
+            if (bytesToWrite <= 0)
+                continue;
         }
-        else if (mDecoderType == EMS11Decoder) {
-
+        else  {
+           LOGE("Invalid Decoder Type in extractor thread");
+           break;
         }
-        else break;
     }
     mExtractorThreadAlive = false;
     LOGD("Extractor Thread is dying");
@@ -1097,144 +931,6 @@ void MPQAudioPlayer::postEOS(int64_t delayUs) {
         mPostedEOS = true;
         mObserver->postAudioEOS(delayUs);
     }
-}
-
-void *MPQAudioPlayer::A2DPNotificationThreadWrapper(void *me) {
-    static_cast<MPQAudioPlayer *>(me)->A2DPNotificationThreadEntry();
-    return NULL;
-}
-
-
-void MPQAudioPlayer::A2DPNotificationThreadEntry() {
-
-    //Wait on A2DP Notification Mutex
-    while (1) {
-        mA2dpNotificationMutex.lock();
-        mA2dpNotificationCv.wait(mA2dpNotificationMutex);
-        mA2dpNotificationMutex.unlock();
-
-        //Check for thread exit signal
-        if (mKillA2DPNotificationThread) {
-            break;
-        }
-
-        status_t err = OK;
-        LOGV("A2DP notification has come mIsA2DPEnabled: %d", mIsA2DPEnabled);
-
-        if(mIsA2DPEnabled) {
-
-            // Close Routing session if open
-            if (!mAudioSinkOpen) {
-                LOGV("Close Session");
-                if (mAudioSink.get() != NULL) {
-                    mAudioSink->closeSession();
-                    LOGV("mAudioSink close session");
-                    releaseWakeLock();
-                    mIsAudioRouted = false;
-                } else {
-                    LOGE("close session NULL");
-                }
-
-                // Open  and Start Sink
-                status_t err = mAudioSink->open(mSampleRate, mNumChannels,
-                        AUDIO_FORMAT_PCM_16_BIT,
-                        DEFAULT_AUDIOSINK_BUFFERCOUNT);
-                mAudioSink->start();
-                LOGV("After Audio Sink Open");
-                mAudioSinkOpen = true;
-            }
-            // open capture device
-            //TODO : What is the proxy afe device?
-            char *captureDevice = (char *) "hw:0,x";
-            LOGV("pcm_open capture device hardware %s for MPQ Audio Mode ",\
-                    captureDevice);
-
-            // Open the capture device
-            if (mNumChannels == 1)
-                mCaptureHandle = (void *)pcm_open((PCM_MMAP | DEBUG_ON | PCM_MONO |
-                        PCM_IN), captureDevice);
-            else
-                mCaptureHandle = (void *)pcm_open((PCM_MMAP | DEBUG_ON | PCM_STEREO |
-                        PCM_IN) , captureDevice);
-            struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
-            if (!capture_handle) {
-                LOGE("Failed to initialize ALSA hardware hw:0,4");
-                break;
-            }
-
-            //Set the hardware and software params for the capture device
-            err = setCaptureALSAParams();
-            if(err != OK) {
-                LOGE("Set Capture AALSA Params = %d", err);
-                break;
-            }
-
-            //MMAP the capture buffer
-            mmap_buffer(capture_handle);
-            //Prepare the capture  device
-            err = pcm_prepare(capture_handle);
-            if(err != OK) {
-                LOGE("PCM Prepare - capture failed err = %d", err);
-                break;
-            }
-            mCaptureHandle = (void *)capture_handle;
-            //TODO:set the mixer controls for proxy port
-            //mixer_cntl_set
-            //TODO : Allocate the buffer required from capture side
-
-            // RESUME
-            if(!mIsPaused) {
-                if (ioctl(((struct pcm *)mPlaybackHandle)->fd,
-                         SNDRV_PCM_IOCTL_PAUSE,0) < 0)
-                    LOGE("AUDIO Resume failed");
-                LOGV("Sync resume done\n");
-            }
-
-            // Signal Extractor thread
-            LOGD("Signalling to extractor condition variable");
-            mExtractorCv.signal();
-
-            //A2DP thread will be signalled from extractor thread
-
-        } else {
-
-            // Stop and close the sink
-            mAudioSink->stop();
-            mAudioSink->close();
-            mAudioSinkOpen = false;
-            LOGV("resume:: opening audio session with mSampleRate %d\
-                    numChannels %d ", mSampleRate, mNumChannels);
-
-            // open session / pause session
-            err = mAudioSink->openSession(AUDIO_FORMAT_PCM_16_BIT,
-                    MPQ_AUDIO_SESSION_ID, mSampleRate, mNumChannels);
-            if (mAudioSink.get() != NULL) {
-                mAudioSink->pauseSession();
-            }
-            acquireWakeLock();
-            // stop capture device
-            //TODO : De allocate the buffer for capture side
-            pcm_close((struct pcm *)mCaptureHandle);
-
-            // Mixer control disable
-
-            // Signal extractor thread
-            mExtractorCv.signal(); //check if we need to signal A2Dp thread
-        }
-    }
-//TODO : Need to see if internal seek is required
-//       Since in the decoding is in dsp it might
-//       not be require
-    mA2dpNotificationThreadAlive = false;
-    LOGD("A2DPNotificationThread is dying");
-
-}
-void *MPQAudioPlayer::A2DPThreadWrapper(void *me) {
-    static_cast<MPQAudioPlayer *>(me)->A2DPThreadEntry();
-    return NULL;
-}
-
-void MPQAudioPlayer::A2DPThreadEntry() {
 }
 
 void MPQAudioPlayer::bufferAlloc(int32_t nSize) {
@@ -1254,8 +950,6 @@ void MPQAudioPlayer::bufferAlloc(int32_t nSize) {
         default:
         break;
    }
-
-
 }
 
 void MPQAudioPlayer::bufferDeAlloc() {
@@ -1279,27 +973,17 @@ void MPQAudioPlayer::bufferDeAlloc() {
 void MPQAudioPlayer::createThreads() {
 
     //Initialize all the Mutexes and Condition Variables
-    // Create 4 threads Effect, extractor, event and A2dp
+    // Create the extractor thread
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     mKillExtractorThread = false;
-    mKillA2DPThread = false;
-    mKillA2DPNotificationThread = false;
-
     mExtractorThreadAlive = true;
-    mA2dpThreadAlive = true;
-    mA2dpNotificationThreadAlive = true;
 
     LOGD("Creating Extractor Thread");
     pthread_create(&mExtractorThread, &attr, extractorThreadWrapper, this);
 
-    LOGD("Creating A2DP Thread");
-    pthread_create(&mA2DPThread, &attr, A2DPThreadWrapper, this);
-
-    LOGD("Creating A2DP Notification Thread");
-    pthread_create(&mA2DPNotificationThread, &attr, A2DPNotificationThreadWrapper, this);
 
     pthread_attr_destroy(&attr);
 }
@@ -1597,7 +1281,7 @@ size_t MPQAudioPlayer::fillBufferfromParser(void *data, size_t size) {
 
     size_t size_done = 0;
     size_t size_remaining = size;
-    if (!mFirstEncodedBuffer && (mAudioFormat == AUDIO_FORMAT_WMA)) {
+    if (!mFirstEncodedBuffer && (mAudioFormat == AUDIO_FORMAT_WMA || mAudioFormat == AUDIO_FORMAT_WMA_PRO)) {
         uint32_t type;
         int configData[WMAPARAMSSIZE];
         size_t configSize = WMAPARAMSSIZE * sizeof(int);
@@ -1800,154 +1484,11 @@ void MPQAudioPlayer::requestAndWaitForExtractorThreadExit() {
     LOGD("Extractor thread killed");
 }
 
-void MPQAudioPlayer::requestAndWaitForA2DPThreadExit() {
-
-    if (!mA2dpThreadAlive)
-        return;
-    mKillA2DPThread = true;
-    mA2dpCv.signal();
-    pthread_join(mA2DPThread,NULL);
-    LOGD("a2dp thread killed");
-}
-
-void MPQAudioPlayer::requestAndWaitForA2DPNotificationThreadExit() {
-
-    if (!mA2dpNotificationThreadAlive)
-        return;
-    mKillA2DPNotificationThread = true;
-    mA2dpNotificationCv.signal();
-    pthread_join(mA2DPNotificationThread,NULL);
-    LOGD("a2dp notification thread killed");
-}
-
 void MPQAudioPlayer::onPauseTimeOut() {
     Mutex::Autolock autoLock(mLock);
-#if 0
-    LOGD("onPauseTimeOut");
-    if (!mPauseEventPending) {
-        return;
-    }
-    mPauseEventPending = false;
-
-    if(!mIsA2DPEnabled) {
-
-        if(!mSeeking) {
-            mInternalSeeking = true;
-            mSeekTimeUs += getAudioTimeStampUs();
-        }
-        if(mReachedExtractorEOS) {
-            mReachedExtractorEOS = false;
-            mPostedEOS = false;
-            mTimeout = -1;
-        }
-
-        LOGE("onPauseTimeOut seektime= %lld", mSeekTimeUs);
-
-        mInputPmemResponseMutex.lock();
-        mInputPmemRequestMutex.lock();
-        mInputPmemFilledQueue.clear();
-        mInputPmemEmptyQueue.clear();
-        List<BuffersAllocated>::iterator it = mInputBufPool.begin();
-        for(;it!=mInputBufPool.end();++it) {
-             mInputPmemEmptyQueue.push_back(*it);
-        }
-        mInputPmemRequestMutex.unlock();
-        mInputPmemResponseMutex.unlock();
-        LOGV("onPauseTimeOut after Empty Queue size() = %d,\
-                Filled Queue.size() = %d ",\
-                mInputPmemEmptyQueue.size(),\
-                mInputPmemFilledQueue.size());
-        mAudioSink->closeSession();
-        mIsAudioRouted = false;
-        release_wake_lock("MPQ_AUDIO_LOCK");
-    }
-#endif
+    //TODO  : Need to call standby on the the stream here
 }
 
-status_t  MPQAudioPlayer::setCaptureALSAParams() {
-
-     struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
-     struct snd_pcm_hw_params *hwParams = NULL;
-     struct snd_pcm_sw_params *swParams = NULL;
-     status_t err = OK;
-
-     LOGV("setCaptureALSAParams");
-
-     hwParams = (struct snd_pcm_hw_params*) calloc(1, sizeof(struct snd_pcm_hw_params));
-     if (!hwParams) {
-          LOGE("Failed to allocate ALSA hardware parameters - Capture!");
-          err = -ENOMEM;
-          goto fail;
-     }
-
-     param_init(hwParams);
-
-     param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_ACCESS,
-             (capture_handle->flags & PCM_MMAP)?
-             SNDRV_PCM_ACCESS_MMAP_INTERLEAVED :
-             SNDRV_PCM_ACCESS_RW_INTERLEAVED);
-     param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FORMAT_S16_LE);
-     param_set_mask(hwParams, SNDRV_PCM_HW_PARAM_SUBFORMAT,
-                    SNDRV_PCM_SUBFORMAT_STD);
-     param_set_min(hwParams, SNDRV_PCM_HW_PARAM_PERIOD_BYTES,
-             PMEM_CAPTURE_BUFFER_SIZE);
-
-
-     //param_set_min(params, SNDRV_PCM_HW_PARAM_PERIOD_TIME, 10);
-     param_set_int(hwParams, SNDRV_PCM_HW_PARAM_SAMPLE_BITS, 16);
-     param_set_int(hwParams, SNDRV_PCM_HW_PARAM_FRAME_BITS,
-                    mNumChannels - 1 ? 32 : 16);
-     param_set_int(hwParams, SNDRV_PCM_HW_PARAM_CHANNELS, mNumChannels);
-     param_set_int(hwParams, SNDRV_PCM_HW_PARAM_RATE, mSampleRate);
-
-     param_set_hw_refine(capture_handle, hwParams);
-
-     if (param_set_hw_params(capture_handle, hwParams)) {
-         LOGE("Cannot set hw params - Capture");
-         err = -errno;
-         goto fail;
-     }
-
-     param_dump(hwParams);
-     capture_handle->buffer_size = pcm_buffer_size(hwParams);
-     capture_handle->period_size = pcm_period_size(hwParams);
-     capture_handle->period_cnt =
-             capture_handle->buffer_size/capture_handle->period_size;
-     LOGV("Capture - period_size (%d)", capture_handle->period_size);
-     LOGV("Capture - buffer_size (%d)", capture_handle->buffer_size);
-     LOGV("Capture - period_cnt  (%d)\n", capture_handle->period_cnt);
-
-     //Set Software params
-     swParams = (struct snd_pcm_sw_params*) calloc(1, sizeof(struct snd_pcm_sw_params));
-     if (!swParams) {
-         LOGE("Failed to allocate ALSA software parameters -Capture !\n");
-         err = -ENOMEM;
-         goto fail;
-     }
-
-     swParams->tstamp_mode = SNDRV_PCM_TSTAMP_NONE;
-     swParams->period_step = 1;
-     swParams->avail_min = (capture_handle->flags & PCM_MONO) ?
-             capture_handle->period_size/2 : capture_handle->period_size/4;
-     swParams->start_threshold = 1;
-     swParams->stop_threshold = (capture_handle->flags & PCM_MONO) ?
-            capture_handle->buffer_size/2 : capture_handle->buffer_size/4;
-
-     /* needed for old kernels */
-     swParams->xfer_align = (capture_handle->flags & PCM_MONO) ?
-            capture_handle->period_size/2 : capture_handle->period_size/4;
-     swParams->silence_size = 0;
-     swParams->silence_threshold = 0;
-
-     if (param_set_sw_params(capture_handle, swParams)) {
-         LOGE("Cannot set sw params - Capture");
-         err = -22;
-         goto fail;
-     }
-
-fail:
-     return err;
-}
 
 int64_t MPQAudioPlayer::getAudioTimeStampUs() {
 
@@ -2013,7 +1554,7 @@ status_t MPQAudioPlayer::configurePCM() {
              CHECK(mPCMStream);
              LOGV("getOutputSession-- ");
 
-             if (mAudioFormat != AUDIO_FORMAT_WMA) {
+             if (mAudioFormat != AUDIO_FORMAT_WMA && mAudioFormat != AUDIO_FORMAT_WMA_PRO) {
                  mInputBufferSize = mPCMStream->common.get_buffer_size(&mPCMStream->common);
                  LOGD("mInputBufferSize = %d",mInputBufferSize);
                  bufferAlloc(mInputBufferSize);
@@ -2067,6 +1608,11 @@ status_t MPQAudioPlayer::getDecoderAndFormat() {
         LOGW("Hw Decoder - WMA");
         mAudioFormat = AUDIO_FORMAT_WMA;
         mDecoderType = EHardwareDecoder;
+        sp<MetaData> format = mSource->getFormat();
+        int version = -1;
+        CHECK(format->findInt32(kKeyWMAVersion, &version));
+        if(version==kTypeWMAPro || version==kTypeWMALossLess)
+            mAudioFormat = AUDIO_FORMAT_WMA_PRO;
     }
     /*else if(!strcasecmp(mMimeType.string(), MEDIA_MIMETYPE_AUDIO_DTS)) {
         LOGE("### Hw Decoder - DTS");
@@ -2084,53 +1630,6 @@ status_t MPQAudioPlayer::getDecoderAndFormat() {
        err =  BAD_VALUE;
     }
      return err;
-
-}
-
-status_t MPQAudioPlayer::openAndConfigureCaptureDevice() {
-
-
-        //TODO:set the mixer controls for proxy port
-        //mixer_cntl_set
-        //TODO : Allocate the buffer required for capture side
-
-         status_t err = OK;
-        //TODO : What is the proxy afe device?
-        char *captureDevice = (char *) "hw:0,8";
-        LOGV("pcm_open capture device hardware %s for MPQ Mode ",\
-                captureDevice);
-
-        // Open the capture device
-        if (mNumChannels == 1)
-            mCaptureHandle = (void *)pcm_open((PCM_MMAP | DEBUG_ON | PCM_MONO |
-                    PCM_IN), captureDevice);
-        else
-            mCaptureHandle = (void *)pcm_open((PCM_MMAP | DEBUG_ON | PCM_STEREO |
-                    PCM_IN) , captureDevice);
-        struct pcm * capture_handle = (struct pcm *)mCaptureHandle;
-        if (!capture_handle) {
-            LOGE("Failed to initialize ALSA hardware hw:0,4");
-            return BAD_VALUE;
-        }
-
-        //Set the hardware and software params for the capture device
-        err = setCaptureALSAParams();
-        if(err != OK) {
-            LOGE("Set Capture AALSA Params = %d", err);
-            return err;
-        }
-
-        //MMAP the capture buffer
-        mmap_buffer(capture_handle);
-        //Prepare the capture  device
-        err = pcm_prepare(capture_handle);
-        if(err != OK) {
-            LOGE("PCM Prepare - capture failed err = %d", err);
-            return err;
-        }
-        mCaptureHandle = (void *)capture_handle;
-        return err;
-
 }
 
 status_t MPQAudioPlayer::checkForInfoFormatChanged() {

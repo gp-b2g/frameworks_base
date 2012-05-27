@@ -98,13 +98,6 @@ private:
         EMS11Decoder,
     }mDecoderType;
 
-    enum A2DPState {
-        A2DP_ENABLED = 0,
-	A2DP_DISABLED,
-	A2DP_CONNECT,
-	A2DP_DISCONNECT
-    }mA2DpState;
-
     void clearPowerManager();
 
     class PMDeathRecipient : public IBinder::DeathRecipient {
@@ -133,58 +126,24 @@ private:
     sp<PMDeathRecipient>    mDeathRecipient;
 
     void * mLocalBuf;
-
-    //Structure to recieve the BT notification from the flinger.
-    class AudioFlingerMPQAudioDecodeClient: public IBinder::DeathRecipient, public BnAudioFlingerClient {
-    public:
-        AudioFlingerMPQAudioDecodeClient(void *obj);
-
-        MPQAudioPlayer *pBaseClass;
-        // DeathRecipient
-        virtual void binderDied(const wp<IBinder>& who);
-
-        // IAudioFlingerClient
-
-        // indicate a change in the configuration of an output or input: keeps the cached
-        // values for output/input parameters upto date in client process
-        virtual void ioConfigChanged(int event, int ioHandle, void *param2);
-	//SMANI:: friend required??
-        friend class MPQAudioPlayer;
-    };
-
     //Audio Flinger related variables
     sp<IAudioFlinger> mAudioFlinger;
-    sp<AudioFlingerMPQAudioDecodeClient> mAudioFlingerClient;
-	// SMANI:: friend required???
-    friend class AudioFlingerMPQAudioDecodeClient;
-    Mutex mAudioFlingerLock;
-
 
     //Declare all the threads
     pthread_t mExtractorThread;
-    pthread_t mA2DPThread;
-    pthread_t mA2DPNotificationThread;
 
     //Kill Thread boolean
     bool mKillExtractorThread;
     bool mKillEventThread;
-    bool mKillA2DPThread;
-    bool mKillA2DPNotificationThread;
 
     //Thread alive boolean
     bool mExtractorThreadAlive;
     bool mEventThreadAlive;
-    bool mA2dpThreadAlive;
-    bool mA2dpNotificationThreadAlive;
 
     //Declare the condition Variables and Mutex
     Mutex mExtractorMutex;
-    Mutex mA2dpMutex;
-    Mutex mA2dpNotificationMutex;
 
     Condition mExtractorCv;
-    Condition mA2dpCv;
-    Condition mA2dpNotificationCv;
 
     //global lock for MPQ Audio Player
     Mutex pmLock;
@@ -248,10 +207,6 @@ private:
     bool mAudioSinkOpen;
     bool mIsAudioRouted;
 
-    //A2DP variables
-    bool mA2dpDisconnectPause;
-    volatile bool mIsA2DPEnabled;
-
     bool mIsFirstBuffer;
     status_t mFirstBufferResult;
     MediaBuffer *mFirstBuffer;
@@ -261,8 +216,6 @@ private:
 
     // helper function to obtain AudioFlinger service handle
     void getAudioFlinger();
-
-    void handleA2DPSwitch();
 
     size_t fillBuffer(void *data, size_t size);
 
@@ -279,32 +232,18 @@ private:
     // make sure Decoder thread has exited
     void requestAndWaitForExtractorThreadExit();
 
-    // make sure the A2dp thread also exited
-    void requestAndWaitForA2DPThreadExit();
-
-    // make sure the Effects thread also exited
-    void requestAndWaitForA2DPNotificationThreadExit();
-
     //Thread functions
     static void *extractorThreadWrapper(void *me);
     void extractorThreadEntry();
-    static void *A2DPThreadWrapper(void *me);
-    void A2DPThreadEntry();
-    static void *A2DPNotificationThreadWrapper(void *me);
-    void A2DPNotificationThreadEntry();
 
     void createThreads();
 
-
     status_t setPlaybackALSAParams();
-
-    status_t setCaptureALSAParams();
 
     status_t configurePCM();
     //Get time stamp from driver
     int64_t getAudioTimeStampUs();
 
-    status_t openAndConfigureCaptureDevice();
     status_t getDecoderAndFormat();
 
     status_t seekSoftwareDecoderPlayback();
