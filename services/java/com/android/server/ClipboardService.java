@@ -205,8 +205,14 @@ public class ClipboardService extends IClipboard.Stub {
         try {
             pi = mPm.getPackageInfo(pkg, 0);
             if (pi.applicationInfo.uid != uid) {
-                throw new SecurityException("Calling uid " + uid
-                        + " does not own package " + pkg);
+                //while an activity may running in another application's process
+                //for example:Setting's activity running in phone's process
+                //If we throw this exception , it will cause a force close(when do a paste).
+                //So we comment it.
+                Slog.w("clipboard","Calling uid " + uid
+                          + " does not own package " + pkg);
+                //throw new SecurityException("Calling uid " + uid
+                //        + " does not own package " + pkg);
             }
         } catch (NameNotFoundException e) {
             throw new IllegalArgumentException("Unknown package " + pkg, e);
