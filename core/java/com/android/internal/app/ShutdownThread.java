@@ -51,6 +51,7 @@ import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.ITelephonyMSim;
 import android.util.Log;
 import android.view.WindowManager;
+import android.view.WindowOrientationListener;
 
 import com.qrd.plugin.feature_query.FeatureQuery;
 import java.io.FileInputStream;
@@ -103,7 +104,11 @@ public final class ShutdownThread extends Thread {
 
     private ShutdownThread() {
     }
- 
+
+    private static WindowOrientationListener mWindowOrientationListener;
+    public static void setListener(WindowOrientationListener wol){
+        mWindowOrientationListener = wol;
+    }
     /**
      * Request a clean shutdown, waiting for subsystems to clean up their
      * state etc.  Must be called from a Looper thread in which its UI
@@ -215,6 +220,10 @@ public final class ShutdownThread extends Thread {
         }
 
         if (FeatureQuery.FEATURE_BOOT_ANIMATION){
+            if (mWindowOrientationListener!=null){
+                mWindowOrientationListener.disable();
+                mWindowOrientationListener = null;
+            }
             showShutdownAnimation();
             //playShutdownMusic(MUSIC_SHUTDOWN_FILE);
             String shutDownFile = getShutdownMusicFilePath();
