@@ -39,6 +39,7 @@ import android.provider.Telephony;
 import android.database.Cursor;
 import android.text.TextUtils;
 import android.util.Log;
+import android.net.Uri;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,6 +57,8 @@ import com.android.internal.telephony.TelephonyProperties;
  */
 public final class CdmaDataProfileTracker extends Handler {
     protected final String LOG_TAG = "CDMA";
+
+    static final Uri PREFER_DEFAULT_APN_URI = Uri.parse("content://telephony/carriers/preferapn");
 
     private CDMAPhone mPhone;
     private CdmaSubscriptionSourceManager mCdmaSsm;
@@ -446,12 +449,60 @@ public final class CdmaDataProfileTracker extends Handler {
     public DataProfile getDataProfile(String serviceType) {
         DataProfile profile = null;
 
+        // first try to get preferred APN
+
+        String operator = getOperatorNumeric();
+        String selection = "numeric = '" + operator + "'";
+        // query only enabled nai.
+        // carrier_enabled : 1 means enabled nai, 0 disabled nai.
+        selection += " and carrier_enabled = 1";
+        Cursor cursor = mPhone.getContext().getContentResolver()
+                .query(PREFER_DEFAULT_APN_URI, null, selection, null, null);
+
+        log("getDataProfile operator:" + operator + " select:" + selection
+                + " count:" + cursor.getCount());
+        if (cursor != null && cursor.getCount() > 0) {
+            if (cursor.moveToFirst()) {
+                do {
+                    String[] types = parseTypes(cursor.getString(cursor
+                            .getColumnIndexOrThrow(Telephony.Carriers.TYPE)));
+                    DataProfile nai = new DataProfileCdma(
+                            cursor.getInt(cursor
+                                    .getColumnIndexOrThrow(Telephony.Carriers._ID)),
+                            cursor.getString(cursor
+                                    .getColumnIndexOrThrow(Telephony.Carriers.NUMERIC)),
+                            cursor.getString(cursor
+                                    .getColumnIndexOrThrow(Telephony.Carriers.APN)),
+                            cursor.getString(cursor
+                                    .getColumnIndexOrThrow(Telephony.Carriers.USER)),
+                            cursor.getString(cursor
+                                    .getColumnIndexOrThrow(Telephony.Carriers.PASSWORD)),
+                            cursor.getInt(cursor
+                                    .getColumnIndexOrThrow(Telephony.Carriers.AUTH_TYPE)),
+                            types,
+                            cursor.getString(cursor
+                                    .getColumnIndexOrThrow(Telephony.Carriers.PROTOCOL)),
+                            cursor.getString(cursor
+                                    .getColumnIndexOrThrow(Telephony.Carriers.ROAMING_PROTOCOL)),
+                            cursor.getInt(cursor
+                                    .getColumnIndexOrThrow(Telephony.Carriers.BEARER)));
+                    if (nai.canHandleType(serviceType)) {
+                        cursor.close();
+                        return nai;
+                    }
+                } while (cursor.moveToNext());
+            }
+        }
+
+        if (cursor != null)
+            cursor.close();
+
         // Go through all the profiles to find one
-        for (DataProfile dp: mDataProfilesList) {
+        for (DataProfile dp : mDataProfilesList) {
             if (dp.canHandleType(serviceType)) {
                 profile = dp;
-                if (mIsOmhEnabled &&
-                    dp.getDataProfileType() != DataProfile.DataProfileType.PROFILE_TYPE_OMH) {
+                if (mIsOmhEnabled
+                        && dp.getDataProfileType() != DataProfile.DataProfileType.PROFILE_TYPE_OMH) {
                     // OMH enabled - Keep looking for OMH profile
                     continue;
                 }
