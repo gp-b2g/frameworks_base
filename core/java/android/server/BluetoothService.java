@@ -1404,20 +1404,20 @@ public class BluetoothService extends IBluetooth.Stub {
             pairable = true;
             discoverable = true;
             if (DBG) Log.d(TAG, "BT Discoverable for " + duration + " seconds");
-            long mWakeupTime = SystemClock.elapsedRealtime() + (duration * 1000);
-            if (DBG) Log.d(TAG, "System Wakes up at " + mWakeupTime + " milliseconds");
 
-            if (mAlarmManager != null) {
+            // AlarmManager needs to be set only when timeout is required.
+            // For Never Time Out case duration will be 0.
+            if (duration != 0) {
+                long mWakeupTime = SystemClock.elapsedRealtime() + (duration * 1000);
+                if (DBG) Log.d(TAG, "System Wakes up at " + mWakeupTime + " milliseconds");
+
                 try {
                     mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, mWakeupTime,
                                       mPendingDiscoverableTimeout);
                 } catch (NullPointerException e) {
                     Log.e(TAG, "mAlarmManager Exception with " + e);
+                    Log.e(TAG, "BT Discoverable timeout may or maynot occur");
                 }
-            }
-            else {
-                Log.e(TAG, "Not able to get the AlarmManager Service");
-                Log.e(TAG, "BT Discoverable timeout may or maynot occur");
             }
             break;
         default:
