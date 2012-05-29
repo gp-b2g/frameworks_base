@@ -1075,10 +1075,18 @@ public class LockPatternUtils {
      */
     public boolean resumeCall() {
         try {
-            ITelephonyMSim phone = ITelephonyMSim.Stub.asInterface(ServiceManager
-                    .checkService(Context.MSIM_TELEPHONY_SERVICE));
-            if (phone != null && phone.showCallScreen()) {
-                return true;
+            if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                ITelephonyMSim phone = ITelephonyMSim.Stub.asInterface(ServiceManager
+                        .checkService(Context.MSIM_TELEPHONY_SERVICE));
+                if (phone != null && phone.showCallScreen()) {
+                    return true;
+                }
+            } else {
+                ITelephony phone = ITelephony.Stub
+                        .asInterface(ServiceManager.checkService("phone"));
+                if (phone != null && phone.showCallScreen()) {
+                    return true;
+                }
             }
         } catch (RemoteException e) {
             Log.w(TAG, "phone.showCallScreen() failed", e);
@@ -1088,18 +1096,22 @@ public class LockPatternUtils {
 
     public boolean phoneIsInUse() {
         boolean phoneInUse = false;
-        int phoneCount = TelephonyManager.getDefault().getPhoneCount();
-        try {
-            ITelephonyMSim phone = ITelephonyMSim.Stub.asInterface(ServiceManager
-                    .checkService(Context.MSIM_TELEPHONY_SERVICE));
-            if (phone != null)
-                for (int i = 0; i < phoneCount; i++) {
-                    phoneInUse = !phone.isIdle(i);
-                    if (phoneInUse)
-                        break;
-                }
-        } catch (RemoteException e) {
-            Log.w(TAG, "phone.isIdle() failed", e);
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            int phoneCount = TelephonyManager.getDefault().getPhoneCount();
+            try {
+                ITelephonyMSim phone = ITelephonyMSim.Stub.asInterface(ServiceManager
+                        .checkService(Context.MSIM_TELEPHONY_SERVICE));
+                if (phone != null)
+                    for (int i = 0; i < phoneCount; i++) {
+                        phoneInUse = !phone.isIdle(i);
+                        if (phoneInUse)
+                            break;
+                    }
+            } catch (RemoteException e) {
+                Log.w(TAG, "phone.isIdle() failed", e);
+            }
+        } else {
+            phoneInUse = TelephonyManager.getDefault().getCallState() == TelephonyManager.CALL_STATE_OFFHOOK;
         }
         return phoneInUse;
     }
