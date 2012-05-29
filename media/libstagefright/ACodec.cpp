@@ -365,6 +365,7 @@ struct ACodec::FlushingOutputState : public ACodec::BaseState {
     FlushingOutputState(ACodec *codec);
 
 protected:
+    virtual PortMode getPortMode(OMX_U32 portIndex);
     virtual bool onMessageReceived(const sp<AMessage> &msg);
     virtual void stateEntered();
 
@@ -2878,6 +2879,14 @@ void ACodec::FlushingState::changeStateIfWeOwnAllBuffers() {
 
 ACodec::FlushingOutputState::FlushingOutputState(ACodec *codec)
     : BaseState(codec) {
+}
+
+ACodec::BaseState::PortMode ACodec::FlushingOutputState::getPortMode(OMX_U32 portIndex) {
+    if (portIndex == kPortIndexOutput)
+    {
+        return KEEP_BUFFERS;
+    }
+    return RESUBMIT_BUFFERS;
 }
 
 void ACodec::FlushingOutputState::stateEntered() {
