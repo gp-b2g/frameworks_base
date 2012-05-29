@@ -50,6 +50,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.animation.Interpolator;
 import android.widget.ImageView;
+import android.os.SystemProperties;
 
 import com.android.systemui.R;
 
@@ -423,8 +424,12 @@ class GlobalScreenshot {
             public void run() {
                 // Play the shutter sound to notify that we've taken a screenshot
                 mCameraSound.playSound(CameraSound.SHUTTER_CLICK);
-
-                mScreenshotView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+                // get hwui.render_dirty_regions property and decide type of layer
+                String dirtyProperty = SystemProperties.get("hwui.render_dirty_regions", "true");
+                if ("false".equalsIgnoreCase(dirtyProperty))
+                   mScreenshotView.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+                else
+                   mScreenshotView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
                 mScreenshotView.buildLayer();
                 mScreenshotAnimation.start();
             }
