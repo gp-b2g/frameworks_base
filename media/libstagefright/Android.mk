@@ -133,6 +133,7 @@ LOCAL_STATIC_LIBRARIES := \
         libstagefright_m4vh263enc \
         libstagefright_matroska \
         libstagefright_timedtext \
+        libstagefright_postproc \
         libvpx \
         libstagefright_mpeg2ts \
         libstagefright_httplive \

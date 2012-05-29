@@ -1986,7 +1986,7 @@ status_t OMXCodec::setVideoOutputFormat(
         } else
         format.nIndex = 0;
 
-        CODEC_LOGV("Video O/P format.nIndex 0x%x",format.nIndex);
+        CODEC_LOGV("Video O/P format.nIndex 0x%x",(int)format.nIndex);
         CODEC_LOGE("Video O/P format.eColorFormat 0x%x",format.eColorFormat);
 
         status_t err = mOMX->getParameter(
@@ -2507,6 +2507,10 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
 
     format ^= (mInterlaceFormatDetected ? HAL_PIXEL_FORMAT_INTERLACE : 0);
 
+    if (mInterlaceFormatDetected) {
+        mOutputFormat->setInt32(kKeyInterlaced, HAL_PIXEL_FORMAT_INTERLACE);
+    }
+
     err = native_window_set_buffers_geometry(
             mNativeWindow.get(),
             def.format.video.nStride,
@@ -2640,7 +2644,29 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
                 LOGE("Native Buffer handle is NULL");
                 break;
         }
-        CHECK_EQ(def.nBufferSize, handle->size); //otherwise it might cause memory corruption issues. It may fail because of alignment or extradata.
+
+        if ((int)def.nBufferSize < handle->size)
+        {
+            CODEC_LOGV("The size of buffer is bigger than expected, notify component. Expected size : %d, size we got: %d\n", (int)def.nBufferSize, handle->size);
+            InitOMXParams(&def);
+            def.nPortIndex = kPortIndexOutput;
+            err = mOMX->getParameter(
+                mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+            if (err != OK) {
+                CODEC_LOGE("Get paramater failed while setting new size\n");
+                return err;
+            }
+            def.nBufferSize = handle->size;
+            err = mOMX->setParameter(
+                mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+            if (err != OK) {
+                CODEC_LOGE("Set parameter failed while setting new size\n");
+                return err;
+            }
+        } else if ((int)def.nBufferSize > handle->size) { //otherwise it might cause memory corruption issues. It may fail because of alignment or extradata.
+            CODEC_LOGE("The size of buffer is less than expected, expected size : %d, size we got: %d\n", (int)def.nBufferSize, handle->size);
+            CHECK(0);
+        }
 
         sp<GraphicBuffer> graphicBuffer(new GraphicBuffer(buf, false));
         BufferInfo info;
@@ -5255,7 +5281,6 @@ status_t OMXCodec::read(
 
     if (mOutputPortSettingsHaveChanged) {
         mOutputPortSettingsHaveChanged = false;
-
         return INFO_FORMAT_CHANGED;
     }
 
@@ -6211,8 +6236,8 @@ status_t OMXCodec::processPARData() {
         if (extradata.aspectRatio.aspectRatioX !=0 &&
            extradata.aspectRatio.aspectRatioY != 0) {
             CODEC_LOGV(" aspectRatioX = %d aspectRatioY = %d",
-                       extradata.aspectRatio.aspectRatioX,
-                       extradata.aspectRatio.aspectRatioY);
+                       (int)extradata.aspectRatio.aspectRatioX,
+                       (int)extradata.aspectRatio.aspectRatioY);
 
             if (mNativeWindow.get() == NULL ||
                 mNativeWindow.get()->perform == NULL) {
