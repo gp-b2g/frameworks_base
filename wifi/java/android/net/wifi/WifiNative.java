@@ -49,7 +49,6 @@ public class WifiNative {
     static final int BLUETOOTH_COEXISTENCE_MODE_ENABLED = 0;
     static final int BLUETOOTH_COEXISTENCE_MODE_DISABLED = 1;
     static final int BLUETOOTH_COEXISTENCE_MODE_SENSE = 2;
-    private static final String TAG = "WifiNative";
 
     public native static String getErrorString(int errorCode);
 
@@ -415,5 +414,9 @@ public class WifiNative {
         else
             return doStringCommand("P2P_CONNECT " + deviceAddress + " " + pin + " keypad");
     }
+
+   public static String pinFromPeerDevice(String deviceAddress) {
+          return doStringCommand("P2P_PROV_DISC " + deviceAddress + " display" + " auto");
+   }
 
 }

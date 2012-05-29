@@ -42,10 +42,10 @@ public class WifiP2pDevice implements Parcelable {
     public String deviceAddress;
 
     /**
-     * PD Status incase of P2P-PROV-DISC-FAILURE
+     * pin as part of P2P-PROV-DISC-SHOW-PIN event
      * @hide
      */
-    public int discStatus;
+    public String pinShown;
 
     /**
      * interfaceAddress
@@ -101,6 +101,12 @@ public class WifiP2pDevice implements Parcelable {
      * @hide
      */
     public int wpsConfigMethodsSupported;
+
+    /**
+     * peer GO info in PD response
+     * @hide
+     */
+    public int peer_go;
 
     /**
      * Device capability
@@ -215,20 +221,40 @@ public class WifiP2pDevice implements Parcelable {
                    deviceAddress = nameValue[1];
                    continue;
                  }
-                if (nameValue[0].equals("status")) {
-                   discStatus = Integer.parseInt(nameValue[1]);
-                   continue;
-                }
-           }
-       }
-
-        /** Look for WFD information in device information string */
-        wfdInfo = new WfdInfo(string);
-        if(wfdInfo.isWFDDevice() != true) {
-            wfdInfo = null;
+            }
         }
-    }
 
+        if (tokens[0].startsWith("P2P-PROV-DISC-ENTER-PIN")) {
+            deviceAddress = tokens[1];
+            for (String token : tokens) {
+                String[] nameValue = token.split("=");
+                if (nameValue.length != 2) continue;
+                if (nameValue[0].equals("peer_go")) {
+                    peer_go = Integer.parseInt(nameValue[1]);
+                     continue;
+                }
+            }
+        }
+
+        if (tokens[0].startsWith("P2P-PROV-DISC-SHOW-PIN")) {
+            deviceAddress = tokens[1];
+            pinShown = tokens[2];
+            for (String token : tokens) {
+                String[] nameValue = token.split("=");
+                if (nameValue.length != 2) continue;
+                if (nameValue[0].equals("peer_go")) {
+                    peer_go = Integer.parseInt(nameValue[1]);
+                    continue;
+                 }
+             }
+         }
+
+         /** Look for WFD information in device information string */
+         wfdInfo = new WfdInfo(string);
+         if(wfdInfo.isWFDDevice() != true) {
+             wfdInfo = null;
+         }
+    }
     /** Returns true if WPS push button configuration is supported */
     public boolean wpsPbcSupported() {
         return (wpsConfigMethodsSupported & WPS_CONFIG_PUSHBUTTON) != 0;

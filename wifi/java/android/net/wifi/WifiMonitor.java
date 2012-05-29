@@ -519,8 +519,11 @@ public class WifiMonitor {
                 }
                 mStateMachine.sendMessage(P2P_PROV_DISC_ENTER_PIN_EVENT, wifiP2pDevice);
 
+            } else if (dataString.startsWith(P2P_PROV_DISC_SHOW_PIN_STR)) {
+                mStateMachine.sendMessage(P2P_PROV_DISC_SHOW_PIN_EVENT,
+                        new WifiP2pDevice(dataString));
             } else if (dataString.startsWith(P2P_PROV_DISC_FAILURE_STR)) {
-                  mStateMachine.sendMessage(P2P_PROV_DISC_FAILURE_EVENT,
+                mStateMachine.sendMessage(P2P_PROV_DISC_FAILURE_EVENT,
                         new WifiP2pDevice(dataString));
             }
         }
