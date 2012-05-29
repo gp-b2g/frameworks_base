@@ -7727,7 +7727,7 @@ public class PackageManagerService extends IPackageManager.Stub {
         // Read the compatibilty setting when the system is ready.
         boolean compatibilityModeEnabled = android.provider.Settings.System.getInt(
                 mContext.getContentResolver(),
-                android.provider.Settings.System.COMPATIBILITY_MODE, 1) == 1;
+                android.provider.Settings.System.COMPATIBILITY_MODE, 0) == 1;
         PackageParser.setCompatibilityModeEnabled(compatibilityModeEnabled);
         if (DEBUG_SETTINGS) {
             Log.d(TAG, "compatibility mode:" + compatibilityModeEnabled);
