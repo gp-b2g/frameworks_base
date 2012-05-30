@@ -3455,4 +3455,6 @@
     <string name="China_Mobile">China Mobile</string>
     <string name="China_Unicom">China Unicom</string>
     <string name="China_Telecom">China Telecom</string>
+
+    <string name="transport_destination">Backing up to debug-only private cache</string>
 </resources>

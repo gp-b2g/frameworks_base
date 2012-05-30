@@ -30,13 +30,13 @@ import android.os.RemoteException;
 import android.util.Log;
 
 import com.android.org.bouncycastle.util.encoders.Base64;
-
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import com.android.internal.R;
 
 /**
  * Backup transport for stashing stuff into a known location on disk, and
@@ -50,8 +50,8 @@ public class LocalTransport extends IBackupTransport.Stub {
     private static final String TRANSPORT_DIR_NAME
             = "com.android.internal.backup.LocalTransport";
 
-    private static final String TRANSPORT_DESTINATION_STRING
-            = "Backing up to debug-only private cache";
+    private static final int TRANSPORT_DESTINATION_STRING
+            = R.string.transport_destination;
 
     // The single hardcoded restore set always has the same (nonzero!) token
     private static final long RESTORE_TOKEN = 1;
@@ -72,7 +72,7 @@ public class LocalTransport extends IBackupTransport.Stub {
     }
 
     public String currentDestinationString() {
-        return TRANSPORT_DESTINATION_STRING;
+        return mContext.getResources().getString(TRANSPORT_DESTINATION_STRING);
     }
 
     public String transportDirName() {
