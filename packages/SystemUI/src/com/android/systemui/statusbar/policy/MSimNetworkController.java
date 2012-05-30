@@ -856,7 +856,7 @@ public class MSimNetworkController extends NetworkController {
                 mMSimcombinedSignalIconId[subscription] = mMSimDataSignalIconId[subscription];
                 mMSimContentDescriptionCombinedSignal[subscription] =
                         mMSimContentDescriptionDataType[subscription];
-            } else if (mDataServiceState[subscription] == ServiceState.STATE_OUT_OF_SERVICE) {
+            } else {
                 mMSimcombinedActivityIconId[subscription] = mMSimMobileActivityIconId[subscription] = 0;
             }
         }
@@ -994,7 +994,7 @@ public class MSimNetworkController extends NetworkController {
         }
 
         if (mMSimLastPhoneSignalIconId[subscription] != mMSimPhoneSignalIconId[subscription]
-         || mLastDataDirectionOverlayIconId != mMSimcombinedActivityIconId[subscription]
+         || mMSimLastDataDirectionIconId[subscription] != mMSimcombinedActivityIconId[subscription]
          || mLastWifiIconId                 != mWifiIconId
          || mMSimLastDataTypeIconId[subscription] != mMSimDataTypeIconId[subscription]
          || mMSimLastSimIconId[subscription] != mNoMSimIconId[subscription])
