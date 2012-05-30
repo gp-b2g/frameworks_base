@@ -312,6 +312,25 @@ public final class ShutdownThread extends Thread {
             SystemProperties.set(SHUTDOWN_ACTION_PROPERTY, reason);
         }
 
+        Log.i(TAG, "wait for shutdown music");
+        final long endTimeForMusic = SystemClock.elapsedRealtime() + MAX_BROADCAST_TIME;
+        synchronized (mActionDoneSync) {
+            while (isShutdownMusicPlaying) {
+                long delay = endTimeForMusic - SystemClock.elapsedRealtime();
+                if (delay <= 0) {
+                    Log.w(TAG, "play shutdown music timeout!");
+                    break;
+                }
+                try {
+                    mActionDoneSync.wait(delay);
+                } catch (InterruptedException e) {
+                }
+            }
+            if (!isShutdownMusicPlaying) {
+                Log.i(TAG, "play shutdown music complete.");
+            }
+        }
+
         Log.i(TAG, "Sending shutdown broadcast...");
         
         // First send the high-level shut down broadcast.
@@ -342,25 +361,6 @@ public final class ShutdownThread extends Thread {
             try {
                 am.shutdown(MAX_BROADCAST_TIME);
             } catch (RemoteException e) {
-            }
-        }
-        
-        Log.i(TAG, "wait for shutdown music");
-        final long endTimeForMusic = SystemClock.elapsedRealtime() + MAX_BROADCAST_TIME;
-        synchronized (mActionDoneSync) {
-            while (isShutdownMusicPlaying) {
-                long delay = endTimeForMusic - SystemClock.elapsedRealtime();
-                if (delay <= 0) {
-                    Log.w(TAG, "play shutdown music timeout!");
-                    break;
-                }
-                try {
-                    mActionDoneSync.wait(delay);
-                } catch (InterruptedException e) {
-                }
-            }
-            if (!isShutdownMusicPlaying) {
-                Log.i(TAG, "play shutdown music complete.");
             }
         }
 
