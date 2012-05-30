@@ -23,6 +23,7 @@ import android.os.SystemProperties;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.ISms;
+import com.android.internal.telephony.ISmsMSim;
 import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.SmsRawData;
 import com.android.internal.telephony.TelephonyProperties;
@@ -45,6 +46,7 @@ import java.util.List;
 public final class SmsManager {
     /** Singleton object constructed during class initialization. */
     private static final SmsManager sInstance = new SmsManager();
+    private final int DEFAULT_SUB = 0;
 
     /** @hide */
     protected static boolean isMultiSimEnabled
@@ -79,6 +81,41 @@ public final class SmsManager {
     public void sendTextMessage(
             String destinationAddress, String scAddress, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        sendTextMessage(destinationAddress, scAddress, text, sentIntent,
+                deliveryIntent, getPreferredSmsSubscription());
+    }
+
+    /**
+     * Send a text based SMS.
+     *
+     * @param destinationAddress the address to send the message to
+     * @param scAddress is the service center address or null to use
+     *  the current default SMSC
+     * @param text the body of the message to send
+     * @param sentIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is successfully sent, or failed.
+     *  The result code will be <code>Activity.RESULT_OK</code> for success,
+     *  or one of these errors:<br>
+     *  <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
+     *  <code>RESULT_ERROR_RADIO_OFF</code><br>
+     *  <code>RESULT_ERROR_NULL_PDU</code><br>
+     *  For <code>RESULT_ERROR_GENERIC_FAILURE</code> the sentIntent may include
+     *  the extra "errorCode" containing a radio technology specific value,
+     *  generally only useful for troubleshooting.<br>
+     *  The per-application based SMS control checks sentIntent. If sentIntent
+     *  is NULL the caller will be checked against all unknown applications,
+     *  which cause smaller number of SMS to be sent in checking period.
+     * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is delivered to the recipient.  The
+     *  raw pdu of the status report is in the extended data ("pdu").
+     *
+     * @throws IllegalArgumentException if destinationAddress or text are empty
+     *
+     * { @hide }
+     */
+    public void sendTextMessage(
+            String destinationAddress, String scAddress, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int subscription) {
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -88,9 +125,10 @@ public final class SmsManager {
         }
 
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            ISmsMSim iccISms = ISmsMSim.Stub.asInterface(ServiceManager.getService("isms_msim"));
             if (iccISms != null) {
-                iccISms.sendText(destinationAddress, scAddress, text, sentIntent, deliveryIntent);
+                iccISms.sendText(destinationAddress, scAddress, text, sentIntent,
+                        deliveryIntent, subscription);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -112,6 +150,31 @@ public final class SmsManager {
             throw new IllegalArgumentException("text is null");
         }
         return SmsMessage.fragmentText(text);
+    }
+
+    public void sendMultipartTextMessage(
+            String destinationAddress, String scAddress, ArrayList<String> parts,
+            ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
+        sendMultipartTextMessage(destinationAddress, scAddress, parts, sentIntents,
+                deliveryIntents, getPreferredSmsSubscription());
+    }
+
+    /**
+     * Get the prefered sms subscription
+     *
+     * @return the prefered subscription
+     * @hide
+     */
+    public int getPreferredSmsSubscription() {
+        ISmsMSim iccISms = null;
+        try {
+            iccISms = ISmsMSim.Stub.asInterface(ServiceManager.getService("isms_msim"));
+            return iccISms.getPreferredSmsSubscription();
+        } catch (RemoteException ex) {
+            return DEFAULT_SUB;
+        } catch (NullPointerException ex) {
+            return DEFAULT_SUB;
+        }
     }
 
     /**
@@ -145,10 +208,13 @@ public final class SmsManager {
      *   extended data ("pdu").
      *
      * @throws IllegalArgumentException if destinationAddress or data are empty
+     *
+     * { @hide }
      */
     public void sendMultipartTextMessage(
             String destinationAddress, String scAddress, ArrayList<String> parts,
-            ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
+            ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents,
+            int subscription) {
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -158,10 +224,10 @@ public final class SmsManager {
 
         if (parts.size() > 1) {
             try {
-                ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+                ISmsMSim iccISms = ISmsMSim.Stub.asInterface(ServiceManager.getService("isms_msim"));
                 if (iccISms != null) {
                     iccISms.sendMultipartText(destinationAddress, scAddress, parts,
-                            sentIntents, deliveryIntents);
+                            sentIntents, deliveryIntents, subscription);
                 }
             } catch (RemoteException ex) {
                 // ignore it
@@ -176,7 +242,7 @@ public final class SmsManager {
                 deliveryIntent = deliveryIntents.get(0);
             }
             sendTextMessage(destinationAddress, scAddress, parts.get(0),
-                    sentIntent, deliveryIntent);
+                    sentIntent, deliveryIntent, subscription);
         }
     }
 
