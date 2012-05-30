@@ -86,6 +86,7 @@ public class UsbDeviceManager {
     private static final int MSG_SET_CURRENT_FUNCTION = 2;
     private static final int MSG_SYSTEM_READY = 3;
     private static final int MSG_BOOT_COMPLETED = 4;
+    private static final int MSG_UPDATE_NOTIFICATION = 5;
 
     // Delay for debouncing USB disconnects.
     // We often get rapid connect/disconnect events when enabling USB functions,
@@ -135,6 +136,20 @@ public class UsbDeviceManager {
             } else if ("START".equals(accessory)) {
                 if (DEBUG) Slog.d(TAG, "got accessory start");
                 setCurrentFunction(UsbManager.USB_FUNCTION_ACCESSORY, false);
+            }
+        }
+    };
+
+    /*
+     * Listens for system language changed from settings
+     */
+    private BroadcastReceiver mLocaleReceiver = new BroadcastReceiver(){
+        static final String INTENAL_LOCAL_ACTION = Intent.ACTION_LOCALE_CHANGED;
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(INTENAL_LOCAL_ACTION)) {
+                mHandler.sendEmptyMessage(MSG_UPDATE_NOTIFICATION);
             }
         }
     };
@@ -310,6 +325,7 @@ public class UsbDeviceManager {
 
                 mContext.registerReceiver(mBootCompletedReceiver,
                         new IntentFilter(Intent.ACTION_BOOT_COMPLETED));
+                mContext.registerReceiver(mLocaleReceiver, new IntentFilter(Intent.ACTION_LOCALE_CHANGED));
             } catch (Exception e) {
                 Slog.e(TAG, "Error initializing UsbHandler", e);
             }
@@ -426,9 +442,13 @@ public class UsbDeviceManager {
                         mCurrentFunctions = functions;
                         mDefaultFunctions = functions;
                     } else {
-                        Slog.e(TAG, "Failed to switch persistent USB config to " + functions);
+                        Slog.e(TAG, "Failed to switch to persistent USB config " + functions + "So to the default " + mDefaultFunctions);
                         // revert to previous configuration if we fail
                         SystemProperties.set("persist.sys.usb.config", mDefaultFunctions);
+                        if (!waitForState(mDefaultFunctions)) {
+                            Slog.e(TAG,"Failed to switch to default Fcuntion(" + mDefaultFunctions + ")" );
+                        }
+                        mCurrentFunctions = mDefaultFunctions;
                     }
                 }
             } else {
@@ -549,6 +569,13 @@ public class UsbDeviceManager {
                     if (mCurrentAccessory != null) {
                         mSettingsManager.accessoryAttached(mCurrentAccessory);
                     }
+                    break;
+                case MSG_UPDATE_NOTIFICATION:
+                    //reload adb&Usb notification when system language changed
+                    mAdbNotificationShown = false;
+                    mUsbNotificationId = 0;
+                    updateUsbNotification();
+                    updateAdbNotification();
                     break;
             }
         }
