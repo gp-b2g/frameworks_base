@@ -34,6 +34,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnCompletionListener;
 import android.os.Handler;
 import android.os.Power;
 import android.os.PowerManager;
@@ -101,6 +102,7 @@ public final class ShutdownThread extends Thread {
     private static final String SYSTEM_ENCRYPTED_BOOTANIMATION_FILE = "/system/media/shutdownanimation-encrypted.zip";
 
     private static final String MUSIC_SHUTDOWN_FILE = "/system/media/shutdown.wav";
+    private boolean isShutdownMusicPlaying = false;
 
     private ShutdownThread() {
     }
@@ -228,7 +230,7 @@ public final class ShutdownThread extends Thread {
             //playShutdownMusic(MUSIC_SHUTDOWN_FILE);
             String shutDownFile = getShutdownMusicFilePath();
             if (shutDownFile != null && !isSilentMode())
-                playShutdownMusic(shutDownFile);            
+                sInstance.playShutdownMusic(shutDownFile);
         }
 
         // throw up an indeterminate system dialog to indicate radio is
@@ -343,6 +345,25 @@ public final class ShutdownThread extends Thread {
             }
         }
         
+        Log.i(TAG, "wait for shutdown music");
+        final long endTimeForMusic = SystemClock.elapsedRealtime() + MAX_BROADCAST_TIME;
+        synchronized (mActionDoneSync) {
+            while (isShutdownMusicPlaying) {
+                long delay = endTimeForMusic - SystemClock.elapsedRealtime();
+                if (delay <= 0) {
+                    Log.w(TAG, "play shutdown music timeout!");
+                    break;
+                }
+                try {
+                    mActionDoneSync.wait(delay);
+                } catch (InterruptedException e) {
+                }
+            }
+            if (!isShutdownMusicPlaying) {
+                Log.i(TAG, "play shutdown music complete.");
+            }
+        }
+
         final ITelephony phone =
                 ITelephony.Stub.asInterface(ServiceManager.checkService("phone"));
         final IBluetooth bluetooth =
@@ -563,7 +584,7 @@ public final class ShutdownThread extends Thread {
         SystemProperties.set("ctl.start", "bootanim");
     }
 
-    private static void playShutdownMusic(String path) {
+    private void playShutdownMusic(String path) {
         MediaPlayer mediaPlayer = new MediaPlayer();
         try
         {
@@ -571,6 +592,16 @@ public final class ShutdownThread extends Thread {
             mediaPlayer.setDataSource(path);
             mediaPlayer.prepare();
             mediaPlayer.start();
+            isShutdownMusicPlaying = true;
+            mediaPlayer.setOnCompletionListener(new OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    synchronized (mActionDoneSync) {
+                        isShutdownMusicPlaying = false;
+                        mActionDoneSync.notifyAll();
+                    }
+                }
+            });
         } catch (IOException e) {
             Log.d(TAG, "play shutdown music error:" + e);
         }
