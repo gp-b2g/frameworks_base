@@ -206,7 +206,7 @@ public final class CdmaImsCallTracker extends CallTracker {
         for (int i = 0, s = connCopy.size() ; i < s ; i++) {
             ConnectionBase conn = (ConnectionBase)connCopy.get(i);
 
-            conn.fakeHoldBeforeDial();
+            conn.fakeHoldBeforeDialIms();
         }
     }
 
@@ -312,6 +312,7 @@ public final class CdmaImsCallTracker extends CallTracker {
     dial(String dialString, int clirMode, CallDetails callDetails)throws CallStateException
     {
         PhoneBase dialPhone;
+        boolean isDialRequestPending = false;
         String inEcm = SystemProperties.get(TelephonyProperties.PROPERTY_INECM_MODE, "false");
         boolean isPhoneInEcmMode = inEcm.equals("true");
         boolean isEmergencyCall =
@@ -359,10 +360,18 @@ public final class CdmaImsCallTracker extends CallTracker {
         // That call must be idle, so place anything that's
         // there on hold
 
-        if (foregroundCall.getState() == Call.State.ACTIVE) {
+        if (foregroundCall.getState() == Call.State.ACTIVE
+                && (dialPhone != imsPhone)) {
             //This is a cdma 1x Conference calling/3way
-            //Conference calling/3way not supported for HD
             return dialThreeWay(dialString, phone);
+        } else if ((foregroundCall.getState() == Call.State.ACTIVE)
+                && (dialPhone == imsPhone)) {
+
+           Log.d(LOG_TAG, "2nd IMS call dial, start holding 1st");
+            switchWaitingOrHoldingAndActiveIms();
+            fakeHoldForegroundBeforeDial();
+            isDialRequestPending = true;
+
         }
 
         pendingMO = new ConnectionBase(phone.getContext(), dialString, (CallTracker) this,
@@ -378,19 +387,24 @@ public final class CdmaImsCallTracker extends CallTracker {
             // and will mark it as dropped.
             pollCallsWhenSafe();
         } else {
-            // Always unmute when initiating a new call
-            setMute(false);
+            if(isDialRequestPending == false) {
+                // Always unmute when initiating a new call
+                setMute(false);
+            }
 
             // Check data call
             disableDataCallInEmergencyCall(dialString);
 
             // In Ecm mode, if another emergency call is dialed, Ecm mode will
             // not exit.
-            if (!isPhoneInEcmMode || (isPhoneInEcmMode && isEmergencyCall)) {
+            if ((!isPhoneInEcmMode || (isPhoneInEcmMode && isEmergencyCall))
+                && (isDialRequestPending == false)) {
                 cm.dial(pendingMO.address, clirMode, null, callDetails, obtainCompleteMessage());
             } else {
-                phone.exitEmergencyCallbackMode();
-                phone.setOnEcbModeExitResponse(this, EVENT_EXIT_ECM_RESPONSE_CDMA, null);
+                if (dialPhone != imsPhone) {
+                    dialPhone.exitEmergencyCallbackMode();
+                    dialPhone.setOnEcbModeExitResponse(this, EVENT_EXIT_ECM_RESPONSE_CDMA, null);
+                }
                 pendingCallClirMode = clirMode;
                 pendingCallInEcm = true;
             }
@@ -1289,7 +1303,7 @@ public final class CdmaImsCallTracker extends CallTracker {
                                 "Exception during IMS call switching");
                         //phone.notifySuppServiceFailed(getFailedService(msg.what));
                     } else {
-                        if (ar.userObj != null) {
+                        if (pendingMO != null) {
                             dialPendingCall();
                         }
                     }
@@ -1378,6 +1392,7 @@ public final class CdmaImsCallTracker extends CallTracker {
     }
 
     void dialPendingCall() {
+        Log.d(LOG_TAG, "dialPendingCall: enter");
         if (pendingMO.address == null || pendingMO.address.length() == 0
             || pendingMO.address.indexOf(PhoneNumberUtils.WILD) >= 0) {
             // Phone number is invalid
@@ -1387,6 +1402,7 @@ public final class CdmaImsCallTracker extends CallTracker {
             // and will mark it as dropped.
             pollCallsWhenSafe();
         } else {
+            Log.d(LOG_TAG, "dialPendingCall: dialing...");
             // Always unmute when initiating a new call
             setMute(false);
             // uusinfo is null as it is not applicable to cdma

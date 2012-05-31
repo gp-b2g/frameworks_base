@@ -723,6 +723,18 @@ public class ConnectionBase extends Connection {
         onStartedHolding();
     }
 
+    public void
+    fakeHoldBeforeDialIms() {
+        if (parent != null) {
+            parent.detach(this);
+        }
+
+        parent = owner.backgroundCallIms;
+        parent.attachFake(this, Call.State.HOLDING);
+
+        onStartedHolding();
+    }
+
     public int
     getCDMAIndex() throws CallStateException {
         if (index >= 0) {

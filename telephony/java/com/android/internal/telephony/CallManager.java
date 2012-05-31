@@ -823,7 +823,43 @@ public final class CallManager {
      */
     public Connection dial(Phone phone, String dialString, CallDetails callDetails)
             throws CallStateException {
-        return phone.dial(dialString, callDetails);
+
+        Phone basePhone = getPhoneBase(phone);
+        Connection result;
+
+        if (VDBG) {
+            Log.d(LOG_TAG, " dial(" + basePhone + ", "+ dialString + ")");
+            Log.d(LOG_TAG, this.toString());
+        }
+
+        if (hasActiveFgCall()) {
+            Phone activePhone = getActiveFgCall().getPhone();
+            boolean hasBgCall = !(activePhone.getBackgroundCall().isIdle());
+
+            if (DBG) {
+                Log.d(LOG_TAG, "hasBgCall: "+ hasBgCall + " sameChannel:"
+                        +(activePhone == basePhone));
+            }
+
+            if (activePhone != basePhone) {
+                if (hasBgCall) {
+                    Log.d(LOG_TAG, "Hangup");
+                    getActiveFgCall().hangup();
+                } else {
+                    Log.d(LOG_TAG, "Switch");
+                    activePhone.switchHoldingAndActive();
+                }
+            }
+        }
+
+        result = basePhone.dial(dialString, callDetails);
+
+        if (VDBG) {
+            Log.d(LOG_TAG, "End dial(" + basePhone + ", "+ dialString + ")");
+            Log.d(LOG_TAG, this.toString());
+        }
+
+        return result;
     }
 
     /**
