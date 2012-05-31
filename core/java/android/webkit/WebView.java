@@ -372,6 +372,8 @@ public class WebView extends AbsoluteLayout
     private final Rect mViewRectViewport = new Rect();
     private final RectF mVisibleContentRect = new RectF();
     private boolean mGLViewportEmpty = false;
+    private boolean mInPageLoadWindow = false;
+    private boolean mIsMultitabManagementOn = false;
 
     /**
      *  Transportation object for returning WebView across thread boundaries.
@@ -1125,6 +1127,11 @@ public class WebView extends AbsoluteLayout
             setupBrowserMgmtPlugin(context);
         }
 
+        mIsMultitabManagementOn =
+             android.os.SystemProperties.getBoolean("browser.multitab.management", true);
+        if (DebugFlags.WEB_VIEW) {
+            Log.d(LOGTAG,"MultitabManagement sys prop is "+ mIsMultitabManagementOn);
+        }
         mAutoFillData = new WebViewCore.AutoFillData();
     }
 
@@ -3362,6 +3369,9 @@ public class WebView extends AbsoluteLayout
             }
 
             cancelSelectDialog();
+            if ((mIsMultitabManagementOn) && !(mInPageLoadWindow)) {
+                WebViewCore.pauseUpdatePicture(mWebViewCore);
+            }
         }
     }
 
@@ -3392,6 +3402,9 @@ public class WebView extends AbsoluteLayout
             mWebViewCore.sendMessage(EventHub.ON_RESUME);
             if (mNativeClass != 0) {
                 nativeSetPauseDrawing(mNativeClass, false);
+            }
+            if (mIsMultitabManagementOn) {
+                WebViewCore.resumeUpdatePicture(mWebViewCore);
             }
         }
     }
@@ -3831,6 +3844,9 @@ public class WebView extends AbsoluteLayout
             }
             mFirstPaint = true;
         }
+        if (mIsMultitabManagementOn) {
+            mInPageLoadWindow = true;
+        }
     }
 
     /**
@@ -3859,6 +3875,9 @@ public class WebView extends AbsoluteLayout
             } catch (Throwable e) {
                 Log.e(LOGTAG, "method not found: PageLoadFinished " + e);
             }
+        }
+        if (mIsMultitabManagementOn) {
+            mInPageLoadWindow = false;
         }
     }
 
