@@ -638,7 +638,8 @@ public class SettingsProvider extends ContentProvider {
             if (c != null && c.moveToNext()) {
                 String value = c.getString(0);
                 if (value == null
-                        || String.valueOf(AudioManager.RINGER_MODE_NORMAL).equals(value)) {
+                        || String.valueOf(AudioManager.RINGER_MODE_NORMAL).equals(value)
+                        || String.valueOf(AudioManager.RINGER_MODE_VIBRATE).equals(value)) {
                     SystemProperties.set(KEY_SILENT_MODE, "0");
                 } else {
                     SystemProperties.set(KEY_SILENT_MODE, "1");
