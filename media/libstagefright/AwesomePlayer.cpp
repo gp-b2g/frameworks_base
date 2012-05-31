@@ -1142,7 +1142,6 @@ status_t AwesomePlayer::startAudioPlayer_l(bool sendErrorNotification) {
     }
 
     if (!(mFlags & AUDIOPLAYER_STARTED)) {
-        modifyFlags(AUDIOPLAYER_STARTED, SET);
 
         bool wasSeeking = mAudioPlayer->isSeeking();
 
@@ -1158,6 +1157,7 @@ status_t AwesomePlayer::startAudioPlayer_l(bool sendErrorNotification) {
 
             return err;
         }
+        modifyFlags(AUDIOPLAYER_STARTED, SET);
 
         if (wasSeeking) {
             CHECK(!mAudioPlayer->isSeeking());
