@@ -662,6 +662,7 @@ void PostProc::releasePostProcBuffers()
     // lock acquired in stop
     POSTPROC_LOGV("%s:  start", __func__);
 
+#ifdef USE_ION
     if (mNativeWindow == NULL) {
         POSTPROC_LOGV("buffer q size is %d, total number of buffers is %d\n",mPostProcBuffers.size(), mNumBuffers);
         CHECK_EQ(mPostProcBuffers.size(), mNumBuffers);
@@ -675,6 +676,7 @@ void PostProc::releasePostProcBuffers()
             if (munmap((void *)nh->data[4], nh->data[2]) == -1) {
                 POSTPROC_LOGE("munmap failed\n");
             }
+            close(nh->data[0]);
             int rc = ioctl(mIonFd, ION_IOC_FREE, &hnd);
             if (rc) {
                 POSTPROC_LOGE("Free failed with %d!\n",rc);
@@ -688,6 +690,7 @@ void PostProc::releasePostProcBuffers()
         }
         mPostProcBuffers.clear();
     }
+#endif
     return;
 }
 

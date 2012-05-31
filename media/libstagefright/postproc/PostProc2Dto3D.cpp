@@ -151,8 +151,8 @@ status_t PostProc2Dto3D::configure2DTo3DLibrary()
     dim.height = mHeight;
     dim.srcLumaStride = ALIGN(mWidth, ALIGN32); //Input format is SemiPlanar
     dim.srcCbCrStride = ALIGN(mWidth, ALIGN32);
-    dim.dstLumaStride = mWidth;
-    dim.dstCbCrStride = mWidth * 2;
+    dim.dstLumaStride = mWidth * 3; // YUV444I is one plane
+    dim.dstCbCrStride = NULL;
 
     LOGV("width = %d, height = %d, \
             srcLumaStride = %d, srcCbCrStride = %d, \
@@ -171,6 +171,17 @@ status_t PostProc2Dto3D::configure2DTo3DLibrary()
     framepacking = isConversionTopBottom() ? from2dTo3d_TOP_DOWN : from2dTo3d_SIDE_BY_SIDE;
     prop.propId = from2dTo3d_PROP_VIEW_TYPE;
     prop.propPayload.view = framepacking;
+
+    err = mLib3dSetProperty(mLib3dContext, prop);
+    CHECK_EQ(err, from2dTo3d_ERROR_NONE);
+
+    from2dTo3d_DepthLutArgs args;
+    args.disparityN = 18;
+    args.disparityP = 15;
+    args.depthZero = 100;
+    args.deltaD = 0;
+    prop.propId = from2dTo3d_PROP_DEPTH_LUT_ARGS;
+    prop.propPayload.depthLutArgs = args;
 
     err = mLib3dSetProperty(mLib3dContext, prop);
     CHECK_EQ(err, from2dTo3d_ERROR_NONE);
