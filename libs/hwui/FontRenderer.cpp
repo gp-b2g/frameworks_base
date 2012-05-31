@@ -187,6 +187,9 @@ void Font::render(SkPaint* paint, const char* text, uint32_t start, uint32_t len
     float penX = x;
     int penY = y;
     int glyphsLeft = 1;
+    Vector <CachedGlyphInfo*> curGlyphs;
+    Vector <glyph_t> curGlyphsId;
+
     if (numGlyphs > 0) {
         glyphsLeft = numGlyphs;
     }
@@ -205,6 +208,13 @@ void Font::render(SkPaint* paint, const char* text, uint32_t start, uint32_t len
         }
 
         CachedGlyphInfo* cachedGlyph = getCachedGlyph(paint, glyph);
+        curGlyphs.add(cachedGlyph);
+        curGlyphsId.add(glyph);
+        // Postpone the call to render the current character to check whether the FontRenderer's
+        // texture cache can hold glyphs of all characters in the current string. Render all the
+        // characters at once in the next for loop. This is done to make sure no glyphs in the
+        // current string can get corrupted on display.
+/*
         penX += SkFixedToFloat(SkAutoKern_AdjustF(prevRsbDelta, cachedGlyph->mLsbDelta));
         prevRsbDelta = cachedGlyph->mRsbDelta;
 
@@ -224,11 +234,41 @@ void Font::render(SkPaint* paint, const char* text, uint32_t start, uint32_t len
         }
 
         penX += SkFixedToFloat(cachedGlyph->mAdvanceX);
+*/
 
         // If we were given a specific number of glyphs, decrement
         if (numGlyphs > 0) {
             glyphsLeft--;
         }
+    }
+
+    // Render the characters
+    for(uint32_t i = 0; i < curGlyphs.size(); i++) {
+        CachedGlyphInfo* cachedGlyph = curGlyphs[i];
+        if (!cachedGlyph->mIsValid) {
+            cachedGlyph = getCachedGlyph(paint, curGlyphsId[i]);
+            LOGE("found invalid glyph ");
+        }
+        penX += SkFixedToFloat(SkAutoKern_AdjustF(prevRsbDelta, cachedGlyph->mLsbDelta));
+        prevRsbDelta = cachedGlyph->mRsbDelta;
+        // If it's still not valid, we couldn't cache it, so we shouldn't draw garbage
+        if (cachedGlyph->mIsValid) {
+            switch(mode) {
+            case FRAMEBUFFER:
+                drawCachedGlyph(cachedGlyph, (int) floorf(penX), penY);
+                break;
+            case BITMAP:
+                drawCachedGlyph(cachedGlyph, (int) floorf(penX), penY, bitmap, bitmapW, bitmapH);
+                break;
+            case MEASURE:
+                measureCachedGlyph(cachedGlyph, (int) floorf(penX), penY, bounds);
+                break;
+            }
+        }
+        else{
+            LOGE("---------Still found invalid glyph ----------");
+        }
+        penX += SkFixedToFloat(cachedGlyph->mAdvanceX);
     }
 }
 
@@ -579,7 +619,10 @@ void FontRenderer::checkTextureUpdate() {
     }
 
     glBindTexture(GL_TEXTURE_2D, mTextureId);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mCacheWidth, mCacheHeight,
+              GL_ALPHA, GL_UNSIGNED_BYTE, mTextTexture);
 
+#if 0
     // Iterate over all the cache lines and see which ones need to be updated
     for (uint32_t i = 0; i < mCacheLines.size(); i++) {
         CacheTextureLine* cl = mCacheLines[i];
@@ -596,7 +639,7 @@ void FontRenderer::checkTextureUpdate() {
             cl->mDirty = false;
         }
     }
-
+#endif 
     mUploadTexture = false;
 }
 
