@@ -95,7 +95,7 @@ public class MSimIccCardProxy extends IccCardProxy {
             case EVENT_RECORDS_LOADED:
                 if ((mCurrentAppType == AppFamily.APP_FAM_3GPP) && (mIccRecords != null)) {
                     String operator = ((SIMRecords)mIccRecords).getOperatorNumeric();
-                    int sub = (mSubscriptionData != null) ? mSubscriptionData.subId : 0;
+                    int sub = mCardIndex;
                     if (operator != null) {
                       String property = sub == 0 ? PROPERTY_ICC_OPERATOR_NUMERIC : PROPERTY_ICC2_OPERATOR_NUMERIC;
                       SystemProperties.set(property, operator);
@@ -116,7 +116,7 @@ public class MSimIccCardProxy extends IccCardProxy {
 
             case EVENT_ICC_RECORD_EVENTS:
                 if ((mCurrentAppType == AppFamily.APP_FAM_3GPP) && (mIccRecords != null)) {
-                    int sub = (mSubscriptionData != null) ? mSubscriptionData.subId : 0;
+                    int sub = mCardIndex;
                     AsyncResult ar = (AsyncResult)msg.obj;
                     int eventCode = (Integer) ar.result;
                     if (eventCode == SIMRecords.EVENT_SPN) {
@@ -187,8 +187,14 @@ public class MSimIccCardProxy extends IccCardProxy {
     void resetProperties() {
         if (mSubscriptionData != null
                 && mCurrentAppType == AppFamily.APP_FAM_3GPP) {
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, "");
-            SystemProperties.set(PROPERTY_ICC2_OPERATOR_NUMERIC, "");
+            // sub0
+            if (0 == mSubscriptionData.subId) {
+                SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, "");
+            }
+            // sub1
+            else if (1 == mSubscriptionData.subId) {
+                SystemProperties.set(PROPERTY_ICC2_OPERATOR_NUMERIC, "");
+            }
             MSimTelephonyManager.setTelephonyProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, mSubscriptionData.subId, "");
             MSimTelephonyManager.setTelephonyProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSubscriptionData.subId, "");
          }
