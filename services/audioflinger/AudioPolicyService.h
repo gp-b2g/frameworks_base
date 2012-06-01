@@ -61,6 +61,7 @@ public:
                                                                 audio_devices_t device,
                                                                 const char *device_address);
     virtual status_t setPhoneState(int state);
+    virtual status_t setInCallPhoneState(int state);
     virtual status_t setRingerMode(uint32_t mode, uint32_t mask);
     virtual status_t setForceUse(audio_policy_force_use_t usage, audio_policy_forced_cfg_t config);
     virtual audio_policy_forced_cfg_t getForceUse(audio_policy_force_use_t usage);

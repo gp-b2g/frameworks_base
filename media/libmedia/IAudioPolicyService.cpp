@@ -34,6 +34,7 @@ enum {
     SET_DEVICE_CONNECTION_STATE = IBinder::FIRST_CALL_TRANSACTION,
     GET_DEVICE_CONNECTION_STATE,
     SET_PHONE_STATE,
+    SET_INCALL_PHONE_STATE,
     SET_RINGER_MODE,
     SET_FORCE_USE,
     GET_FORCE_USE,
@@ -102,6 +103,15 @@ public:
         data.writeInterfaceToken(IAudioPolicyService::getInterfaceDescriptor());
         data.writeInt32(state);
         remote()->transact(SET_PHONE_STATE, data, &reply);
+        return static_cast <status_t> (reply.readInt32());
+    }
+
+    virtual status_t setInCallPhoneState(int state)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioPolicyService::getInterfaceDescriptor());
+        data.writeInt32(state);
+        remote()->transact(SET_INCALL_PHONE_STATE, data, &reply);
         return static_cast <status_t> (reply.readInt32());
     }
 
@@ -450,6 +460,12 @@ status_t BnAudioPolicyService::onTransact(
             reply->writeInt32(static_cast <uint32_t>(setPhoneState(data.readInt32())));
             return NO_ERROR;
         } break;
+
+        case SET_INCALL_PHONE_STATE: {
+            CHECK_INTERFACE(IAudioPolicyService, data, reply);
+            reply->writeInt32(static_cast <uint32_t>(setInCallPhoneState(data.readInt32())));
+            return NO_ERROR;
+        }
 
         case SET_RINGER_MODE: {
             CHECK_INTERFACE(IAudioPolicyService, data, reply);

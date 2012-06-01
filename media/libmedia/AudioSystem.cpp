@@ -547,6 +547,14 @@ status_t AudioSystem::setPhoneState(int state)
     return aps->setPhoneState(state);
 }
 
+status_t AudioSystem::setInCallPhoneState(int state)
+{
+    const sp<IAudioPolicyService>& aps = AudioSystem::get_audio_policy_service();
+    if (aps == 0) return PERMISSION_DENIED;
+
+    return aps->setInCallPhoneState(state);
+}
+
 status_t AudioSystem::setRingerMode(uint32_t mode, uint32_t mask)
 {
     const sp<IAudioPolicyService>& aps = AudioSystem::get_audio_policy_service();

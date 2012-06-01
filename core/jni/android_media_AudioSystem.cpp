@@ -156,6 +156,12 @@ android_media_AudioSystem_setPhoneState(JNIEnv *env, jobject thiz, jint state)
 }
 
 static int
+android_media_AudioSystem_setInCallPhoneState(JNIEnv *env, jobject thiz, jint state)
+{
+    return check_AudioSystem_Command(AudioSystem::setInCallPhoneState(state));
+}
+
+static int
 android_media_AudioSystem_setRingerMode(JNIEnv *env, jobject thiz, jint mode, jint mask)
 {
     return check_AudioSystem_Command(AudioSystem::setRingerMode(mode, mask));
@@ -215,6 +221,7 @@ static JNINativeMethod gMethods[] = {
     {"setDeviceConnectionState", "(IILjava/lang/String;)I", (void *)android_media_AudioSystem_setDeviceConnectionState},
     {"getDeviceConnectionState", "(ILjava/lang/String;)I",  (void *)android_media_AudioSystem_getDeviceConnectionState},
     {"setPhoneState",       "(I)I",     (void *)android_media_AudioSystem_setPhoneState},
+    {"setInCallPhoneState",       "(I)I",     (void *)android_media_AudioSystem_setInCallPhoneState},
     {"setRingerMode",       "(II)I",    (void *)android_media_AudioSystem_setRingerMode},
     {"setForceUse",         "(II)I",    (void *)android_media_AudioSystem_setForceUse},
     {"getForceUse",         "(I)I",     (void *)android_media_AudioSystem_getForceUse},

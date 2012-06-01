@@ -45,6 +45,8 @@
 #include <hardware/audio_policy.h>
 #include <audio_effects/audio_effects_conf.h>
 
+#define MODE_CALL_KEY "CALL_KEY"
+
 namespace android {
 
 static const char *kDeadlockedString = "AudioPolicyService may be deadlocked\n";
@@ -230,6 +232,26 @@ status_t AudioPolicyService::setPhoneState(int state)
 
     Mutex::Autolock _l(mLock);
     mpAudioPolicy->set_phone_state(mpAudioPolicy, state);
+    return NO_ERROR;
+}
+
+status_t AudioPolicyService::setInCallPhoneState(int state)
+{
+    if (mpAudioPolicy == NULL) {
+        return NO_INIT;
+    }
+    if (!checkPermission()) {
+        return PERMISSION_DENIED;
+    }
+
+    LOGV("setPhoneState() tid %d", gettid());
+    int callMode = state ? AUDIO_MODE_IN_CALL : AUDIO_MODE_NORMAL;
+    AudioSystem::setMode(callMode);
+    AudioParameter param = AudioParameter();
+    param.addInt(String8(MODE_CALL_KEY), (int)state);
+    AudioSystem::setParameters(0,param.toString());
+    Mutex::Autolock _l(mLock);
+    mpAudioPolicy->set_phone_state(mpAudioPolicy, callMode);
     return NO_ERROR;
 }
 

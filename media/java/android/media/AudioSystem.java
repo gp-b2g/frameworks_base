@@ -89,6 +89,13 @@ public class AudioSystem
     public static final int MODE_IN_COMMUNICATION   = 3;
     public static final int NUM_MODES               = 4;
 
+    /* modes for setInCallPhoneState, must match AudioSystem.h audio_mode */
+    public static final int CS_INACTIVE             = 0x0;
+    public static final int CS_ACTIVE               = 0x1;
+    public static final int CS_HOLD                 = 0x2;
+    public static final int IMS_INACTIVE            = 0x0;
+    public static final int IMS_ACTIVE              = 0x10;
+    public static final int IMS_HOLD                = 0x20;
 
     /* Routing bits for the former setRouting/getRouting API */
     /** @deprecated */
@@ -259,6 +266,7 @@ public class AudioSystem
     public static native int setDeviceConnectionState(int device, int state, String device_address);
     public static native int getDeviceConnectionState(int device, String device_address);
     public static native int setPhoneState(int state);
+    public static native int setInCallPhoneState(int state);
     public static native int setRingerMode(int mode, int mask);
     public static native int setForceUse(int usage, int config);
     public static native int getForceUse(int usage);
