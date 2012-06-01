@@ -24,6 +24,7 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.os.SystemClock;
 import android.util.Slog;
+import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,7 +43,7 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
 
     private BlockingQueue<String> mResponseQueue;
     private OutputStream          mOutputStream;
-    private String                TAG = "NativeDaemonConnector";
+    private String                TAG = "nativeDaemonConnector";
     private String                mSocket;
     private INativeDaemonConnectorCallbacks mCallbacks;
     private Handler               mCallbackHandler;
@@ -253,7 +254,9 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
 
     private ArrayList<String> doCommandLocked(String cmd) throws NativeDaemonConnectorException {
         mResponseQueue.clear();
+		Log.d("nativeDaemonConnector","<"+cmd);
         sendCommandLocked(cmd);
+		Log.d("nativeDaemonConnector",cmd+">");
 
         ArrayList<String> response = new ArrayList<String>();
         boolean complete = false;
@@ -283,6 +286,7 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
                 Slog.e(TAG, "Failed to process response", ex);
             }
         }
+		Log.d("nativeDaemonConnector","code="+code);
 
         if (code >= ResponseCode.FailedRangeStart &&
                 code <= ResponseCode.FailedRangeEnd) {
