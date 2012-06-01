@@ -395,8 +395,6 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
                 mTextureNames = new int[1];
                 GLES20.glGenTextures(1, mTextureNames, 0);
             }
-            mTextureNames = new int[1];
-            GLES20.glGenTextures(1, mTextureNames, 0);
             mSurfaceTexture = new SurfaceTexture(mTextureNames[0]);
         }
         return mSurfaceTexture;
