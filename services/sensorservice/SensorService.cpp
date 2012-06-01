@@ -29,6 +29,7 @@
 #include <utils/RefBase.h>
 #include <utils/Singleton.h>
 #include <utils/String16.h>
+#include <cutils/log.h>
 
 #include <binder/BinderService.h>
 #include <binder/IServiceManager.h>
@@ -44,8 +45,10 @@
 #include "LinearAccelerationSensor.h"
 #include "OrientationSensor.h"
 #include "RotationVectorSensor.h"
+#include "RotationVectorSensor2.h"
 #include "SensorFusion.h"
 #include "SensorService.h"
+#define LOG_TAG "lk"
 
 namespace android {
 // ---------------------------------------------------------------------------
@@ -62,6 +65,7 @@ namespace android {
 SensorService::SensorService()
     : mInitCheck(NO_INIT)
 {
+	SLOGE("SensorService");
 }
 
 void SensorService::onFirstRef()
@@ -124,6 +128,11 @@ void SensorService::onFirstRef()
                 if (atoi(value)) {
                     registerVirtualSensor( new GyroDriftSensor() );
                 }
+				SLOGE("With Gyro");
+            } else if (orientationIndex != -1) {
+            	SLOGE("registerVirtualSensor>");
+                registerVirtualSensor( &RotationVectorSensor2::getInstance() );
+				SLOGE("No Gyro");
             }
 
             // build the sensor list returned to users
@@ -150,6 +159,7 @@ void SensorService::registerSensor(SensorInterface* s)
     memset(&event, 0, sizeof(event));
 
     const Sensor sensor(s->getSensor());
+	SLOGE("SensorHandle=%d",sensor.getHandle ());
     // add to the sensor list (returned to clients)
     mSensorList.add(sensor);
     // add to our handle->SensorInterface mapping
@@ -160,6 +170,7 @@ void SensorService::registerSensor(SensorInterface* s)
 
 void SensorService::registerVirtualSensor(SensorInterface* s)
 {
+	SLOGE("registerVirtualSensor");
     registerSensor(s);
     mVirtualSensorList.add( s );
 }
@@ -223,7 +234,7 @@ status_t SensorService::dump(int fd, const Vector<String16>& args)
 
 bool SensorService::threadLoop()
 {
-    LOGD("nuSensorService thread starting...");
+    SLOGE("nuSensorService thread starting...");
 
     const size_t numEventMax = 16 * (1 + mVirtualSensorList.size());
     sensors_event_t buffer[numEventMax];
@@ -235,24 +246,33 @@ bool SensorService::threadLoop()
     do {
         count = device.poll(buffer, numEventMax);
         if (count<0) {
-            LOGE("sensor poll failed (%s)", strerror(-count));
+            SLOGE("sensor poll failed (%s)", strerror(-count));
             break;
         }
 
         recordLastValue(buffer, count);
-
+		//SLOGE("count=%d, vcount=%d",count,vcount);
         // handle virtual sensors
         if (count && vcount) {
             sensors_event_t const * const event = buffer;
             const DefaultKeyedVector<int, SensorInterface*> virtualSensors(
                     getActiveVirtualSensors());
             const size_t activeVirtualSensorCount = virtualSensors.size();
+			//SLOGE("activeVirtualSensorCount=%d",activeVirtualSensorCount);
             if (activeVirtualSensorCount) {
                 size_t k = 0;
                 SensorFusion& fusion(SensorFusion::getInstance());
                 if (fusion.isEnabled()) {
                     for (size_t i=0 ; i<size_t(count) ; i++) {
                         fusion.process(event[i]);
+                    }
+                }
+                RotationVectorSensor2& rv2(RotationVectorSensor2::getInstance());
+				SLOGE("SensorService>");
+                if (rv2.isEnabled()) {
+					SLOGE("SensorService enabled");
+                    for (size_t i=0 ; i<size_t(count) ; i++) {
+                        rv2.process(event[i]);
                     }
                 }
                 for (size_t i=0 ; i<size_t(count) ; i++) {
@@ -280,7 +300,7 @@ bool SensorService::threadLoop()
         size_t numConnections = activeConnections.size();
         if(numConnections == 0) {
             //why are we still getting events?
-            LOGE("unexpected event returned from HAL -- no active connections +++++++++++++++++++++");
+            SLOGE("unexpected event returned from HAL -- no active connections +++++++++++++++++++++");
         }
         for (size_t i=0 ; i<numConnections ; i++) {
             sp<SensorEventConnection> connection(
@@ -401,21 +421,28 @@ void SensorService::cleanupConnection(SensorEventConnection* c)
 status_t SensorService::enable(const sp<SensorEventConnection>& connection,
         int handle)
 {
+	SLOGE("enable %d",handle);
     if (mInitCheck != NO_ERROR)
         return mInitCheck;
 
     Mutex::Autolock _l(mLock);
     SensorInterface* sensor = mSensorMap.valueFor(handle);
+	
     status_t err = sensor ? sensor->activate(connection.get(), true) : status_t(BAD_VALUE);
     if (err == NO_ERROR) {
+		SLOGE("NO_ERROR");
         SensorRecord* rec = mActiveSensors.valueFor(handle);
         if (rec == 0) {
             rec = new SensorRecord(connection);
             mActiveSensors.add(handle, rec);
+			SLOGE("to getSensor>");
+			sensor->getSensor ();
             if (sensor->isVirtual()) {
+				SLOGE("isVirtual");
                 mActiveVirtualSensors.add(handle, sensor);
             }
         } else {
+        	SLOGE("else");
             if (rec->addConnection(connection)) {
                 // this sensor is already activated, but we are adding a
                 // connection that uses it. Immediately send down the last
@@ -676,7 +703,7 @@ void SensorService::MplSysConnection::onFirstRef()
 {
     MplSys_Interface* (*pgsiof)() = (MplSys_Interface*(*)())dlsym(RTLD_DEFAULT, "getSysInterfaceObject");
     if(pgsiof == NULL) {
-        LOGE("could not find symbol for getSysInterfaceObject");
+        SLOGE("could not find symbol for getSysInterfaceObject");
     }
 
     sys_iface = pgsiof();
@@ -755,7 +782,7 @@ void SensorService::MplSysPedConnection::onFirstRef()
 {
     MplSysPed_Interface* (*pgsiof)() = (MplSysPed_Interface*(*)())dlsym(RTLD_DEFAULT, "getSysPedInterfaceObject");
     if(pgsiof == NULL) {
-        LOGE("could not find symbol for getSysPedInterfaceObject");
+        SLOGE("could not find symbol for getSysPedInterfaceObject");
     } else {
         LOGV("getSysPedInterfaceObject found at %p", mplSysApi_l);
     }
@@ -804,7 +831,7 @@ void SensorService::MplConnection::onFirstRef()
 {
     mplGlyphApi_l = (tMplGlyphApi*)dlsym(RTLD_DEFAULT, "mplGlyphApi");
     if(mplGlyphApi_l == NULL) {
-        LOGE("could not find symbol for mplGlyphApi");
+        SLOGE("could not find symbol for mplGlyphApi");
     } else {
         LOGV("mplGlyphApi found at %p", mplGlyphApi_l);
     }
