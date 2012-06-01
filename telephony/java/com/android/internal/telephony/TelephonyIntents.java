@@ -190,6 +190,26 @@ public class TelephonyIntents {
     public static final String ACTION_SIM_STATE_CHANGED
             = "android.intent.action.SIM_STATE_CHANGED";
 
+    /**
+     * Broadcast Action: Restricted wifi channels changed.
+     * The intent will have the following extra values:</p>
+     * <ul>
+     *   <li><em>current_channel</em> - An integer indicating current wifi channel.</li>
+     *   <li><em>start_safe_channel</em> - Channel number corresponding to the
+     *   beginning of safe range.</li>
+     *   <li><em>end_safe_channel</em> - Channel number corresponding to the
+     *   end of safe range.</li>
+     * </ul>
+     *
+     * <p class="note">
+     * Requires the READ_PHONE_STATE permission.
+     *
+     * <p class="note">This is a protected intent that can only be sent
+     * by the system.
+     * @hide
+     */
+    public static final String ACTION_SAFE_WIFI_CHANNELS_CHANGED
+            = "android.intent.action.SAFE_WIFI_CHANNELS_CHANGED";
 
     /**
      * Broadcast Action: The time was set by the carrier (typically by the NITZ string).

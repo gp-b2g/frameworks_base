@@ -18,6 +18,7 @@
 
 package com.android.internal.telephony;
 
+import static android.Manifest.permission.READ_PHONE_STATE;
 import static com.android.internal.telephony.RILConstants.*;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_UNKNOWN;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_EDGE;
@@ -27,6 +28,7 @@ import static android.telephony.TelephonyManager.NETWORK_TYPE_HSDPA;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_HSUPA;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_HSPA;
 
+import android.app.ActivityManagerNative;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -66,9 +68,11 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 
 /**
@@ -3379,6 +3383,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         final int QCRILHOOK_UNSOL_CDMA_BURST_DTMF = QCRILHOOK_BASE + 1001;
         final int QCRILHOOK_UNSOL_CDMA_CONT_DTMF_START = QCRILHOOK_BASE + 1002;
         final int QCRILHOOK_UNSOL_CDMA_CONT_DTMF_STOP = QCRILHOOK_BASE + 1003;
+        final int QCRILHOOK_UNSOL_WIFI_SAFE_CHANNELS_CHANGED = QCRILHOOK_BASE + 1008;
 
         int response_id = 0, response_size = 0;
 
@@ -3404,6 +3409,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
             case QCRILHOOK_UNSOL_CDMA_CONT_DTMF_STOP:
                 notifyCdmaFwdContDtmfStop();
+                break;
+
+            case QCRILHOOK_UNSOL_WIFI_SAFE_CHANNELS_CHANGED:
+                broadcastWifiChannelsChangedIntent(response_data);
                 break;
 
             default:
@@ -3437,6 +3446,30 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     protected void notifyCdmaFwdContDtmfStop() {
         AsyncResult ar = new AsyncResult(null, null, null);
         mCdmaFwdContDtmfStopRegistrants.notifyRegistrants(ar);
+    }
+
+    private void broadcastWifiChannelsChangedIntent(byte[] data) {
+        Intent intent = new Intent(TelephonyIntents.ACTION_SAFE_WIFI_CHANNELS_CHANGED);
+        Log.d(LOG_TAG, "WifiSafeChannels " + Arrays.toString(data));
+
+        String s;
+        try {
+            s = new String(data, "US-ASCII");
+        } catch (UnsupportedEncodingException e) {
+            Log.e(LOG_TAG, "Decoding failed: " + e);
+            return;
+        }
+
+        Log.d(LOG_TAG, "Decoded string " + s);
+        // Channels info is divided by commas
+        String[] channels = s.split(",");
+        Log.d(LOG_TAG, "Parsed channels " + Arrays.toString(channels));
+        intent.putExtra("current_channel", Integer.parseInt(channels[0]));
+        intent.putExtra("start_safe_channel", Integer.parseInt(channels[1]));
+        intent.putExtra("end_safe_channel", Integer.parseInt(channels[2]));
+
+        Log.d(LOG_TAG,"Broadcasting intent ACTION_SAFE_WIFI_CHANNELS_CHANGED ");
+        ActivityManagerNative.broadcastStickyIntent(intent, READ_PHONE_STATE);
     }
 
     private Object
