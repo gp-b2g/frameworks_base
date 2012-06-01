@@ -874,10 +874,12 @@ public class PackageManagerService extends IPackageManager.Stub {
         mSettings = new Settings();
         mSettings.addSharedUserLPw("android.uid.system",
                 Process.SYSTEM_UID, ApplicationInfo.FLAG_SYSTEM);
+        // Grant net_raw capability to radio shared user.
+        // This is required by native code running as part of PhoneApp
         mSettings.addSharedUserLPw("android.uid.phone",
                 MULTIPLE_APPLICATION_UIDS
                         ? RADIO_UID : FIRST_APPLICATION_UID,
-                ApplicationInfo.FLAG_SYSTEM);
+                ApplicationInfo.FLAG_SYSTEM, new int[] {3004});
         mSettings.addSharedUserLPw("android.uid.log",
                 MULTIPLE_APPLICATION_UIDS
                         ? LOG_UID : FIRST_APPLICATION_UID,
