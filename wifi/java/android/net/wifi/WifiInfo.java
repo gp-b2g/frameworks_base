@@ -142,8 +142,13 @@ public class WifiInfo implements Parcelable {
         return mRssi;
     }
 
-    void setRssi(int rssi) {
-        mRssi = rssi;
+   // void setRssi(int rssi) {
+    /**
+     * setRssi 
+     * @hide
+     */
+   public void setRssi(int rssi){  
+	mRssi = rssi;
     }
 
     /**
