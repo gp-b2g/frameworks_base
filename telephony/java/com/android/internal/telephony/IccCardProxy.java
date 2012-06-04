@@ -431,7 +431,7 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     public boolean getIccLockEnabled() {
-        /* defaults to false, if ICC is absent */
+        /* defaults to false, if ICC is absent/deactivated */
         Boolean retValue = mUiccApplication != null ? mUiccApplication.getIccLockEnabled() : false;
         return retValue;
     }
