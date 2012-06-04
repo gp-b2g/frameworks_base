@@ -134,6 +134,7 @@ public class IccCardApplicationStatus {
         AppState newState;
         /* RIL_AppState ril.h */
         switch(state) {
+            case -1: newState = AppState.APPSTATE_UNKNOWN; break;
             case 0: newState = AppState.APPSTATE_UNKNOWN;  break;
             case 1: newState = AppState.APPSTATE_DETECTED; break;
             case 2: newState = AppState.APPSTATE_PIN; break;

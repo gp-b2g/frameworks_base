@@ -1045,7 +1045,8 @@ public class SubscriptionManager extends Handler {
         // Reset the current subscription and notify the subscriptions deactivated.
         // Notify only in case of radio off and SIM Refresh reset.
         if (reason == CardUnavailableReason.REASON_RADIO_UNAVAILABLE
-                || reason == CardUnavailableReason.REASON_SIM_REFRESH_RESET) {
+                || reason == CardUnavailableReason.REASON_SIM_REFRESH_RESET
+                || reason == CardUnavailableReason.REASON_CARD_REMOVED) {
             // Card has been removed from slot - cardIndex.
             // Mark the active subscription from this card as de-activated!!
             for (SubscriptionId sub: SubscriptionId.values()) {
