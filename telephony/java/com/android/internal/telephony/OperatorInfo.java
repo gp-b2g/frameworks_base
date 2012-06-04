@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+
 /**
  * {@hide}
  */
@@ -36,6 +37,7 @@ public class OperatorInfo implements Parcelable {
 
     private State state = State.UNKNOWN;
 
+    private String radioTech;
 
     public String
     getOperatorAlphaLong() {
@@ -57,25 +59,40 @@ public class OperatorInfo implements Parcelable {
         return state;
     }
 
+    public String
+    getRadioTech() {
+        return radioTech;
+    }
     public OperatorInfo(String operatorAlphaLong,
                 String operatorAlphaShort,
                 String operatorNumeric,
-                State state) {
+                State state,
+                String radioTech) {
 
         this.operatorAlphaLong = operatorAlphaLong;
         this.operatorAlphaShort = operatorAlphaShort;
         this.operatorNumeric = operatorNumeric;
 
         this.state = state;
+
+	this.radioTech = radioTech;
+    }
+
+    public OperatorInfo(String operatorAlphaLong,
+                String operatorAlphaShort,
+                String operatorNumeric,
+                State state) {
+        this (operatorAlphaLong, operatorAlphaShort,
+                operatorNumeric, state,"");
     }
 
 
     public OperatorInfo(String operatorAlphaLong,
                 String operatorAlphaShort,
                 String operatorNumeric,
-                String stateString) {
+                String stateString, String radioTech) {
         this (operatorAlphaLong, operatorAlphaShort,
-                operatorNumeric, rilStateToState(stateString));
+                operatorNumeric, rilStateToState(stateString),radioTech );
     }
 
     /**
@@ -101,7 +118,8 @@ public class OperatorInfo implements Parcelable {
         return "OperatorInfo " + operatorAlphaLong
                 + "/" + operatorAlphaShort
                 + "/" + operatorNumeric
-                + "/" + state;
+                + "/" + state
+                +"/"  + radioTech;
     }
 
     /**
@@ -125,6 +143,7 @@ public class OperatorInfo implements Parcelable {
         dest.writeString(operatorAlphaShort);
         dest.writeString(operatorNumeric);
         dest.writeSerializable(state);
+	dest.writeString(radioTech);
     }
 
     /**
@@ -138,7 +157,8 @@ public class OperatorInfo implements Parcelable {
                         in.readString(), /*operatorAlphaLong*/
                         in.readString(), /*operatorAlphaShort*/
                         in.readString(), /*operatorNumeric*/
-                        (State) in.readSerializable()); /*state*/
+                        (State) in.readSerializable(), /*state*/
+                        in.readString());
                 return opInfo;
             }
 

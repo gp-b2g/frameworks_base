@@ -206,7 +206,7 @@ public final class Eons {
                      pnnName = ni.getOperatorAlphaLong();
                  }
                  eonsNetworkNames.add (new OperatorInfo(pnnName,ni.getOperatorAlphaShort(),
-                        ni.getOperatorNumeric(),ni.getState()));
+                        ni.getOperatorNumeric(),ni.getState(),ni.getRadioTech()));
             }
         } else {
             loge("Available Networks List is empty");
