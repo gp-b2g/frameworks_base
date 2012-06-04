@@ -221,7 +221,7 @@ public final class ShutdownThread extends Thread {
             sIsStarted = true;
         }
 
-        if (FeatureQuery.FEATURE_BOOT_ANIMATION){
+        if (FeatureQuery.FEATURE_BOOT_ANIMATION && checkAnimationFileExist()){
             if (mWindowOrientationListener!=null){
                 mWindowOrientationListener.disable();
                 mWindowOrientationListener = null;
