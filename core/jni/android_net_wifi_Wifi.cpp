@@ -191,7 +191,7 @@ static jboolean android_net_wifi_wpsPinFromAccessPointCommand(JNIEnv* env, jobje
     if (apPin.c_str() == NULL) {
         return JNI_FALSE;
     }
-    return doBooleanCommand("OK", "WPS_PIN any %s", apPin.c_str());
+    return doBooleanCommand("OK", "WPS_REG %s %s", bssid.c_str(), apPin.c_str());
 }
 
 static jstring android_net_wifi_wpsPinFromDeviceCommand(JNIEnv* env, jobject, jstring javaBssid)
