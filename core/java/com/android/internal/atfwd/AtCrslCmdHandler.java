@@ -69,19 +69,26 @@ public class AtCrslCmdHandler extends AtCmdBaseHandler implements AtCmdHandler {
         return ringVolume;
     }
 
-    private String getFormattedRingerVolumeRange() {
-        String ret = "";
+    private int getMaxVolume() {
+        int nMaxVol = -1;
         IAudioService audioService = getAudioService();
         if (audioService == null) {
-            return ret;
+            return nMaxVol;
         }
         try  {
-            // Range {0, <Max Vol>}
-            Integer nMaxVol = audioService.getStreamMaxVolume(AudioManager.STREAM_RING);
-            ret += "(0-" + nMaxVol.toString() + ")";
+            nMaxVol = audioService.getStreamMaxVolume(AudioManager.STREAM_RING);
+        } catch( RemoteException ex)  {
+            Log.e(TAG, "Unable to obtain Ringer level : " + ex);
         }
-        catch( RemoteException ex)  {
-            Log.e(TAG, "Unable to format Ringer Vol levels : " + ex);
+        return nMaxVol;
+    }
+
+    private String getFormattedRingerVolumeRange() {
+        String ret = "";
+        // Range {0, <Max Vol>}
+        Integer nMaxVol = getMaxVolume();
+        if (nMaxVol >= 0) {
+            ret += "(0-" + nMaxVol.toString() + ")";
         }
         return ret;
     }
@@ -96,10 +103,12 @@ public class AtCrslCmdHandler extends AtCmdBaseHandler implements AtCmdHandler {
         String tokens[] = cmd.getTokens();
         String result = null;
         boolean isAtCmdRespOK = false;
+        boolean isSetCmd = false;
 
         IAudioService audioService = getAudioService();
         if (audioService == null) {
-            return new AtCmdResponse(AtCmdResponse.RESULT_ERROR, cmd.getAtCmdErrStr(AtCmd.AT_ERR_OP_NOT_ALLOW));
+            return new AtCmdResponse(AtCmdResponse.RESULT_ERROR,
+                            cmd.getAtCmdErrStr(AtCmd.AT_ERR_OP_NOT_ALLOW));
         }
 
         Log.d(TAG, "OpCode" + cmd.getOpcode());
@@ -114,12 +123,15 @@ public class AtCrslCmdHandler extends AtCmdBaseHandler implements AtCmdHandler {
                         break;
                     }
                     Integer ringVolume = getRingerVolume(tokens[0]);
-                    if(ringVolume < 0) {
+                    int nMaxVol = getMaxVolume();
+                    // Range check
+                    if ((ringVolume < 0) || (nMaxVol < 0) || (ringVolume > nMaxVol)) {
                         result = cmd.getAtCmdErrStr(AtCmd.AT_ERR_OP_NOT_ALLOW);
                         break;
                     }
                     audioService.setStreamVolume(AudioManager.STREAM_RING, ringVolume,
                             AudioManager.FLAG_SHOW_UI | AudioManager.FLAG_PLAY_SOUND);
+                    isSetCmd = true;
                     isAtCmdRespOK = true;
                 }
                 catch( RemoteException ex)  {
@@ -152,7 +164,7 @@ public class AtCrslCmdHandler extends AtCmdBaseHandler implements AtCmdHandler {
                 break;
         }
 
-        if (isAtCmdRespOK) {
+        if (!isSetCmd && isAtCmdRespOK) {
             result = getCommandName() + ": " + result;
         }
 
