@@ -221,28 +221,28 @@ public final class ShutdownThread extends Thread {
             sIsStarted = true;
         }
 
-        if (FeatureQuery.FEATURE_BOOT_ANIMATION && checkAnimationFileExist()){
-            if (mWindowOrientationListener!=null){
+        if (FeatureQuery.FEATURE_BOOT_ANIMATION && checkAnimationFileExist()) {
+            if (mWindowOrientationListener != null) {
                 mWindowOrientationListener.disable();
                 mWindowOrientationListener = null;
             }
             showShutdownAnimation();
-            //playShutdownMusic(MUSIC_SHUTDOWN_FILE);
+            // playShutdownMusic(MUSIC_SHUTDOWN_FILE);
             String shutDownFile = getShutdownMusicFilePath();
             if (shutDownFile != null && !isSilentMode())
                 sInstance.playShutdownMusic(shutDownFile);
+        } else {
+            // throw up an indeterminate system dialog to indicate radio is
+            // shutting down.
+            ProgressDialog pd = new ProgressDialog(context);
+            pd.setTitle(context.getText(com.android.internal.R.string.power_off));
+            pd.setMessage(context.getText(com.android.internal.R.string.shutdown_progress));
+            pd.setIndeterminate(true);
+            pd.setCancelable(false);
+            pd.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
+
+            pd.show();
         }
-
-        // throw up an indeterminate system dialog to indicate radio is
-        // shutting down.
-        ProgressDialog pd = new ProgressDialog(context);
-        pd.setTitle(context.getText(com.android.internal.R.string.power_off));
-        pd.setMessage(context.getText(com.android.internal.R.string.shutdown_progress));
-        pd.setIndeterminate(true);
-        pd.setCancelable(false);
-        pd.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
-
-        pd.show();
 
         sInstance.mContext = context;
         sInstance.mPowerManager = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
