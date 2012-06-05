@@ -291,6 +291,8 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
                     return;
                 }
 
+                String tempMediaNumber = mMediaNumber;
+
                 mReportTime = intent.getLongExtra("time", 0);
                 mDuration = String.valueOf(intent.getIntExtra("duration", 0));
                 mPosition = intent.getIntExtra("position", 0);
@@ -316,9 +318,6 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
 
                 mUri = uri;
                 try {
-                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-                    mmr.setDataSource(mContext, mUri);
-                    mGenre = mmr.extractMetadata(mmr.METADATA_KEY_GENRE);
                     Cursor mCursor = mContext.getContentResolver().query(mUri, mCursorCols,
                                         null, null, null);
                     mCursor.moveToFirst();
@@ -343,13 +342,18 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
                     log("Artist is " + mArtistName);
                     log("Album is " + mAlbumName);
                     log("ID is " + mMediaNumber);
-                    log("Genre is " + mGenre);
                     mCursor.close();
                     Long tmpId = (Long)getTrackId(mTrackName);
                     log("tmpId is " + tmpId);
                     mMediaNumber = String.valueOf(tmpId);
                     log("ID is " + mMediaNumber);
-
+                    if (!tempMediaNumber.equals(mMediaNumber)) {
+                        /* file change happened */
+                        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                        mmr.setDataSource(mContext, mUri);
+                        mGenre = mmr.extractMetadata(mmr.METADATA_KEY_GENRE);
+                        log("Genre is " + mGenre);
+                    }
                     mCursor = mContext.getContentResolver().query(
                                             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                                             new String [] { MediaStore.Audio.Media._ID},
