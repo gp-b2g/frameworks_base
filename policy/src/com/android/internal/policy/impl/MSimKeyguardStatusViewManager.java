@@ -28,6 +28,7 @@ import libcore.util.MutableInt;
 
 import android.telephony.MSimTelephonyManager;
 import android.telephony.TelephonyManager;
+import android.util.LocaleNamesParser;
 import android.util.Log;
 import android.view.View;
 import android.provider.Settings;
@@ -62,6 +63,7 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
     private boolean mAirplaneMode;
     private static final int MSG_AIRPLANE_MODE_CHANGED = 1;
 
+    private LocaleNamesParser localeNamesParser;
 
     public MSimKeyguardStatusViewManager(View view, KeyguardUpdateMonitor updateMonitor,
                 LockPatternUtils lockPatternUtils, KeyguardScreenCallback callback,
@@ -151,16 +153,24 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
             mCarrierTextSub[subscription] = getContext().getText(R.string.airplane_mode_on_message);
             carrierHelpTextId = R.string.airplane_mode_on_message;
         } else {
+            if (localeNamesParser == null) {
+                localeNamesParser = new LocaleNamesParser(getContext(), TAG,
+                        com.android.internal.R.array.origin_carrier_names,
+                        com.android.internal.R.array.locale_carrier_names);
+            } else {
+                localeNamesParser.reload();
+            }
+            CharSequence localPlmn = localeNamesParser.getLocaleName(mMSimPlmn[subscription]);
             switch (mMSimStatus[subscription]) {
                 case Normal:
-                    mCarrierTextSub[subscription] = makeCarierString(mMSimPlmn[subscription],
+                    mCarrierTextSub[subscription] = makeCarierString(localPlmn,
                             mMSimSpn[subscription]);
                     break;
 
                 case PersoLocked:
                     mCarrierTextSub[subscription] = makeCarrierStringOnEmergencyCapable(
                             getContext().getText(R.string.lockscreen_perso_locked_message),
-                            mMSimPlmn[subscription]);
+                            localPlmn);
                     carrierHelpTextId = R.string.lockscreen_instructions_when_pattern_disabled;
                     break;
 
@@ -171,7 +181,7 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
                     // "No SIM card"
                     mCarrierTextSub[subscription] =  makeCarrierStringOnEmergencyCapable(
                             getContext().getText(R.string.lockscreen_missing_sim_message_short),
-                            mMSimPlmn[subscription]);
+                            localPlmn);
                     carrierHelpTextId = R.string.lockscreen_missing_sim_instructions_long;
                     break;
 
@@ -185,7 +195,7 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
                 case SimMissingLocked:
                     mCarrierTextSub[subscription] =  makeCarrierStringOnEmergencyCapable(
                             getContext().getText(R.string.lockscreen_missing_sim_message_short),
-                       mMSimPlmn[subscription]);
+                            localPlmn);
                     carrierHelpTextId = R.string.lockscreen_missing_sim_instructions;
                     mEmergencyButtonEnabledBecauseSimLocked = true;
                     break;
@@ -193,14 +203,14 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
                 case SimLocked:
                     mCarrierTextSub[subscription] = makeCarrierStringOnEmergencyCapable(
                            getContext().getText(R.string.lockscreen_sim_locked_message),
-                           mMSimPlmn[subscription]);
+                           localPlmn);
                     mEmergencyButtonEnabledBecauseSimLocked = true;
                     break;
 
                 case SimPukLocked:
                     mCarrierTextSub[subscription] = makeCarrierStringOnEmergencyCapable(
                             getContext().getText(R.string.lockscreen_sim_puk_locked_message),
-                            mMSimPlmn[subscription]);
+                            localPlmn);
                     if (!mLockPatternUtils.isPukUnlockScreenEnable()) {
                         // This means we're showing the PUK unlock screen
                         mEmergencyButtonEnabledBecauseSimLocked = true;
@@ -208,7 +218,7 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
                     break;
 
                 case SimIOError:
-                    mCarrierTextSub[subscription] = makeCarierString(mMSimPlmn[subscription],
+                    mCarrierTextSub[subscription] = makeCarierString(localPlmn,
                             getContext().getText(R.string.lockscreen_sim_error_message_short));
                     mEmergencyButtonEnabledBecauseSimLocked = true;
                     break;

@@ -23,6 +23,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.TypedArray;
 import android.provider.Telephony;
+import android.telephony.MSimTelephonyManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Slog;
@@ -54,6 +56,7 @@ public class CarrierLabel extends TextView {
     private String mPlmn;
     private boolean mAirplaneMode;
     private CharSequence mDisplayCarrierStr = null;
+    private final LocaleNamesParser localeNamesParser;
 
     public CarrierLabel(Context context) {
         this(context, null);
@@ -73,6 +76,9 @@ public class CarrierLabel extends TextView {
 
         mAirplaneMode = Settings.System.getInt(context.getContentResolver(),
                         Settings.System.AIRPLANE_MODE_ON, 0) == 1;
+        localeNamesParser = new LocaleNamesParser(mContext, "CarrierLabel",
+                com.android.internal.R.array.origin_carrier_names,
+                com.android.internal.R.array.locale_carrier_names);
 
         updateDisplay();
     }
@@ -125,46 +131,53 @@ public class CarrierLabel extends TextView {
         }
     };
 
+    private boolean isAbsend() {
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            MSimTelephonyManager manager = (MSimTelephonyManager) mContext
+                    .getSystemService(Context.MSIM_TELEPHONY_SERVICE);
+            return TelephonyManager.SIM_STATE_ABSENT == manager.getSimState(mSubscription);
+        } else {
+            TelephonyManager manager = (TelephonyManager) mContext
+                    .getSystemService(Context.TELEPHONY_SERVICE);
+            return TelephonyManager.SIM_STATE_ABSENT == manager.getSimState();
+        }
+    }
+
     void updateNetworkName(boolean showSpn, String spn, boolean showPlmn, String plmn) {
         if (false) {
             Slog.d("CarrierLabel", "updateNetworkName showSpn=" + showSpn + " spn=" + spn
                     + " showPlmn=" + showPlmn + " plmn=" + plmn);
         }
-        LocaleNamesParser.init(mContext, plmn,
-                com.android.internal.R.array.origin_carrier_names,
-                com.android.internal.R.array.locale_carrier_names);
-        StringBuilder str = new StringBuilder();
-        boolean something = false;
 
-        //because we need to support OMH SPN display
-        //in OMH ,the showPlmn is false and plmn is empty
-        //showPlmn is not set, we need to support UNICOM card,whose showPlmn =fasle while plmn is not empty
-        if (/*showPlmn &&*/ plmn != null && !TextUtils.isEmpty(plmn)) {
-            str.append(plmn);
+        boolean something = false;
+        StringBuilder str = new StringBuilder();
+        // because we need to support OMH SPN display
+        // in OMH ,the showPlmn is false and plmn is empty
+        // showPlmn is not set, we need to support UNICOM card,whose showPlmn
+        // =fasle while plmn is not empty
+        if (/* showPlmn && */!TextUtils.isEmpty(plmn)) {
+            localeNamesParser.reload();
+            str.append(localeNamesParser.getLocaleName(plmn));
             something = true;
         }
-        if (showSpn && spn != null) {
+        if (showSpn && !TextUtils.isEmpty(spn)) {
             if (something) {
                 str.append('\n');
             }
             str.append(spn);
-            something = true;
         }
-        if (something) {
-           mDisplayCarrierStr = LocaleNamesParser.getLocaleName(str.toString());
-        }
+        mDisplayCarrierStr = str.toString();
     }
 
     private void updateDisplay() {
         if (mAirplaneMode) {
             setText(com.android.internal.R.string.airplane_mode_on_message);
-        } else if (mDisplayCarrierStr != null) {
+        } else if (!TextUtils.isEmpty(mDisplayCarrierStr)) {
             setText(mDisplayCarrierStr);
+        } else if (isAbsend()) {
+            setText(com.android.internal.R.string.lockscreen_missing_sim_message_short);
         } else {
             setText(com.android.internal.R.string.lockscreen_carrier_default);
         }
     }
-    
 }
-
-

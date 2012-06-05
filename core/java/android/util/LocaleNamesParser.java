@@ -39,52 +39,35 @@ import android.content.res.Resources.NotFoundException;
  * @hide
  */
 public final class LocaleNamesParser {
-    private static Context mContext;
-    private static boolean mInitialized = false;
     private static final boolean DBG = false;
     private static final String LOG_TAG = "LocaleNamesParser";
-    private static HashMap<String, Integer> mNames =
-            new HashMap<String, Integer>();
 
-    private static int mOriginNamesId;
-    private static int mLocaleNamesId;
+    private Context mContext;
+    private HashMap<String, Integer> mNames = new HashMap<String, Integer>();
 
-    private static String mTag;
+    private int mOriginNamesId;
+    private int mLocaleNamesId;
 
-    private LocaleNamesParser() {
-        // Not instantiable
-    }
+    private String mTag;
 
     /*
      * Initialize the array of carrier names. synchronize if two instances in
      * one context want to init
      */
-    public static synchronized void init(Context context, String tag, int originNamesId,
-            int localeNamesId) {
+    public LocaleNamesParser(Context context, String tag, int originNamesId, int localeNamesId) {
         mTag = tag;
-        if (mInitialized)
-            return;
-        mInitialized = true;
         mContext = context;
         mOriginNamesId = originNamesId;
         mLocaleNamesId = localeNamesId;
-        final Resources res = mContext.getResources();
-        String[] origNames = res.getStringArray(originNamesId);
-        String[] localeNames = res.getStringArray(localeNamesId);
-        Integer localeId = null;
-        mNames.clear();
-        for (int i = 0; i < origNames.length; i++) {
-            localeId = new Integer(res.getIdentifier(localeNames[i], "string", "android"));
-            mNames.put(origNames[i], localeId);
-        }
+        reload();
     }
 
     /*
      * Here reload strings when locale change. synchronize to if two instances
      * need to reload and wait reloading complete
      */
-    public static synchronized void reload() {
-        final Resources res = mContext.getResources();
+    public synchronized void reload() {
+        Resources res = mContext.getResources();
         String[] origNames = res.getStringArray(mOriginNamesId);
         String[] localeNames = res.getStringArray(mLocaleNamesId);
         Integer localeId = null;
@@ -95,7 +78,7 @@ public final class LocaleNamesParser {
         }
     }
 
-    public static CharSequence getLocaleName(CharSequence name) {
+    public CharSequence getLocaleName(CharSequence name) {
         Integer locale = null;
         if (DBG)
             Slog.d(LOG_TAG, mTag + " want to get the name");

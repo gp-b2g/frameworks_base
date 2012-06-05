@@ -1841,12 +1841,12 @@ public class SpnProvider {
         }
         SPNObject temp = new SPNObject(Integer.parseInt(numeric.substring(0, 3)),
                 Integer.parseInt(numeric.substring(3)), null, null);
-        LocaleNamesParser.init(context, "SpnProvider",
+        LocaleNamesParser localeNamesParser = new LocaleNamesParser(context, "SpnProvider",
                 com.android.internal.R.array.origin_carrier_names,
                 com.android.internal.R.array.locale_carrier_names);
         for (SPNObject spn : LIST_MCC_MNC_SPN) {
             if (temp.equals(spn)) {
-                return LocaleNamesParser.getLocaleName(spn.spn);
+                return localeNamesParser.getLocaleName(spn.spn);
             }
         }
         return "";

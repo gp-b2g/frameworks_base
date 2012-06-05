@@ -559,7 +559,7 @@ class KeyguardStatusViewManager implements OnClickListener {
     protected CharSequence makeCarrierStringOnEmergencyCapable(
             CharSequence simMessage, CharSequence emergencyCallMessage) {
         if (mLockPatternUtils.isEmergencyCallCapable()) {
-            return makeCarierString(simMessage, emergencyCallMessage);
+            return makeCarierString(emergencyCallMessage, simMessage);
         }
         return simMessage;
     }
@@ -716,14 +716,9 @@ class KeyguardStatusViewManager implements OnClickListener {
     protected static CharSequence makeCarierString(CharSequence plmn, CharSequence spn) {
         final boolean plmnValid = !TextUtils.isEmpty(plmn);
         final boolean spnValid = !TextUtils.isEmpty(spn);
-        if (plmnValid && spnValid) {
-            return plmn + "|" + spn;
-        } else if (plmnValid) {
-            return plmn;
-        } else if (spnValid) {
+        if(spnValid){
             return spn;
-        } else {
-            return "";
         }
+        return plmn;
     }
 }
