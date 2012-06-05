@@ -151,7 +151,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected static final int EVENT_CHECK_DATA_ACTIVITY = BASE + 39;
     protected static final int EVENT_SET_PREFERRED_NETWORK_TYPE = BASE + 40;
     protected static final int EVENT_GET_PREFERRED_NETWORK_TYPE = BASE + 41;
-
+    protected static final int EVENT_SET_INTERNAL_DATA_ENABLE_FEEDBACK = BASE + 42;
 
     /***** Constants *****/
 
@@ -203,6 +203,7 @@ public abstract class DataConnectionTracker extends Handler {
     private int enabledCount = 0;
 
     private int mTetheredMode = RILConstants.RIL_TETHERED_MODE_OFF;
+    private ArrayList <Message> mDisconnectAllCompleteMsgList = new ArrayList<Message>();
 
     /* Currently requested APN type (TODO: This should probably be a parameter not a member) */
     protected String mRequestedApnType = Phone.APN_TYPE_DEFAULT;
@@ -814,6 +815,11 @@ public abstract class DataConnectionTracker extends Handler {
                 onSetInternalDataEnabled(enabled);
                 break;
             }
+            case EVENT_SET_INTERNAL_DATA_ENABLE_FEEDBACK: {
+                boolean enabled = (msg.arg1 == ENABLED) ? true : false;
+                onSetInternalDataEnabled(enabled, (Message) msg.obj);
+                break;
+            }
             case EVENT_RESET_DONE: {
                 if (DBG) log("EVENT_RESET_DONE");
                 onResetDone((AsyncResult) msg.obj);
@@ -959,6 +965,14 @@ public abstract class DataConnectionTracker extends Handler {
             }
         }
         notifyOffApnsOfAvailability(reason);
+    }
+
+    protected void notifyDataDisconnectComplete() {
+        log("notifyDataDisconnectComplete");
+        for (Message m: mDisconnectAllCompleteMsgList) {
+            m.sendToTarget();
+        }
+        mDisconnectAllCompleteMsgList.clear();
     }
 
     // a new APN has gone active and needs to send events to catch up with the
@@ -1285,6 +1299,16 @@ public abstract class DataConnectionTracker extends Handler {
         return true;
     }
 
+    public boolean setInternalDataEnabled(boolean enable, Message onCompleteMsg) {
+        if (DBG)
+            log("setInternalDataEnabled(" + enable + ")");
+
+        Message msg = obtainMessage(EVENT_SET_INTERNAL_DATA_ENABLE_FEEDBACK, onCompleteMsg);
+        msg.arg1 = (enable ? ENABLED : DISABLED);
+        sendMessage(msg);
+        return true;
+    }
+
     protected void onSetInternalDataEnabled(boolean enabled) {
         synchronized (mDataEnabledLock) {
             mInternalDataEnabled = enabled;
@@ -1299,7 +1323,44 @@ public abstract class DataConnectionTracker extends Handler {
         }
     }
 
+    protected void onSetInternalDataEnabled(boolean enable, Message onCompleteMsg) {
+        log("onSetInternalDataEnabled");
+        boolean prevEnabled = getAnyDataEnabled();
+        boolean sendOnComplete = true;
+        if (mInternalDataEnabled != enable) {
+            synchronized (this) {
+                mInternalDataEnabled = enable;
+            }
+            if (prevEnabled != getAnyDataEnabled()) {
+                sendOnComplete = false;
+                if (!prevEnabled) {
+                    resetAllRetryCounts();
+                    onTrySetupData(Phone.REASON_DATA_ENABLED, false);
+                } else {
+                    cleanUpAllConnections(null, onCompleteMsg);
+                }
+            }
+        }
+
+        if (sendOnComplete) {
+            if (onCompleteMsg != null) {
+                onCompleteMsg.sendToTarget();
+            }
+        }
+    }
+
     public void cleanUpAllConnections(String cause) {
+        Message msg = obtainMessage(EVENT_CLEAN_UP_ALL_CONNECTIONS);
+        msg.obj = cause;
+        sendMessage(msg);
+    }
+
+    public void cleanUpAllConnections(String cause, Message disconnectAllCompleteMsg) {
+        log("cleanUpAllConnections");
+        if (disconnectAllCompleteMsg != null) {
+            mDisconnectAllCompleteMsgList.add(disconnectAllCompleteMsg);
+        }
+
         Message msg = obtainMessage(EVENT_CLEAN_UP_ALL_CONNECTIONS);
         msg.obj = cause;
         sendMessage(msg);

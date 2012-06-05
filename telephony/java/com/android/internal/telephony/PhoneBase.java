@@ -1330,5 +1330,13 @@ public abstract class PhoneBase extends Handler implements Phone {
         return DisconnectCause.ERROR_UNSPECIFIED;
     }
 
+    public void setInternalDataEnabled(boolean enable) {
+        ((DataConnectionTracker)mDataConnectionTracker).setInternalDataEnabled(enable);
+    }
+
+    public void setInternalDataEnabled(boolean enable, Message onCompleteMsg) {
+        ((DataConnectionTracker)mDataConnectionTracker).setInternalDataEnabled(enable, onCompleteMsg);
+    }
+
     public abstract void avoidCurrentCdmaSystem(boolean on,Message response);
 }
