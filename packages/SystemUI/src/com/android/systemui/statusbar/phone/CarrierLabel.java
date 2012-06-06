@@ -143,6 +143,11 @@ public class CarrierLabel extends TextView {
         }
     }
 
+    private String getMultiSimName(int subscription) {
+        return Settings.System.getString(mContext.getContentResolver(),
+                Settings.System.MULTI_SIM_NAME[subscription]);
+    }
+
     void updateNetworkName(boolean showSpn, String spn, boolean showPlmn, String plmn) {
         if (false) {
             Slog.d("CarrierLabel", "updateNetworkName showSpn=" + showSpn + " spn=" + spn
@@ -171,13 +176,17 @@ public class CarrierLabel extends TextView {
 
     private void updateDisplay() {
         if (mAirplaneMode) {
-            setText(com.android.internal.R.string.airplane_mode_on_message);
+            setDisplayText(mContext.getString(com.android.internal.R.string.airplane_mode_on_message));
         } else if (!TextUtils.isEmpty(mDisplayCarrierStr)) {
-            setText(mDisplayCarrierStr);
+            setDisplayText((String) mDisplayCarrierStr);
         } else if (isAbsend()) {
-            setText(com.android.internal.R.string.lockscreen_missing_sim_message_short);
+            setDisplayText(mContext.getString(com.android.internal.R.string.lockscreen_missing_sim_message_short));
         } else {
-            setText(com.android.internal.R.string.lockscreen_carrier_default);
+            setDisplayText(mContext.getString(com.android.internal.R.string.lockscreen_carrier_default));
         }
+    }
+
+    private void setDisplayText(String text){
+        setText(getMultiSimName(mSubscription) + ":" + text);
     }
 }

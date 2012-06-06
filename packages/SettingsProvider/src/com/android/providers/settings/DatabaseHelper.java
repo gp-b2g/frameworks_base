@@ -40,6 +40,7 @@ import android.util.Log;
 
 import com.android.internal.content.PackageHelper;
 import com.android.internal.telephony.BaseCommands;
+import com.android.internal.telephony.MSimConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.util.XmlUtils;
@@ -1339,7 +1340,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         try {
             stmt = db.compileStatement("INSERT OR IGNORE INTO system(name,value)"
                     + " VALUES(?,?);");
-    
+
+            loadSetting(stmt, Settings.System.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
+                    MSimConstants.DEFAULT_SUBSCRIPTION);
+            loadSetting(stmt, Settings.System.MULTI_SIM_DATA_CALL_SUBSCRIPTION,
+                    MSimConstants.DEFAULT_SUBSCRIPTION);
+            loadSetting(stmt, Settings.System.MULTI_SIM_SMS_SUBSCRIPTION,
+                    MSimConstants.DEFAULT_SUBSCRIPTION);
+            loadSetting(stmt, Settings.System.DEFAULT_SUBSCRIPTION, MSimConstants.DEFAULT_SUBSCRIPTION);
+            loadSetting(stmt, Settings.System.MULTI_SIM_VOICE_PROMPT, 1);
+            loadSetting(stmt, Settings.System.MULTI_SIM_COUNTDOWN, 5);
+            loadSetting(stmt, Settings.System.CALLBACK_PRIORITY_ENABLED, 1);
+
             loadBooleanSetting(stmt, Settings.System.DIM_SCREEN,
                     R.bool.def_dim_screen);
             loadSetting(stmt, Settings.System.AUTO_ANSWER_TIMEOUT, -1);

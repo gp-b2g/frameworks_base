@@ -801,6 +801,13 @@ public final class Settings {
             MOVED_TO_SECURE.add(Secure.WIFI_WATCHDOG_PING_TIMEOUT_MS);
         }
 
+        private static final HashSet<String> MOVED_TO_TRANSLATE;
+        static {
+            MOVED_TO_TRANSLATE = new HashSet<String>();
+            MOVED_TO_TRANSLATE.add("perferred_name_sub1");
+            MOVED_TO_TRANSLATE.add("preferred_name_sub2");
+        }
+
         /**
          * Look up a name in the database.
          * @param resolver to access the database with
@@ -817,7 +824,26 @@ public final class Settings {
                 sNameValueCache = new NameValueCache(SYS_PROP_SETTING_VERSION, CONTENT_URI,
                                                      CALL_METHOD_GET_SYSTEM);
             }
-            return sNameValueCache.getString(resolver, name);
+            String value = sNameValueCache.getString(resolver, name);
+            if (value == null && MOVED_TO_TRANSLATE.contains(name)) {
+                // this value has not init in database, and the value need to be
+                // translate into local language in system provider.
+                // just need tell system provider the name by parameter , and the cursor
+                // has a column value will return
+                Cursor c = null;
+                try {
+                    c = resolver.query(Uri.parse("content://" + AUTHORITY + "/system").buildUpon()
+                            .appendQueryParameter("translate", name).build(), null, null, null, null);
+                    if (c != null && c.moveToNext()) {
+                        value = c.getString(0);
+                    }
+                } finally {
+                    if (c != null) {
+                        c.close();
+                    }
+                }
+            }
+            return value;
         }
 
         /**

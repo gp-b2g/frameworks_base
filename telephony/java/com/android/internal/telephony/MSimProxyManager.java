@@ -82,7 +82,7 @@ public class MSimProxyManager {
         mUiccManager = uiccManager;
         mCi = ci;
 
-        setDefaultProperties(context);
+        //setDefaultProperties(context);
 
         mMSimIccPhoneBookInterfaceManagerProxy
                 = new MSimIccPhoneBookInterfaceManagerProxy(mProxyPhones);

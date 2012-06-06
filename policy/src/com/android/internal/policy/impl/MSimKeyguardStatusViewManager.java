@@ -111,9 +111,14 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
     protected void registerInfoCallback() {
     }
 
+    private String getMultiSimName(int subscription) {
+        return Settings.System.getString(getContext().getContentResolver(),
+                Settings.System.MULTI_SIM_NAME[subscription]);
+    }
+
     void setCarrierText() {
-        mCarrierText = mCarrierTextSub[MSimConstants.SUB1] + "    " +
-                mCarrierTextSub[MSimConstants.SUB2];
+        mCarrierText = getMultiSimName(MSimConstants.SUB1) + ":" + mCarrierTextSub[MSimConstants.SUB1] + "    " +
+                getMultiSimName(MSimConstants.SUB2) + ":" + mCarrierTextSub[MSimConstants.SUB2];
         update(CARRIER_TEXT, mCarrierText);
     }
 

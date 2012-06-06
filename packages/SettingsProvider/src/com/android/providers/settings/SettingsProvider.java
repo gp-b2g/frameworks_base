@@ -30,6 +30,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
 import android.database.Cursor;
+import android.database.MatrixCursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteQueryBuilder;
@@ -394,8 +395,37 @@ public class SettingsProvider extends ContentProvider {
         return NULL_SETTING;
     }
 
+    private Cursor makeTransateValueCursor(int resourceId) {
+        MatrixCursor cursor = new MatrixCursor(new String[] {
+            "value"
+        });
+        cursor.addRow(new Object[] {
+            getContext().getString(resourceId)
+        });
+        return cursor;
+    }
+
+    private int getTransateResourceId(Uri url) {
+        int id = 0;
+        String translateName = url.getQueryParameter("translate");
+        Log.i(TAG, "get translate name: " + translateName);
+        if (translateName != null) {
+            if (Settings.System.MULTI_SIM_NAME[0].equals(translateName)) {
+                id = R.string.default_sim1_name;
+            } else if (Settings.System.MULTI_SIM_NAME[1].equals(translateName)) {
+                id = R.string.default_sim2_name;
+            }
+        }
+        return id;
+    }
+
     @Override
     public Cursor query(Uri url, String[] select, String where, String[] whereArgs, String sort) {
+        int translateId = getTransateResourceId(url);
+        Log.i(TAG, "get translate id: " + translateId);
+        if (translateId > 0) {
+            return makeTransateValueCursor(translateId);
+        }
         SqlArguments args = new SqlArguments(url, where, whereArgs);
         SQLiteDatabase db = mOpenHelper.getReadableDatabase();
 

@@ -20,4 +20,6 @@
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_label" msgid="4567566098528588863">"设置存储"</string>
+	<string name="default_sim1_name">卡槽1</string>
+	<string name="default_sim2_name">卡槽2</string>
 </resources>
