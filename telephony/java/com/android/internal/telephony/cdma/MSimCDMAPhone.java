@@ -242,7 +242,10 @@ public class MSimCDMAPhone extends CDMAPhone {
 
         // Sets operator numeric property by retrieving from build-time system property
         String operatorNumeric = SystemProperties.get(PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
-        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+        //if the home operator numeric is empty, do not set it as icc operator numeric
+        if (!TextUtils.isEmpty(operatorNumeric)) {
+            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+        }
         // Sets iso country property by retrieving from build-time system property
         setIsoCountryProperty(operatorNumeric);
         // Updates MCC MNC device configuration information
