@@ -4343,18 +4343,15 @@ private NetworkStateTracker makeWimaxStateTracker() {
             protected void sendConnectivitySwitchBroadcast(String reason) {
 
                 if (DBG) log(getCurrentState().getName() + " sendConnectivitySwitchBroadcast");
-                NetworkInfo newNetInfo = mNetTrackers[myDefaultNet].getNetworkInfo();
-                NetworkInfo oldNetInfo = mNetTrackers[otherDefaultNet].getNetworkInfo();
+
+                NetworkInfo newNetInfo = getNetworkInfo(myDefaultNet);
 
                 Intent intent = new Intent(ConnectivityManager.CONNECTIVITY_ACTION);
-                intent.putExtra(ConnectivityManager.EXTRA_NETWORK_INFO, oldNetInfo);
+                intent.putExtra(ConnectivityManager.EXTRA_NETWORK_INFO, newNetInfo);
                 if (reason != null && reason.length() > 0) {
                     intent.putExtra(ConnectivityManager.EXTRA_REASON, reason);
                 }
-                if (oldNetInfo.isFailover()) {
-                    intent.putExtra(ConnectivityManager.EXTRA_IS_FAILOVER, true);
-                }
-                intent.putExtra(ConnectivityManager.EXTRA_OTHER_NETWORK_INFO, newNetInfo);
+                intent.putExtra(ConnectivityManager.EXTRA_IS_FAILOVER, true);
                 intent.putExtra(ConnectivityManager.EXTRA_INET_CONDITION,
                                 mDefaultInetConditionPublished);
 
@@ -4362,8 +4359,6 @@ private NetworkStateTracker makeWimaxStateTracker() {
                 immediateIntent.setAction(CONNECTIVITY_ACTION_IMMEDIATE);
                 sendStickyBroadcast(immediateIntent);
                 sendStickyBroadcast(intent);
-
-                sendConnectedBroadcast(newNetInfo);
             }
 
             /**
@@ -4573,6 +4568,11 @@ private NetworkStateTracker makeWimaxStateTracker() {
                         handleDnsReprioritization(otherDefaultNet);
                     }
                     mConnectedDefaultNetworks.remove(type);
+                    // reset ActiveDefault to other and send broadcast
+                    mActiveDefaultNetwork = otherDefaultNet;
+                    NetworkInfo otherInfo = getNetworkInfo(otherDefaultNet);
+                    otherInfo.setFailover(true);
+                    sendConnectedBroadcast(otherInfo);
                     return -1; // defer and transition to parent
                 }
 
@@ -4605,6 +4605,8 @@ private NetworkStateTracker makeWimaxStateTracker() {
                     intent.putExtra(ConnectivityManager.EXTRA_EXTRA_INFO,
                             info.getExtraInfo());
                 }
+                intent.putExtra(ConnectivityManager.EXTRA_OTHER_NETWORK_INFO,
+                        getNetworkInfo(myDefaultNet));
                 intent.putExtra(ConnectivityManager.EXTRA_INET_CONDITION,
                                 mDefaultInetConditionPublished);
 
@@ -4720,7 +4722,9 @@ private NetworkStateTracker makeWimaxStateTracker() {
                 thisNet.setTeardownRequested(false);
                 updateNetworkSettings(thisNet);
                 handleConnectivityChange(type, false); // private handler
-                sendConnectedBroadcastDelayed(info, getConnectivityChangeDelay());
+                if (type != otherDefaultNet) { // squelch broadcast for other default net
+                    sendConnectedBroadcastDelayed(info, getConnectivityChangeDelay());
+                }
 
                 // notify battery stats service about this network
                 final String iface = thisNet.getLinkProperties().getInterfaceName();
