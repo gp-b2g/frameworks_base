@@ -60,6 +60,8 @@
 #include <binder/IMemory.h>
 #include <binder/IServiceManager.h>
 #include <binder/Parcel.h>
+#include <surfaceflinger/ISurfaceComposer.h>
+#include <surfaceflinger/SurfaceComposerClient.h>
 
 const uint32_t START_BROADCAST_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 13;
 
@@ -810,6 +812,8 @@ sp<MediaSource> OMXCodec::Create(
         (!strncasecmp(mime, "video/", 6)) && mSecureStart == false) {
               //send secure start event
               mSecureStart = true;
+              sp<ISurfaceComposer> composer(ComposerService::getComposerService());
+              composer->perform(BnSurfaceComposer::EVENT_SC_OPEN_SECURE_START, 0);
               sendBroadCastEvent(String16("android.intent.action.SECURE_START"));
         }
 
@@ -820,6 +824,8 @@ sp<MediaSource> OMXCodec::Create(
             if (!strncasecmp(componentName,"OMX.qcom",8) &&
                (flags & kUseSecureInputBuffers) &&(!createEncoder) &&
                (!strncasecmp(mime, "video/", 6)) ) {
+                        sp<ISurfaceComposer> composer(ComposerService::getComposerService());
+                        composer->perform(BnSurfaceComposer::EVENT_SC_OPEN_SECURE_END, 0);
                         //send secure start done event
                         sendBroadCastEvent(String16
                         ("android.intent.action.SECURE_START_DONE"));
@@ -2314,12 +2320,16 @@ OMXCodec::~OMXCodec() {
        (mFlags & kUseSecureInputBuffers) &&
        (!mIsEncoder) && (!strncasecmp(mMIME, "video/", 6)) ) {
         //send secure end event
+        sp<ISurfaceComposer> composer(ComposerService::getComposerService());
+        composer->perform(BnSurfaceComposer::EVENT_SC_CLOSE_SECURE_START, 0);
         sendBroadCastEvent(String16("android.intent.action.SECURE_END"));
     }
     status_t err = mOMX->freeNode(mNode);
     if (!strncasecmp(mComponentName,"OMX.qcom",8) &&
        (mFlags & kUseSecureInputBuffers) &&
        (!mIsEncoder) && (!strncasecmp(mMIME, "video/", 6)) ) {
+        sp<ISurfaceComposer> composer(ComposerService::getComposerService());
+        composer->perform(BnSurfaceComposer::EVENT_SC_CLOSE_SECURE_END, 0);
         //send secure end done event
         sendBroadCastEvent(String16("android.intent.action.SECURE_END_DONE"));
         mSecureStart = false;
