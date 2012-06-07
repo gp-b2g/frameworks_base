@@ -17,11 +17,13 @@
 package android.telephony;
 
 import android.os.Parcel;
+import android.os.SystemProperties;
 import android.util.Log;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
+import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.SmsMessageBase.SubmitPduBase;
 import com.android.internal.telephony.SmsMessageBase.TextEncodingDetails;
 
@@ -222,12 +224,27 @@ public class SmsMessage {
      * @hide
      */
     public static SmsMessage createFromEfRecord(int index, byte[] data) {
+        return createFromEfRecord(index, data, SmsManager.getDefault().getPreferredSmsSubscription());
+    }
+
+    /**
+     * Create an SmsMessage from an SMS EF record.
+     *
+     * @param index Index of SMS record. This should be index in ArrayList
+     *              returned by SmsManager.getAllMessagesFromSim + 1.
+     * @param data Record data.
+     * @param subscription Subscription of create record.
+     * @return An SmsMessage representing the record.
+     *
+     * { @hide }
+     */
+    public static SmsMessage createFromEfRecord(int index, byte[] data, int subscription) {
         SmsMessageBase wrappedMessage;
 
         // UiccCardApplication has the handle to IccFileHandler which
         // is used to obtain messages from Icc, and active application
         // is tied to voice type, so use voice tech here to decide encoding type.
-        if (isCdmaVoice()) {
+        if (isCdmaVoice(subscription)) {
             wrappedMessage = com.android.internal.telephony.cdma.SmsMessage.createFromEfRecord(
                     index, data);
         } else {
@@ -418,9 +435,29 @@ public class SmsMessage {
      */
     public static SubmitPdu getSubmitPdu(String scAddress,
             String destinationAddress, String message, boolean statusReportRequested) {
+        return getSubmitPdu(scAddress, destinationAddress, message, statusReportRequested,
+                SmsManager.getDefault().getPreferredSmsSubscription());
+    }
+
+    /** TODO: Not used remove? SmsMessage in gsm/cdma is public.
+     * Get an SMS-SUBMIT PDU for a destination address and a message.
+     * This method will not attempt to use any GSM national language 7 bit encodings.
+     *
+     * @param scAddress Service Centre address.  Null means use default.
+     * @return a <code>SubmitPdu</code> containing the encoded SC
+     *         address, if applicable, and the encoded message.
+     *         Returns null on encode error.
+     * { @hide }
+     */
+    public static SubmitPdu getSubmitPdu(String scAddress,
+            String destinationAddress, String message, boolean statusReportRequested, int subscription) {
         SubmitPduBase spb;
 
-        if (useCdmaEncodingForMoSms()) {
+        int activePhone = TelephonyManager.getDefault().isMultiSimEnabled() ? 
+                MSimTelephonyManager.getDefault().getCurrentPhoneType(subscription) :
+                    TelephonyManager.getDefault().getPhoneType();
+
+        if (PHONE_TYPE_CDMA == activePhone) {
             spb = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(scAddress,
                     destinationAddress, message, statusReportRequested, null);
         } else {
@@ -718,6 +755,11 @@ public class SmsMessage {
 
     private static boolean isCdmaVoice() {
         int activePhone = TelephonyManager.getDefault().getPhoneType();
+        return (PHONE_TYPE_CDMA == activePhone);
+    }
+
+    private static boolean isCdmaVoice(int subscription) {
+        int activePhone = MSimTelephonyManager.getDefault().getCurrentPhoneType(subscription);
         return (PHONE_TYPE_CDMA == activePhone);
     }
 }
