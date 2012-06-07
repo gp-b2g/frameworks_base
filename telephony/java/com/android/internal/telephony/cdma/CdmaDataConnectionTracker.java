@@ -194,7 +194,8 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
 
         if (mCheckForConnectivity) {
             allowed = allowed &&
-                    (mAutoAttachOnCreation) &&
+                    (psState == ServiceState.STATE_IN_SERVICE ||
+                            mAutoAttachOnCreation) &&
                     (mCdmaPhone.mSST.isConcurrentVoiceAndDataAllowed() ||
                             mPhone.getState() == Phone.State.IDLE) &&
                     !roaming &&
@@ -214,7 +215,7 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
 
         if (!allowed && DBG) {
             String reason = "";
-            if (! mAutoAttachOnCreation) {
+            if (!((psState == ServiceState.STATE_IN_SERVICE) || mAutoAttachOnCreation)) {
                 reason += " - psState= " + psState;
             }
             if (!subscriptionFromNv &&
