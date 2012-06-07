@@ -230,6 +230,18 @@ public final class MSimCdmaDataConnectionTracker extends CdmaDataConnectionTrack
         return true;
     }
 
+
+    public boolean setInternalDataEnabledFlag(boolean enable) {
+        if (DBG)
+            log("setInternalDataEnabled(" + enable + ")");
+
+        if (mInternalDataEnabled != enable) {
+            mInternalDataEnabled = enable;
+        }
+        return true;
+    }
+
+
     @Override
     protected void onSetInternalDataEnabled(boolean enable) {
         onSetInternalDataEnabled(enable, null);
@@ -258,6 +270,18 @@ public final class MSimCdmaDataConnectionTracker extends CdmaDataConnectionTrack
             if (onCompleteMsg != null) {
                 onCompleteMsg.sendToTarget();
             }
+        }
+    }
+
+    @Override
+    protected void onDataSetupComplete(AsyncResult ar) {
+        super.onDataSetupComplete(ar);
+
+        /* When flag is set to flase after SETUP_DATA_CALL is invoked, we need to
+         * clean the data connections.
+         */
+        if (!mInternalDataEnabled) {
+            cleanUpAllConnections(null);
         }
     }
 
