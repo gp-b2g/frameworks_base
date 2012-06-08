@@ -53,6 +53,8 @@ public class MSimGSMPhone extends GSMPhone {
     Subscription mSubscriptionData = null;
     int mSubscription = 0;
     NotificationManager mNotificationManager;
+    //record the phone count of registerForSuppServiceNotification
+    static int suppServiceNotificationCount=0;
 
     // Call Forward icons. Values have to be same as mentioned in
     // NotificationMgr.java
@@ -285,6 +287,22 @@ public class MSimGSMPhone extends GSMPhone {
         ((MSimGsmDataConnectionTracker)mDataConnectionTracker).unregisterForAllDataDisconnected(h);
     }
 
+    public void registerForSuppServiceNotification(Handler h, int what,
+            Object obj) {
+        suppServiceNotificationCount++;
+        mSsnRegistrants.addUnique(h, what, obj);
+        if (mSsnRegistrants.size() == 1) {
+            mCM.setSuppServiceNotifications(true, null);
+        }
+    }
+
+    public void unregisterForSuppServiceNotification(Handler h) {
+        mSsnRegistrants.remove(h);
+        suppServiceNotificationCount--;
+        if (mSsnRegistrants.size() == 0 && suppServiceNotificationCount == 0) {
+            mCM.setSuppServiceNotifications(false, null);
+        }
+    }
     @Override
     protected String getVmSimImsi() {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
