@@ -865,6 +865,10 @@ public class LockPatternKeyguardView extends KeyguardViewBase implements Handler
         if (DEBUG_CONFIGURATION) Log.v(TAG, "**** UPDATE SCREEN: mode=" + mode
                 + " last mode=" + mMode + ", force = " + force, new RuntimeException());
 
+        if (!isSecure())
+            mode = Mode.LockScreen;
+        else
+            mode = Mode.UnlockScreen;
         mMode = mode;
 
         // Re-create the lock screen if necessary
