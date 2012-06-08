@@ -499,9 +499,8 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
 
         // initialize external network location and geocoder services
         PackageManager pm = mContext.getPackageManager();
-        //if (mNetworkLocationProviderPackageName1 != null &&
-                //pm.resolveService(new Intent(mNetworkLocationProviderPackageName1), 0) != null) {
-        if (mNetworkLocationProviderPackageName1 != null) {
+        if (mNetworkLocationProviderPackageName1 != null &&
+                pm.resolveService(new Intent(mNetworkLocationProviderPackageName1), 0) != null) {
             mNetworkLocationProvider =
                 new LocationProviderProxy(mContext, LocationManager.NETWORK_PROVIDER,
                         mNetworkLocationProviderPackageName1, mLocationHandler);
@@ -509,9 +508,8 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
 
             mNetworkLocationProviderPackageName = mNetworkLocationProviderPackageName1;
         }
-        //else if (mNetworkLocationProviderPackageName2 != null &&
-                //pm.resolveService(new Intent(mNetworkLocationProviderPackageName2), 0) != null) {
-        else if (mNetworkLocationProviderPackageName2 != null) {
+        else if (mNetworkLocationProviderPackageName2 != null &&
+                pm.resolveService(new Intent(mNetworkLocationProviderPackageName2), 0) != null) {
             mNetworkLocationProvider =
                 new LocationProviderProxy(mContext, LocationManager.NETWORK_PROVIDER,
                         mNetworkLocationProviderPackageName2, mLocationHandler);
