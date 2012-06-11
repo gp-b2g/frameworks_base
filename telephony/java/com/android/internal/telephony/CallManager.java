@@ -931,6 +931,13 @@ public final class CallManager {
     }
 
     /**
+     * Enable engineer mode.
+     */
+    public void enableEngineerMode(Phone phone, int on)
+    {
+        getPhoneBase(phone).enableEngineerMode(on);
+    }
+    /**
      * Initiate a new voice connection. This happens asynchronously, so you
      * cannot assume the audio path is connected (or a call index has been
      * assigned) until PhoneStateChanged notification has occurred.

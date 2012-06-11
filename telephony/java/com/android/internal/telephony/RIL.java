@@ -46,6 +46,7 @@ import android.os.PowerManager;
 import android.os.SystemProperties;
 import android.os.RegistrantList;
 import android.os.PowerManager.WakeLock;
+import android.os.Bundle;
 import android.telephony.NeighboringCellInfo;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SignalStrength;
@@ -2911,6 +2912,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED: ret =  responseInts(p); break;
             case RIL_UNSOL_QOS_STATE_CHANGED_IND: ret = responseStrings(p); break;
             case RIL_UNSOL_MODIFY_CALL: ret = responseModifyCall(p); break;
+			case RIL_UNSOL_ENGINEER_MODE: ret =  responseEngineerMode(p); break;
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -3331,6 +3333,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     mQosStateChangedIndRegistrants.notifyRegistrants(
                                         new AsyncResult (null, ret, null));
                 }
+                break;
+            case RIL_UNSOL_ENGINEER_MODE:
+                if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                Intent intent = new Intent("android.provider.Telephony.EngineerMode");
+
+                Bundle b = new Bundle();
+                b.putIntArray("buffer",(int [])ret);
+                intent.putExtras(b);
+                mContext.sendStickyBroadcast(intent);
                 break;
         }
     }
@@ -4042,6 +4054,18 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return response;
     }
 
+    private Object
+    responseEngineerMode(Parcel p){
+        int numInts = p.readInt();
+        int response[];
+
+        response = new int[numInts];
+        for (int i = 0; i < numInts; i++) {
+            response[i] = p.readInt();
+        }
+        return response;
+    }
+
     private ArrayList<DataProfile>
     responseGetDataCallProfile(Parcel p) {
         int nProfiles = p.readInt();
@@ -4310,6 +4334,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_QOS_STATE_CHANGED_IND: return "RIL_UNSOL_QOS_STATE_CHANGED";
             case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED:
                     return "RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED";
+            case RIL_UNSOL_ENGINEER_MODE: return "RIL_UNSOL_ENGINEER_MODE";
             default: return "<unknown response>";
         }
     }
@@ -4595,6 +4620,17 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         rr.mp.writeInt(1);
         rr.mp.writeInt(powerLevel);
+
+        if (RILJ_LOGD)
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+    public void enableEngineerMode(int on) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_ENABLE_ENGINEER_MODE, null);
+
+        rr.mp.writeInt(1);
+        rr.mp.writeInt(on);
 
         if (RILJ_LOGD)
             riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));

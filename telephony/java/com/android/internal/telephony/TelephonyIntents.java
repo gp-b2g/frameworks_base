@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,8 @@ public class TelephonyIntents {
      * by the system.
      */
     public static final String ACTION_SERVICE_STATE_CHANGED = "android.intent.action.SERVICE_STATE";
+
+    public static final String ACTION_ENABLE_ENGINEER_MODE = "android.intent.action.ENABLE_ENGINEER_MODE";
 
     /**
      * <p>Broadcast Action: The radio technology has changed. The intent will have the following

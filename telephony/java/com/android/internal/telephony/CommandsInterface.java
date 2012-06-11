@@ -842,6 +842,10 @@ public interface CommandsInterface {
     void getDataCallList(Message result);
 
     /**
+     *  enable or disable engineer mode
+     */
+    void enableEngineerMode(int on);
+    /**
      *  returned message
      *  retMsg.obj = AsyncResult ar
      *  ar.exception carries exception on failure

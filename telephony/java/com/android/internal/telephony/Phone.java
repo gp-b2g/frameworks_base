@@ -888,6 +888,11 @@ public interface Phone {
     Call getRingingCall();
 
     /**
+     * Enable or dissable engineer mode.
+     */
+    void enableEngineerMode(int on);
+
+    /**
      * Initiate a new voice connection. This happens asynchronously, so you
      * cannot assume the audio path is connected (or a call index has been
      * assigned) until PhoneStateChanged notification has occurred.

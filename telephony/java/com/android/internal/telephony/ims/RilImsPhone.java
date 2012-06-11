@@ -615,4 +615,7 @@ public class RilImsPhone extends PhoneBase {
 
     public  void avoidCurrentCdmaSystem(boolean on,Message response){
     }
+
+    public void enableEngineerMode(int on) {
+    }
 }

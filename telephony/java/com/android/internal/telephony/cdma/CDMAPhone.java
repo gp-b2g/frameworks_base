@@ -356,6 +356,11 @@ public class CDMAPhone extends PhoneBase {
         return ret;
     }
 
+    public void enableEngineerMode(int on)
+    {
+        mCM.enableEngineerMode(on);
+    }
+
     public Connection
     dial (String dialString) throws CallStateException {
         // Need to make sure dialString gets parsed properly

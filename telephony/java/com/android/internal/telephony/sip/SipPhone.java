@@ -950,4 +950,7 @@ public class SipPhone extends SipPhoneBase {
 	    }
 	    return;
     }
+
+    public void enableEngineerMode(int on) {
+    }
 }

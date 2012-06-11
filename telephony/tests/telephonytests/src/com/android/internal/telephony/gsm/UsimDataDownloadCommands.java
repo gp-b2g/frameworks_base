@@ -690,4 +690,7 @@ class UsimDataDownloadCommands extends BaseCommands {
 
     public void avoidCurrentCdmaSystem(boolean on,Message result){
     }
+
+    public void enableEngineerMode(int on) {
+    }
 }

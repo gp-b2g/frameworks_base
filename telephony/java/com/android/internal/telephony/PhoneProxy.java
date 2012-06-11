@@ -563,6 +563,11 @@ public class PhoneProxy extends Handler implements Phone {
         return mActivePhone.dial(dialString, uusInfo, calldetails);
     }
 
+    public void enableEngineerMode(int on) {
+        // This function should be overridden by the class GSMPhone and CDMAPhone.
+        mActivePhone.enableEngineerMode(on);
+    }
+
     public boolean handlePinMmi(String dialString) {
         return mActivePhone.handlePinMmi(dialString);
     }

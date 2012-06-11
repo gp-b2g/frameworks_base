@@ -86,6 +86,9 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
             Message result) {
     }
 
+    public void enableEngineerMode(int on) {
+    }
+
     public void getIMSI(Message result) {
     }
 

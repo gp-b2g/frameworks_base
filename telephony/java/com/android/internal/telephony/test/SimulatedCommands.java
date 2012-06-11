@@ -474,6 +474,12 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     /**
+     *  enable engineer mode, do nothing here.
+     */
+    public void enableEngineerMode(int on) {
+    }
+
+    /**
      *  returned message
      *  retMsg.obj = AsyncResult ar
      *  ar.exception carries exception on failure
