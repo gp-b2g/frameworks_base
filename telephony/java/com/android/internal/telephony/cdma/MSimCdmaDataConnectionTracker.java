@@ -297,6 +297,8 @@ public final class MSimCdmaDataConnectionTracker extends CdmaDataConnectionTrack
                     Settings.Secure.MOBILE_DATA, 1) == 1;
             mPhone.updateCurrentCarrierInProvider();
             broadcastMessenger();
+            log("reload the apn list.");
+            sendMessage(obtainMessage(EVENT_RECORDS_LOADED));
         } else {
             log("update(): NOT the active DDS, unregister for all events!");
             unregisterForAllEvents();
