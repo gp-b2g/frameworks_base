@@ -1004,26 +1004,30 @@ public class BluetoothService extends IBluetooth.Stub {
         ArrayList<ParcelUuid> uuids = new ArrayList<ParcelUuid>();
 
         // Add the default records
-        uuids.add(BluetoothUuid.HSP_AG);
-        uuids.add(BluetoothUuid.ObexObjectPush);
+        if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.opp", true) == true)
+            uuids.add(BluetoothUuid.ObexObjectPush);
 
         if (mContext.getResources().
                 getBoolean(com.android.internal.R.bool.config_voice_capable)) {
-            uuids.add(BluetoothUuid.Handsfree_AG);
-            uuids.add(BluetoothUuid.PBAP_PSE);
+            if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.hfp", true) == true)
+                uuids.add(BluetoothUuid.Handsfree_AG);
+            if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.hsp", true) == true)
+                uuids.add(BluetoothUuid.HSP_AG);
+            if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.pbap", true) == true)
+                uuids.add(BluetoothUuid.PBAP_PSE);
         }
 
         // Add SDP records for profiles maintained by Android userspace
         addReservedSdpRecords(uuids);
 
-        // Enable profiles maintained by Bluez userspace.
-        setBluetoothTetheringNative(true, BluetoothPanProfileHandler.NAP_ROLE,
-                BluetoothPanProfileHandler.NAP_BRIDGE);
-
         // Add SDP records for profiles maintained by Bluez userspace
         uuids.add(BluetoothUuid.AudioSource);
         uuids.add(BluetoothUuid.AvrcpTarget);
-        uuids.add(BluetoothUuid.NAP);
+        if (SystemProperties.getBoolean("ro.qualcomm.bluetooth.nap", true) == true) {
+            setBluetoothTetheringNative(true, BluetoothPanProfileHandler.NAP_ROLE,
+                    BluetoothPanProfileHandler.NAP_BRIDGE);
+            uuids.add(BluetoothUuid.NAP);
+        }
 
         // Cannot cast uuids.toArray directly since ParcelUuid is parcelable
         mAdapterUuids = new ParcelUuid[uuids.size()];
