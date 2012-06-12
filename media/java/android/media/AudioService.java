@@ -193,7 +193,7 @@ public class AudioService extends IAudioService.Stub {
         7,  // STREAM_SYSTEM_ENFORCED
         15, // STREAM_DTMF
         15,  // STREAM_TTS
-        15 // STREAM_FM
+        7 // STREAM_FM
     };
     /* STREAM_VOLUME_ALIAS[] indicates for each stream if it uses the volume settings
      * of another stream: This avoids multiplying the volume settings for hidden
