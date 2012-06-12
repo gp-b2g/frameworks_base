@@ -709,6 +709,12 @@ status_t SurfaceTexture::connect(int api,
                         mConnectedApi, api);
                 err = -EINVAL;
             } else {
+                memcpy(mCurrentTransformMatrix, mtxIdentity,
+                        sizeof(mCurrentTransformMatrix));
+                mNextBufferInfo.width = 0;
+                mNextBufferInfo.height = 0;
+                mNextBufferInfo.format = 0;
+
                 mConnectedApi = api;
                 *outWidth = mDefaultWidth;
                 *outHeight = mDefaultHeight;
@@ -744,11 +750,6 @@ status_t SurfaceTexture::disconnect(int api) {
                 mNextCrop.makeInvalid();
                 mNextScalingMode = NATIVE_WINDOW_SCALING_MODE_FREEZE;
                 mNextTransform = 0;
-                memcpy(mCurrentTransformMatrix, mtxIdentity,
-                       sizeof(mCurrentTransformMatrix));
-                mNextBufferInfo.width = 0;
-                mNextBufferInfo.height = 0;
-                mNextBufferInfo.format = 0;
                 mDequeueCondition.signal();
             } else {
                 ST_LOGE("disconnect: connected to another api (cur=%d, req=%d)",
