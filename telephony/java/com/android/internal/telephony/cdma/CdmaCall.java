@@ -177,6 +177,11 @@ public final class CdmaCall extends Call {
         state = State.DISCONNECTING;
     }
 
+    void clearConnections() {
+        connections.clear();
+        state = State.IDLE;
+    }
+
     /**
      * Called when it's time to clean up disconnected Connection objects
      */

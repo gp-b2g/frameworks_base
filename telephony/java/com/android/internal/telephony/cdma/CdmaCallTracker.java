@@ -295,6 +295,10 @@ public final class CdmaCallTracker extends CallTracker {
             // ringing Call state change to idle is in CdmaCall.detach
             // triggered by updateParent.
             cwConn.updateParent(ringingCall, foregroundCall);
+            // after accept call , we think there should be no connection in
+            // ringing call. here just clear connection to make sure the state
+            // of ringing call is correct.
+            ringingCall.clearConnections();
             cwConn.onConnectedInOrOut();
 
             // accept call and reset the saved notification
