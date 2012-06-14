@@ -951,13 +951,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             upgradeVersion = 70;
         }
 
-        if (upgradeVersion == 70) {
-            // Update all built-in bookmarks.  Some of the package names have changed.
-            loadBookmarks(db);
+        if(upgradeVersion == 70) {
+            upgradeLightSensorForButtonLight(db);
             upgradeVersion = 71;
         }
 
+        if(upgradeVersion == 71) {
+            upgradeLightSensorThreshold(db);
+            upgradeVersion = 72;
+        }
+
         if (upgradeVersion == 71) {
+            // Update all built-in bookmarks.  Some of the package names have changed.
+            loadBookmarks(db);
+            upgradeVersion = 72;
+        }
+
+        if (upgradeVersion == 72) {
              // New setting to specify whether to speak passwords in accessibility mode.
             db.beginTransaction();
             SQLiteStatement stmt = null;
@@ -971,10 +981,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 db.endTransaction();
                 if (stmt != null) stmt.close();
             }
-            upgradeVersion = 72;
+            upgradeVersion = 73;
         }
 
-        if (upgradeVersion == 72) {
+        if (upgradeVersion == 73) {
             // update vibration settings
             db.beginTransaction();
             SQLiteStatement stmt = null;
@@ -988,13 +998,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 db.endTransaction();
                 if (stmt != null) stmt.close();
             }
-            upgradeVersion = 73;
+            upgradeVersion = 74;
         }
 
-        if (upgradeVersion == 73) {
+        if (upgradeVersion == 74) {
             // update vibration settings
             upgradeVibrateSettingFromNone(db);
-            upgradeVersion = 74;
+            upgradeVersion = 75;
         }
 
         // *** Remember to update DATABASE_VERSION above!
@@ -1149,6 +1159,38 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     R.bool.def_screen_brightness_automatic_mode) ? "1" : "0";
             db.execSQL("INSERT OR REPLACE INTO system(name,value) values('" +
                     Settings.System.SCREEN_BRIGHTNESS_MODE + "','" + value + "');");
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    private void upgradeLightSensorForButtonLight(SQLiteDatabase db) {
+        db.beginTransaction();
+        try {
+            String value =
+                    mContext.getResources().getBoolean(
+                    R.bool.def_light_sensor_for_button_light) ? "1" : "0";
+            db.execSQL("INSERT OR REPLACE INTO system(name,value) values('" +
+                    Settings.System.LIGHT_SENSOR_FOR_BUTTON_LIGHT + "','" + value + "');");
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    private void upgradeLightSensorThreshold(SQLiteDatabase db) {
+        db.beginTransaction();
+        try {
+            int value =
+                    mContext.getResources().getInteger(
+                    R.integer.def_dark_threshold);
+            db.execSQL("INSERT OR REPLACE INTO system(name,value) values('" +
+                    Settings.System.LIGHT_DARK_THRESHOLD + "','" + value + "');");
+            value = mContext.getResources().getInteger(
+                    R.integer.def_bright_threshold);
+            db.execSQL("INSERT OR REPLACE INTO system(name,value) values('" +
+                    Settings.System.LIGHT_BRIGHT_THRESHOLD + "','" + value + "');");
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -1377,7 +1419,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     
             loadBooleanSetting(stmt, Settings.System.AIRPLANE_MODE_ON,
                     R.bool.def_airplane_mode_on);
-    
+            loadBooleanSetting(stmt, Settings.System.LIGHT_SENSOR_FOR_BUTTON_LIGHT,
+                    R.bool.def_light_sensor_for_button_light);
+            loadIntegerSetting(stmt, Settings.System.LIGHT_DARK_THRESHOLD,
+                    R.integer.def_dark_threshold);
             loadStringSetting(stmt, Settings.System.AIRPLANE_MODE_RADIOS,
                     R.string.def_airplane_mode_radios);
     
