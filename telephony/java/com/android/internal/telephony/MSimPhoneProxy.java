@@ -107,18 +107,6 @@ public class MSimPhoneProxy extends PhoneProxy {
         setInternalDataEnabled(enable, null);
     }
 
-    public boolean setInternalDataEnabledFlag(boolean enable) {
-        boolean flag = false;
-        if (mActivePhone instanceof MSimCDMAPhone) {
-            flag = ((MSimCDMAPhone)mActivePhone).setInternalDataEnabledFlag(enable);
-        } else if (mActivePhone instanceof MSimGSMPhone) {
-            flag = ((MSimGSMPhone)mActivePhone).setInternalDataEnabledFlag(enable);
-        } else {
-           logd("Phone object is not MultiSim. This should not hit!!!!");
-        }
-        return flag;
-    }
-
     public void setInternalDataEnabled(boolean enable, Message onCompleteMsg) {
         if (mActivePhone instanceof MSimCDMAPhone) {
             ((MSimCDMAPhone)mActivePhone).setInternalDataEnabled(enable, onCompleteMsg);

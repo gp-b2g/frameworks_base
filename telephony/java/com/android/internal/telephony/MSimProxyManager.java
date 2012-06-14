@@ -107,14 +107,6 @@ public class MSimProxyManager {
         ((MSimPhoneProxy) mProxyPhones[sub]).setInternalDataEnabled(false, dataCleanedUpMsg);
     }
 
-    public boolean enableDataConnectivityFlag(int sub) {
-        return ((MSimPhoneProxy) mProxyPhones[sub]).setInternalDataEnabledFlag(true);
-    }
-
-    public boolean disableDataConnectivityFlag(int sub) {
-        return ((MSimPhoneProxy) mProxyPhones[sub]).setInternalDataEnabledFlag(false);
-    }
-
     public void updateCurrentCarrierInProvider(int sub) {
         ((MSimPhoneProxy) mProxyPhones[sub]).updateCurrentCarrierInProvider();
     }

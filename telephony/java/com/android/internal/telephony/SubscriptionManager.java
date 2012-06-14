@@ -104,12 +104,12 @@ public class SubscriptionManager extends Handler {
     private static final int EVENT_SUBSCRIPTION_STATUS_CHANGED = 5;
     private static final int EVENT_SET_DATA_SUBSCRIPTION_DONE = 6;
     private static final int EVENT_CLEANUP_DATA_CONNECTION_DONE = 7;
-    private static final int EVENT_ALL_DATA_DISCONNECTED = 8;
-    private static final int EVENT_RADIO_ON = 9;
-    private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 10;
-    private static final int EVENT_EMER_CALL_END = 11;
-    private static final int EVENT_SET_PREFERRED_NETWORK_TYPE = 12;
-
+    private static final int EVENT_DISABLE_DATA_CONNECTION_DONE = 8;
+    private static final int EVENT_ALL_DATA_DISCONNECTED = 9;
+    private static final int EVENT_RADIO_ON = 10;
+    private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 11;
+    private static final int EVENT_EMER_CALL_END = 12;
+    private static final int EVENT_SET_PREFERRED_NETWORK_TYPE = 13;
 
 
     // Set Subscription Return status
@@ -314,6 +314,11 @@ public class SubscriptionManager extends Handler {
                 processCleanupDataConnectionDone((Integer)msg.obj);
                 break;
 
+            case EVENT_DISABLE_DATA_CONNECTION_DONE:
+                logd("EVENT_DISABLE_DATA_CONNECTION_DONE");
+                processDisableDataConnectionDone((AsyncResult)msg.obj);
+                break;
+
             case EVENT_SET_DATA_SUBSCRIPTION_DONE:
                 logd("EVENT_SET_DATA_SUBSCRIPTION_DONE");
                 processSetDataSubscriptionDone((AsyncResult)msg.obj);
@@ -356,14 +361,6 @@ public class SubscriptionManager extends Handler {
      * @param ar
      */
     private void processAllDataDisconnected(AsyncResult ar) {
-        /*
-         * Check if the DDS switch is in progress. If so update the DDS
-         * subscription.
-         */
-        if (mDisableDdsInProgress) {
-            processDisableDataConnectionDone(ar);
-        }
-
         Integer sub = (Integer)ar.userObj;
         SubscriptionId subId = SubscriptionId.values()[sub];
         logd("processAllDataDisconnected: sub = " + sub
@@ -396,30 +393,9 @@ public class SubscriptionManager extends Handler {
      * @param ar
      */
     private void processSetDataSubscriptionDone(AsyncResult ar) {
-        if (ar.exception == null) {
-            logd("Register for the all data disconnect");
-            MSimProxyManager.getInstance().registerForAllDataDisconnected(mCurrentDds, this,
-                    EVENT_ALL_DATA_DISCONNECTED, new Integer(mCurrentDds));
-        } else {
-            Log.d(LOG_TAG, "setDataSubscriptionSource Failed : ");
-            // Reset the flag.
-            mDisableDdsInProgress = false;
-
-            // Send the message back to callee with result.
-            if (mSetDdsCompleteMsg != null) {
-                AsyncResult.forMessage(mSetDdsCompleteMsg, false, null);
-                logd("posting failure message");
-                mSetDdsCompleteMsg.sendToTarget();
-                mSetDdsCompleteMsg = null;
-            }
-
-            MSimProxyManager.getInstance().enableDataConnectivity(mCurrentDds);
-        }
-    }
-
-    private void processDisableDataConnectionDone(AsyncResult ar) {
+        boolean result = false;
         //if SUCCESS
-        if (ar != null) {
+        if (ar.exception == null) {
             // Mark this as the current dds
             mCurrentDds = mQueuedDds;
 
@@ -434,21 +410,39 @@ public class SubscriptionManager extends Handler {
                     + "  Enable Data Connectivity on Subscription " + mCurrentDds);
             MSimProxyManager.getInstance().enableDataConnectivity(mCurrentDds);
             mDataActive = true;
-        } else {
-            //This should not occur as it is a self posted message
-            Log.d(LOG_TAG, "Disabling Data Subscription Failed");
-        }
 
+            result = true;
+
+            //Subscription is changed to this new sub, need to update the DB to mark
+            //the respective profiles as "current".
+            //MSimProxyManager.getInstance().updateCurrentCarrierInProvider(mCurrentDds);
+        } else {
+            Log.d(LOG_TAG, "setDataSubscriptionSource Failed : " + result);
+        }
         // Reset the flag.
         mDisableDdsInProgress = false;
 
-        // Send the message back to callee.
+        // Send the message back to callee with result.
         if (mSetDdsCompleteMsg != null) {
-            AsyncResult.forMessage(mSetDdsCompleteMsg, true, null);
+            AsyncResult.forMessage(mSetDdsCompleteMsg, result, null);
             logd("Enable Data Connectivity Done!! Sending the cnf back!");
             mSetDdsCompleteMsg.sendToTarget();
             mSetDdsCompleteMsg = null;
         }
+    }
+
+    /**
+     * Handles the EVENT_DISABLE_DATA_CONNECTION_DONE.
+     * @param ar
+     */
+    private void processDisableDataConnectionDone(AsyncResult ar) {
+        // Set the DDS in cmd interface
+        Message msgSetDataSub = Message.obtain(this,
+                EVENT_SET_DATA_SUBSCRIPTION_DONE,
+                new Integer(mQueuedDds));
+        Log.d(LOG_TAG, "Set DDS to " + mQueuedDds
+                + " Calling cmd interface setDataSubscription");
+        mCi[mQueuedDds].setDataSubscription(msgSetDataSub);
     }
 
     /**
@@ -1438,56 +1432,31 @@ public class SubscriptionManager extends Handler {
      * @param onCompleteMsg
      */
     public void setDataSubscription(int subscription, Message onCompleteMsg) {
-        boolean result = false;
-        RuntimeException exception;
-
         logd("setDataSubscription: mCurrentDds = "
                 + mCurrentDds + " new subscription = " + subscription);
 
-        if (mDisableDdsInProgress){
-            logd("setDataSubscription in process,"+"currentdds = "+mCurrentDds+",queued dds = "+mQueuedDds);
-            if (onCompleteMsg != null){
-                AsyncResult.forMessage(onCompleteMsg,false, null);
-                onCompleteMsg.sendToTarget();
-            }
+        if (!getCurrentSubscriptionReadiness(SubscriptionId.values()[subscription])) {
+            loge("setDataSubscription: requested SUB:" + subscription
+                    + " is not yet activated, returning failure");
+            AsyncResult.forMessage(onCompleteMsg,
+                    false,
+                    new RuntimeException("Subscription not active"));
+            onCompleteMsg.sendToTarget();
             return;
         }
 
+        mSetDdsCompleteMsg = onCompleteMsg;
+
+        // If there is no set dds in progress disable the current
+        // active dds. Once all data connections is teared down, the data
+        // connections on mQueuedDds will be enabled.
+        // Call the MSimPhoneFactory setDataSubscription API only after disconnecting
+        // the current dds.
+        mQueuedDds = subscription;
         if (!mDisableDdsInProgress) {
-
-            if (!getCurrentSubscriptionReadiness(SubscriptionId.values()[subscription])) {
-                logd("setDataSubscription: requested SUB:" + subscription
-                        + " is not yet activated, returning failure");
-                exception = new RuntimeException("Subscription not active");
-            } else if (mCurrentDds != subscription) {
-                boolean flag = MSimProxyManager.getInstance()
-                         .disableDataConnectivityFlag(mCurrentDds);
-                mSetDdsCompleteMsg = onCompleteMsg;
-                mQueuedDds = subscription;
-                mDisableDdsInProgress = true;
-
-                // Set the DDS in cmd interface
-                Message msgSetDataSub = Message.obtain(this,
-                        EVENT_SET_DATA_SUBSCRIPTION_DONE,
-                        new Integer(mQueuedDds));
-                Log.d(LOG_TAG, "Set DDS to " + mQueuedDds
-                        + " Calling cmd interface setDataSubscription");
-                mCi[mQueuedDds].setDataSubscription(msgSetDataSub);
-                return;
-            } else {
-                logd("Current subscription is same as requested Subscription");
-                result = true;
-                exception = null;
-            }
-        } else {
-            logd("DDS switch in progress. Sending false");
-            exception = new RuntimeException("DDS switch in progress");
-        }
-
-        // Send the message back to callee with result.
-        if (onCompleteMsg != null) {
-            AsyncResult.forMessage(onCompleteMsg, result, exception);
-            onCompleteMsg.sendToTarget();
+            Message allDataDisabledMsg = obtainMessage(EVENT_DISABLE_DATA_CONNECTION_DONE);
+            MSimProxyManager.getInstance().disableDataConnectivity(mCurrentDds, allDataDisabledMsg);
+            mDisableDdsInProgress = true;
         }
     }
 

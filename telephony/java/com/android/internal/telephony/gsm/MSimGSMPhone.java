@@ -241,12 +241,6 @@ public class MSimGSMPhone extends GSMPhone {
                 .setInternalDataEnabled(enable, onCompleteMsg);
     }
 
-
-    public boolean setInternalDataEnabledFlag(boolean enable) {
-        return ((MSimGsmDataConnectionTracker)mDataConnectionTracker)
-                .setInternalDataEnabledFlag(enable);
-    }
-
     /**
      * @return operator numeric.
      */

@@ -287,11 +287,6 @@ public class MSimCDMAPhone extends CDMAPhone {
                 .setInternalDataEnabled(enable, onCompleteMsg);
     }
 
-    public boolean setInternalDataEnabledFlag(boolean enable) {
-       return ((MSimCdmaDataConnectionTracker)mDataConnectionTracker)
-                .setInternalDataEnabledFlag(enable);
-    }
-
     /**
      * @return operator numeric.
      */
