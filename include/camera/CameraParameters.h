@@ -856,6 +856,9 @@ public:
    //    static const char HDR_ENABLE[];
    //    static const char HDR_DISABLE[];
 
+
+   static const char KEY_SINGLE_ISP_OUTPUT_ENABLED[];
+
     enum {
         CAMERA_ORIENTATION_UNKNOWN = 0,
         CAMERA_ORIENTATION_PORTRAIT = 1,

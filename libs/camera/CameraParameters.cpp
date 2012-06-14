@@ -270,6 +270,8 @@ const char CameraParameters::KEY_MAX_CONTRAST[] = "max-contrast";
 const char CameraParameters::KEY_SATURATION[] = "saturation";
 const char CameraParameters::KEY_MAX_SATURATION[] = "max-saturation";
 
+const char CameraParameters::KEY_SINGLE_ISP_OUTPUT_ENABLED[] = "single-isp-output-enabled";
+
 //Values for DENOISE
 const char CameraParameters::DENOISE_OFF[] = "denoise-off";
 const char CameraParameters::DENOISE_ON[] = "denoise-on";
