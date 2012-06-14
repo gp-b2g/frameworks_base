@@ -286,7 +286,7 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
                 if (uri == null)
                     return;
 
-                if (uri.toString().startsWith("content://media/internal")) {
+                if (!uri.toString().startsWith("content://media/external")) {
                     log("Internal audio file data, ignoring");
                     return;
                 }
@@ -311,7 +311,7 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
                 log("position " + mPosition);
                 log("playstate is " + mPlayStatus);
 
-                if (uri == mUri) {
+                if (uri.equals(mUri)) {
                     log("Update for same Uri, ignoring");
                     return;
                 }
@@ -319,7 +319,8 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
                 mUri = uri;
                 try {
                     Cursor mCursor = mContext.getContentResolver().query(mUri, mCursorCols,
-                                        null, null, null);
+                                            MediaStore.Audio.Media.IS_MUSIC + "=1", null,
+                                            MediaStore.Audio.Media.DEFAULT_SORT_ORDER);
                     mCursor.moveToFirst();
                     mTrackName = mCursor.getString(
                         mCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE));
@@ -362,7 +363,14 @@ public class BluetoothA2dpService extends IBluetoothA2dp.Stub {
                     mMediaCount = String.valueOf(mCursor.getCount());
                     mCursor.close();
                     log("Track count is " + mMediaCount);
-                } catch(Exception e) {log("Exc is " + e);}
+                } catch(Exception e) {
+                    log("Exc is " + e);
+                    e.printStackTrace();
+                    mTrackName = null;
+                    mArtistName = null;
+                    mAlbumName = null;
+                    mGenre = null;
+                }
 
                 log("end of parsing mData");
                 for (String path: getConnectedSinksPaths()) {
