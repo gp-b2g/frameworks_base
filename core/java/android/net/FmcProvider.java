@@ -29,6 +29,7 @@
 package android.net;
 
 import android.net.IConnectivityManager;
+import android.net.FeatureConfig;
 import android.os.Binder;
 import android.os.RemoteException;
 import android.os.ServiceManager;
@@ -122,7 +123,7 @@ public class FmcProvider
     public boolean startFmc(){
         Log.d(LOG_TAG,"FmcProvider@startFmc");
 
-        if (!SystemProperties.getBoolean("persist.cne.fmc.mode", false)) {
+        if (!FeatureConfig.isEnabled(FeatureConfig.FMC)) {
             Log.w(LOG_TAG, "startFmc: FMC is disabled. This API is invalid.");
             return false;
         }

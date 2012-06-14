@@ -57,6 +57,7 @@ import android.net.NetworkQuotaInfo;
 import android.net.NetworkState;
 import android.net.NetworkStateTracker;
 import android.net.NetworkUtils;
+import android.net.FeatureConfig;
 import android.net.Proxy;
 import android.net.ProxyProperties;
 import android.net.RouteInfo;
@@ -300,7 +301,6 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     private ILinkManager mLinkManager = null;
     private Object mCneObj = null;
     private boolean mCneStarted = false;
-    private static final String UseCne = "persist.cne.UseCne";
     private QosManager qosManager = null;
 
     // list of DeathRecipients used to make sure features are turned off when
@@ -400,7 +400,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
         HandlerThread handlerThread = new HandlerThread("ConnectivityServiceThread");
         handlerThread.start();
-        if (isCneAware()) { //TODO use featureConfig when ready
+        if (isCneAware()) {
             mHSM = new ConnectivityServiceHSM( mContext,
                                                "ConnectivityServiceHSM",
                                                handlerThread.getLooper() );
@@ -3214,12 +3214,8 @@ private NetworkStateTracker makeWimaxStateTracker() {
      * @return true if CNE is enabled on this device, otherwise false
      */
     public boolean isCneAware() {
-        try {
-            return  (SystemProperties.get(UseCne, "none")).equalsIgnoreCase("vendor");
-        } catch ( Exception e) {
-            logv("Received Exception while reading UseCne property, Disabling CNE");
-        }
-        return false;
+            boolean cne = FeatureConfig.isEnabled(FeatureConfig.CNE);
+            return cne;
     }
     /*
      * LinkSocket code is below here.
@@ -3651,16 +3647,13 @@ private NetworkStateTracker makeWimaxStateTracker() {
 
             mDefaultConnectivityState = new DefaultConnectivityState();
             addState(mDefaultConnectivityState);
-            //TODO move from swim property check to cneFeatureConfig when ready
-            final String isTrue = "true";
-            if (isTrue.equalsIgnoreCase(SystemProperties.get("persist.cne.fmc.mode"))) {
-                // fmc mode device
+            if (FeatureConfig.isEnabled(FeatureConfig.FMC)) {
                 mFmcInitialState = new FmcInitialState();
                 addState(mFmcInitialState, mDefaultConnectivityState);
                 mFmcActiveState = new FmcActiveState();
                 addState(mFmcActiveState, mFmcInitialState);
                 myInitialState = mFmcInitialState;
-            } else if (isTrue.equalsIgnoreCase(SystemProperties.get("persist.cne.UseSwim"))) {
+            } else if (FeatureConfig.isEnabled(FeatureConfig.WQE)) {
                 // cne dual net mode enabled;
                 mSmartConnectivityState = new SmartConnectivityState();
                 addState(mSmartConnectivityState, mDefaultConnectivityState);
