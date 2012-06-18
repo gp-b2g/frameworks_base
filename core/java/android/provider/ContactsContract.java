@@ -19,6 +19,7 @@ package android.provider;
 
 import android.accounts.Account;
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.ContentProviderClient;
 import android.content.ContentProviderOperation;
 import android.content.ContentResolver;
@@ -41,6 +42,8 @@ import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Pair;
 import android.view.View;
+import android.widget.Toast;
+import com.android.internal.R;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -7663,7 +7666,13 @@ public final class ContactsContract {
             intent.setSourceBounds(target);
             intent.putExtra(EXTRA_MODE, mode);
             intent.putExtra(EXTRA_EXCLUDE_MIMES, excludeMimes);
-            context.startActivity(intent);
+
+            try{
+                context.startActivity(intent);
+            } catch ( ActivityNotFoundException e ){
+                Toast.makeText(context, R.string.No_Quick_Contact, Toast.LENGTH_SHORT).show();
+            }
+
         }
     }
 

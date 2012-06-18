@@ -1242,4 +1242,6 @@
     <string name="China_Telecom">中国电信</string>
 
     <string name="transport_destination">备份调试状态下的用户私有缓存</string>
+
+    <string name="No_Quick_Contact">无快速联络</string>
 </resources>
