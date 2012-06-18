@@ -31,6 +31,8 @@ public class MSimConstants {
 
     public static final String SUBSCRIPTION_KEY  = "subscription";
 
+    public static final String IS_IP_CALL = "ip_call";
+
     public static final int SUB1 = 0;
     public static final int SUB2 = 1;
 
