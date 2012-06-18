@@ -110,6 +110,7 @@ public class SubscriptionManager extends Handler {
     private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 11;
     private static final int EVENT_EMER_CALL_END = 12;
     private static final int EVENT_SET_PREFERRED_NETWORK_TYPE = 13;
+    private static final int EVENT_GET_PREFERRED_NETWORK_TYPE = 14;
 
 
     // Set Subscription Return status
@@ -346,6 +347,25 @@ public class SubscriptionManager extends Handler {
                }
                break;
 
+            case EVENT_GET_PREFERRED_NETWORK_TYPE:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null) {
+                    int type = ((int[])ar.result)[0];
+                    int mode =  android.provider.Settings.System.getInt(
+                            MSimPhoneFactory.getPhone(0).getContext().getContentResolver(),
+                            android.provider.Settings.System.SLOT1_USER_PRE_MODE, -1);
+                    Log.d(LOG_TAG,"current network preferred mode: type="+type+" DB mode="+mode);
+                    if (type == Phone.NT_MODE_GSM_ONLY && type != mode) {
+                        MSimPhoneFactory.getPhone(0).setPreferredNetworkType(mode,
+                            obtainMessage(EVENT_SET_PREFERRED_NETWORK_TYPE));
+                        Log.d(LOG_TAG,"send request to set to "+mode);
+                    }
+                } else {
+                    // Weird state, disable the setting
+                    Log.i(LOG_TAG, "get preferred network type, exception="+ar.exception);
+                }
+                break;
+
             default:
                 break;
         }
@@ -379,11 +399,13 @@ public class SubscriptionManager extends Handler {
             MSimPhoneFactory.getPhone(0).getPhoneType() == Phone.PHONE_TYPE_GSM ) {
             int mode =  android.provider.Settings.System.getInt(
                     MSimPhoneFactory.getPhone(0).getContext().getContentResolver(),
-                    android.provider.Settings.System.SLOT1_USER_PRE_MODE, Phone.NT_MODE_WCDMA_PREF);
-            if (mode == Phone.NT_MODE_WCDMA_PREF) {
+                    android.provider.Settings.System.SLOT1_USER_PRE_MODE, -1);
+            if (mode != -1) {
+                // query current network mode and then deside whether a restore is need
                 // restore previous user-selected slot1's preferred network mode
-                MSimPhoneFactory.getPhone(0).setPreferredNetworkType(Phone.NT_MODE_WCDMA_PREF,
-                    obtainMessage(EVENT_SET_PREFERRED_NETWORK_TYPE));
+                MSimPhoneFactory.getPhone(0).getPreferredNetworkType(
+                            obtainMessage(EVENT_GET_PREFERRED_NETWORK_TYPE));
+                Log.d(LOG_TAG,"restoreGsmPhoneNWModeIfNeed sent EVENT_GET_PREFERRED_NETWORK_TYPE");
             }
         }
     }
