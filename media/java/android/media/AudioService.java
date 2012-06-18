@@ -2714,11 +2714,11 @@ public class AudioService extends IAudioService.Stub {
 	                                AudioSystem.DEVICE_STATE_UNAVAILABLE, "");
 	                        mConnectedDevices.remove(AudioSystem.DEVICE_OUT_ANC_HEADPHONE);
 	                    }else if (state == 1 && !isConnected && !isancConnected)  {
-	                        if(name.equalsIgnoreCase("Headset") && anc ==1 ){
+	                        if((name.equalsIgnoreCase("Headset") || name.equalsIgnoreCase("h2w")) && anc ==1 ){
 	                            AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_ANC_HEADPHONE,
 	                                    AudioSystem.DEVICE_STATE_AVAILABLE, "");
 	                            mConnectedDevices.put( new Integer(AudioSystem.DEVICE_OUT_ANC_HEADPHONE), "");
-	                        } else if(name.equalsIgnoreCase("Headset") && anc == 0 ) {
+	                        } else if((name.equalsIgnoreCase("Headset") || name.equalsIgnoreCase("h2w")) && anc == 0 ) {
 	                            AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_WIRED_HEADPHONE,
 	                                    AudioSystem.DEVICE_STATE_AVAILABLE, "");
 	                            mConnectedDevices.put( new Integer(AudioSystem.DEVICE_OUT_WIRED_HEADPHONE), "");
