@@ -72,6 +72,7 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
     private int mDataActivityErrorCount = 0;
     private long mTxPkts = 0;
     private long mRxPkts = 0;
+    private int mPreviousType = Phone.NT_MODE_WCDMA_PREF;
 
     /*this property is used for turning on data activity reset.*/
     private static final boolean SUPPORT_DATA_ACTIVITY_RESET =
@@ -145,16 +146,18 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
                 if (ar.exception != null) {
                     log("EVENT_SET_PREFERRED_NETWORK_TYPE failed: ar.exception="+ar.exception);
                 } else {
-                    log("EVENT_SET_PREFERRED_NETWORK_TYPE succeed.");
+                    log("EVENT_SET_PREFERRED_NETWORK_TYPE succeed, record type="+mPreviousType);
+                    android.provider.Settings.System.putInt(mPhone.getContext().getContentResolver(),
+                                android.provider.Settings.System.SLOT1_USER_PRE_MODE, mPreviousType);
                 }
                 break;
             case EVENT_GET_PREFERRED_NETWORK_TYPE:
                 log("EVENT_GET_PREFERRED_NETWORK_TYPE");
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null) {
-                    int type = ((int[])ar.result)[0];
-                    log("current network preferred mode: type="+type);
-                    if (type!= Phone.NT_MODE_GSM_ONLY) {
+                    mPreviousType= ((int[])ar.result)[0];
+                    log("current network preferred mode: type="+mPreviousType);
+                    if (mPreviousType != Phone.NT_MODE_GSM_ONLY) {
                         MSimPhoneFactory.getPhone(0).setPreferredNetworkType(Phone.NT_MODE_GSM_ONLY,
                             obtainMessage(EVENT_SET_PREFERRED_NETWORK_TYPE));
                         log("send request to set to GSM only");

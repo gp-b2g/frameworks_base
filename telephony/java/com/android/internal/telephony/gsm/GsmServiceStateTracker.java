@@ -78,6 +78,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
+import static com.android.internal.telephony.MSimConstants.SUBSCRIPTION_KEY;
 
 /**
  * {@hide}
@@ -1839,6 +1840,7 @@ class GsmServiceStateTracker extends ServiceStateTracker {
             switch (which) {
                 case DialogInterface.BUTTON_POSITIVE:
                     Intent networkSettingIntent = new Intent(Intent.ACTION_MAIN);
+                    networkSettingIntent.putExtra(SUBSCRIPTION_KEY, phone.getSubscription());
                     networkSettingIntent.setClassName("com.android.phone",
                             "com.android.phone.NetworkSetting");
                     networkSettingIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

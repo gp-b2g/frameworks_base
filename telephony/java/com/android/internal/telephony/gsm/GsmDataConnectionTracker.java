@@ -665,7 +665,9 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         int radioTech  = mPhone.getServiceState().getRadioTechnology();
 
         boolean allowed =
-                    (csState == ServiceState.STATE_IN_SERVICE || mAutoAttachOnCreation) &&
+                    (csState == ServiceState.STATE_IN_SERVICE ||
+                    gprsState == ServiceState.STATE_IN_SERVICE ||
+                    mAutoAttachOnCreation) &&
                     ((mUseNvOperatorForEhrpd &&
                       mCdmaHomeOperatorNumeric != null) ||
                      recordsLoaded) &&
@@ -677,8 +679,10 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
                     desiredPowerState;
         if (!allowed && DBG) {
             String reason = "";
-            if (!((csState == ServiceState.STATE_IN_SERVICE) || mAutoAttachOnCreation)) {
-                reason += " - csState= " + csState;
+            if (!(csState == ServiceState.STATE_IN_SERVICE ||
+                    gprsState == ServiceState.STATE_IN_SERVICE ||
+                    mAutoAttachOnCreation)) {
+                reason += " - csState= " + csState + "-gprsState="+gprsState;
             }
             if (mUseNvOperatorForEhrpd && radioTech == ServiceState.RADIO_TECHNOLOGY_EHRPD &&
                     mCdmaHomeOperatorNumeric == null)
