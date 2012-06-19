@@ -732,7 +732,6 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
         }
 
         //default operation
-        Log.v(TAG, "huiy: suspend() default operation");
         if(mSeekWhenPrepared == 0) {
           mSeekWhenPrepared = getCurrentPosition();
         }
@@ -793,7 +792,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     }
 
     public void seekTo(int msec) {
-        if (isInPlaybackState()) {
+        if (isInPlaybackState() && mSurfaceHolder != null) {
             mMediaPlayer.seekTo(msec);
             mSeekWhenPrepared = 0;
         } else {
