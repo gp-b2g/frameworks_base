@@ -121,6 +121,7 @@ class MountService extends IMountService.Stub
         public static final int Formatting = 6;
         public static final int Shared     = 7;
         public static final int SharedMnt  = 8;
+	public static final int Incompat   = 9;
     }
 
     /*
@@ -811,7 +812,11 @@ class MountService extends IMountService.Stub
                 updatePublicVolumeState(path, Environment.MEDIA_UNMOUNTED);
                 action = Intent.ACTION_MEDIA_UNMOUNTED;
             }
-        } else if (newState == VolumeState.Pending) {
+        } else if (newState == VolumeState.Incompat) {
+		if (DEBUG_EVENTS) Slog.i(TAG, "incompatible card");
+		updatePublicVolumeState(path, Environment.MEDIA_NOFS);
+		action = Intent.ACTION_MEDIA_NOFS;
+	} else if (newState == VolumeState.Pending) {
         } else if (newState == VolumeState.Checking) {
             if (DEBUG_EVENTS) Slog.i(TAG, "updating volume state checking");
             updatePublicVolumeState(path, Environment.MEDIA_CHECKING);
