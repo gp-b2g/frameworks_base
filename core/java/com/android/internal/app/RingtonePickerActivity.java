@@ -202,7 +202,6 @@ public final class RingtonePickerActivity extends AlertActivity implements
 
             if(mClickedPos == -1){
                 mClickedPos = 0; // there no ringtone selected, so set as silent default
-                mRingtoneManager.setActualDefaultRingtoneUri(this, RingtoneManager.TYPE_RINGTONE, null);
             }
         }
         
