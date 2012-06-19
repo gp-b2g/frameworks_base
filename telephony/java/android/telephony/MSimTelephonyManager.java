@@ -478,6 +478,52 @@ public class MSimTelephonyManager extends TelephonyManager {
     }
 
     /**
+     * @hide
+     */
+    @Override
+    public String getSimCountryIso() {
+        if (!isMultiSimEnabled()) {
+            return super.getSimCountryIso();
+        } else {
+            return getSimCountryIso(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    public String getSimCountryIso(int subscription) {
+        if (!isMultiSimEnabled()) {
+            return super.getSimCountryIso();
+        }
+        return getTelephonyProperty(TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
+                subscription, "");
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public String getNetworkCountryIso() {
+        if (!isMultiSimEnabled()) {
+            return super.getNetworkCountryIso();
+        } else {
+            return getNetworkCountryIso(getPreferredSubscription());
+        }
+    }
+
+    /**
+     * @hide
+     */
+    public String getNetworkCountryIso(int subscription) {
+        if (!isMultiSimEnabled()) {
+            return super.getNetworkCountryIso();
+        }
+        return getTelephonyProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
+                subscription, "");
+    }
+
+    /**
      * Returns a constant indicating the device phone type for a subscription.
      *
      * @see #PHONE_TYPE_NONE
