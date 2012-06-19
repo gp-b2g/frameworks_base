@@ -2558,10 +2558,12 @@ public class WindowManagerService extends IWindowManager.Stub
             int attrChanges = 0;
             int flagChanges = 0;
             if (attrs != null) {
-                if (win.mAttrs.type != attrs.type) {
+                // solve home key cannot be intercepted
+                // check another modification at: ViewRootImpl.java relayoutWindow()
+                /*if (win.mAttrs.type != attrs.type) {
                     throw new IllegalArgumentException(
                             "Window type can not be changed after the window is added.");
-                }
+                }*/
                 flagChanges = win.mAttrs.flags ^= attrs.flags;
                 attrChanges = win.mAttrs.copyFrom(attrs);
                 if ((attrChanges&WindowManager.LayoutParams.LAYOUT_CHANGED) != 0) {

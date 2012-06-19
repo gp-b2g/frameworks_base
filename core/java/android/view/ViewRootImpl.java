@@ -3575,14 +3575,16 @@ public final class ViewRootImpl extends Handler implements ViewParent,
         }
         mPendingConfiguration.seq = 0;
         //Log.d(TAG, ">>>>>> CALLING relayout");
-        if (params != null && mOrigWindowType != params.type) {
+        // solve home key cannot be intercepted
+        // check another modification at: WindowManagerService.java relayoutWindow()
+        /*if (params != null && mOrigWindowType != params.type) {
             // For compatibility with old apps, don't crash here.
             if (mTargetSdkVersion < android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
                 Slog.w(TAG, "Window type can not be changed after "
                         + "the window is added; ignoring change of " + mView);
                 params.type = mOrigWindowType;
             }
-        }
+        }*/
         int relayoutResult = sWindowSession.relayout(
                 mWindow, mSeq, params,
                 (int) (mView.getMeasuredWidth() * appScale + 0.5f),
