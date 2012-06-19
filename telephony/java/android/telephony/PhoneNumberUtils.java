@@ -22,6 +22,7 @@ import com.android.i18n.phonenumbers.NumberParseException;
 import com.android.i18n.phonenumbers.PhoneNumberUtil;
 import com.android.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat;
 import com.android.i18n.phonenumbers.Phonenumber.PhoneNumber;
+import com.android.internal.telephony.MSimConstants;
 
 import android.content.Context;
 import android.content.Intent;
@@ -31,6 +32,7 @@ import android.net.Uri;
 import android.os.SystemProperties;
 import android.provider.Contacts;
 import android.provider.ContactsContract;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
@@ -142,6 +144,19 @@ public class PhoneNumberUtils
         return !isDialable(ch) && !(('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z'));
     }
 
+    private static String checkAndAppendPrefix(Intent intent, int subscription, String number,
+            Context context) {
+        boolean isIPPrefix = intent.getBooleanExtra(MSimConstants.IS_IP_CALL, false);
+        if (isIPPrefix && number != null) {
+            String IPPrefix = Settings.System.getString(context.getContentResolver(),
+                    Settings.System.IPCALL_PREFIX[subscription]);
+            if (!TextUtils.isEmpty(IPPrefix)) {
+                return IPPrefix + number;
+            }
+        }
+        return number;
+    }
+
     /** Extracts the phone number from an Intent.
      *
      * @param intent the intent to get the number of
@@ -159,7 +174,7 @@ public class PhoneNumberUtils
                 MSimTelephonyManager.getDefault().getDefaultSubscription());
 
         if (scheme.equals("tel") || scheme.equals("sip")) {
-            return uri.getSchemeSpecificPart();
+            return checkAndAppendPrefix(intent, subscription, uri.getSchemeSpecificPart(), context);
         }
 
         // TODO: We don't check for SecurityException here (requires
@@ -200,7 +215,7 @@ public class PhoneNumberUtils
             }
         }
 
-        return number;
+        return checkAndAppendPrefix(intent, subscription, number, context);
     }
 
     /** Extracts the network address portion and canonicalizes
