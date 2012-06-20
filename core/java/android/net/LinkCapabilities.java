@@ -239,9 +239,10 @@ public class LinkCapabilities implements Parcelable {
 
         /**
          * A string representing QoS filter spec for a range of destination IP
-         * Addresses. Values should be a String of comma separated IP address in
-         * presentation format. If a range needs to be specified, then it can be
-         * described by CIDR notation of IP address/mask. <br>
+         * addresses for the reverse link. Values should be a String of comma
+         * separated IP address in presentation format. If a range needs to be
+         * specified, then it can be described by CIDR notation of IP
+         * address/mask. <br>
          * <code> For e.g. "192.168.1.1", "10.14.224.20/30" or "2001:db8:85a3:0:0:8a2e:370:7334"
          * </code><br>
          * User could specify multiple IP addresses as filters for the QoS spec
@@ -251,38 +252,40 @@ public class LinkCapabilities implements Parcelable {
          * For e.g. "192.168.1.1,,10.15.220.12" to specify only the the first and the third filter
          * </code>
          */
-        public final static int RW_DEST_IP_ADDRESSES = 22;
+        public final static int RW_REMOTE_DEST_IP_ADDRESSES = 22;
 
         /**
-         * A string representing QoS filter spec for a range of destination ports.
-         * Values should be a String of comma separated port numbers, or a
-         * hyphen separated numbers to indicate a range. <br>
+         * A string representing QoS filter spec for a range of destination
+         * ports for the reverse link. Values should be a String of comma
+         * separated port numbers, or a hyphen separated numbers to indicate a
+         * range. <br>
          * <code>For e.g. "18000, 180001, 18002" or "18680-18682"</code><br>
-         * User could specify multiple ports as filters for the QoS spec
-         * by using ',' as delimiter. See {@code RW_DEST_IP_ADDRESSES} for
-         * example of usage.
+         * User could specify multiple ports as filters for the QoS spec by
+         * using ',' as delimiter. See {@code RW_DEST_IP_ADDRESSES} for example
+         * of usage.
          */
         public final static int RW_REMOTE_DEST_PORTS = 23;
 
         /**
-         * A string representing QoS filter spec for a range of source ports.
-         * Values should be a String of comma separated port numbers, or a
-         * hyphen separated numbers to indicate a range. <br>
+         * A string representing QoS filter spec for a range of source ports for
+         * the forward link. Values should be a String of comma separated port
+         * numbers, or a hyphen separated numbers to indicate a range. <br>
          * <code>For e.g. "18000, 180001, 18002" or "18680-18682"</code><br>
-         * User could specify multiple ports as filters for the QoS spec
-         * by using ',' as delimiter. See {@code RW_DEST_IP_ADDRESSES} for
-         * example of usage.
+         * User could specify multiple ports as filters for the QoS spec by
+         * using ',' as delimiter. See {@code RW_DEST_IP_ADDRESSES} for example
+         * of usage.
          */
         public final static int RW_REMOTE_SRC_PORTS = 24;
 
         /**
-         * A String representing numeric traffic class IP_TOS value that will be applied as a
-         * filter-spec for a QoS reservation. Valid values are between "0" and "255" inclusive.
-         * <br>User could specify multiple ToS values as filters for the QoS spec
-         * by using ',' as delimiter. See {@code RW_DEST_IP_ADDRESSES} for
-         * example of usage.
+         * A String representing numeric traffic class IP_TOS value for the
+         * reverse link that will be applied as a filter-spec for a QoS
+         * reservation. Valid values are between "0" and "255" inclusive. <br>
+         * User could specify multiple ToS values as filters for the QoS spec by
+         * using ',' as delimiter. See {@code RW_DEST_IP_ADDRESSES} for example
+         * of usage.
          */
-        public final static int RW_FILTERSPEC_IP_TOS = 25;
+        public final static int RW_FILTERSPEC_REV_IP_TOS = 25;
 
         /**
          * A String representing the type of network to use for this link.
@@ -339,6 +342,33 @@ public class LinkCapabilities implements Parcelable {
          * {@code QosTrafficClass}.
          */
         public final static int RW_REV_TRAFFIC_CLASS = 32;
+
+        /**
+         * A String representing numeric traffic class IP_TOS value for the
+         * forward link that will be applied as a filter-spec for a QoS
+         * reservation. Valid values are between "0" and "255" inclusive. <br>
+         * User could specify multiple ToS values as filters for the QoS spec by
+         * using ',' as delimiter. See {@code RW_DEST_IP_ADDRESSES} for example
+         * of usage.
+         */
+        public final static int RW_FILTERSPEC_FWD_IP_TOS = 33;
+
+        /**
+         * A string representing QoS filter spec for a range of source IP
+         * addresses for the forward link. Values should be a String of comma
+         * separated IP address in presentation format. If a range needs to be
+         * specified, then it can be described by CIDR notation of IP
+         * address/mask. <br>
+         * <code> For e.g. "192.168.1.1", "10.14.224.20/30" or "2001:db8:85a3:0:0:8a2e:370:7334"
+         * </code><br>
+         * User could specify multiple IP addresses as filters for the QoS spec
+         * by using ',' as delimiter<br>
+         * <code>
+         * For e.g. "192.168.1.1,10.14.224.20, 10.15.220.12" to specify three filters
+         * For e.g. "192.168.1.1,,10.15.220.12" to specify only the the first and the third filter
+         * </code>
+         */
+        public final static int RW_REMOTE_SRC_IP_ADDRESSES = 34;
     }
 
     /**
@@ -688,15 +718,26 @@ public class LinkCapabilities implements Parcelable {
                 value.toLowerCase();
                 if (value.equals("udp") || value.equals("tcp")) return true;
                 return false;
-            case Key.RW_DEST_IP_ADDRESSES:  //TODO validate arguments
+            case Key.RW_REMOTE_DEST_IP_ADDRESSES:  //TODO validate arguments
+            case Key.RW_REMOTE_SRC_IP_ADDRESSES:  //TODO validate arguments
             case Key.RW_REMOTE_DEST_PORTS:  //TODO validate arguments
             case Key.RW_REMOTE_SRC_PORTS:   //TODO validate arguments
-            case Key.RW_FILTERSPEC_IP_TOS:  //TODO validate arguments
             case Key.RW_REV_3GPP2_PROFILE_ID://TODO validate arguments
             case Key.RW_FWD_3GPP2_PROFILE_ID://TODO validate arguments
             case Key.RW_REV_3GPP2_PRIORITY:  //TODO validate arguments
             case Key.RW_FWD_3GPP2_PRIORITY:  //TODO validate arguments
                 return true;
+            case Key.RW_FILTERSPEC_REV_IP_TOS:
+            case Key.RW_FILTERSPEC_FWD_IP_TOS:
+                try {
+                    testValue = Integer.parseInt(value);
+                } catch (NumberFormatException ex) {
+                    return false; // not a valid integer
+                }
+                if ((testValue >= 0) && (testValue <=255)) {
+                    return true;
+                }
+                return false;
             case Key.RW_NETWORK_TYPE:
                 try {
                     testValue = Integer.parseInt(value);

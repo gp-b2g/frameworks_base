@@ -46,7 +46,6 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -81,6 +80,8 @@ public class QosManager {
     private ConnectivityService mService;
     private QosProfile mQosProfile;
     private boolean mQoSProfileReady;
+    private boolean mUseSrcPort = SystemProperties.getBoolean(
+            "persist.radio.qos.use.src.port", true);
     Collection<QoSTracker> mQosTrackers;
 
     /**
@@ -135,6 +136,7 @@ public class QosManager {
         String qosPolicyFilename = SystemProperties.get("persist.qos.policy.loc",
                 QOS_POLICY_FILE_NAME);
         logd("QoS Policy file name: " + qosPolicyFilename);
+        logd("Use source port and address filtering: " + mUseSrcPort);
         try {
             mQoSProfileReady = mQosProfile.parse(new FileInputStream(qosPolicyFilename));
         } catch (Exception e) {
@@ -145,7 +147,6 @@ public class QosManager {
         IntentFilter filter = new IntentFilter();
         filter.addAction(TelephonyIntents.ACTION_QOS_STATE_IND);
         context.registerReceiver(mIntentReceiver, filter);
-
     }
 
     /**
@@ -285,7 +286,6 @@ public class QosManager {
         QoSTracker qt = null;
         LinkCapabilities cap = null;
         String apnType = null;
-        IPVersion ipVersion = IPVersion.INET;
         QosSpec mySpec = null;
 
         qt = findQosBySocketId(id);
@@ -525,25 +525,17 @@ public class QosManager {
      * @return QoSSpec is successfully created, null on error
      */
     private QosSpec prepareQoSSpec(int localPort, String localAddress, LinkCapabilities myCap) {
-        /*
-         * prepare QoSSpec as per the role defined. For qos_video_telephony role
-         * on a 3GPP radio there are two flows, incoming and outgoing with both
-         * of their classification as STREAMING. Latency and bit rates will be
-         * provided by the application via link capabilities.
-         */
-
-        logd("Preparing qosspec");
-
+        // Prepare QoSSpec as per the role defined.
+        logd("Preparing qos spec");
         QosSpec mQosSpec = new QosSpec();
-        // For umts, create two flows per spec, viz tx and rx.
-        QosSpec.QosPipe txPipe = mQosSpec.createPipe();
-        QosSpec.QosPipe rxPipe = mQosSpec.createPipe();
-        txPipe.put(QosSpec.QosSpecKey.SPEC_INDEX, "0");
-        rxPipe.put(QosSpec.QosSpecKey.SPEC_INDEX, "0");
-        txPipe.put(QosSpec.QosSpecKey.FLOW_DIRECTION,
-                Integer.toString(QosSpec.QosDirection.QOS_TX));
-        rxPipe.put(QosSpec.QosSpecKey.FLOW_DIRECTION,
-                Integer.toString(QosSpec.QosDirection.QOS_RX));
+        QosSpec.QosPipe txPipe = null;
+        QosSpec.QosPipe rxPipe = null;
+        String value = null;
+
+        if (myCap == null) {
+            loge("prepareQosSpec failed because needs is null");
+            return null;
+        }
 
         /*
          * lookup needs and translate to QosSpec
@@ -577,59 +569,56 @@ public class QosManager {
          *  the spec with null values, the modem will reject it.
          * *******************************************************************
          */
-        if (myCap == null) {
-            loge("prepareQosSpec failed because needs is null");
-            return null;
-        }
 
-        String value = null;
-        // Apply flow spec, convert unit for capabilities kbps to qosspec bps
+        /* Add TX flow */
         if ((value = myCap.get(LinkCapabilities.Key.RW_DESIRED_REV_BW)) != null) {
-            txPipe.put(QosSpec.QosSpecKey.FLOW_DATA_RATE_MAX, value);
+            txPipe = addQosTxFlow(mQosSpec, txPipe, QosSpec.QosSpecKey.FLOW_DATA_RATE_MAX, value);
         }
 
         if ((value = myCap.get(LinkCapabilities.Key.RW_REQUIRED_REV_BW)) != null) {
-            txPipe.put(QosSpec.QosSpecKey.FLOW_DATA_RATE_MIN, value);
+            txPipe = addQosTxFlow(mQosSpec, txPipe, QosSpec.QosSpecKey.FLOW_DATA_RATE_MIN, value);
         }
 
         if ((value = myCap.get(LinkCapabilities.Key.RW_MAX_ALLOWED_REV_LATENCY)) != null) {
-            txPipe.put(QosSpec.QosSpecKey.FLOW_LATENCY, value);
+            txPipe = addQosTxFlow(mQosSpec, txPipe, QosSpec.QosSpecKey.FLOW_LATENCY, value);
         }
 
         if ((value = myCap.get(LinkCapabilities.Key.RW_REV_TRAFFIC_CLASS)) != null) {
-            txPipe.put(QosSpec.QosSpecKey.FLOW_TRAFFIC_CLASS, value);
+            txPipe = addQosTxFlow(mQosSpec, txPipe, QosSpec.QosSpecKey.FLOW_TRAFFIC_CLASS, value);
         }
 
         if ((value = myCap.get(LinkCapabilities.Key.RW_REV_3GPP2_PROFILE_ID)) != null) {
-            txPipe.put(QosSpec.QosSpecKey.FLOW_3GPP2_PROFILE_ID, value);
+            txPipe = addQosTxFlow(mQosSpec, txPipe, QosSpec.QosSpecKey.FLOW_3GPP2_PROFILE_ID,
+                    value);
         }
 
         if ((value = myCap.get(LinkCapabilities.Key.RW_REV_3GPP2_PRIORITY)) != null) {
-            txPipe.put(QosSpec.QosSpecKey.FLOW_3GPP2_PRIORITY, value);
+            txPipe = addQosTxFlow(mQosSpec, txPipe, QosSpec.QosSpecKey.FLOW_3GPP2_PRIORITY, value);
         }
 
+        /* Add RX flow */
         if ((value = myCap.get(LinkCapabilities.Key.RW_DESIRED_FWD_BW)) != null) {
-            rxPipe.put(QosSpec.QosSpecKey.FLOW_DATA_RATE_MAX, value);
+            rxPipe = addQosRxFlow(mQosSpec, rxPipe, QosSpec.QosSpecKey.FLOW_DATA_RATE_MAX, value);
         }
 
         if ((value = myCap.get(LinkCapabilities.Key.RW_REQUIRED_FWD_BW)) != null) {
-            rxPipe.put(QosSpec.QosSpecKey.FLOW_DATA_RATE_MIN, value);
+            rxPipe = addQosRxFlow(mQosSpec, rxPipe, QosSpec.QosSpecKey.FLOW_DATA_RATE_MIN, value);
         }
 
         if ((value = myCap.get(LinkCapabilities.Key.RW_MAX_ALLOWED_FWD_LATENCY)) != null) {
-            rxPipe.put(QosSpec.QosSpecKey.FLOW_LATENCY, value);
+            rxPipe = addQosRxFlow(mQosSpec, rxPipe, QosSpec.QosSpecKey.FLOW_LATENCY, value);
         }
 
         if ((value = myCap.get(LinkCapabilities.Key.RW_FWD_3GPP2_PROFILE_ID)) != null) {
-            rxPipe.put(QosSpec.QosSpecKey.FLOW_3GPP2_PROFILE_ID, value);
+            rxPipe = addQosRxFlow(mQosSpec, rxPipe, QosSpec.QosSpecKey.FLOW_3GPP2_PROFILE_ID, value);
         }
 
         if ((value = myCap.get(LinkCapabilities.Key.RW_FWD_3GPP2_PRIORITY)) != null) {
-            rxPipe.put(QosSpec.QosSpecKey.FLOW_3GPP2_PRIORITY, value);
+            rxPipe = addQosRxFlow(mQosSpec, rxPipe, QosSpec.QosSpecKey.FLOW_3GPP2_PRIORITY, value);
         }
 
         if ((value = myCap.get(LinkCapabilities.Key.RW_FWD_TRAFFIC_CLASS)) != null) {
-            rxPipe.put(QosSpec.QosSpecKey.FLOW_TRAFFIC_CLASS, value);
+            rxPipe = addQosRxFlow(mQosSpec, rxPipe, QosSpec.QosSpecKey.FLOW_TRAFFIC_CLASS, value);
         }
 
         // Set filter spec
@@ -721,10 +710,22 @@ public class QosManager {
         int filterIndex = 0;
 
         logd("Preparing QoS filter");
-        int numFilters = getMaxFilterCount(cap);
+        int numTxFilters = getMaxTxFilterCount(cap);
+        int numRxFilters = getMaxRxFilterCount(cap);
+
+        // If the LinkSocket source port is set automatically then there is at
+        // least one filter that will always be present in the QoS Spec
+        if (mUseSrcPort) {
+            if (numTxFilters == -1) {
+                numTxFilters = 1;
+            }
+            if (numRxFilters == -1) {
+                numRxFilters= 1;
+            }
+        }
 
         // No filter specified
-        if (numFilters == -1) {
+        if ((numTxFilters == -1) && (numRxFilters == -1)) {
             loge("User didn't specify any QoS filter keys");
             return false;
         }
@@ -759,7 +760,7 @@ public class QosManager {
         // Set the filters for Tx pipe
         if (txPipe != null) {
             // Loop to create multiple filters
-            for (filterIndex = 0; filterIndex < numFilters; filterIndex++) {
+            for (filterIndex = 0; filterIndex < numTxFilters; filterIndex++) {
                 // Apply filter index
                 txPipe.put(QosSpec.QosSpecKey.FILTER_INDEX, Integer.toString(filterIndex));
 
@@ -772,6 +773,15 @@ public class QosManager {
 
                 // Apply filter direction
                 txPipe.put(QosSpec.QosSpecKey.FILTER_DIRECTION, "0");
+
+                // Specify the local port for the QoS so no other application
+                // can use this QoS
+                if (mUseSrcPort) {
+                    // Set the port passed by linkSocket after it is bound as
+                    // source port for tx flow
+                    txPipe.put(srcPortStartKey, Integer.toString(localPort));
+                    txPipe.put(srcPortRangeKey, "0");
+                }
 
                 // Parse the destination port/range
                 if (false == parsePortRange(cap, LinkCapabilities.Key.RW_REMOTE_DEST_PORTS,
@@ -787,10 +797,10 @@ public class QosManager {
                     txPipe.put(dstPortRangeKey, Integer.toString(dstPorts.portRangeVal));
                 }
 
-                // Apply destination ip filter spec as dst for tx
-                if (((value = cap.get(LinkCapabilities.Key.RW_DEST_IP_ADDRESSES)) != null)
+                // Apply destination ip address filter spec as dst for tx
+                if (((value = cap.get(LinkCapabilities.Key.RW_REMOTE_DEST_IP_ADDRESSES)) != null)
                         && ((values = value.split(FILTER_DELIMETER)).length > filterIndex)) {
-                    value = values[filterIndex];
+                    value = values[filterIndex].replaceAll("\\s", "");
                     if (!value.isEmpty()) {
                         if (ipVersion == IPVersion.INET) {
                             txPipe.put(QosSpec.QosSpecKey.FILTER_IPV4_DESTINATION_ADDR, value);
@@ -801,9 +811,9 @@ public class QosManager {
                 }
 
                 // Apply TOS
-                if (((value = cap.get(LinkCapabilities.Key.RW_FILTERSPEC_IP_TOS)) != null)
+                if (((value = cap.get(LinkCapabilities.Key.RW_FILTERSPEC_REV_IP_TOS)) != null)
                         && ((values = value.split(FILTER_DELIMETER)).length > filterIndex)) {
-                    value = values[filterIndex];
+                    value = values[filterIndex].replaceAll("\\s", "");
                     if (!value.isEmpty()) {
                         txPipe.put(QosSpec.QosSpecKey.FILTER_IPV4_TOS, value);
                         txPipe.put(QosSpec.QosSpecKey.FILTER_IPV4_TOS_MASK, TOS_MASK);
@@ -815,7 +825,7 @@ public class QosManager {
         // Set the filters for Rx pipe
         if (rxPipe != null) {
             // Loop to create multiple filters
-            for (filterIndex = 0; filterIndex < numFilters; filterIndex++) {
+            for (filterIndex = 0; filterIndex < numRxFilters; filterIndex++) {
                 // Apply filter index
                 rxPipe.put(QosSpec.QosSpecKey.FILTER_INDEX, Integer.toString(filterIndex));
 
@@ -828,6 +838,15 @@ public class QosManager {
 
                 // Apply filter direction
                 rxPipe.put(QosSpec.QosSpecKey.FILTER_DIRECTION, "1");
+
+                // Specify the local port for the QoS so no other application
+                // can use this QoS
+                if (mUseSrcPort) {
+                    // Set the port passed by linkSocket after it is bound as
+                    // the destination port for rx flow
+                    rxPipe.put(dstPortStartKey, Integer.toString(localPort));
+                    rxPipe.put(dstPortRangeKey, "0");
+                }
 
                 // Parse the source port/range
                 if (false == parsePortRange(cap, LinkCapabilities.Key.RW_REMOTE_SRC_PORTS,
@@ -843,16 +862,26 @@ public class QosManager {
                     rxPipe.put(srcPortRangeKey, Integer.toString(srcPorts.portRangeVal));
                 }
 
-                // Apply destination ip filter spec as src for rx flow
-                if (((value = cap.get(LinkCapabilities.Key.RW_DEST_IP_ADDRESSES)) != null)
+                // Apply destination ip address filter spec as src for rx flow
+                if (((value = cap.get(LinkCapabilities.Key.RW_REMOTE_SRC_IP_ADDRESSES)) != null)
                         && ((values = value.split(FILTER_DELIMETER)).length > filterIndex)) {
-                    value = values[filterIndex];
+                    value = values[filterIndex].replaceAll("\\s", "");
                     if (!value.isEmpty()) {
                         if (ipVersion == IPVersion.INET) {
                             rxPipe.put(QosSpec.QosSpecKey.FILTER_IPV4_SOURCE_ADDR, value);
                         } else {
                             rxPipe.put(QosSpec.QosSpecKey.FILTER_IPV6_SOURCE_ADDR, value);
                         }
+                    }
+                }
+
+                // Apply TOS
+                if (((value = cap.get(LinkCapabilities.Key.RW_FILTERSPEC_FWD_IP_TOS)) != null)
+                        && ((values = value.split(FILTER_DELIMETER)).length > filterIndex)) {
+                    value = values[filterIndex].replaceAll("\\s", "");
+                    if (!value.isEmpty()) {
+                        rxPipe.put(QosSpec.QosSpecKey.FILTER_IPV4_TOS, value);
+                        rxPipe.put(QosSpec.QosSpecKey.FILTER_IPV4_TOS_MASK, TOS_MASK);
                     }
                 }
             }
@@ -977,7 +1006,7 @@ public class QosManager {
         // port/range
         if (((value = cap.get(key)) != null)
                 && ((values = value.split(FILTER_DELIMETER)).length > filterIndex)) {
-            value = values[filterIndex];
+            value = values[filterIndex].replaceAll("\\s", "");
 
             try {
                 // Validate if port is formatted correctly.
@@ -1007,12 +1036,12 @@ public class QosManager {
 
     /**
      * This method parses the LinkCapabilities keys to find the maximum number
-     * of filters specified by the user in any QoS filter key.
+     * of filters specified by the user in any TX filter key.
      *
      * @param cap
      * @return number of filters on success and -1 on error
      */
-    private int getMaxFilterCount(LinkCapabilities cap) {
+    private int getMaxTxFilterCount(LinkCapabilities cap) {
         int numFilters = -1;
         int numStrings = -1;
 
@@ -1027,6 +1056,41 @@ public class QosManager {
             }
         }
 
+        if ((cap.get(LinkCapabilities.Key.RW_REMOTE_DEST_IP_ADDRESSES)) != null) {
+            numStrings = cap.get(LinkCapabilities.Key.RW_REMOTE_DEST_IP_ADDRESSES).
+                    split(FILTER_DELIMETER).length;
+            if (DEBUG) {
+                logd("Number of filters in RW_REMOTE_DEST_IP_ADDRESSES is: " + numStrings);
+            }
+            if (numStrings > numFilters) {
+                numFilters = numStrings;
+            }
+        }
+
+        if ((cap.get(LinkCapabilities.Key.RW_FILTERSPEC_REV_IP_TOS)) != null) {
+            numStrings = cap.get(LinkCapabilities.Key.RW_FILTERSPEC_REV_IP_TOS).
+                    split(FILTER_DELIMETER).length;
+            if (DEBUG) {
+                logd("Number of filters in RW_FILTERSPEC_REV_IP_TOS is: " + numStrings);
+            }
+            if (numStrings > numFilters) {
+                numFilters = numStrings;
+            }
+        }
+        return numFilters;
+    }
+
+    /**
+     * This method parses the LinkCapabilities keys to find the maximum number
+     * of filters specified by the user in any RX filter key.
+     *
+     * @param cap
+     * @return number of filters on success and -1 on error
+     */
+    private int getMaxRxFilterCount(LinkCapabilities cap) {
+        int numFilters = -1;
+        int numStrings = -1;
+
         if ((cap.get(LinkCapabilities.Key.RW_REMOTE_SRC_PORTS)) != null) {
             numStrings = cap.get(LinkCapabilities.Key.RW_REMOTE_SRC_PORTS).
                     split(FILTER_DELIMETER).length;
@@ -1038,29 +1102,62 @@ public class QosManager {
             }
         }
 
-        if ((cap.get(LinkCapabilities.Key.RW_DEST_IP_ADDRESSES)) != null) {
-            numStrings = cap.get(LinkCapabilities.Key.RW_DEST_IP_ADDRESSES).
+        if ((cap.get(LinkCapabilities.Key.RW_REMOTE_SRC_IP_ADDRESSES)) != null) {
+            numStrings = cap.get(LinkCapabilities.Key.RW_REMOTE_SRC_IP_ADDRESSES).
                     split(FILTER_DELIMETER).length;
             if (DEBUG) {
-                logd("Number of filters in RW_DEST_IP_ADDRESSES is: " + numStrings);
+                logd("Number of filters in RW_REMOTE_SRC_IP_ADDRESSES is: " + numStrings);
             }
             if (numStrings > numFilters) {
                 numFilters = numStrings;
             }
         }
 
-        if ((cap.get(LinkCapabilities.Key.RW_FILTERSPEC_IP_TOS)) != null) {
-            numStrings = cap.get(LinkCapabilities.Key.RW_FILTERSPEC_IP_TOS).
+        if ((cap.get(LinkCapabilities.Key.RW_FILTERSPEC_FWD_IP_TOS)) != null) {
+            numStrings = cap.get(LinkCapabilities.Key.RW_FILTERSPEC_FWD_IP_TOS).
                     split(FILTER_DELIMETER).length;
             if (DEBUG) {
-                logd("Number of filters in RW_FILTERSPEC_IP_TOS is: " + numStrings);
+                logd("Number of filters in RW_FILTERSPEC_FWD_IP_TOS is: " + numStrings);
             }
             if (numStrings > numFilters) {
                 numFilters = numStrings;
             }
         }
-
         return numFilters;
+    }
+
+    /**
+     * Add the TX flow parameter to the QoS TX pipe. Create
+     * the TX pipe if not available already.
+     *
+     * @return TX pipe
+     */
+    private QosPipe addQosTxFlow(QosSpec qosSpec, QosPipe txPipe, int key, String value) {
+        if (txPipe == null) {
+            txPipe = qosSpec.createPipe();
+            txPipe.put(QosSpec.QosSpecKey.SPEC_INDEX, "0");
+            txPipe.put(QosSpec.QosSpecKey.FLOW_DIRECTION,
+                    Integer.toString(QosSpec.QosDirection.QOS_TX));
+        }
+        txPipe.put(key, value);
+        return txPipe;
+    }
+
+    /**
+     * Add the RX flow parameter to the QoS RX pipe. Create
+     * the RX pipe if not available already.
+     *
+     * @return RX pipe
+     */
+    private QosPipe addQosRxFlow(QosSpec qosSpec, QosPipe rxPipe, int key, String value) {
+        if (rxPipe == null) {
+            rxPipe = qosSpec.createPipe();
+            rxPipe.put(QosSpec.QosSpecKey.SPEC_INDEX, "0");
+            rxPipe.put(QosSpec.QosSpecKey.FLOW_DIRECTION,
+                    Integer.toString(QosSpec.QosDirection.QOS_RX));
+        }
+        rxPipe.put(key, value);
+        return rxPipe;
     }
 
     /**
@@ -1095,15 +1192,15 @@ public class QosManager {
     }
 
     private void logd(String s) {
-        Log.d(LOG_TAG, "[CdmaSSM] " + s);
+        Log.d(LOG_TAG, s);
     }
 
     private void loge(String s) {
-        Log.e(LOG_TAG, "[CdmaSSM] " + s);
+        Log.e(LOG_TAG, s);
     }
 
     private void logw(String s) {
-        Log.w(LOG_TAG, "[CdmaSSM] " + s);
+        Log.w(LOG_TAG, s);
     }
 
 }
