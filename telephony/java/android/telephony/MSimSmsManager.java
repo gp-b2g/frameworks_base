@@ -634,6 +634,11 @@ public class MSimSmsManager {
         return success;
     }
 
+    /** @hide */
+    public static boolean isMultiSimEnabled() {
+        return isMultiSimEnabled;
+    }
+
     // see SmsMessage.getStatusOnIcc
 
     /** Free space (TS 51.011 10.5.3 / 3GPP2 C.S0023 3.4.27). */

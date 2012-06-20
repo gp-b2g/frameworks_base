@@ -49,10 +49,6 @@ public final class SmsManager {
     private final int DEFAULT_SUB = 0;
     private MSimSmsManager mSimManager = MSimSmsManager.getDefault();
 
-    /** @hide */
-    protected static boolean isMultiSimEnabled
-    = SystemProperties.getBoolean(TelephonyProperties.PROPERTY_MULTI_SIM_ENABLED, false);
-
     /**
      * Send a text based SMS.
      *
@@ -117,6 +113,11 @@ public final class SmsManager {
     public void sendTextMessage(
             String destinationAddress, String scAddress, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent, int subscription) {
+        if (MSimSmsManager.isMultiSimEnabled) {
+            mSimManager.sendTextMessage(destinationAddress, scAddress, text, sentIntent,
+                    deliveryIntent, subscription);
+            return;
+        }
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -126,10 +127,10 @@ public final class SmsManager {
         }
 
         try {
-            ISmsMSim iccISms = ISmsMSim.Stub.asInterface(ServiceManager.getService("isms_msim"));
+            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
                 iccISms.sendText(destinationAddress, scAddress, text, sentIntent,
-                        deliveryIntent, subscription);
+                        deliveryIntent);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -216,6 +217,11 @@ public final class SmsManager {
             String destinationAddress, String scAddress, ArrayList<String> parts,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents,
             int subscription) {
+        if (MSimSmsManager.isMultiSimEnabled) {
+            mSimManager.sendMultipartTextMessage(destinationAddress, scAddress, parts, sentIntents,
+                    deliveryIntents, subscription);
+            return;
+        }
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -225,10 +231,10 @@ public final class SmsManager {
 
         if (parts.size() > 1) {
             try {
-                ISmsMSim iccISms = ISmsMSim.Stub.asInterface(ServiceManager.getService("isms_msim"));
+                ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
                 if (iccISms != null) {
                     iccISms.sendMultipartText(destinationAddress, scAddress, parts,
-                            sentIntents, deliveryIntents, subscription);
+                            sentIntents, deliveryIntents);
                 }
             } catch (RemoteException ex) {
                 // ignore it
@@ -704,11 +710,6 @@ public final class SmsManager {
             }
         }
         return messages;
-    }
-
-    /** @hide */
-    public static boolean isMultiSimEnabled() {
-        return isMultiSimEnabled;
     }
 
     // see SmsMessage.getStatusOnIcc
