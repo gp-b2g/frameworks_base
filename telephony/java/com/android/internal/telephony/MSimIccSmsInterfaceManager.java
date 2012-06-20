@@ -92,6 +92,17 @@ public class MSimIccSmsInterfaceManager extends ISmsMSim.Stub {
         }
     }
 
+    public void sendData(String destAddr, String scAddr, int destPort,
+            byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent,int subscription){
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subscription);
+        if (iccSmsIntMgr != null) {
+            iccSmsIntMgr.sendData(destAddr, scAddr, destPort, data, sentIntent, deliveryIntent);
+        } else {
+            Log.e(LOG_TAG, "sendData iccSmsIntMgr is null for" +
+                    " Subscription:" + subscription);
+        }
+    }
+
     public void sendText(String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent, int subscription) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subscription);

@@ -47,6 +47,7 @@ public final class SmsManager {
     /** Singleton object constructed during class initialization. */
     private static final SmsManager sInstance = new SmsManager();
     private final int DEFAULT_SUB = 0;
+    private MSimSmsManager mSimManager = MSimSmsManager.getDefault();
 
     /** @hide */
     protected static boolean isMultiSimEnabled
@@ -276,6 +277,11 @@ public final class SmsManager {
     public void sendDataMessage(
             String destinationAddress, String scAddress, short destinationPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        if (MSimSmsManager.isMultiSimEnabled) {
+            mSimManager.sendDataMessage(destinationAddress, scAddress, destinationPort, data,
+                    sentIntent, deliveryIntent);
+            return;
+        }
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
