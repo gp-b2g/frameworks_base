@@ -963,12 +963,14 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 } catch ( StringIndexOutOfBoundsException ex) {
                     loge("pollStateDone: countryCodeForMcc error" + ex);
                 }
+                if (isoCountryCode != "") {
+                    phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
+                            isoCountryCode);
+                    mGotCountryCode = true;
 
-                phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
-                        isoCountryCode);
-                mGotCountryCode = true;
-                if (mNeedFixZone) {
-                    fixTimeZone(isoCountryCode);
+                    if (mNeedFixZone) {
+                        fixTimeZone(isoCountryCode);
+                    }
                 }
             }
 
