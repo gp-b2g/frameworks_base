@@ -179,12 +179,16 @@ static void android_view_GLES20Canvas_prepare(JNIEnv* env, jobject clazz,
 
 static void android_view_GLES20Canvas_startTileRendering(JNIEnv* env, jobject clazz,
         OpenGLRenderer* renderer, jint left, jint top, jint right, jint bottom) {
-    TileRenderer::getInstance().startTileRendering(renderer, left, top, right, bottom);
+    int width = 0, height = 0;
+    if (renderer != NULL) {
+        renderer->getViewport(width, height);
+    }
+    TileRenderer::getInstance().startTileRendering(left, top, right, bottom, width, height);
 }
 
 static void android_view_GLES20Canvas_endTileRendering(JNIEnv* env, jobject clazz,
         OpenGLRenderer* renderer) {
-    TileRenderer::getInstance().endTileRendering(renderer);
+    TileRenderer::getInstance().endTileRendering();
 }
 
 static void android_view_GLES20Canvas_prepareDirty(JNIEnv* env, jobject clazz,

@@ -36,12 +36,13 @@ ifeq ($(USE_OPENGL_RENDERER),true)
 		external/skia/include/effects \
 		external/skia/include/images \
 		external/skia/src/ports \
-		external/skia/include/utils
+		external/skia/include/utils \
+		hardware/qcom/display/libtilerenderer
 
 	LOCAL_CFLAGS += -DUSE_OPENGL_RENDERER
 	LOCAL_CFLAGS += -fvisibility=hidden
 	LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-	LOCAL_SHARED_LIBRARIES := libcutils libutils libGLESv2 libskia libui
+	LOCAL_SHARED_LIBRARIES := libcutils libutils libGLESv2 libskia libui libtilerenderer
 	ifeq ($(TARGET_USES_TESTFRAMEWORK),true)
         LOCAL_CFLAGS += -DGFX_TESTFRAMEWORK
         LOCAL_SHARED_LIBRARIES += libtestframework
