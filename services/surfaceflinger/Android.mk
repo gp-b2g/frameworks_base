@@ -35,6 +35,10 @@ ifeq ($(TARGET_BOARD_PLATFORM), s5pc110)
 	LOCAL_CFLAGS += -DREFRESH_RATE=56
 endif
 
+ifeq ($(TARGET_USES_MDP3), true)
+     LOCAL_CFLAGS += -DUSE_MDP3
+endif
+
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
