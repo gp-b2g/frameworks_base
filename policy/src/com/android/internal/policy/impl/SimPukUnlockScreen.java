@@ -83,7 +83,7 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
             LockPatternUtils lockpatternutils, int subscription) {
         super(context);
         mUpdateMonitor = updateMonitor;
-        mCallback = callback;;
+        mCallback = callback;
 
         mCreationOrientation = configuration.orientation;
         mKeyboardHidden = configuration.hardKeyboardHidden;
@@ -117,6 +117,13 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
 
         setHeaderText();
 
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            mKeyguardStatusViewManager = new MSimKeyguardStatusViewManager(
+                    this, updateMonitor, lockpatternutils, callback, true);
+        } else {
+            mKeyguardStatusViewManager = new KeyguardStatusViewManager(this,
+                    updateMonitor, lockpatternutils, callback, true);
+        }
         mPinText.setFocusableInTouchMode(true);
         mPinText.setOnFocusChangeListener(this);
         mPukText.setFocusableInTouchMode(true);
@@ -174,8 +181,9 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
             displayText = getContext().getString(R.string.keyguard_password_enter_puk_code);
         }
         if (amptRemainding > 0) {
-            displayText = displayText + getContext().getString(R.string.pinpuk_attempts)
-                          + amptRemainding;
+            displayText = displayText
+                    + getContext().getString(R.string.pinpuk_attempts)
+                    + amptRemainding;
         }
         mHeaderText.setText(displayText);
     }
@@ -295,7 +303,12 @@ public class SimPukUnlockScreen extends LinearLayout implements KeyguardScreen,
                         if (result == Phone.PIN_RESULT_SUCCESS) {
                             // before closing the keyguard, report back that
                             // the sim is unlocked so it knows right away
-                            mUpdateMonitor.reportSimUnlocked();
+                            if (TelephonyManager.getDefault()
+                                    .isMultiSimEnabled()) {
+                                mUpdateMonitor.reportSimUnlocked(mSubscription);
+                            } else {
+                                mUpdateMonitor.reportSimUnlocked();
+                            }
                             mCallback.goToUnlockScreen();
                         } else {
                             if (result == Phone.PIN_PASSWORD_INCORRECT) {
