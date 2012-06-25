@@ -1141,8 +1141,13 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta) {
             CHECK_EQ(err, (status_t)OK);
 
             LOGV("Thumbnail mode enabled.");
+            if (!strncmp("OMX.ittiam.video.decoder", mComponentName, 24)) {
+            mThumbnailMode = false;
+            }
         }
-
+        else{
+            LOGE("Not thumbnail mode");
+        }
         if (mIsEncoder) {
             status_t err = setVideoInputFormat(mMIME, meta);
             if (err != OK) {

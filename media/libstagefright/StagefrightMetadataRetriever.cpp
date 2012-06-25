@@ -211,7 +211,7 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
 
     sp<MetaData> meta = decoder->getFormat();
 
-    int32_t width, height, frame_width_rounded;
+    int32_t width, height, stride,frame_width_rounded;
     CHECK(meta->findInt32(kKeyWidth, &width));
     CHECK(meta->findInt32(kKeyHeight, &height));
 
@@ -263,7 +263,6 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
     if (meta->findInt32(kKeyDisplayHeight, &displayHeight)) {
         frame->mDisplayHeight = displayHeight;
     }
-
 
     ColorConverter converter(
             (OMX_COLOR_FORMATTYPE)srcFormat, OMX_COLOR_Format16bitRGB565);
@@ -378,8 +377,10 @@ VideoFrame *StagefrightMetadataRetriever::getFrameAtTime(
             LOGE("Dont use sw decoder for thumbnail");
         }
         else {
+            int32_t flags = 0;
+            flags |= OMXCodec::kEnableThumbnailMode | OMXCodec::kSoftwareCodecsOnly;
             frame = extractVideoFrameWithCodecFlags(
-                &mClient, trackMeta, source, OMXCodec::kSoftwareCodecsOnly,
+                &mClient, trackMeta, source, flags,
                 timeUs, option);
             if (frame == NULL){
                 // remake source to ensure its stopped before we start it
