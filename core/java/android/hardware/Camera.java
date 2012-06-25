@@ -3342,6 +3342,18 @@ public class Camera {
         }
 
         /**
+         * Gets the supported hdr bracketing modes.
+         *
+         * @return a list of supported hdr bracketing modes. null if hdr bracketing setting
+         *         is not supported.
+         * @see #getAEBracket()
+         */
+         public List<String> getSupportedAEBracketModes() {
+            String str = get(KEY_AE_BRACKET_HDR + SUPPORTED_VALUES_SUFFIX);
+            return split(str);
+        }
+
+        /**
          * Gets the supported flash modes.
          *
          * @return a list of supported flash modes. null if flash mode setting
