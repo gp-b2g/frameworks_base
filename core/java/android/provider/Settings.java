@@ -1462,6 +1462,26 @@ public final class Settings {
         public static final String SCREEN_BRIGHTNESS_MODE = "screen_brightness_mode";
 
         /**
+        * If true, if the environment is dark, light the button back-light each time screen is touched after unlock.
+        *            if the environment is bright, only light the button back-light once the phone is unlocked.
+        * If false, only light the button back-light once the
+        * @hide
+        */
+        public static final String LIGHT_SENSOR_FOR_BUTTON_LIGHT = "light_sensor_for_button_light";
+
+        /**
+        * The input of light sensor lower than this value means the environment is dark.
+        * @hide
+        */
+        public static final String LIGHT_DARK_THRESHOLD = "light_dark_threshold";
+
+        /**
+        * The input of light sensor higher than this value means the environment is bright.
+        * @hide
+        */
+        public static final String LIGHT_BRIGHT_THRESHOLD = "light_bright_threshold";
+
+        /**
          * SCREEN_BRIGHTNESS_MODE value for manual mode.
          */
         public static final int SCREEN_BRIGHTNESS_MODE_MANUAL = 0;
