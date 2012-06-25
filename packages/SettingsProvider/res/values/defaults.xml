@@ -26,8 +26,8 @@
     <bool name="def_auto_time">true</bool>
     <bool name="def_auto_time_zone">true</bool>
     <bool name="def_accelerometer_rotation">true</bool>
-    <!-- Default screen brightness, from 0 to 255.  102 is 40%. -->
-    <integer name="def_screen_brightness">102</integer>
+    <!-- Default screen brightness, from 0 to 255.  179 is 70%. -->
+    <integer name="def_screen_brightness">179</integer>
     <bool name="def_screen_brightness_automatic_mode">false</bool>
     <bool name="def_light_sensor_for_button_light">true</bool>
     <fraction name="def_window_animation_scale">100%</fraction>
