@@ -1628,9 +1628,17 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     // and his ONLY options are to answer or reject the call.)
                     boolean incomingRinging = false;
                     try {
-                        ITelephony telephonyService = getTelephonyService();
-                        if (telephonyService != null) {
-                            incomingRinging = telephonyService.isRinging();
+                        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                            ITelephonyMSim telephonyMSimService = getMSimTelephonyService();
+                            if (telephonyMSimService != null) {
+                                incomingRinging = telephonyMSimService.isRinging(0)
+                                        || telephonyMSimService.isRinging(1);
+                            }
+                        } else {
+                            ITelephony telephonyService = getTelephonyService();
+                            if (telephonyService != null) {
+                                incomingRinging = telephonyService.isRinging();
+                            }
                         }
                     } catch (RemoteException ex) {
                         Log.w(TAG, "RemoteException from getPhoneInterface()", ex);
