@@ -479,7 +479,7 @@ public class KeyguardUpdateMonitor {
         //this flag may not correct, so do not check.
         //if (intent.getBooleanExtra(EXTRA_SHOW_PLMN, false)) {
             final String plmn = intent.getStringExtra(EXTRA_PLMN);
-            if (plmn != null) {
+            if (plmn != null && !plmn.isEmpty()) {
                 return plmn;
             } else {
                 return getDefaultPlmn();
