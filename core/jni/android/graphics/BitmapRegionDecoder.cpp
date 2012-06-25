@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (C) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,6 +74,8 @@ static jobject doBuildTileIndex(JNIEnv* env, SkStream* stream) {
     SkImageDecoder* decoder = SkImageDecoder::Factory(stream);
     int width, height;
     if (NULL == decoder) {
+        // fail to get decoder, do not forget to free stream
+        stream->unref();
         doThrowIOE(env, "Image format not supported");
         return nullObjectReturn("SkImageDecoder::Factory returned null");
     }
@@ -85,6 +88,8 @@ static jobject doBuildTileIndex(JNIEnv* env, SkStream* stream) {
         char msg[100];
         snprintf(msg, sizeof(msg), "Image failed to decode using %s decoder",
                 decoder->getFormatName());
+        // fail to build tile index, do not forget to free stream
+        stream->unref();
         doThrowIOE(env, msg);
         return nullObjectReturn("decoder->buildTileIndex returned false");
     }
