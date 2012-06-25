@@ -9459,6 +9459,7 @@ package android.hardware {
     method public java.lang.String getSceneMode();
     method public java.lang.String getSelectableZoneAf();
     method public int getSharpness();
+    method public java.util.List<java.lang.String> getSupportedAEBracketModes();
     method public java.util.List<java.lang.String> getSupportedAntibanding();
     method public java.util.List<java.lang.String> getSupportedAutoexposure();
     method public java.util.List<java.lang.String> getSupportedColorEffects();

@@ -126,6 +126,7 @@ const char CameraParameters::KEY_ZSL[] = "zsl";
 const char CameraParameters::KEY_SUPPORTED_ZSL_MODES[] = "zsl-values";
 const char CameraParameters::KEY_CAMERA_MODE[] = "camera-mode";
 const char CameraParameters::KEY_AE_BRACKET_HDR[] = "ae-bracket-hdr";
+const char CameraParameters::KEY_SUPPORTED_AE_BRACKET_HDR_MODES[] = "ae-bracket-hdr-values";
 const char CameraParameters::KEY_POWER_MODE[] = "power-mode";
 /*only effective when KEY_AE_BRACKET_HDR set to ae_bracketing*/
 //const char CameraParameters::KEY_AE_BRACKET_SETTING_KEY[] = "ae-bracket-setting";

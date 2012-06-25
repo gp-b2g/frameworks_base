@@ -602,6 +602,7 @@ public:
     static const char KEY_VIDEO_STABILIZATION_SUPPORTED[];
 
     static const char KEY_AE_BRACKET_HDR[];
+    static const char KEY_SUPPORTED_AE_BRACKET_HDR_MODES[];
 
     // Value for KEY_ZOOM_SUPPORTED or KEY_SMOOTH_ZOOM_SUPPORTED.
     static const char TRUE[];
