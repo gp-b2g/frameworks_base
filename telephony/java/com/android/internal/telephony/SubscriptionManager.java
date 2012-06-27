@@ -333,7 +333,7 @@ public class SubscriptionManager extends Handler {
             case EVENT_EMER_CALL_END:
                 Log.d(LOG_TAG, "EVENT_EMER_CALL_END, set uicc subscription");
                 CallManager.getInstance().unregisterForDisconnect(this);
-                if (!mSetSubscriptionInProgress) {
+                if (!mSetSubscriptionInProgress && isAllRadioOn() && isAllCardsInfoAvailable()) {
                     processActivateRequests();
                 }
                 break;
