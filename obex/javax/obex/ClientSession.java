@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -39,6 +39,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import android.os.Handler;
+import android.os.Message;
+import android.os.Looper;
+import android.os.HandlerThread;
 
 /**
  * This class in an implementation of the OBEX ClientSession.
@@ -62,6 +66,11 @@ public final class ClientSession extends ObexSession {
      */
     private int maxPacketSize = 256;
 
+    private static final int OBEX_RESPONSE_TIME_OUT = 1;
+
+    /* Response timeout for OBEX request sent */
+    private static final int OBEX_RESPONSE_TIME_OUT_VALUE = 30000;
+
     private boolean mRequestActive;
 
     private final InputStream mInput;
@@ -74,6 +83,10 @@ public final class ClientSession extends ObexSession {
 
     public ObexHelper mSrmClient;
 
+    private ClientSessionHandler mClientSessionHandler = null;
+
+    private HandlerThread mHandlerThread = null;
+
     public ClientSession(final ObexTransport trans) throws IOException {
         mInput = trans.openInputStream();
         mOutput = trans.openOutputStream();
@@ -81,6 +94,9 @@ public final class ClientSession extends ObexSession {
         mRequestActive = false;
         mEp = null;
         mSrmClient = new ObexHelper();
+        mHandlerThread = new HandlerThread("OBEX Time Out Handler");
+        mHandlerThread.start();
+        mClientSessionHandler = new ClientSessionHandler(mHandlerThread.getLooper());
     }
 
     public void setMaxPacketSize(int size) {
@@ -263,6 +279,12 @@ public final class ClientSession extends ObexSession {
             setRequestInactive();
         }
 
+        /* OBEX disconnect from app.  Stop the handler thread */
+        if (mHandlerThread != null ) {
+          mHandlerThread.quit();
+          mHandlerThread = null;
+          mClientSessionHandler = null;
+        }
         return returnHeaderSet;
     }
 
@@ -482,8 +504,20 @@ public final class ClientSession extends ObexSession {
         }
 
         if ( (!ignoreResponse) || (mSrmClient.getLocalSrmpWait()) ) {
-            header.responseCode = mInput.read();
-            if (VERBOSE) Log.v(TAG, "sendRequest responseCode "+header.responseCode);
+            startResponseTimer();
+            try {
+              header.responseCode = mInput.read();
+              if (VERBOSE) Log.v(TAG, "sendRequest responseCode "+header.responseCode);
+            } catch (IOException e) {
+                Log.v(TAG, "Response timed out. Clean up the handler: " + e);
+                if (mHandlerThread != null ) {
+                  mHandlerThread.quit();
+                  mHandlerThread = null;
+                  mClientSessionHandler = null;
+                }
+            }
+
+            if (mClientSessionHandler != null) stopResponseTimer();
 
             int length = ((mInput.read() << 8) | (mInput.read()));
             if (VERBOSE) Log.v(TAG, "sendRequest response length "+length);
@@ -673,5 +707,42 @@ public final class ClientSession extends ObexSession {
 
     public interface eventParser{
         public boolean Callback(String data);
+    }
+
+    private final class ClientSessionHandler extends Handler {
+        public ClientSessionHandler (Looper looper) {
+          super(looper);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+           if (VERBOSE) Log.v(TAG, "Handler(): Response Time out. Close the socket");
+           switch (msg.what) {
+              case OBEX_RESPONSE_TIME_OUT:
+                try {
+                  close();
+                } catch (IOException e) {
+                    if (VERBOSE) Log.v(TAG, "Response time out: "  + e);
+                }
+                break;
+           }
+        }
+    }
+
+    private void startResponseTimer() {
+        if (VERBOSE) Log.v(TAG, "OBEX: Start response timer");
+        if (mClientSessionHandler != null) {
+           mClientSessionHandler.sendMessageDelayed(mClientSessionHandler
+              .obtainMessage(OBEX_RESPONSE_TIME_OUT), OBEX_RESPONSE_TIME_OUT_VALUE);
+        }
+        return;
+    }
+
+    private void stopResponseTimer() {
+        if (VERBOSE) Log.v(TAG, "OBEX: Stop response timer");
+        if (mClientSessionHandler != null) {
+          mClientSessionHandler.removeMessages(OBEX_RESPONSE_TIME_OUT);
+        }
+        return;
     }
 }
