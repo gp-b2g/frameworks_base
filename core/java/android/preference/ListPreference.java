@@ -25,6 +25,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.AttributeSet;
 import java.util.UnknownFormatConversionException;
+import java.util.IllegalFormatConversionException;
 
 /**
  * A {@link Preference} that displays a list of entries as
@@ -154,8 +155,10 @@ public class ListPreference extends DialogPreference {
                 return String.format(mSummary, entry);
             } catch(UnknownFormatConversionException e) {
                 //if format conversion exception, return summary directly
-                return mSummary;
+            } catch (IllegalFormatConversionException e) {
+                //if illegal format exception, return summary directly
             }
+            return mSummary;
         }
     }
 
