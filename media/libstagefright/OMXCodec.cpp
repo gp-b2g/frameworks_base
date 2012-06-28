@@ -6143,7 +6143,17 @@ status_t OMXCodec::pause() {
 void OMXCodec::parseFlags() {
     //TODO - uncomment if needed
     //    mGPUComposition = ((flags & kEnableGPUComposition) ? true : false);
+#ifdef TARGET7x27A
+    if (!strncmp(mComponentName, "OMX.ittiam.", 11)) {
+        mThumbnailMode = ((mFlags & kEnableThumbnailMode) ? true : false);
+    }
+    else {
+        LOGD("%s doesn't support thumbnail mode", mComponentName);
+        mThumbnailMode =  false;
+    }
+#else
     mThumbnailMode = ((mFlags & kEnableThumbnailMode) ? true : false);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
