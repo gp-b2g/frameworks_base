@@ -366,7 +366,14 @@ CameraService::Client::Client(const sp<CameraService>& cameraService,
 
     // Callback is disabled by default
     mPreviewCallbackFlag = CAMERA_FRAME_CALLBACK_FLAG_NOOP;
-    mOrientation = getOrientation(0, mCameraFacing == CAMERA_FACING_FRONT);
+    if (mCameraFacing == CAMERA_FACING_FRONT) {
+        mOrientation = getOrientation(0, mCameraFacing == CAMERA_FACING_FRONT);
+    }
+    else {
+        struct CameraInfo cameraInfo;
+        mCameraService->getCameraInfo(CAMERA_FACING_BACK, &cameraInfo);
+        mOrientation = getOrientation(cameraInfo.orientation - 90, mCameraFacing == CAMERA_FACING_FRONT);
+    }
     mPlayShutterSound = true;
     cameraService->setCameraBusy(cameraId);
     cameraService->loadSound();
