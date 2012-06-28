@@ -742,6 +742,10 @@ public class SubscriptionManager extends Handler {
                     mQueuedDds = preferredDataSub;
                 }
             }
+            //when two sub are active,we set default subscription to SUB1(0).
+            if (MSimPhoneFactory.getDefaultSubscription() != MSimConstants.SUB1) {
+                MSimPhoneFactory.setDefaultSubscription(MSimConstants.SUB1);
+            }
         }
     }
 
