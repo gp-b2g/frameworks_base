@@ -161,7 +161,8 @@ public class CdmaSmsAddress extends SmsAddress {
         for (int i = 0; i < len; i++) {
             char c = address.charAt(i);
             int mapIndex = numericCharDialableMap.indexOfKey(c);
-            if (mapIndex < 0) return null;
+            // Many punctuation char are in the list, should not return null
+            if (mapIndex < 0) continue;
             if (! numericCharDialableMap.valueAt(mapIndex)) continue;
             builder.append(c);
         }
