@@ -1423,6 +1423,21 @@ public final class Settings {
           */
          public static final String FMC_STATUS = "fmc_status";
 
+
+          /**
+          * Int value to specify if CABL is enabled.
+          * 0 = Disable  1 = Enable
+          * @hide
+          */
+         public static final String CABL_ENABLED = "cabl_enabled";
+
+          /**
+          * Int value to specify CABL levels.
+          * @hide
+          */
+         public static final String CABL_LEVELS = "cabl_levels";
+
+
         /**
           * Int value to specify user preferred network mode (only for GSM phone)
           * This value is only used to record use choise from Settings UI
