@@ -267,7 +267,7 @@ protected:
         }
     };
 
-    void initTextTexture(bool largeFonts = false);
+    void initTextTexture();
     bool cacheBitmap(const SkGlyph& glyph, uint32_t *retOriginX, uint32_t *retOriginY);
 
     void flushAllAndInvalidate();
@@ -287,6 +287,7 @@ protected:
     uint32_t mCacheHeight;
 
     Vector<CacheTextureLine*> mCacheLines;
+    uint32_t mUsedCacheHeight;
     uint32_t getRemainingCacheCapacity();
 
     Font* mCurrentFont;
