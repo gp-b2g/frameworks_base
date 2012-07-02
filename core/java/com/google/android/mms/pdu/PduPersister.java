@@ -772,6 +772,10 @@ public class PduPersister {
                     // we will use default encoding when charset is 0 or not supported
                     int charset = part.getCharset();
                     if (charset != 0) {
+                        if (charset == CharacterSets.US_ASCII && ContentType.APP_SMIL.equals(contentType)) {
+                            charset = CharacterSets.UTF_8;
+                        }
+
                         String charsetName = null;
                         try {
                             charsetName = CharacterSets.getMimeName(charset);
