@@ -24,6 +24,7 @@ import com.android.internal.telephony.IccCardStatus.CardState;
 import com.android.internal.telephony.MSimConstants.CardUnavailableReason;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -243,6 +244,11 @@ public class CardSubscriptionManager extends Handler {
                     && (slot >= 0 && slot < MSimConstants.RIL_MAX_CARDS)) {
                 resetCardInfo(slot);
                 notifyCardInfoNotAvailable(slot, CardUnavailableReason.REASON_SIM_REFRESH_RESET);
+            } else if (state.refreshResult == IccRefreshResponse.Result.ICC_FILE_UPDATE) {
+                Intent intent = new Intent(TelephonyIntents.ACTION_SIM_REFRESH_UPDATE);
+                intent.putExtra(MSimConstants.SUBSCRIPTION_KEY, slot);
+                logd("Broadcasting intent ACTION_SIM_REFRESH_UPDATE " + "at slot : " + slot);
+                mContext.sendBroadcast(intent,null);
             }
         } else {
             loge("processSimRefresh received without input");

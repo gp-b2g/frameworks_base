@@ -193,6 +193,17 @@ public class TelephonyIntents {
             = "android.intent.action.SIM_STATE_CHANGED";
 
     /**
+     * Broadcast Action: Indicate sim card refresh icc file update.
+
+
+     * <p class="note">This is a protected intent that can only be sent
+     * by the system.
+     * @hide
+     */
+    public static final String ACTION_SIM_REFRESH_UPDATE
+            = "android.intent.action.ACTION_SIM_REFRESH_UPDATE";
+
+    /**
      * Broadcast Action: Restricted wifi channels changed.
      * The intent will have the following extra values:</p>
      * <ul>
