@@ -457,7 +457,16 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      * @return byte array for the record.
      */
     protected byte[] makeSmsRecordData(int status, byte[] pdu) {
-        byte[] data = new byte[IccConstants.SMS_RECORD_LENGTH];
+
+        int length;
+        if (Phone.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+            length = IccConstants.SMS_RECORD_LENGTH;
+        } else {
+            length = IccConstants.RUIM_SMS_RECORD_LENGTH;
+        }
+
+        byte[] data = new byte[length];
+
 
         // Status bits for this record.  See TS 51.011 10.5.3
         data[0] = (byte)(status & 7);
@@ -465,7 +474,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         System.arraycopy(pdu, 0, data, 1, pdu.length);
 
         // Pad out with 0xFF's.
-        for (int j = pdu.length+1; j < IccConstants.SMS_RECORD_LENGTH; j++) {
+        for (int j = pdu.length+1; j < length; j++) {
             data[j] = -1;
         }
 

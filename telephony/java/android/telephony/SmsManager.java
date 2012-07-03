@@ -21,10 +21,12 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.text.TextUtils;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.ISms;
 import com.android.internal.telephony.ISmsMSim;
 import com.android.internal.telephony.IccConstants;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.SmsRawData;
 import com.android.internal.telephony.TelephonyProperties;
 
@@ -365,7 +367,15 @@ public final class SmsManager {
     public boolean
     deleteMessageFromIcc(int messageIndex) {
         boolean success = false;
-        byte[] pdu = new byte[IccConstants.SMS_RECORD_LENGTH-1];
+        int length;
+        if (Phone.PHONE_TYPE_GSM == TelephonyManager.getDefault().getPhoneType()) {
+            length = IccConstants.SMS_RECORD_LENGTH - 1;
+        } else {
+            length = IccConstants.RUIM_SMS_RECORD_LENGTH - 1;
+        }
+
+        byte[] pdu = new byte[length];
+
         Arrays.fill(pdu, (byte)0xff);
 
         try {

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (C) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (C) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,11 +23,13 @@ import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.content.Context;
 import android.text.TextUtils;
+import android.telephony.MSimTelephonyManager;
 
 import com.android.internal.telephony.ISmsMSim;
 import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.SmsRawData;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.Phone;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -367,7 +369,15 @@ public class MSimSmsManager {
     public boolean
     deleteMessageFromIcc(int messageIndex, int subscription) {
         boolean success = false;
-        byte[] pdu = new byte[IccConstants.SMS_RECORD_LENGTH-1];
+        int length;
+        if (Phone.PHONE_TYPE_GSM == MSimTelephonyManager.getDefault().getCurrentPhoneType(subscription)) {
+            length = IccConstants.SMS_RECORD_LENGTH - 1;
+        } else {
+            length = IccConstants.RUIM_SMS_RECORD_LENGTH - 1;
+        }
+
+        byte[] pdu = new byte[length];
+
         Arrays.fill(pdu, (byte)0xff);
 
         try {
