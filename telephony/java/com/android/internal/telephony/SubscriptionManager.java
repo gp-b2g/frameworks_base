@@ -944,21 +944,21 @@ public class SubscriptionManager extends Handler {
             for (int i = 0; i < cardSub.getLength(); i++) {
                 Subscription sub = cardSub.subscription[i];
                 if (MODE_1x.equals(mode)) {
-                    if (sub.appType.equals("RUIM")) {
+                    if (("RUIM").equals(sub.appType)) {
                         logd("find the first RUIM appIndex " + i);
                         appIndex = i;
                         break;
-                    } else if (sub.appType.equals("CSIM")) {
+                    } else if (("CSIM").equals(sub.appType)) {
                         logd("find the first CSIM appIndex " + i);
                         appIndex = i;
                         break;
                     }
                 } else if (MODE_GW.equals(mode)) {
-                    if (sub.appType.equals("USIM")) {
+                    if (("USIM").equals(sub.appType)) {
                         logd("find the first USIM appIndex " + i);
                         appIndex = i;
                         break;
-                    } else if (sub.appType.equals("SIM")) {
+                    } else if (("SIM").equals(sub.appType)) {
                         logd("find the first SIM appIndex " + i);
                         appIndex = i;
                         break;
