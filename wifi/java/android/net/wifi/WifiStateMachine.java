@@ -95,7 +95,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
-
+import android.net.NetworkInfo;
 /**
  * Track the state of Wifi connectivity. All event handling is done here,
  * and all changes in connectivity state are initiated here.
@@ -115,7 +115,10 @@ public class WifiStateMachine extends StateMachine {
     private static final String TAG = "WifiStateMachine";
     private static final String NETWORKTYPE = "WIFI";
     private static final boolean DBG = true;
-
+    private static final String FORCE_DISABLE_FMC = "android.fmc.FORCE_DISABLED_ACTION";
+    private static final String[] CT_WIFI_HOTPOT = {
+            "ChinaNet_HomeCW","ChinaNet_CW","ChinaNet"
+    };
     /* TODO: This is no more used with the hostapd code. Clean up */
     private static final String SOFTAP_IFACE = "wlan0";
 
@@ -1741,7 +1744,7 @@ public class WifiStateMachine extends StateMachine {
             /* BSSID is valid only in ASSOCIATING state */
             Log.w(TAG, "handleSupplicantStateChange: 2");
             mWifiInfo.setBSSID(stateChangeResult.BSSID);
-			NetworkUtils.enableInterface(mInterfaceName);
+            NetworkUtils.enableInterface(mInterfaceName);
         }
 // WAPI--
         mSupplicantStateTracker.sendMessage(Message.obtain(message));
@@ -3046,7 +3049,7 @@ public class WifiStateMachine extends StateMachine {
                 case CMD_CONNECT_NETWORK:
                     int netId = message.arg1;
                     WifiConfiguration config = (WifiConfiguration) message.obj;
-
+                    int previousId = mWifiInfo.getNetworkId();
                     /* We connect to a specific network by issuing a select
                      * to the WifiConfigStore. This enables the network,
                      * while disabling all other networks in the supplicant.
@@ -3058,6 +3061,23 @@ public class WifiStateMachine extends StateMachine {
                         netId = WifiConfigStore.selectNetwork(config);
                     } else {
                         WifiConfigStore.selectNetwork(netId);
+                    }
+                    log("fiInfo.getNetworkId()="+previousId+"netId ="+netId);
+
+                    if(previousId != netId){
+                        NetworkInfo networkInfo = mCm.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+                        NetworkInfo.State networkState = (networkInfo == null?NetworkInfo.State.UNKNOWN
+                                                     :networkInfo.getState());
+
+                        log("networkState = " + networkState);
+                        if(networkState == NetworkInfo.State.CONNECTED){
+                            String ssid = mWifiInfo.getSSID();
+                            log("ssid = " + ssid);
+                            if(ssid != null&&isCTWifiHotpot(ssid)){
+                                Intent intent = new Intent(FORCE_DISABLE_FMC);
+                                mContext.sendBroadcast(intent);
+                           }
+                        }
                     }
 
                     /* The state tracker handles enabling networks upon completion/failure */
@@ -3115,6 +3135,14 @@ public class WifiStateMachine extends StateMachine {
         }
     }
 
+    private boolean isCTWifiHotpot(String ssid){
+            for(int i = 0;i<CT_WIFI_HOTPOT.length;i++){
+               if(CT_WIFI_HOTPOT[i].equals(ssid)){
+                     return true;
+               }
+         }
+            return false;
+    }
     class ConnectingState extends State {
 
         @Override

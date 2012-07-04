@@ -2730,6 +2730,36 @@ public class Intent implements Parcelable, Cloneable {
     public static final String EXTRA_LOCAL_ONLY =
         "android.intent.extra.LOCAL_ONLY";
 
+    /**
+     * Used to provider interface for 3th apks.
+     * @hide
+     */
+    public static final String ACTION_CTCW = "android.net.wifi.WIFI_CTCW_STATE_CHANGED";
+    /**
+     * @hide
+     */
+    public static final String CW_STATE = "CWState";
+    /**
+     * @hide
+     */
+    public static final int FLAG_CONNECTED_SSID = 0x0000000A;
+    /**
+     * @hide
+     */
+    public static final int FLAG_REGISTER_FAILED = 0x0000000B;
+    /**
+     * @hide
+     */
+    public static final int FLAG_REGISTER_SUCCESSED = 0x0000000C;
+    /**
+     * @hide
+     */
+    public static final int FLAG_PPP_CONNECTING = 0x0000000D;
+    /**
+     * @hide
+     */
+    public static final int FLAG_PPP_SUCCESSED = 0x0000000E;
+
     // ---------------------------------------------------------------------
     // ---------------------------------------------------------------------
     // Intent flags (see mFlags variable).
