@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,9 +89,14 @@ import com.android.internal.R;
 
 public class WifiService extends IWifiManager.Stub {
     private static final String TAG = "WifiService";
-    private static final boolean DBG = false;
+    private static final boolean DBG = true;
 
     private final WifiStateMachine mWifiStateMachine;
+    private static final String FORCE_DISABLE_FMC = "android.fmc.FORCE_DISABLED_ACTION";
+    private static final String[] CT_WIFI_HOTPOT = {
+            "ChinaNet_HomeCW","ChinaNet_CW","ChinaNet"
+    };
+
 
     private Context mContext;
 
@@ -382,6 +388,9 @@ public class WifiService extends IWifiManager.Stub {
                             mPersistWifiState.get() == WIFI_ENABLED_AIRPLANE_OVERRIDE)) {
                                 persistWifiState(true);
                         }
+                Slog.i(TAG, "WifiService airplaneMode is == " +
+                (mAirplaneModeOn.get()? "enabled" : "disabled")); 
+                stopFmcIfNecessary();
                         updateWifiState();
                     }
                 },
@@ -396,6 +405,7 @@ public class WifiService extends IWifiManager.Stub {
                 new BroadcastReceiver() {
                     @Override
                     public void onReceive(Context context, Intent intent) {
+                        Slog.i(TAG,"intent.getAction == "+intent.getAction());
                         if (intent.getAction().equals(WifiManager.WIFI_STATE_CHANGED_ACTION)) {
                             int wifiState = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE,
                                     WifiManager.WIFI_STATE_DISABLED);
@@ -1067,8 +1077,37 @@ public class WifiService extends IWifiManager.Stub {
         }
         mWifiStateMachine.updateBatteryWorkSource(mTmpWorkSource);
     }
+    private void stopFmcIfNecessary(){
+        if(mAirplaneModeOn.get()){
+         boolean enabled = Settings.System.getInt(mContext.getContentResolver(),
+                           Settings.System.FMC_ENABLED,0) == 1;
+         if(!enabled)
+           return;
+         NetworkInfo.State networkState = (mNetworkInfo == null?NetworkInfo.State.UNKNOWN
+                           :mNetworkInfo.getState());
+         Slog.i(TAG,"mNetworkInfo.getState =="+networkState);
+         if(networkState == NetworkInfo.State.CONNECTED){
+             String ssid = getConnectionInfo().getSSID();
+             Slog.i(TAG,"ssid == "+ssid);
+             if(ssid != null && isCTWifiHotpot(ssid)){
+                 Intent intent = new Intent(FORCE_DISABLE_FMC);
+                           mContext.sendBroadcast(intent);
+                 }
+          }
+
+       }
+    }
+    private boolean isCTWifiHotpot(String ssid){
+            for(int i = 0;i<CT_WIFI_HOTPOT.length;i++){
+               if(CT_WIFI_HOTPOT[i].equals(ssid)){
+                     return true;
+               }
+         }
+            return false;
+    }
 
     private void updateWifiState() {
+        Slog.i(TAG,"mAirplaneModeOn.get() == "+mAirplaneModeOn.get());
         boolean lockHeld = mLocks.hasLocks();
         int strongestLockMode = WifiManager.WIFI_MODE_FULL;
         boolean wifiShouldBeStarted;

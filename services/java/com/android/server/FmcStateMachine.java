@@ -494,6 +494,7 @@ public class FmcStateMachine extends StateMachine {
                 // confuse about FMC status
                 setStatus(FMC_STATUS_CLOSED, false);
             } else {
+                setStatus(FMC_STATUS_REGISTRATION_FAILED);
                 mUserShutDown = true;
             }
         }
