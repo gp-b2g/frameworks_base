@@ -779,7 +779,7 @@ public class PowerManagerService extends IPowerManager.Stub
             });
 
         mContext.getContentResolver().registerContentObserver(
-            LS_FOR_BUTTON_LIGHT_URI, true,
+            LS_DARK_THRESHOLD_URI, true,
             new ContentObserver(new Handler()) {
                 public void onChange(boolean selfChange) {
                     mLightDarkThreshold = getLightDarkThresholdProperty();
