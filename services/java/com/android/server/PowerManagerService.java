@@ -61,6 +61,7 @@ import android.util.Slog;
 import android.view.WindowManagerPolicy;
 import org.codeaurora.qrdinside.QIComponent;
 import android.os.SystemProperties;
+import static android.provider.Settings.System.BUTTON_LIGHT_BRIGHTNESS;
 import static android.provider.Settings.System.DIM_SCREEN;
 import static android.provider.Settings.System.LIGHT_BRIGHT_THRESHOLD;
 import static android.provider.Settings.System.LIGHT_DARK_THRESHOLD;
@@ -91,6 +92,8 @@ public class PowerManagerService extends IPowerManager.Stub
             Settings.System.getUriFor(LIGHT_DARK_THRESHOLD);
     private static final Uri LS_BRIGHT_THRESHOLD_URI =
             Settings.System.getUriFor(LIGHT_BRIGHT_THRESHOLD);
+    private static final Uri BUTTON_LIGHT_BRIGHTNESS_URI =
+            Settings.System.getUriFor(BUTTON_LIGHT_BRIGHTNESS);
 
     static final boolean DEBUG_SCREEN_ON = false;
 
@@ -238,6 +241,7 @@ public class PowerManagerService extends IPowerManager.Stub
     private int mLightEnableReason = LS_DISABLED;
     private int mLightDarkThreshold = DEF_DARK_THRESHOLD_IF_UNAVAILABLE;
     private int mLightBrightThreshold = DEF_BRIGHT_THRESHOLD_IF_UNAVAILABLE;
+    private int mButtonLightBrightness = DEF_BUTTON_LIGHT_BRIGHTNESS;
     private int mLightSensorValue = -1;
     private int mLightSensorValuePre = -1;
     private boolean mProxIgnoredBecauseScreenTurnedOff = false;
@@ -282,6 +286,7 @@ public class PowerManagerService extends IPowerManager.Stub
     private static final int LS_FOR_BUTTON_LIGHT = 0x02;
     private static final int DEF_DARK_THRESHOLD_IF_UNAVAILABLE = 10;
     private static final int DEF_BRIGHT_THRESHOLD_IF_UNAVAILABLE = 15;
+    private static final int DEF_BUTTON_LIGHT_BRIGHTNESS = 2;
 
     // Used when logging number and duration of touch-down cycles
     private long mTotalTouchDownTime;
@@ -463,6 +468,15 @@ public class PowerManagerService extends IPowerManager.Stub
     private int getLightBrightThresholdProperty() {
         return Settings.System.getInt(mContext.getContentResolver(),
                 LIGHT_BRIGHT_THRESHOLD, DEF_BRIGHT_THRESHOLD_IF_UNAVAILABLE);
+    }
+
+    private int getButtonLightBrightnessProperty() {
+        return Settings.System.getInt(mContext.getContentResolver(),
+                BUTTON_LIGHT_BRIGHTNESS, DEF_BUTTON_LIGHT_BRIGHTNESS);
+    }
+
+    public int getButtonLightBrightness() {
+        return mButtonLightBrightness;
     }
 
     private void startPowerDaemon(Context context, String packageName, int interval, String msg) {
@@ -777,6 +791,14 @@ public class PowerManagerService extends IPowerManager.Stub
             new ContentObserver(new Handler()) {
                 public void onChange(boolean selfChange) {
                     mLightBrightThreshold = getLightBrightThresholdProperty();
+                }
+            });
+
+        mContext.getContentResolver().registerContentObserver(
+            BUTTON_LIGHT_BRIGHTNESS_URI, true,
+            new ContentObserver(new Handler()) {
+                public void onChange(boolean selfChange) {
+                    mButtonLightBrightness = getButtonLightBrightnessProperty();
                 }
             });
 
@@ -2695,7 +2717,7 @@ public class PowerManagerService extends IPowerManager.Stub
                     }
                     if (mButtonBrightnessOverride < 0) {
                         if(mLightDark) {
-                            mLightsService.setBrightnessButtonLightOneShot(buttonValue);
+                            mLightsService.setBrightnessButtonLightOneShot(mButtonLightBrightness);
                         }
                     }
                     if (mButtonBrightnessOverride < 0 || !mKeyboardVisible) {
@@ -3101,7 +3123,7 @@ public class PowerManagerService extends IPowerManager.Stub
             brightness = Math.max(brightness, mScreenBrightnessDim);
             mLcdLight.setBrightness(brightness);
             mKeyboardLight.setBrightness(mKeyboardVisible ? brightness : 0);
-            mLightsService.setBrightnessButtonLightOneShot(brightness);
+            mLightsService.setBrightnessButtonLightOneShot(mButtonLightBrightness);
             long identity = Binder.clearCallingIdentity();
             try {
                 mBatteryStats.noteScreenBrightness(brightness);

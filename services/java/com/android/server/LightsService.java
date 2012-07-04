@@ -25,6 +25,7 @@ import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.Message;
 import android.util.Slog;
+import com.android.server.PowerManagerService;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -65,20 +66,22 @@ public class LightsService  extends ILightService.Stub {
     private final int MSG_BUTTON_LIGHT_TIMEOUT = 1;
     private Handler mLightHandler = null;
 
-	public void turnOnButtonLight() {
-        setBrightnessButtonLight(255);
+    public void turnOnButtonLight() {
+        setBrightnessButtonLight(((PowerManagerService)
+                ServiceManager.getService(Context.POWER_SERVICE)).getButtonLightBrightness());
     }
 
     public void setBrightnessButtonLight(int brightness) {
         getLight(LIGHT_ID_BUTTONS).setBrightness(brightness);
     }
 
-	public void turnOffButtonLight() {
+    public void turnOffButtonLight() {
         setBrightnessButtonLight(0);
     }
 
     public void turnOnButtonLightOneShot() {
-        setBrightnessButtonLightOneShot(255);
+        setBrightnessButtonLightOneShot(((PowerManagerService)
+                ServiceManager.getService(Context.POWER_SERVICE)).getButtonLightBrightness());
     }
 
     public void setBrightnessButtonLightOneShot(int brightness) {
