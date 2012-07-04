@@ -1173,6 +1173,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     R.bool.def_light_sensor_for_button_light) ? "1" : "0";
             db.execSQL("INSERT OR REPLACE INTO system(name,value) values('" +
                     Settings.System.LIGHT_SENSOR_FOR_BUTTON_LIGHT + "','" + value + "');");
+            int val = mContext.getResources().getInteger(
+                    R.integer.def_button_light_bright_level);
+            db.execSQL("INSERT OR REPLACE INTO system(name,value) values('" +
+                    Settings.System.BUTTON_LIGHT_BRIGHTNESS + "','" + val + "');");
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -1423,6 +1427,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     R.bool.def_light_sensor_for_button_light);
             loadIntegerSetting(stmt, Settings.System.LIGHT_DARK_THRESHOLD,
                     R.integer.def_dark_threshold);
+            loadIntegerSetting(stmt, Settings.System.BUTTON_LIGHT_BRIGHTNESS,
+                    R.integer.def_button_light_bright_level);
             loadStringSetting(stmt, Settings.System.AIRPLANE_MODE_RADIOS,
                     R.string.def_airplane_mode_radios);
     

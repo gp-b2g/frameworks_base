@@ -1482,6 +1482,12 @@ public final class Settings {
         public static final String LIGHT_BRIGHT_THRESHOLD = "light_bright_threshold";
 
         /**
+        * The brightness of button back-light.
+        * @hide
+        */
+        public static final String BUTTON_LIGHT_BRIGHTNESS = "button_light_brightness";
+
+        /**
          * SCREEN_BRIGHTNESS_MODE value for manual mode.
          */
         public static final int SCREEN_BRIGHTNESS_MODE_MANUAL = 0;
