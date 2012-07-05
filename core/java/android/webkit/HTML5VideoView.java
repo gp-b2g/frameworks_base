@@ -29,8 +29,11 @@
 package android.webkit;
 
 import android.Manifest.permission;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Point;
 import android.graphics.SurfaceTexture;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
@@ -39,12 +42,14 @@ import android.net.Uri;
 import android.opengl.GLES20;
 import android.os.PowerManager;
 import android.util.Log;
+import android.view.Display;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.VideoTextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.MediaController;
 import android.widget.MediaController.MediaPlayerControl;
@@ -66,6 +71,8 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
     private static final String COOKIE = "Cookie";
     private static final String HIDE_URL_LOGS = "x-hide-urls-from-log";
 
+    private static final long ANIMATION_DURATION = 750L; // in ms
+
     // For handling the seekTo before prepared, we need to know whether or not
     // the video is prepared. Therefore, we differentiate the state between
     // prepared and not prepared.
@@ -80,6 +87,11 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
     static final int STATE_BUFFERING          = 4;
     static final int STATE_RELEASED           = 5;
     private int mCurrentState;
+
+    static final int ANIMATION_STATE_NONE     = 0;
+    static final int ANIMATION_STATE_STARTED  = 1;
+    static final int ANIMATION_STATE_FINISHED = 2;
+    private int mAnimationState;
 
     private HTML5VideoViewProxy mProxy;
 
@@ -114,6 +126,16 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
     private int mVideoWidth;
     private int mVideoHeight;
     private int mDuration;
+
+    private int mFullscreenWidth;
+    private int mFullscreenHeight;
+
+    private float mInlineX;
+    private float mInlineY;
+    private float mInlineWidth;
+    private float mInlineHeight;
+
+    private Point mDisplaySize;
 
     // The Media Controller only used for full screen mode
     private MediaController mMediaController;
@@ -240,6 +262,7 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
         mPauseDuringPreparing = false;
         mIsFullscreen = false;
         mSurfaceTextureReady = false;
+        mDisplaySize = new Point();
     }
 
     private static Map<String, String> generateHeaders(String url,
@@ -452,16 +475,36 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
 
         @Override
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            int width = getDefaultSize(mVideoWidth, widthMeasureSpec);
-            int height = getDefaultSize(mVideoHeight, heightMeasureSpec);
+            mFullscreenWidth = getDefaultSize(mVideoWidth, widthMeasureSpec);
+            mFullscreenHeight = getDefaultSize(mVideoHeight, heightMeasureSpec);
             if (mVideoWidth > 0 && mVideoHeight > 0) {
-                if ( mVideoWidth * height  > width * mVideoHeight ) {
-                    height = width * mVideoHeight / mVideoWidth;
-                } else if ( mVideoWidth * height  < width * mVideoHeight ) {
-                    width = height * mVideoWidth / mVideoHeight;
+                if ( mVideoWidth * mFullscreenHeight > mFullscreenWidth * mVideoHeight ) {
+                    mFullscreenHeight = mFullscreenWidth * mVideoHeight / mVideoWidth;
+                } else if ( mVideoWidth * mFullscreenHeight < mFullscreenWidth * mVideoHeight ) {
+                    mFullscreenWidth = mFullscreenHeight * mVideoWidth / mVideoHeight;
                 }
             }
-            setMeasuredDimension(width, height);
+            setMeasuredDimension(mFullscreenWidth, mFullscreenHeight);
+
+            if (mAnimationState == ANIMATION_STATE_NONE) {
+                // Configuring VideoTextureView to inline bounds
+                mTextureView.setTranslationX(getInlineXOffset());
+                mTextureView.setTranslationY(getInlineYOffset());
+                mTextureView.setScaleX(getInlineXScale());
+                mTextureView.setScaleY(getInlineYScale());
+
+                // inline to fullscreen zoom out animation
+                mTextureView.animate().setListener(new AnimatorListenerAdapter() {
+                    public void onAnimationEnd(Animator animation) {
+                        if (mIsFullscreen)
+                            attachMediaController();
+                        mAnimationState = ANIMATION_STATE_FINISHED;
+                    }
+                });
+                mTextureView.animate().setDuration(ANIMATION_DURATION);
+                mAnimationState = ANIMATION_STATE_STARTED;
+                mTextureView.animate().scaleX(1.0f).scaleY(1.0f).translationX(0.0f).translationY(0.0f);
+            }
         }
     }
 
@@ -515,31 +558,7 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
     private final WebChromeClient.CustomViewCallback mCallback =
         new WebChromeClient.CustomViewCallback() {
             public void onCustomViewHidden() {
-                if (mIsFullscreen == false) {
-                    return;
-                }
-                mIsFullscreen = false;
-                mProxy.dispatchOnStopFullScreen();
-                mLayout.removeView(mTextureView);
-                mTextureView = null;
-
-                // Don't show the controller after exiting the full screen.
-                if (mMediaController != null) {
-                    mMediaController.hide();
-                    mMediaController = null;
-                }
-
-                if (mProgressView != null) {
-                    mLayout.removeView(mProgressView);
-                    mProgressView = null;
-                }
-                mLayout = null;
-                // Re enable plugin views.
-                mProxy.getWebView().getViewManager().showAll();
-
-
-                // Set the frame available listener back to the inline listener
-                setInlineFrameAvailableListener();
+                mProxy.prepareExitFullscreen();
             }
         };
 
@@ -547,12 +566,17 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
         mSurfaceTextureReady = true;
     }
 
-    public void enterFullScreenVideoState(int layerId, WebView webView) {
+    public void enterFullScreenVideoState(WebView webView, float x, float y, float w, float h) {
         if (mIsFullscreen == true)
             return;
         mIsFullscreen = true;
+        mAnimationState = ANIMATION_STATE_NONE;
         mCurrentBufferPercentage = 0;
         mPlayer.setOnBufferingUpdateListener(mBufferingUpdateListener);
+        mInlineX = x;
+        mInlineY = y;
+        mInlineWidth = w;
+        mInlineHeight = h;
 
         assert(mSurfaceTexture != null);
         mTextureView = new MyVideoTextureView(mProxy.getContext(), getSurfaceTexture(),
@@ -588,7 +612,39 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
                     mProgressView.setVisibility(View.GONE);
             }
         }
-        attachMediaController();
+    }
+
+    public void exitFullScreenVideoState(float x, float y, float w, float h) {
+        if (mIsFullscreen == false) {
+            return;
+        }
+        mIsFullscreen = false;
+
+        mInlineX = x;
+        mInlineY = y;
+        mInlineWidth = w;
+        mInlineHeight = h;
+
+        // Don't show the controller after exiting the full screen.
+        if (mMediaController != null) {
+            mMediaController.hide();
+            mMediaController = null;
+        }
+
+        if (mAnimationState == ANIMATION_STATE_STARTED) {
+            mTextureView.animate().cancel();
+            finishExitingFullscreen();
+        } else {
+            // fullscreen to inline zoom in animation
+            mTextureView.animate().setListener(new AnimatorListenerAdapter() {
+                public void onAnimationEnd(Animator animation) {
+                    finishExitingFullscreen();
+                }
+            });
+
+            mTextureView.animate().setDuration(ANIMATION_DURATION);
+            mTextureView.animate().scaleX(getInlineXScale()).scaleY(getInlineYScale()).translationX(getInlineXOffset()).translationY(getInlineYOffset());
+        }
     }
 
     // MediaController FUNCTIONS:
@@ -651,6 +707,60 @@ public class HTML5VideoView implements MediaPlayer.OnPreparedListener,
             super.hide();
         }
     }
+
+    private float getInlineXOffset() {
+        updateDisplaySize();
+        if (mInlineWidth < 0 || mInlineHeight < 0)
+            return 0;
+        else
+            return mInlineX - (mDisplaySize.x - mInlineWidth) / 2;
+    }
+
+    private float getInlineYOffset() {
+        updateDisplaySize();
+        if (mInlineWidth < 0 || mInlineHeight < 0)
+            return 0;
+        else
+            return (mDisplaySize.y - mInlineHeight) / 2 - mInlineY;
+    }
+
+    private float getInlineXScale() {
+        if (mInlineWidth < 0 || mInlineHeight < 0 || mFullscreenWidth == 0)
+            return 0;
+        else
+            return mInlineWidth / mFullscreenWidth;
+    }
+
+    private float getInlineYScale() {
+        if (mInlineWidth < 0 || mInlineHeight < 0 || mFullscreenHeight == 0)
+            return 0;
+        else
+            return mInlineHeight / mFullscreenHeight;
+    }
+
+    private void updateDisplaySize() {
+        WindowManager wm = (WindowManager)mProxy.getContext().getSystemService(Context.WINDOW_SERVICE);
+        Display display = wm.getDefaultDisplay();
+        display.getSize(mDisplaySize);
+    }
+
+    private void finishExitingFullscreen() {
+        mProxy.dispatchOnStopFullScreen();
+        mLayout.removeView(mTextureView);
+        mTextureView = null;
+
+        if (mProgressView != null) {
+            mLayout.removeView(mProgressView);
+            mProgressView = null;
+        }
+        mLayout = null;
+        // Re enable plugin views.
+        mProxy.getWebView().getViewManager().showAll();
+
+        // Set the frame available listener back to the inline listener
+        setInlineFrameAvailableListener();
+    }
+
 }
 
 
