@@ -86,10 +86,12 @@ void NuPlayer::RTSPSource::start() {
 }
 
 void NuPlayer::RTSPSource::stop() {
-    sp<AMessage> msg = new AMessage(kWhatDisconnect, mReflector->id());
+    if (mReflector != NULL) {
+        sp<AMessage> msg = new AMessage(kWhatDisconnect, mReflector->id());
 
-    sp<AMessage> dummy;
-    msg->postAndAwaitResponse(&dummy);
+        sp<AMessage> dummy;
+        msg->postAndAwaitResponse(&dummy);
+    }
 }
 
 status_t NuPlayer::RTSPSource::feedMoreTSData() {
