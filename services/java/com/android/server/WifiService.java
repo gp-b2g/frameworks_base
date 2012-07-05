@@ -1019,7 +1019,7 @@ public class WifiService extends IWifiManager.Stub {
             //Never sleep as long as the user has not changed the settings
             int wifiSleepPolicy = Settings.System.getInt(mContext.getContentResolver(),
                     Settings.System.WIFI_SLEEP_POLICY,
-                    Settings.System.WIFI_SLEEP_POLICY_DEFAULT);
+                    Settings.System.WIFI_SLEEP_POLICY_NEVER);
 	    Slog.w(TAG,"wifisleeppolicy = " + wifiSleepPolicy);
             try {
                 FileOutputStream os = new FileOutputStream(
