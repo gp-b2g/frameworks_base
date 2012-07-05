@@ -72,6 +72,7 @@ import com.android.server.location.MockProvider;
 import com.android.server.location.PassiveProvider;
 import com.android.server.location.GeoFencerBase;
 import com.android.server.location.GeoFencerProxy;
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1289,8 +1290,15 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             boolean singleShot, Receiver receiver, Criteria criteria) {
 
         LocationProviderInterface p = mProvidersByName.get(provider);
-        if (p == null) {
-            throw new IllegalArgumentException("provider=" + provider);
+        // owing to third part APP query GMS service. GMS is not integrated to this platform.
+        // Such check will lead third part APP unable to run, so turn if off in FeatureQuery.
+        if(FeatureQuery.FEATURE_NETWORK_GPS_SERVICE_CHECK){
+            if (p == null) {
+                throw new IllegalArgumentException("provider=" + provider);
+            }
+        }
+        if(p == null) {
+            return ;   // Because p is null, should return
         }
 
         receiver.requiredPermissions = checkPermissionsSafe(provider,
