@@ -1332,9 +1332,9 @@ status_t AwesomePlayer::pause_l(bool at_eos) {
         params |= IMediaPlayerService::kBatteryDataTrackAudio;
     }
     if (mVideoSource != NULL) {
-        if (isPostProcEnabled()) { // to pause the post proc modules
+        //if (isPostProcEnabled()) { // to pause the post proc modules
             mVideoSource->pause();
-        }
+        //}
         params |= IMediaPlayerService::kBatteryDataTrackVideo;
     }
 

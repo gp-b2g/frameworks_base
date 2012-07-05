@@ -2884,7 +2884,9 @@ OMXCodec::BufferInfo* OMXCodec::dequeueBufferFromNativeWindow() {
     int err = mNativeWindow->dequeueBuffer(mNativeWindow.get(), &buf);
     if (err != 0) {
       CODEC_LOGE("dequeueBuffer failed w/ error 0x%08x", err);
-
+      if (mPaused) {
+        return 0;
+      }
       setState(ERROR);
       return 0;
     }
