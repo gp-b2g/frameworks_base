@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,6 +80,9 @@ const static uint32_t kMaxColorFormatSupported = 1000;
 
 static const int QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka = 0x7FA30C03;
 static const int OMX_QCOM_COLOR_FormatYVU420SemiPlanar = 0x7FA30C00;
+
+static int64_t kMaxResolutionWidth = 854;
+static int64_t kMaxResolutionHeight = 480;
 
 struct CodecInfo {
     const char *mime;
@@ -430,7 +433,7 @@ static void InitOMXParams(T *params) {
 static bool IsSoftwareCodec(const char *componentName) {
     if (!strncmp("OMX.google.", componentName, 11)
         || !strncmp("OMX.PV.", componentName, 7)
-        || !strncmp("OMX.ittiam.", componentName, 11)) {   //Ittiam also is a S/W decoder, can be used to generate the thumbnail
+        || !strncmp("OMX.ittiam.", componentName, 11)) {   //Ittiam also is a S/W decoder, but need to be used carefully
         return true;
     }
 
@@ -723,6 +726,18 @@ sp<MediaSource> OMXCodec::Create(
     bool success = meta->findCString(kKeyMIMEType, &mime);
     CHECK(success);
 
+    bool useIttiamDecoder = false;
+    if (!strncasecmp(mime, "video/", 6) && !createEncoder) {
+        int32_t width, height;
+        bool success = meta->findInt32(kKeyWidth, &width);
+        CHECK(success);
+	    success = success && meta->findInt32(kKeyHeight, &height);
+        CHECK(success);
+        if (width > kMaxResolutionWidth || height > kMaxResolutionHeight) {
+            useIttiamDecoder = true;
+        }
+    }
+
     Vector<String8> matchingCodecs;
     findMatchingCodecs(
             mime, createEncoder, matchComponentName, flags, &matchingCodecs);
@@ -737,6 +752,14 @@ sp<MediaSource> OMXCodec::Create(
     for (size_t i = 0; i < matchingCodecs.size(); ++i) {
         const char *componentNameBase = matchingCodecs[i].string();
         const char *componentName = componentNameBase;
+        if (!strncmp("OMX.ittiam.video.decoder", componentName, 24) && !useIttiamDecoder) {
+            //if all codec are failed to configure, then try to use ittiam
+            if (i != matchingCodecs.size() - 1) {
+                matchingCodecs.push(String8(componentName));
+                useIttiamDecoder = true;
+            }
+            continue;
+        }
 
         AString tmp;
         if (flags & kUseSecureInputBuffers) {
@@ -1142,7 +1165,7 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta) {
 
             LOGV("Thumbnail mode enabled.");
             if (!strncmp("OMX.ittiam.video.decoder", mComponentName, 24)) {
-            mThumbnailMode = false;
+                mThumbnailMode = false;
             }
         }
         else{
