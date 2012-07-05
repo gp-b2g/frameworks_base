@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -196,10 +197,13 @@ struct MyHandler : public AHandler {
         buf->setRange(0, buf->size() + 8);
     }
 
-    static void addSDES(int s, const sp<ABuffer> &buffer) {
+    static bool addSDES(int s, const sp<ABuffer> &buffer) {
         struct sockaddr_in addr;
         socklen_t addrSize = sizeof(addr);
-        CHECK_EQ(0, getsockname(s, (sockaddr *)&addr, &addrSize));
+        //CHECK_EQ(0, getsockname(s, (sockaddr *)&addr, &addrSize));
+        if (getsockname(s, (sockaddr *)&addr, &addrSize) != 0) {
+            return false;
+        }
 
         uint8_t *data = buffer->data() + buffer->size();
         data[0] = 0x80 | 1;
@@ -249,6 +253,7 @@ struct MyHandler : public AHandler {
         data[3] = numWords & 0xff;
 
         buffer->setRange(buffer->offset(), buffer->size() + offset);
+        return true;
     }
 
     // In case we're behind NAT, fire off two UDP packets to the remote
@@ -318,7 +323,9 @@ struct MyHandler : public AHandler {
         sp<ABuffer> buf = new ABuffer(65536);
         buf->setRange(0, 0);
         addRR(buf);
-        addSDES(rtpSocket, buf);
+        if (!addSDES(rtpSocket, buf)) {
+            return false;
+        }
 
         addr.sin_port = htons(rtpPort);
 
@@ -557,15 +564,20 @@ struct MyHandler : public AHandler {
                         i = response->mHeaders.indexOfKey("transport");
                         CHECK_GE(i, 0);
 
+                        bool pokeAHoleRes = false;
                         if (!track->mUsingInterleavedTCP) {
                             AString transport = response->mHeaders.valueAt(i);
 
                             // We are going to continue even if we were
                             // unable to poke a hole into the firewall...
-                            pokeAHole(
+                            pokeAHoleRes = pokeAHole(
                                     track->mRTPSocket,
                                     track->mRTCPSocket,
                                     transport);
+                        }
+
+                        if (!track->mUsingInterleavedTCP) {
+                            track->mUsingInterleavedTCP = true;
                         }
 
                         mRTPConn->addStream(

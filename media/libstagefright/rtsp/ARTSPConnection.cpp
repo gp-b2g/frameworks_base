@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -481,7 +482,11 @@ void ARTSPConnection::onReceiveResponse() {
     FD_SET(mSocket, &rs);
 
     int res = select(mSocket + 1, &rs, NULL, NULL, &tv);
-    CHECK_GE(res, 0);
+    //CHECK_GE(res, 0);
+    if (res == -1) {
+        LOGE("onReceiveResponse() select return %d", res);
+        return;
+    }
 
     if (res == 1) {
         MakeSocketBlocking(mSocket, true);
