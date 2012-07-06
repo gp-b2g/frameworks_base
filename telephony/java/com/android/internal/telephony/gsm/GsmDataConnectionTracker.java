@@ -709,9 +709,11 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         // retry. Reset ApnContext state to IDLE.
         log("setupDataOnReadyApns: " + reason);
 
+        boolean bCancelAlarm = false;
         for (DataConnectionAc dcac : mDataConnectionAsyncChannels.values()) {
             if (dcac.getReconnectIntentSync() != null) {
                 cancelReconnectAlarm(dcac);
+                bCancelAlarm = true;
             }
             // update retry config for existing calls to match up
             // ones for the new RAT.
@@ -736,7 +738,8 @@ public class GsmDataConnectionTracker extends DataConnectionTracker {
         // Only check for default APN state
         for (ApnContext apnContext :
                     getPrioritySortedApnContextList().toArray(new ApnContext[0])) {
-            if (apnContext.getState() == State.FAILED) {
+            if (apnContext.getState() == State.FAILED ||
+		    (apnContext.getState() == State.SCANNING && bCancelAlarm)) {
                 // By this time, alarms for all failed Apns
                 // should be stopped if any.
                 // Make sure to set the state back to IDLE
