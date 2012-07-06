@@ -3046,7 +3046,7 @@ public class WindowManagerService extends IWindowManager.Stub
                         break;
                     case WindowManagerPolicy.TRANSIT_ACTIVITY_CLOSE:
                         animAttr = enter
-                                ? com.android.internal.R.styleable.WindowAnimation_activityCloseEnterAnimation
+                                ? 0
                                 : com.android.internal.R.styleable.WindowAnimation_activityCloseExitAnimation;
                         break;
                     case WindowManagerPolicy.TRANSIT_TASK_OPEN:
@@ -3056,7 +3056,7 @@ public class WindowManagerService extends IWindowManager.Stub
                         break;
                     case WindowManagerPolicy.TRANSIT_TASK_CLOSE:
                         animAttr = enter
-                                ? com.android.internal.R.styleable.WindowAnimation_taskCloseEnterAnimation
+                                ? 0
                                 : com.android.internal.R.styleable.WindowAnimation_taskCloseExitAnimation;
                         break;
                     case WindowManagerPolicy.TRANSIT_TASK_TO_FRONT:
@@ -3071,7 +3071,7 @@ public class WindowManagerService extends IWindowManager.Stub
                         break;
                     case WindowManagerPolicy.TRANSIT_WALLPAPER_OPEN:
                         animAttr = enter
-                                ? com.android.internal.R.styleable.WindowAnimation_wallpaperOpenEnterAnimation
+                                ? 0
                                 : com.android.internal.R.styleable.WindowAnimation_wallpaperOpenExitAnimation;
                         break;
                     case WindowManagerPolicy.TRANSIT_WALLPAPER_CLOSE:

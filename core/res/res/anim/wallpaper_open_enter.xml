@@ -24,11 +24,9 @@
             android:pivotX="50%p" android:pivotY="50%p"
             android:fillEnabled="true" android:fillBefore="true" android:fillAfter="true"
             android:interpolator="@interpolator/decelerate_quint"
-            android:startOffset="200"
-            android:duration="300" />
+            android:duration="200" />
     <alpha android:fromAlpha="0" android:toAlpha="1.0"
             android:interpolator="@interpolator/decelerate_cubic"
             android:fillEnabled="true" android:fillBefore="true" android:fillAfter="true"
-            android:startOffset="200"
-            android:duration="300"/>
+            android:duration="200"/>
 </set>
