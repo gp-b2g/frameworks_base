@@ -2096,6 +2096,9 @@ MPEG4Source::MPEG4Source(
         CHECK(format->findData(kKeyAVCC, &type, &data, &size));
 
         const uint8_t *ptr = (const uint8_t *)data;
+        if (size == 0) {
+            return;
+        }
 
         CHECK(size >= 7);
         CHECK_EQ((unsigned)ptr[0], 1u);  // configurationVersion == 1
