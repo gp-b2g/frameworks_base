@@ -191,6 +191,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         cm.registerForCdmaPrlChanged(this, EVENT_CDMA_PRL_VERSION_CHANGED, null);
         phone.registerForEriFileLoaded(this, EVENT_ERI_FILE_LOADED, null);
         cm.registerForCdmaOtaProvision(this,EVENT_OTA_PROVISION_STATUS_CHANGE, null);
+        cm.getCDMASubscription(obtainMessage(EVENT_POLL_STATE_CDMA_SUBSCRIPTION));
 
         // System setting property AIRPLANE_MODE_ON is set in Settings.
         int airplaneMode = Settings.System.getInt(cr, Settings.System.AIRPLANE_MODE_ON, 0);
