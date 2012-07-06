@@ -2689,6 +2689,9 @@ status_t AwesomePlayer::setParameter(int key, const Parcel &request) {
         case KEY_PARAMETER_3D_ATTRIBUTES:
         {
             int32_t format3D = 0;
+            if (mVideoSource == NULL) {
+                return MEDIA_ERROR_UNKNOWN;
+            }
             sp<MetaData> meta = mVideoSource->getFormat();
 
             request.readInt32(&format3D);
