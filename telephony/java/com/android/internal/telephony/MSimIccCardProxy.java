@@ -171,10 +171,11 @@ public class MSimIccCardProxy extends IccCardProxy {
             mUiccCard = null;
             mUiccApplication = null;
             mIccRecords = null;
+            mUiccCard = newCard;
+            mUiccApplication = newApp;
 
             if (newRecords != null) {
-                mUiccCard = newCard;
-                mUiccApplication = newApp;
+
                 mIccRecords = newRecords;
                 registerUiccCardEvents();
                 updateActiveRecord();
