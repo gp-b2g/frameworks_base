@@ -81,7 +81,7 @@ const static uint32_t kMaxColorFormatSupported = 1000;
 static const int QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka = 0x7FA30C03;
 static const int OMX_QCOM_COLOR_FormatYVU420SemiPlanar = 0x7FA30C00;
 
-static int64_t kMaxResolutionWidth = 854;
+static int64_t kMaxResolutionWidth = 864;
 static int64_t kMaxResolutionHeight = 480;
 
 struct CodecInfo {
@@ -729,12 +729,11 @@ sp<MediaSource> OMXCodec::Create(
     bool useIttiamDecoder = false;
     if (!strncasecmp(mime, "video/", 6) && !createEncoder) {
         int32_t width, height;
-        bool success = meta->findInt32(kKeyWidth, &width);
-        CHECK(success);
-	    success = success && meta->findInt32(kKeyHeight, &height);
-        CHECK(success);
-        if (width > kMaxResolutionWidth || height > kMaxResolutionHeight) {
-            useIttiamDecoder = true;
+        if (meta->findInt32(kKeyWidth, &width) && meta->findInt32(kKeyHeight, &height)) {
+            LOGV("Create() %d(width) * %d(height)", width, height);
+            if (width > kMaxResolutionWidth || height > kMaxResolutionHeight) {
+                useIttiamDecoder = true;
+            }
         }
     }
 
@@ -752,7 +751,7 @@ sp<MediaSource> OMXCodec::Create(
     for (size_t i = 0; i < matchingCodecs.size(); ++i) {
         const char *componentNameBase = matchingCodecs[i].string();
         const char *componentName = componentNameBase;
-        if (!strncmp("OMX.ittiam.video.decoder", componentName, 24) && !useIttiamDecoder) {
+        if (!strncmp("OMX.ittiam.video.decoder", componentName, 24) && !useIttiamDecoder && matchingCodecs.size() != 1) {
             //if all codec are failed to configure, then try to use ittiam
             if (i != matchingCodecs.size() - 1) {
                 matchingCodecs.push(String8(componentName));
