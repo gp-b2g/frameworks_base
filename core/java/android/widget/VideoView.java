@@ -201,7 +201,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
             if (action == null) {
                 return;
             } else if (action.equals("android.media.videoview.BACKTOHOME")) {
-                if (getURIType(mUri) != URI_OTHER) {
+                if (getURIType(mUri) != URI_CONTENT && getURIType(mUri) != URI_HTTP) {
                     release(true);
                 }
 
@@ -571,7 +571,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
                         case URI_HTTP:
                         case URI_CONTENT:
                             mMediaPlayer.setDisplay(mSurfaceHolder);
-                            mMediaPlayer.initRender();
+                            //mMediaPlayer.initRender();
                             mTargetState = mStateWhenSuspended;
                             return;
                         case URI_RTSP:
