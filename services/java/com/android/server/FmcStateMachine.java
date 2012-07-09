@@ -128,7 +128,8 @@ public class FmcStateMachine extends StateMachine {
     protected static final int FMC_MSG_WIFI_UP       = 7;
     protected static final int FMC_MSG_WIFI_DOWN     = 8;
     protected static final int FMC_MSG_TIMEOUT       = 9;
-
+    private boolean bFirstTimeInactiveState = false;
+    
     protected class FmcTimerCallback extends TimerTask {
 
         public final static String TAG = "FmcTimerCallback";
@@ -199,7 +200,8 @@ public class FmcStateMachine extends StateMachine {
 
         /* Start in Inactive state */
         setInitialState(mFmcStateInactive);
-
+        bFirstTimeInactiveState = true;
+        
         /* Add actions to intent filter */
         IntentFilter filter = new IntentFilter();
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
@@ -368,7 +370,7 @@ public class FmcStateMachine extends StateMachine {
         }
 
         protected void setStatus(final int status, boolean needNotify) {
-            if (DBG) Log.d(this.getName(), "setStatus status=" + status);
+            if (DBG) Log.d(this.getName(), "setStatus status=" + status + "needNotify="+needNotify);
 
             mFmcStatus = status;
             if (needNotify) {
@@ -492,10 +494,14 @@ public class FmcStateMachine extends StateMachine {
             if (mUserShutDown) {
                 // This time we don't need notify FMC status, otherwise it will make UI layer
                 // confuse about FMC status
-                setStatus(FMC_STATUS_CLOSED, false);
+                boolean needNotify = !bFirstTimeInactiveState;
+                setStatus(FMC_STATUS_CLOSED, needNotify);
+                bFirstTimeInactiveState = false;
+                Log.d(this.getName(), "needNotify:"+needNotify);
             } else {
                 setStatus(FMC_STATUS_REGISTRATION_FAILED);
                 mUserShutDown = true;
+                Log.d(this.getName(),"mUserShutDown = false");
             }
         }
 

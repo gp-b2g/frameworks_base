@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +42,7 @@ import android.net.wifi.WpsInfo;
 import android.net.wifi.WpsResult;
 import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
+import android.net.FmcNotifier;
 import android.net.NetworkInfo;
 import android.net.NetworkInfo.State;
 import android.net.NetworkInfo.DetailedState;
@@ -60,6 +60,7 @@ import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Slog;
 
 import java.util.ArrayList;
@@ -93,6 +94,8 @@ public class WifiService extends IWifiManager.Stub {
 
     private final WifiStateMachine mWifiStateMachine;
     private static final String FORCE_DISABLE_FMC = "android.fmc.FORCE_DISABLED_ACTION";
+    static final String FMC_STATE_CHANGED_ACTION = "android.fmc.FMC_STATE_CHANGED_ACTION";
+    private boolean isChangeToAirplaneMode = false;
     private static final String[] CT_WIFI_HOTPOT = {
             "ChinaNet_HomeCW","ChinaNet_CW","ChinaNet"
     };
@@ -140,6 +143,8 @@ public class WifiService extends IWifiManager.Stub {
      * statistics
      */
     private static final int POLL_TRAFFIC_STATS_INTERVAL_MSECS = 1000;
+    private static final int CLOSE_WIFI_TIME_EVENT = 99;
+    public static final long STOP_TIMEOUT = 10 * 1000L;
 
     /**
      * See {@link Settings.Secure#WIFI_IDLE_MS}. This is the default value if a
@@ -374,7 +379,7 @@ public class WifiService extends IWifiManager.Stub {
         mWifiStateMachine.enableRssiPolling(true);
         mBatteryStats = BatteryStatsService.getService();
 
-        mAlarmManager = (AlarmManager)mContext.getSystemService(Context.ALARM_SERVICE);
+        mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
         Intent idleIntent = new Intent(ACTION_DEVICE_IDLE, null);
         mIdleIntent = PendingIntent.getBroadcast(mContext, IDLE_REQUEST, idleIntent, 0);
 
@@ -383,15 +388,23 @@ public class WifiService extends IWifiManager.Stub {
                     @Override
                     public void onReceive(Context context, Intent intent) {
                         mAirplaneModeOn.set(isAirplaneModeOn());
-                        /* On airplane mode disable, restore wifi state if necessary */
+                        /*
+                         * On airplane mode disable, restore wifi state if
+                         * necessary
+                         */
+                        Log.i(TAG, "isAirplaneModeOn =="+isAirplaneModeOn());
                         if (!mAirplaneModeOn.get() && (testAndClearWifiSavedState() ||
-                            mPersistWifiState.get() == WIFI_ENABLED_AIRPLANE_OVERRIDE)) {
-                                persistWifiState(true);
+                                mPersistWifiState.get() == WIFI_ENABLED_AIRPLANE_OVERRIDE)) {
+                            persistWifiState(true);
                         }
-                Slog.i(TAG, "WifiService airplaneMode is == " +
-                (mAirplaneModeOn.get()? "enabled" : "disabled")); 
-                stopFmcIfNecessary();
-                        updateWifiState();
+                        Log.i(TAG, "WifiService airplaneMode is == " +
+                                (mAirplaneModeOn.get() ? "enabled" : "disabled"));
+                        if(!stopFmcIfNecessary()){
+                            updateWifiState();
+                        }else{
+                            isChangeToAirplaneMode = true; 
+                        };
+                       
                     }
                 },
                 new IntentFilter(Intent.ACTION_AIRPLANE_MODE_CHANGED));
@@ -400,6 +413,8 @@ public class WifiService extends IWifiManager.Stub {
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
         filter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
+        filter.addAction(FMC_STATE_CHANGED_ACTION);
+        
 
         mContext.registerReceiver(
                 new BroadcastReceiver() {
@@ -429,6 +444,16 @@ public class WifiService extends IWifiManager.Stub {
                         } else if (intent.getAction().equals(
                                 WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
                             checkAndSetNotification();
+                        } else if (FMC_STATE_CHANGED_ACTION.equals(intent.getAction())) {
+                            int status = intent.getIntExtra("FmcStatus", -1);
+                            if (status == FmcNotifier.FMC_STATUS_CLOSED) {
+                                Log.i(TAG, "fmc closed!");
+                                if (isChangeToAirplaneMode) {
+                                    updateWifiState();
+                                    isChangeToAirplaneMode = false;
+                                }
+                                
+                            }
                         }
                     }
                 }, filter);
@@ -1077,12 +1102,12 @@ public class WifiService extends IWifiManager.Stub {
         }
         mWifiStateMachine.updateBatteryWorkSource(mTmpWorkSource);
     }
-    private void stopFmcIfNecessary(){
+    private boolean stopFmcIfNecessary(){
         if(mAirplaneModeOn.get()){
          boolean enabled = Settings.System.getInt(mContext.getContentResolver(),
                            Settings.System.FMC_ENABLED,0) == 1;
          if(!enabled)
-           return;
+           return false;
          NetworkInfo.State networkState = (mNetworkInfo == null?NetworkInfo.State.UNKNOWN
                            :mNetworkInfo.getState());
          Slog.i(TAG,"mNetworkInfo.getState =="+networkState);
@@ -1092,11 +1117,55 @@ public class WifiService extends IWifiManager.Stub {
              if(ssid != null && isCTWifiHotpot(ssid)){
                  Intent intent = new Intent(FORCE_DISABLE_FMC);
                            mContext.sendBroadcast(intent);
+                           myHandler.postDelayed(closeWifiTask, STOP_TIMEOUT);
+                           return true;
                  }
           }
 
        }
+        return false;
     }
+    
+    Runnable closeWifiTask = new Runnable(){
+
+        @Override
+        public void run() {
+            myHandler.obtainMessage(CLOSE_WIFI_TIME_EVENT).sendToTarget();
+        }
+           
+       };
+       
+       
+       private Handler myHandler = new Handler(){
+
+           @Override
+           public void handleMessage(Message msg) {
+               switch (msg.what) {
+                   case CLOSE_WIFI_TIME_EVENT:
+                       WifiManager mWifiManager = (WifiManager) mContext
+                               .getSystemService(Context.WIFI_SERVICE);
+                       final WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
+
+                       ConnectivityManager cm = (ConnectivityManager) mContext.getSystemService(
+                                       Context.CONNECTIVITY_SERVICE);
+                       NetworkInfo networkInfo = cm.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+                       NetworkInfo.State networkState = (networkInfo == null ? NetworkInfo.State.UNKNOWN
+                                    : networkInfo.getState());
+                       if (networkState == NetworkInfo.State.CONNECTED) {
+                           if (isChangeToAirplaneMode) {
+                            updateWifiState();
+                            isChangeToAirplaneMode = false;
+                        }
+                       }
+                       break;
+
+                   default:
+                       break;
+               }
+           }
+           
+       };
+       
     private boolean isCTWifiHotpot(String ssid){
             for(int i = 0;i<CT_WIFI_HOTPOT.length;i++){
                if(CT_WIFI_HOTPOT[i].equals(ssid)){

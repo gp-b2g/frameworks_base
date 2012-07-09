@@ -50,6 +50,7 @@ import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
 import android.net.DhcpInfoInternal;
 import android.net.DhcpStateMachine;
+import android.net.FmcNotifier;
 import android.net.InterfaceConfiguration;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
@@ -62,6 +63,7 @@ import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pService;
 import android.net.wifi.StateChangeResult;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.INetworkManagementService;
 import android.os.Message;
@@ -77,6 +79,7 @@ import android.provider.Settings;
 import android.util.EventLog;
 import android.util.Log;
 import android.util.LruCache;
+import android.util.Slog;
 
 import com.android.internal.app.IBatteryStats;
 import com.android.internal.util.AsyncChannel;
@@ -116,6 +119,7 @@ public class WifiStateMachine extends StateMachine {
     private static final String NETWORKTYPE = "WIFI";
     private static final boolean DBG = true;
     private static final String FORCE_DISABLE_FMC = "android.fmc.FORCE_DISABLED_ACTION";
+    static final String FMC_STATE_CHANGED_ACTION = "android.fmc.FMC_STATE_CHANGED_ACTION";
     private static final String[] CT_WIFI_HOTPOT = {
             "ChinaNet_HomeCW","ChinaNet_CW","ChinaNet"
     };
@@ -394,6 +398,8 @@ public class WifiStateMachine extends StateMachine {
     /* Phone in emergency call back mode */
     private static final int IN_ECM_STATE = 1;
     private static final int NOT_IN_ECM_STATE = 0;
+    public static final long STOP_TIMEOUT = 10 * 1000L;
+    private static final int CLOSE_WIFI_TIME_EVENT = 99;
 
     /**
      * The maximum number of times we will retry a connection to an access point
@@ -602,6 +608,7 @@ public class WifiStateMachine extends StateMachine {
     private boolean mNextWifiActionExplicit = false;
     private int mLastExplicitNetworkId;
     private long mLastNetworkChoiceTime;
+    private boolean isChangeAp = false;
     private static final long EXPLICIT_CONNECT_ALLOWED_DELAY_MS = 2 * 60 * 1000;
 
 
@@ -693,6 +700,21 @@ public class WifiStateMachine extends StateMachine {
                     }
                 },
                 new IntentFilter(ACTION_START_SCAN));
+        
+        mContext.registerReceiver(new BroadcastReceiver(){
+
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                int status = intent.getIntExtra("FmcStatus", -1);
+                if (status == FmcNotifier.FMC_STATUS_CLOSED) {
+                    if (isChangeAp) {
+                        reconnect();  
+                        isChangeAp = false;
+                    }
+                }
+            }
+            
+        }, new IntentFilter(FMC_STATE_CHANGED_ACTION));
 
         mScanResultCache = new LruCache<String, ScanResult>(SCAN_RESULT_CACHE_SIZE);
 
@@ -759,6 +781,46 @@ public class WifiStateMachine extends StateMachine {
         //start the state machine
         start();
     }
+    
+    Runnable closeWifiTask = new Runnable(){
+
+        @Override
+        public void run() {
+            myHandler.obtainMessage(CLOSE_WIFI_TIME_EVENT).sendToTarget();
+        }
+           
+       };
+       
+       
+       private Handler myHandler = new Handler(){
+
+           @Override
+           public void handleMessage(Message msg) {
+               switch (msg.what) {
+                   case CLOSE_WIFI_TIME_EVENT:
+                       WifiManager mWifiManager = (WifiManager) mContext
+                               .getSystemService(Context.WIFI_SERVICE);
+                       final WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
+
+                       ConnectivityManager cm = (ConnectivityManager) mContext.getSystemService(
+                                       Context.CONNECTIVITY_SERVICE);
+                       NetworkInfo networkInfo = cm.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+                       NetworkInfo.State networkState = (networkInfo == null ? NetworkInfo.State.UNKNOWN
+                                    : networkInfo.getState());
+                       if (networkState == NetworkInfo.State.CONNECTED) {
+                           if (isChangeAp) {
+                            reconnect();
+                            isChangeAp = false;
+                        }
+                       }
+                       break;
+
+                   default:
+                       break;
+               }
+           }
+           
+       };
 
     /*********************************************************
      * Methods exposed for public use
@@ -772,6 +834,17 @@ public class WifiStateMachine extends StateMachine {
         boolean result = (resultMsg.arg1 != FAILURE);
         resultMsg.recycle();
         return result;
+    }
+    
+    private void reconnect(){
+        mSupplicantStateTracker.sendMessage(CMD_CONNECT_NETWORK);
+
+        WifiNative.reconnectCommand();
+        mLastNetworkChoiceTime  = SystemClock.elapsedRealtime();
+        mNextWifiActionExplicit = true;
+        if (DBG) log("change to another ap and reconnect!");
+        /* Expect a disconnection from the old connection */
+        transitionTo(mDisconnectingState);
     }
 
     /**
@@ -3133,6 +3206,28 @@ public class WifiStateMachine extends StateMachine {
             EventLog.writeEvent(EVENTLOG_WIFI_EVENT_HANDLED, message.what);
             return HANDLED;
         }
+    }
+    
+    private boolean stopFmcIfNecessary(){
+         boolean enabled = Settings.System.getInt(mContext.getContentResolver(),
+                           Settings.System.FMC_ENABLED,0) == 1;
+         if(!enabled)
+           return false;
+         NetworkInfo.State networkState = (mNetworkInfo == null?NetworkInfo.State.UNKNOWN
+                           :mNetworkInfo.getState());
+         Slog.i(TAG,"mNetworkInfo.getState =="+networkState);
+         if(networkState == NetworkInfo.State.CONNECTED){
+             String ssid = mWifiInfo.getSSID();
+             Slog.i(TAG,"ssid == "+ssid);
+             if(ssid != null && isCTWifiHotpot(ssid)){
+                 Intent intent = new Intent(FORCE_DISABLE_FMC);
+                           mContext.sendBroadcast(intent);
+                           myHandler.postDelayed(closeWifiTask, STOP_TIMEOUT);
+                           return true;
+                 }
+          }
+
+        return false;
     }
 
     private boolean isCTWifiHotpot(String ssid){
