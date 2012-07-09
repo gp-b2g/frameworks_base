@@ -14618,6 +14618,8 @@ public final class ActivityManagerService extends ActivityManagerNative
                         && !app.killedBackground) {
                     if (app.trimMemoryLevel < curLevel && app.thread != null) {
                         try {
+                            if(app.curAdj != ProcessList.HOME_APP_ADJ
+                                    || numHidden <=(ProcessList.MAX_HIDDEN_APPS/4))
                             app.thread.scheduleTrimMemory(curLevel);
                         } catch (RemoteException e) {
                         }
@@ -14675,6 +14677,10 @@ public final class ActivityManagerService extends ActivityManagerNative
             final int N = mLruProcesses.size();
             for (i=0; i<N; i++) {
                 ProcessRecord app = mLruProcesses.get(i);
+                if(app.curAdj == ProcessList.HOME_APP_ADJ){
+                    app.trimMemoryLevel = 0;
+                    continue;
+                }
                 if ((app.curAdj > ProcessList.VISIBLE_APP_ADJ || app.systemNoUi)
                         && app.pendingUiClean) {
                     if (app.trimMemoryLevel < ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN
