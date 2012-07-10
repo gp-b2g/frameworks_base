@@ -123,6 +123,8 @@ public class WifiStateMachine extends StateMachine {
     private static final String[] CT_WIFI_HOTPOT = {
             "ChinaNet_HomeCW","ChinaNet_CW","ChinaNet"
     };
+    private int tempNetId = 0;
+    private WifiConfiguration tempConfig ;
     /* TODO: This is no more used with the hostapd code. Clean up */
     private static final String SOFTAP_IFACE = "wlan0";
 
@@ -837,6 +839,12 @@ public class WifiStateMachine extends StateMachine {
     }
     
     private void reconnect(){
+        if (tempConfig != null) {
+            tempNetId = WifiConfigStore.selectNetwork(tempConfig);
+        } else {
+           WifiConfigStore.selectNetwork(tempNetId);
+        }
+        mLastExplicitNetworkId = tempNetId;
         mSupplicantStateTracker.sendMessage(CMD_CONNECT_NETWORK);
 
         WifiNative.reconnectCommand();
@@ -3130,39 +3138,22 @@ public class WifiStateMachine extends StateMachine {
                      * from the network. A reconnectCommand() will then initiate
                      * a connection to the enabled network.
                      */
-                    if (config != null) {
-                        netId = WifiConfigStore.selectNetwork(config);
-                    } else {
-                        WifiConfigStore.selectNetwork(netId);
-                    }
+                    tempNetId = netId;
+                    tempConfig = config;
                     log("fiInfo.getNetworkId()="+previousId+"netId ="+netId);
 
-                    if(previousId != netId){
-                        NetworkInfo networkInfo = mCm.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-                        NetworkInfo.State networkState = (networkInfo == null?NetworkInfo.State.UNKNOWN
-                                                     :networkInfo.getState());
 
-                        log("networkState = " + networkState);
-                        if(networkState == NetworkInfo.State.CONNECTED){
-                            String ssid = mWifiInfo.getSSID();
-                            log("ssid = " + ssid);
-                            if(ssid != null&&isCTWifiHotpot(ssid)){
-                                Intent intent = new Intent(FORCE_DISABLE_FMC);
-                                mContext.sendBroadcast(intent);
-                           }
+                    if(config != null || previousId != netId){
+                       if(!stopFmcIfNecessary()){
+                            reconnect();
+                        }else {
+                            isChangeAp =true; 
                         }
-                    }
+                      }else {
+                          reconnect();
+                       }
 
-                    /* The state tracker handles enabling networks upon completion/failure */
-                    mSupplicantStateTracker.sendMessage(CMD_CONNECT_NETWORK);
 
-                    WifiNative.reconnectCommand();
-                    mLastExplicitNetworkId = netId;
-                    mLastNetworkChoiceTime  = SystemClock.elapsedRealtime();
-                    mNextWifiActionExplicit = true;
-                    if (DBG) log("Setting wifi connect explicit for netid " + netId);
-                    /* Expect a disconnection from the old connection */
-                    transitionTo(mDisconnectingState);
                     break;
                 case CMD_START_WPS:
                     mWpsStateMachine.sendMessage(Message.obtain(message));
@@ -3221,11 +3212,11 @@ public class WifiStateMachine extends StateMachine {
              Slog.i(TAG,"ssid == "+ssid);
              if(ssid != null && isCTWifiHotpot(ssid)){
                  Intent intent = new Intent(FORCE_DISABLE_FMC);
-                           mContext.sendBroadcast(intent);
-                           myHandler.postDelayed(closeWifiTask, STOP_TIMEOUT);
-                           return true;
-                 }
-          }
+                 mContext.sendBroadcast(intent);
+                 myHandler.postDelayed(closeWifiTask, STOP_TIMEOUT);
+                 return true;
+             }
+         }
 
         return false;
     }
