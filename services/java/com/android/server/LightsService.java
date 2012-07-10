@@ -15,17 +15,20 @@
  */
 
 package com.android.server;
-
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.database.ContentObserver;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.IHardwareService;
 import android.os.ILightService;
 import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.Message;
+import android.provider.Settings;
 import android.util.Slog;
-import com.android.server.PowerManagerService;
+import static android.provider.Settings.System.BUTTON_LIGHT_BRIGHTNESS;
+import static android.provider.Settings.System.BUTTON_LIGHT_ENABLE;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -65,14 +68,24 @@ public class LightsService  extends ILightService.Stub {
     private int mButtonLightTimeout = BUTTON_LIGHT_TIMEOUT_DEFAULT;
     private final int MSG_BUTTON_LIGHT_TIMEOUT = 1;
     private Handler mLightHandler = null;
+    private static final Uri BUTTON_LIGHT_ENABLE_URI =
+            Settings.System.getUriFor(BUTTON_LIGHT_ENABLE);
+    private static final Uri BUTTON_LIGHT_BRIGHTNESS_URI =
+            Settings.System.getUriFor(BUTTON_LIGHT_BRIGHTNESS);
+    private boolean mButtonLightEnable = false;
+    private static final int DEF_BUTTON_LIGHT_BRIGHTNESS = 2;
+    private int mButtonBrightness = DEF_BUTTON_LIGHT_BRIGHTNESS;
 
     public void turnOnButtonLight() {
-        setBrightnessButtonLight(((PowerManagerService)
-                ServiceManager.getService(Context.POWER_SERVICE)).getButtonLightBrightness());
+        setBrightnessButtonLight(mButtonBrightness);
     }
 
     public void setBrightnessButtonLight(int brightness) {
-        getLight(LIGHT_ID_BUTTONS).setBrightness(brightness);
+        if(mButtonLightEnable) {
+            getLight(LIGHT_ID_BUTTONS).setBrightness(brightness);
+        } else {
+            getLight(LIGHT_ID_BUTTONS).setBrightness(0);
+        }
     }
 
     public void turnOffButtonLight() {
@@ -80,12 +93,11 @@ public class LightsService  extends ILightService.Stub {
     }
 
     public void turnOnButtonLightOneShot() {
-        setBrightnessButtonLightOneShot(((PowerManagerService)
-                ServiceManager.getService(Context.POWER_SERVICE)).getButtonLightBrightness());
+        setBrightnessButtonLightOneShot(mButtonBrightness);
     }
 
     public void setBrightnessButtonLightOneShot(int brightness) {
-        if(brightness > 0) {
+        if(mButtonLightEnable && brightness > 0) {
             mLightHandler.removeMessages(MSG_BUTTON_LIGHT_TIMEOUT);
             setBrightnessButtonLight(brightness);
             mLightHandler.sendMessageDelayed(
@@ -229,6 +241,31 @@ public class LightsService  extends ILightService.Stub {
                 }
             }
         };
+
+        mContext.getContentResolver().registerContentObserver(
+            BUTTON_LIGHT_ENABLE_URI, true,
+            new ContentObserver(new Handler()) {
+                public void onChange(boolean selfChange) {
+                    mButtonLightEnable = 1 == Settings.System.getInt(
+                            mContext.getContentResolver(), BUTTON_LIGHT_ENABLE, 0);
+                    if(!mButtonLightEnable) {
+                        turnOffButtonLight();
+                    }
+                }
+            });
+        mButtonLightEnable = 1 == Settings.System.getInt(
+                mContext.getContentResolver(), BUTTON_LIGHT_ENABLE, 0);
+
+        mContext.getContentResolver().registerContentObserver(
+            BUTTON_LIGHT_BRIGHTNESS_URI, true,
+            new ContentObserver(new Handler()) {
+                public void onChange(boolean selfChange) {
+                    mButtonBrightness = Settings.System.getInt(mContext.getContentResolver(),
+                            BUTTON_LIGHT_BRIGHTNESS, DEF_BUTTON_LIGHT_BRIGHTNESS);
+                }
+            });
+        mButtonBrightness = Settings.System.getInt(mContext.getContentResolver(),
+                BUTTON_LIGHT_BRIGHTNESS, DEF_BUTTON_LIGHT_BRIGHTNESS);
 
         ServiceManager.addService("hardware", mLegacyFlashlightHack);
 

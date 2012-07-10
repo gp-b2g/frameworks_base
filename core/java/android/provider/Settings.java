@@ -1488,6 +1488,12 @@ public final class Settings {
         public static final String BUTTON_LIGHT_BRIGHTNESS = "button_light_brightness";
 
         /**
+        * Whether to enable button light.
+        * @hide
+        */
+        public static final String BUTTON_LIGHT_ENABLE = "button_light_enable";
+
+        /**
          * SCREEN_BRIGHTNESS_MODE value for manual mode.
          */
         public static final int SCREEN_BRIGHTNESS_MODE_MANUAL = 0;
