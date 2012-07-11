@@ -1105,9 +1105,9 @@ status_t AwesomePlayer::play_l() {
 
     if (mVideoSource != NULL) {
         // Kick off video playback
-        if (isPostProcEnabled()) { // to resume from pause
+        //if (isPostProcEnabled()) { // to resume from pause
             mVideoSource->start();
-        }
+        //}
         postVideoEvent_l();
 
         if (mAudioSource != NULL && mVideoSource != NULL) {
