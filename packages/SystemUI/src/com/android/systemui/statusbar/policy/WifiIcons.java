@@ -40,13 +40,16 @@ class WifiIcons {
         { R.drawable.stat_sys_fmc_data_1,
           R.drawable.stat_sys_fmc_data_2,
           R.drawable.stat_sys_fmc_data_3,
-          R.drawable.stat_sys_fmc_data_4 },
+          R.drawable.stat_sys_fmc_data_4,
+          R.drawable.stat_sys_fmc_data_5},
         { R.drawable.stat_sys_fmc_data_connectd_1,
           R.drawable.stat_sys_fmc_data_connectd_2,
           R.drawable.stat_sys_fmc_data_connectd_3,
-          R.drawable.stat_sys_fmc_data_connectd_4 }
+          R.drawable.stat_sys_fmc_data_connectd_4,
+          R.drawable.stat_sys_fmc_data_connectd_5}
     };
 
     static final int FMC_LEVEL_COUNT = sFmcDataImages[0].length;
+
     static final int sFmcInitImage = R.drawable.stat_sys_fmc_data_init;
 }
