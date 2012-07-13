@@ -23,6 +23,7 @@ import android.os.RecoverySystem;
 import android.util.Log;
 import android.util.Slog;
 
+import java.io.File;
 import java.io.IOException;
 
 public class MasterClearReceiver extends BroadcastReceiver {
@@ -43,6 +44,16 @@ public class MasterClearReceiver extends BroadcastReceiver {
             @Override
             public void run() {
                 try {
+                    // the broadcast hasExtra 'qrdupdate' is send by
+                    // osupdate.apk for restart to install system updates
+                    if (intent.hasExtra("qrdupdate")) {
+                        File packagefile = (File) intent.getExtra("packagefile");
+                        if (packagefile != null) {
+                            Slog.d(TAG, "qrdupdate install start ...:" + packagefile.getAbsolutePath());
+                            RecoverySystem.installPackage(context, packagefile);
+                        }
+                        return;
+                    }
                     RecoverySystem.rebootWipeUserData(context);
                     Log.wtf(TAG, "Still running after master clear?!");
                 } catch (IOException e) {
