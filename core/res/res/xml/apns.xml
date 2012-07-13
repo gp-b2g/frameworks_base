@@ -21,7 +21,7 @@
 
 <!-- If you edit this version, also edit the version in the partner-supplied
     apns-conf.xml configuration file -->
-<apns version="7">
+<apns version="8">
     <apn carrier="China Mobile" apn="cmnet" mcc="460" mnc="00" user="" server="" password="" proxy="" port="" mmsproxy="" mmsport="" mmsc="" type="default"/>
     <apn carrier="China Mobile" apn="cmnet" mcc="460" mnc="00" user="" server="" password="" proxy="" port="" mmsproxy="" mmsport="" mmsc="" type="supl"/>
     <apn carrier="China Mobile MMS" apn="cmwap" mcc="460" mnc="00" user="" server="" password="" proxy="10.0.0.172" port="80" mmsproxy="10.0.0.172" mmsport="80" mmsc="http://mmsc.monternet.com" type="mms"/>
@@ -515,4 +515,16 @@
     <apn carrier="Videotron" apn="media.videotron" mcc="302" mnc="500" user="" server="http://m.videotron.com/portail" password="" proxy="10.208.89.17" port="8080" mmsproxy="" mmsport="" mmsc="" type="default"/>
     <apn carrier="Videotron" apn="media.videotron" mcc="302" mnc="500" user="" server="http://m.videotron.com/portail" password="" proxy="10.208.89.17" port="8080" mmsproxy="" mmsport="" mmsc="" type="supl"/>
     <apn carrier="Videotron MMS" apn="media.videotron" mcc="302" mnc="500" user="" server="" password="" proxy="" port="" mmsproxy="10.208.89.17" mmsport="8080" mmsc="http://m.videotron.com" type="mms"/>
+    <!-- Brazil -->
+    <apn carrier="Java Session" apn="java.claro.com.br" mcc="724" mnc="5" user="claro" server="" password="claro" proxy="" port="" mmsproxy="" mmsport="" mmsc="" type="default"/>
+    <apn carrier="Vivo Internet" apn="zap.vivo.com.br" mcc="724" mnc="06" user="vivo" server="" password="vivo" proxy="" port="" mmsproxy="" mmsport="" mmsc="" type="default"/>
+    <apn carrier="Vivo Internet" apn="zap.vivo.com.br" mcc="724" mnc="10" user="vivo" server="" password="vivo" proxy="" port="" mmsproxy="" mmsport="" mmsc="" type="default"/>
+    <apn carrier="Vivo Internet" apn="zap.vivo.com.br" mcc="724" mnc="11" user="vivo" server="" password="vivo" proxy="" port="" mmsproxy="" mmsport="" mmsc="" type="default"/>
+    <apn carrier="TIM Connect" apn="timbrasil.br" mcc="724" mnc="02" user="tim" server="" password="tim" proxy="" port="" mmsproxy="200.179.66.242" mmsport="8080" mmsc="http://mms.tim.br" type="default,mms"/>
+    <apn carrier="TIM Connect" apn="timbrasil.br" mcc="724" mnc="03" user="tim" server="" password="tim" proxy="" port="" mmsproxy="200.179.66.242" mmsport="8080" mmsc="http://mms.tim.br" type="default,mms"/>
+    <apn carrier="TIM Connect" apn="timbrasil.br" mcc="724" mnc="04" user="tim" server="" password="tim" proxy="" port="" mmsproxy="200.179.66.242" mmsport="8080" mmsc="http://mms.tim.br" type="default,mms"/>
+    <apn carrier="Claro Foto" apn="mms.claro.com.br" mcc="724" mnc="5" user="claro" server="" password="claro" proxy="" port="" mmsproxy="200.169.126.10" mmsport="8799" mmsc="http://mms.claro.com.br" type="mms"/>
+    <apn carrier="Vivo MMS" apn="mms.vivo.com.br" mcc="724" mnc="06" user="vivo" server="" password="vivo" proxy="" port="" mmsproxy="200.142.130.104" mmsport="80" mmsc="http://termnat.vivomms.com.br:8088/mms" type="mms"/>
+    <apn carrier="Vivo MMS" apn="mms.vivo.com.br" mcc="724" mnc="10" user="vivo" server="" password="vivo" proxy="" port="" mmsproxy="200.142.130.104"	mmsport="80" mmsc="http://termnat.vivomms.com.br:8088/mms" type="mms"/>
+    <apn carrier="Vivo MMS" apn="mms.vivo.com.br" mcc="724" mnc="11" user="vivo" server="" password="vivo" proxy="" port="" mmsproxy="200.142.130.104"	mmsport="80" mmsc="http://termnat.vivomms.com.br:8088/mms" type="mms"/>
 </apns>
