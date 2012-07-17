@@ -31,6 +31,7 @@ const char *AudioParameter::keyFrameCount = "frame_count";
 const char *AudioParameter::keyInputSource = "input_source";
 const char *AudioParameter::keyHandleFm = "handle_fm";
 const char *AudioParameter::keyVoipCheck = "voip_flag";
+const char *AudioParameter::keyForce = "force";
 
 AudioParameter::AudioParameter(const String8& keyValuePairs)
 {
