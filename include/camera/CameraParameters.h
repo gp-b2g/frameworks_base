@@ -532,6 +532,10 @@ public:
     // Example value: "true" or "false". Read/write.
     static const char KEY_RECORDING_HINT[];
 
+    // Sets the fps in panorama preview mode. If this is true,
+    // the fps value is reduced to render panorama properly by graphics.
+    static const char KEY_PANORAMA_FPS[];
+
 	   // Returns true if video snapshot is supported. That is, applications
     // can call Camera.takePicture during recording. Applications do not need to
     // call Camera.startPreview after taking a picture. The preview will be

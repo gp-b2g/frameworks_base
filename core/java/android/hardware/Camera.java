@@ -1675,6 +1675,7 @@ public class Camera {
         private static final String KEY_MAX_NUM_DETECTED_FACES_HW = "max-num-detected-faces-hw";
         private static final String KEY_MAX_NUM_DETECTED_FACES_SW = "max-num-detected-faces-sw";
         private static final String KEY_RECORDING_HINT = "recording-hint";
+        private static final String KEY_PANORAMA_FPS = "panorama-fps";
         private static final String KEY_VIDEO_SNAPSHOT_SUPPORTED = "video-snapshot-supported";
         private static final String KEY_POWER_MODE_SUPPORTED = "power-mode-supported";
         private static final String KEY_VIDEO_STABILIZATION = "video-stabilization";
@@ -4210,6 +4211,17 @@ public class Camera {
         public void setRecordingHint(boolean hint) {
             set(KEY_RECORDING_HINT, hint ? TRUE : FALSE);
         }
+
+        /**
+         * Sets panorama fps. This tells the camera that the intent of
+         * the application is to reduce the fps in order to render the panorama
+         * if graphics doesn't support rendering at higher fps. This should be
+         * called before starting preview for the best result, but can be
+         * changed while the preview is active. The default value is false.
+         */
+        public void setPanoramaFps(boolean hint) {
+			set(KEY_PANORAMA_FPS, hint ? TRUE : FALSE);
+		}
 
         /**
          * Gets the supported selectable zone af setting.

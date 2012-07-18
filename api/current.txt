@@ -9545,6 +9545,7 @@ package android.hardware {
     method public void setLensShade(java.lang.String);
     method public void setMemColorEnhance(java.lang.String);
     method public void setMeteringAreas(java.util.List<android.hardware.Camera.Area>);
+    method public void setPanoramaFps(boolean);
     method public void setPictureFormat(int);
     method public void setPictureSize(int, int);
     method public void setPowerMode(java.lang.String);
