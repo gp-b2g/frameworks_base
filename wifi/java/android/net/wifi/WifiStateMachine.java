@@ -76,6 +76,7 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.provider.Settings;
+import android.provider.Settings.Secure;
 import android.util.EventLog;
 import android.util.Log;
 import android.util.LruCache;
@@ -123,6 +124,9 @@ public class WifiStateMachine extends StateMachine {
     private static final String[] CT_WIFI_HOTPOT = {
             "ChinaNet_HomeCW","ChinaNet_CW","ChinaNet"
     };
+    private static final String AUTO_CONNECT_CHANGED_ACTION = "android.aciton.AUTO_CONNECT_CHANGED_ACTION";
+    private static final boolean fmcEnalbe = isModemSupportFMC();
+    
     private int tempNetId = 0;
     private WifiConfiguration tempConfig ;
     /* TODO: This is no more used with the hostapd code. Clean up */
@@ -715,8 +719,24 @@ public class WifiStateMachine extends StateMachine {
                     }
                 }
             }
-            
+
         }, new IntentFilter(FMC_STATE_CHANGED_ACTION));
+
+        mContext.registerReceiver(new BroadcastReceiver(){
+
+            @Override
+            public void onReceive(Context context, Intent intent) {
+
+                boolean autoConnect = Settings.Secure.getInt(mContext.getContentResolver(),
+                        Secure.WIFI_AUTO_CONNECTION_ON,1) == 1?true:false;
+                Log.i(TAG, "onReceive  autoConnect == "+autoConnect);
+                if (autoConnect) {
+                    if (getWifiState() != NetworkInfo.State.CONNECTED) {
+                        transitionTo(mDriverStartedState);  
+                    }
+                }
+            }
+        }, new IntentFilter(AUTO_CONNECT_CHANGED_ACTION));
 
         mScanResultCache = new LruCache<String, ScanResult>(SCAN_RESULT_CACHE_SIZE);
 
@@ -800,16 +820,7 @@ public class WifiStateMachine extends StateMachine {
            public void handleMessage(Message msg) {
                switch (msg.what) {
                    case CLOSE_WIFI_TIME_EVENT:
-                       WifiManager mWifiManager = (WifiManager) mContext
-                               .getSystemService(Context.WIFI_SERVICE);
-                       final WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
-
-                       ConnectivityManager cm = (ConnectivityManager) mContext.getSystemService(
-                                       Context.CONNECTIVITY_SERVICE);
-                       NetworkInfo networkInfo = cm.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-                       NetworkInfo.State networkState = (networkInfo == null ? NetworkInfo.State.UNKNOWN
-                                    : networkInfo.getState());
-                       if (networkState == NetworkInfo.State.CONNECTED) {
+                       if (getWifiState() == NetworkInfo.State.CONNECTED) {
                            if (isChangeAp) {
                             reconnect();
                             isChangeAp = false;
@@ -823,6 +834,19 @@ public class WifiStateMachine extends StateMachine {
            }
            
        };
+       
+       private NetworkInfo.State getWifiState(){
+           WifiManager mWifiManager = (WifiManager) mContext
+                   .getSystemService(Context.WIFI_SERVICE);
+           final WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
+
+           ConnectivityManager cm = (ConnectivityManager) mContext.getSystemService(
+                           Context.CONNECTIVITY_SERVICE);
+           NetworkInfo networkInfo = cm.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+           NetworkInfo.State networkState = (networkInfo == null ? NetworkInfo.State.UNKNOWN
+                        : networkInfo.getState());
+           return networkState;
+       }
 
     /*********************************************************
      * Methods exposed for public use
@@ -2836,16 +2860,32 @@ public class WifiStateMachine extends StateMachine {
             } else {
                 WifiNative.stopFilteringMulticastV4Packets();
             }
-
+            Log.i(TAG, "fmcEnalbe ==="+fmcEnalbe);
             if (mIsScanMode) {
                 WifiNative.setScanResultHandlingCommand(SCAN_ONLY_MODE);
                 WifiNative.disconnectCommand();
                 transitionTo(mScanModeState);
             } else {
-                WifiNative.setScanResultHandlingCommand(CONNECT_MODE);
-                WifiNative.reconnectCommand();
-                transitionTo(mDisconnectedState);
+                boolean autoConnect = Settings.Secure.getInt(mContext.getContentResolver(),
+                        Secure.WIFI_AUTO_CONNECTION_ON,1) == 1?true:false;
+                if (fmcEnalbe) {
+                    Log.i(TAG, "autoConeect == "+autoConnect);
+                    if (autoConnect) {
+                        WifiNative.setScanResultHandlingCommand(CONNECT_MODE);
+                        WifiNative.reconnectCommand();
+                        transitionTo(mDisconnectedState);
+                    }else {
+                        WifiNative.setScanResultHandlingCommand(SCAN_ONLY_MODE);
+                        WifiNative.disconnectCommand();
+                        transitionTo(mDisconnectedState);
+                    }
+                }else {
+                    WifiNative.setScanResultHandlingCommand(CONNECT_MODE);
+                    WifiNative.reconnectCommand();
+                    transitionTo(mDisconnectedState);
+                }
             }
+          
         }
         @Override
         public boolean processMessage(Message message) {
@@ -4006,5 +4046,9 @@ public class WifiStateMachine extends StateMachine {
 
     private void loge(String s) {
         Log.e(TAG, s);
+    }
+
+    private static boolean isModemSupportFMC() {
+        return (SystemProperties.getInt("ro.config.cwenable", 0)==1);
     }
 }

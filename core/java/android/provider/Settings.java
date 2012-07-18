@@ -799,6 +799,7 @@ public final class Settings {
             MOVED_TO_SECURE.add(Secure.WIFI_WATCHDOG_PING_COUNT);
             MOVED_TO_SECURE.add(Secure.WIFI_WATCHDOG_PING_DELAY_MS);
             MOVED_TO_SECURE.add(Secure.WIFI_WATCHDOG_PING_TIMEOUT_MS);
+            MOVED_TO_SECURE.add(Secure.WIFI_AUTO_CONNECTION_ON);
         }
 
         private static final HashSet<String> MOVED_TO_TRANSLATE;
@@ -4389,6 +4390,13 @@ public final class Settings {
                 "contacts_preauth_uri_expiration";
 
         /**
+         * whether enable auto-connect wifi ap
+         * @hide
+         */
+        public static final String WIFI_AUTO_CONNECTION_ON =
+                "wifi_auto_connection_on";
+
+        /**
          * This are the settings to be backed up.
          *
          * NOTE: Settings are backed up and restored in the order they appear
@@ -4426,7 +4434,8 @@ public final class Settings {
             MOUNT_UMS_NOTIFY_ENABLED,
             UI_NIGHT_MODE,
             LOCK_SCREEN_OWNER_INFO,
-            LOCK_SCREEN_OWNER_INFO_ENABLED
+            LOCK_SCREEN_OWNER_INFO_ENABLED,
+            WIFI_AUTO_CONNECTION_ON
         };
 
         /**
