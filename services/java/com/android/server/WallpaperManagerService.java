@@ -109,6 +109,13 @@ class WallpaperManagerService extends IWallpaperManager.Stub {
                 @Override
                 public void onEvent(int event, String path) {
                     if (path == null) {
+                        //everytime the wallpaper path is deleted(settings user data cleared),
+                        //we need to start monitor the path again or else we can not set new wallpapers.
+                        if(!WALLPAPER_DIR.exists()){
+                            mWallpaperObserver.stopWatching();
+                            WALLPAPER_DIR.mkdirs();
+                            mWallpaperObserver.startWatching();
+                        }
                         return;
                     }
                     synchronized (mLock) {
@@ -127,13 +134,6 @@ class WallpaperManagerService extends IWallpaperManager.Stub {
                                     mImageWallpaperPending = false;
                                 }
 
-                                //everytime the wallpaper path is deleted(settings user data cleared),
-                                //we need to start monitor the path again or else we can not set new wallpapers.
-                                if(event == DELETE){
-                                    mWallpaperObserver.stopWatching();
-                                    WALLPAPER_DIR.mkdirs();
-                                    mWallpaperObserver.startWatching();
-                                }
 
                                 bindWallpaperComponentLocked(mImageWallpaperComponent,
                                         true, false);
