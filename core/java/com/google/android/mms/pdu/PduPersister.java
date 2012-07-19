@@ -774,6 +774,7 @@ public class PduPersister {
                     if (charset != 0) {
                         if (charset == CharacterSets.US_ASCII && ContentType.APP_SMIL.equals(contentType)) {
                             charset = CharacterSets.UTF_8;
+                            cv.put(Telephony.Mms.Part.CHARSET, charset);
                         }
 
                         String charsetName = null;
