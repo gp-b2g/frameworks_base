@@ -77,11 +77,14 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
     private ToggleAction.State mAirplaneState = ToggleAction.State.Off;
     private boolean mIsWaitingForEcmExit = false;
 
+    private boolean mEnableFastPowerOn = false;
     /**
      * @param context everything needs a context :(
      */
     public GlobalActions(Context context) {
         mContext = context;
+        mEnableFastPowerOn = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_enableFastPowerOn);
         mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
 
         // receive broadcasts
@@ -196,24 +199,25 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         mItems.add(mAirplaneModeOn);
 
         // add: fastboot
-        mItems.add(
-            new SinglePressAction(
-                    com.android.internal.R.drawable.ic_lock_power_off,
-                    R.string.global_action_power_off_fast) {
+        if (mEnableFastPowerOn) {
+            mItems.add(
+                new SinglePressAction(
+                        com.android.internal.R.drawable.ic_lock_power_off,
+                        R.string.global_action_power_off_fast) {
 
-                public void onPress() {
-                    startFastBoot();
-                }
+                    public void onPress() {
+                        startFastBoot();
+                    }
 
-                public boolean showDuringKeyguard() {
-                    return true;
-                }
+                    public boolean showDuringKeyguard() {
+                        return true;
+                    }
 
-                public boolean showBeforeProvisioning() {
-                    return true;
-                }
-            });
-
+                    public boolean showBeforeProvisioning() {
+                        return true;
+                    }
+                });
+        }
         // last: silent mode
         if (SHOW_SILENT_TOGGLE) {
             mItems.add(mSilentModeAction);
