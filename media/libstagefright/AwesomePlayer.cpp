@@ -2003,7 +2003,7 @@ void AwesomePlayer::onVideoEvent() {
                     mAudioSourcePaused = false;
                 }
                 if (mAudioPlayer != NULL
-                        && !(mFlags & (AUDIO_RUNNING | SEEK_PREVIEW))) {
+                        && !(mFlags & (AUDIO_RUNNING | SEEK_PREVIEW | AUDIO_AT_EOS))) {
                     startAudioPlayer_l();
                 }
 
@@ -2068,9 +2068,12 @@ void AwesomePlayer::onVideoEvent() {
         mAudioSource->start();
         mAudioSourcePaused = false;
     }
-    if (mAudioPlayer != NULL && !(mFlags & (AUDIO_RUNNING | SEEK_PREVIEW))) {
-        status_t err = startAudioPlayer_l();
-        if (err != OK) {
+    if (mAudioPlayer != NULL && !(mFlags & (AUDIO_RUNNING | SEEK_PREVIEW | AUDIO_AT_EOS))) {
+        status_t err = startAudioPlayer_l(false);
+        if (err == ERROR_END_OF_STREAM) {
+            modifyFlags(AUDIO_AT_EOS, SET);
+            postStreamDoneEvent_l(err);
+        } else if (err != OK) {
             LOGE("Starting the audio player failed w/ err %d", err);
             return;
         }

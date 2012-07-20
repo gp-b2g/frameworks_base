@@ -105,6 +105,9 @@ status_t AudioPlayer::start(bool sourceAlreadyStarted) {
     } else if(mFirstBufferResult != OK && !wasSeeking) {
         mReachedEOS = true;
         mFinalStatus = mFirstBufferResult;
+        if (mFirstBufferResult == ERROR_END_OF_STREAM) {
+            mStarted = true;
+        }
         return mFirstBufferResult;
     } else {
         mIsFirstBuffer = true;
