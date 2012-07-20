@@ -8962,7 +8962,17 @@ public class WebView extends AbsoluteLayout
      * acceleration) */
     protected void pageSwapCallback(boolean notifyAnimationStarted) {
         if (inEditingMode()) {
-            didUpdateWebTextViewDimensions(ANYWHERE);
+            Rect contentBounds = nativeFocusCandidateNodeBounds();
+            Rect vBox = contentToViewRect(contentBounds);
+            Rect visibleRect = new Rect();
+            calcOurVisibleRect(visibleRect);
+            offsetByLayerScrollPosition(vBox);
+            if (mWebTextView != null && mWebTextView.isSizeChanged(vBox.width(),vBox.height())){
+                mWebTextView.setRect(vBox.left, vBox.top, vBox.width(),vBox.height());
+                mWebTextView.updateTextSize();
+                updateWebTextViewPadding();
+            }
+           // didUpdateWebTextViewDimensions(ANYWHERE);
         }
         if (notifyAnimationStarted) {
             mWebViewCore.sendMessage(EventHub.NOTIFY_ANIMATION_STARTED);

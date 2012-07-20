@@ -1188,4 +1188,10 @@ import java.util.ArrayList;
         setGravity(gravity);
     }
 
+    public boolean isSizeChanged(int width, int height){
+        int newWidthSpec = MeasureSpec.makeMeasureSpec((width+2*mRingInset), MeasureSpec.EXACTLY);
+        int newHeightSpec = MeasureSpec.makeMeasureSpec((height+2*mRingInset), MeasureSpec.EXACTLY);
+        return (newWidthSpec != mWidthSpec || newHeightSpec != mHeightSpec)? true:false;
+    }
+
 }
