@@ -1009,6 +1009,13 @@ struct MyHandler : public AHandler {
                 sp<AMessage> msg = mNotify->dup();
                 msg->setInt32("what", kWhatSeekDone);
                 msg->post();
+
+                //clear the flags which were set in 'tiou'
+                mTryFakeRTCP = false;
+                mReceivedFirstRTCPPacket = false;
+                sp<AMessage> timeout = new AMessage('tiou', id());
+                timeout->post(kStartupTimeoutUs);
+
                 break;
             }
 
@@ -1113,8 +1120,11 @@ struct MyHandler : public AHandler {
         if (!ASessionDescription::parseNTPRange(val.c_str(), &npt1, &npt2)) {
             // This is a live stream and therefore not seekable.
 
-            LOGI("This is a live stream");
-            return;
+            if(!mSessionDesc->parseNTPRangeDesc()){
+                // This is a live stream and therefore not seekable.
+                LOGI("This is a live stream");
+                return;
+            }
         }
 
         i = response->mHeaders.indexOfKey("rtp-info");
@@ -1134,7 +1144,7 @@ struct MyHandler : public AHandler {
 
             size_t trackIndex = 0;
             while (trackIndex < mTracks.size()
-                    && !(val == mTracks.editItemAt(trackIndex).mURL)) {
+                    && !strstr(mTracks.editItemAt(trackIndex).mURL.c_str(), val.c_str())) {
                 ++trackIndex;
             }
             CHECK_LT(trackIndex, mTracks.size());

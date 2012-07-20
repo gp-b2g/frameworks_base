@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,6 +63,7 @@ struct ASessionDescription : public RefBase {
     // Returns true iff both "npt1" and "npt2" times were available,
     // i.e. we have a fixed duration, otherwise this is live streaming.
     static bool parseNTPRange(const char *s, float *npt1, float *npt2);
+    bool parseNTPRangeDesc() const;
 
 protected:
     virtual ~ASessionDescription();

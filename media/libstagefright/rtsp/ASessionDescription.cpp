@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -330,6 +331,21 @@ bool ASessionDescription::parseNTPRange(
     }
 
     return *npt2 > *npt1;
+}
+
+bool ASessionDescription::parseNTPRangeDesc() const {
+    AString value;
+    if (!findAttribute(0, "a=range", &value)) {
+        return false;
+    }
+    if (strncmp(value.c_str(), "npt=", 4)) {
+        return false;
+    }
+    float from, to;
+    if (!parseNTPRange(value.c_str() + 4, &from, &to)) {
+        return false;
+    }
+    return true;
 }
 
 }  // namespace android
