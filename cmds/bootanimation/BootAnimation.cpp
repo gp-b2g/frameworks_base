@@ -308,8 +308,13 @@ bool BootAnimation::threadLoop()
 
 bool BootAnimation::android()
 {
+    status_t logo_exsit = NO_INIT;
+    char value[PROPERTY_VALUE_MAX];
+    int enable = 0;
+
     initTexture(&mAndroid[0], mAssets, "images/android-logo-mask.png");
     initTexture(&mAndroid[1], mAssets, "images/android-logo-shine.png");
+    logo_exsit = initTexture(&mAndroid[2], mAssets, "images/android-poweron-logo.png");
 
     // clear screen
     glShadeModel(GL_FLAT);
@@ -346,13 +351,30 @@ bool BootAnimation::android()
 
         glEnable(GL_SCISSOR_TEST);
         glDisable(GL_BLEND);
-        glBindTexture(GL_TEXTURE_2D, mAndroid[1].name);
-        glDrawTexiOES(x,                 yc, 0, mAndroid[1].w, mAndroid[1].h);
-        glDrawTexiOES(x + mAndroid[1].w, yc, 0, mAndroid[1].w, mAndroid[1].h);
+        if (logo_exsit == NO_ERROR) {
+            property_get("hw.showlogo.enable", value, "0");
+            enable = atoi(value);
+        }
 
-        glEnable(GL_BLEND);
-        glBindTexture(GL_TEXTURE_2D, mAndroid[0].name);
-        glDrawTexiOES(xc, yc, 0, mAndroid[0].w, mAndroid[0].h);
+        if (enable == 1) {
+            const Rect logoUpdateRect((mWidth  - mAndroid[2].w) / 2,
+                    (mHeight - mAndroid[2].h) / 2, mAndroid[2].w, mAndroid[2].h);
+
+            glScissor(logoUpdateRect.left, mHeight - logoUpdateRect.bottom, logoUpdateRect.width(),
+                    logoUpdateRect.height());
+            glBindTexture(GL_TEXTURE_2D, mAndroid[2].name);
+            glDrawTexiOES(0, 0, 0, mAndroid[2].w, mAndroid[2].h);
+        } else {
+            glScissor(updateRect.left, mHeight - updateRect.bottom, updateRect.width(),
+                    updateRect.height());
+            glBindTexture(GL_TEXTURE_2D, mAndroid[1].name);
+            glDrawTexiOES(x,                 yc, 0, mAndroid[1].w, mAndroid[1].h);
+            glDrawTexiOES(x + mAndroid[1].w, yc, 0, mAndroid[1].w, mAndroid[1].h);
+
+            glEnable(GL_BLEND);
+            glBindTexture(GL_TEXTURE_2D, mAndroid[0].name);
+            glDrawTexiOES(xc, yc, 0, mAndroid[0].w, mAndroid[0].h);
+        }
 
         EGLBoolean res = eglSwapBuffers(mDisplay, mSurface);
         if (res == EGL_FALSE)
@@ -366,12 +388,19 @@ bool BootAnimation::android()
 
     glDeleteTextures(1, &mAndroid[0].name);
     glDeleteTextures(1, &mAndroid[1].name);
+    if (logo_exsit)
+        glDeleteTextures(1, &mAndroid[2].name);
     return false;
 }
 
 
 bool BootAnimation::movie()
 {
+    status_t logo_exsit = NO_INIT;
+    char value[PROPERTY_VALUE_MAX];
+    int enable = 0;
+
+    logo_exsit = initTexture(&mAndroid[2], mAssets, "images/wo_logo_480.png");
     ZipFileRO& zip(mZip);
 
     size_t numEntries = zip.getNumEntries();
@@ -471,7 +500,6 @@ bool BootAnimation::movie()
     Region clearReg(Rect(mWidth, mHeight));
     clearReg.subtractSelf(Rect(xc, yc, xc+animation.width, yc+animation.height));
 
-    char value[PROPERTY_VALUE_MAX];
 	property_get("persist.sys.silent", value, "null");
 	if (strcmp(value, "1") != 0) {
 		playBackgroundMusic();
@@ -486,33 +514,48 @@ bool BootAnimation::movie()
             for (int j=0 ; j<fcount && !exitPending(); j++) {
                 const Animation::Frame& frame(part.frames[j]);
 
-                if (r > 0) {
-                    glBindTexture(GL_TEXTURE_2D, frame.tid);
-                } else {
-                    if (part.count != 1) {
-                        glGenTextures(1, &frame.tid);
-                        glBindTexture(GL_TEXTURE_2D, frame.tid);
-                        glTexParameterx(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                        glTexParameterx(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                    }
-                    initTexture(
-                            frame.map->getDataPtr(),
-                            frame.map->getDataLength());
+                if (logo_exsit == NO_ERROR) {
+                    property_get("hw.showlogo.enable", value, "0");
+                    enable = atoi(value);
                 }
 
-                if (!clearReg.isEmpty()) {
-                    Region::const_iterator head(clearReg.begin());
-                    Region::const_iterator tail(clearReg.end());
-                    glEnable(GL_SCISSOR_TEST);
-                    while (head != tail) {
-                        const Rect& r(*head++);
-                        glScissor(r.left, mHeight - r.bottom,
-                                r.width(), r.height());
-                        glClear(GL_COLOR_BUFFER_BIT);
+                if (enable == 1) {
+                    const Rect logoUpdateRect((mWidth  - mAndroid[2].w) / 2,
+                            (mHeight - mAndroid[2].h) / 2, mAndroid[2].w, mAndroid[2].h);
+
+                    glScissor(logoUpdateRect.left, mHeight - logoUpdateRect.bottom, logoUpdateRect.width(),
+                            logoUpdateRect.height());
+                    glBindTexture(GL_TEXTURE_2D, mAndroid[2].name);
+                    glDrawTexiOES(0, 0, 0, mAndroid[2].w, mAndroid[2].h);
+                } else {
+                    if (r > 0) {
+                        glBindTexture(GL_TEXTURE_2D, frame.tid);
+                    } else {
+                        if (part.count != 1) {
+                            glGenTextures(1, &frame.tid);
+                            glBindTexture(GL_TEXTURE_2D, frame.tid);
+                            glTexParameterx(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                            glTexParameterx(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                        }
+                        initTexture(
+                                frame.map->getDataPtr(),
+                                frame.map->getDataLength());
                     }
-                    glDisable(GL_SCISSOR_TEST);
+
+                    if (!clearReg.isEmpty()) {
+                        Region::const_iterator head(clearReg.begin());
+                        Region::const_iterator tail(clearReg.end());
+                        glEnable(GL_SCISSOR_TEST);
+                        while (head != tail) {
+                            const Rect& r(*head++);
+                            glScissor(r.left, mHeight - r.bottom,
+                                    r.width(), r.height());
+                            glClear(GL_COLOR_BUFFER_BIT);
+                        }
+                        glDisable(GL_SCISSOR_TEST);
+                    }
+                    glDrawTexiOES(xc, yc, 0, animation.width, animation.height);
                 }
-                glDrawTexiOES(xc, yc, 0, animation.width, animation.height);
                 eglSwapBuffers(mDisplay, mSurface);
 
                 nsecs_t now = systemTime();
@@ -532,6 +575,9 @@ bool BootAnimation::movie()
                 glDeleteTextures(1, &frame.tid);
             }
         }
+
+        if (logo_exsit)
+            glDeleteTextures(1, &mAndroid[2].name);
     }
 
     return false;

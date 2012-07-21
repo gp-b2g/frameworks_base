@@ -92,7 +92,7 @@ private:
 
     sp<SurfaceComposerClient>       mSession;
     AssetManager mAssets;
-    Texture     mAndroid[2];
+    Texture     mAndroid[3];
     int         mWidth;
     int         mHeight;
     EGLDisplay  mDisplay;
