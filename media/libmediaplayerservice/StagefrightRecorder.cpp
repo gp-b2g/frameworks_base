@@ -861,7 +861,12 @@ sp<MediaSource> StagefrightRecorder::createAudioSource() {
         String8 valueStr = AudioSystem::getParameters( 0, param.toString());
         AudioParameter result(valueStr);
         int value;
-        if ( mAudioEncoder == AUDIO_ENCODER_QCELP &&
+        if ( mAudioEncoder == AUDIO_ENCODER_AMR_NB &&
+            result.getInt(String8("AMR"),value) == NO_ERROR ) {
+            tunneledSource = true;
+            tunnelMime = MEDIA_MIMETYPE_AUDIO_AMR_NB;
+        }
+        else if ( mAudioEncoder == AUDIO_ENCODER_QCELP &&
             result.getInt(String8("QCELP"),value) == NO_ERROR ) {
             tunneledSource = true;
             tunnelMime = MEDIA_MIMETYPE_AUDIO_QCELP;
