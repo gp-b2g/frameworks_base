@@ -920,7 +920,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         newSS.setStateOutOfService(); // clean slate for next time
 
         if (hasNetworkTypeChanged) {
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
+            phone.setSystemProperty(
+                    (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_DATA2_NETWORK_TYPE
+                            : TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                     ServiceState.radioTechnologyToString(networkType));
         }
 
@@ -945,14 +947,20 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
             String operatorNumeric;
 
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ALPHA,
+            phone.setSystemProperty(
+                    (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_OPERATOR2_ALPHA
+                            : TelephonyProperties.PROPERTY_OPERATOR_ALPHA,
                     ss.getOperatorAlphaLong());
 
             operatorNumeric = ss.getOperatorNumeric();
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, operatorNumeric);
+            phone.setSystemProperty(
+                    (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_OPERATOR2_NUMERIC
+                            : TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, operatorNumeric);
 
             if (operatorNumeric == null) {
-                phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
+                phone.setSystemProperty(
+                        (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_OPERATOR2_ISO_COUNTRY
+                                : TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
                 mGotCountryCode = false;
             } else {
                 String isoCountryCode = "";
@@ -965,7 +973,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     loge("pollStateDone: countryCodeForMcc error" + ex);
                 }
                 if (isoCountryCode != "") {
-                    phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
+                    phone.setSystemProperty(
+                            (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_OPERATOR2_ISO_COUNTRY
+                                    : TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
                             isoCountryCode);
                     mGotCountryCode = true;
 
@@ -975,7 +985,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 }
             }
 
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
+            phone.setSystemProperty(
+                    (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_OPERATOR2_ISROAMING
+                            : TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
                     ss.getRoaming() ? "true" : "false");
 
             updateSpnDisplay();
@@ -1157,7 +1169,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      */
     private
     boolean isRoamingBetweenOperators(boolean cdmaRoaming, ServiceState s) {
-        String spn = getSystemProperty(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA, "");
+        String spn = getSystemProperty(
+                (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_ICC2_OPERATOR_ALPHA
+                        : TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA, "");
 
         // NOTE: in case of RUIM we should completely ignore the ERI data file and
         // mOperatorAlphaLong is set from RIL_REQUEST_OPERATOR response 0 (alpha ONS)
@@ -1243,7 +1257,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 zone = TimeZone.getTimeZone( tzname );
             }
 
-            String iso = getSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "empty");
+            String iso = getSystemProperty(
+                    (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_OPERATOR2_ISO_COUNTRY
+                            : TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "empty");
 
             if (zone == null) {
 

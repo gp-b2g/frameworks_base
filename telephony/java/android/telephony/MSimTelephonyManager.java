@@ -17,10 +17,6 @@
 
 package android.telephony;
 
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC2_OPERATOR_NUMERIC;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_OPERATOR2_ISO_COUNTRY;
 import android.annotation.SdkConstant;
 import android.annotation.SdkConstant.SdkConstantType;
 import android.content.Context;
@@ -496,8 +492,9 @@ public class MSimTelephonyManager extends TelephonyManager {
         if (!isMultiSimEnabled()) {
             return super.getSimCountryIso();
         }
-        return getTelephonyProperty(TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
-                subscription, "");
+        return getTelephonyProperty(
+                subscription == 0 ? TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY
+                        : TelephonyProperties.PROPERTY_ICC2_OPERATOR_ISO_COUNTRY, "");
     }
 
     /**
@@ -519,8 +516,9 @@ public class MSimTelephonyManager extends TelephonyManager {
         if (!isMultiSimEnabled()) {
             return super.getNetworkCountryIso();
         }
-        return getTelephonyProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
-                subscription, "");
+        return getTelephonyProperty(
+                subscription == 0 ? TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY
+                        : TelephonyProperties.PROPERTY_OPERATOR2_ISO_COUNTRY, "");
     }
 
     /**
@@ -556,10 +554,10 @@ public class MSimTelephonyManager extends TelephonyManager {
     }
 
     private int getPhoneTypeFromProperty(int subscription) {
-        String type =
-            getTelephonyProperty
-                (TelephonyProperties.CURRENT_ACTIVE_PHONE, subscription, null);
-        if (type != null) {
+        String type = getTelephonyProperty(
+                subscription == 0 ? TelephonyProperties.CURRENT_ACTIVE_PHONE
+                        : TelephonyProperties.CURRENT2_ACTIVE_PHONE, null);
+        if (!TextUtils.isEmpty(type)) {
             return (Integer.parseInt(type));
         } else {
             return getPhoneTypeFromNetworkType(subscription);
@@ -570,8 +568,8 @@ public class MSimTelephonyManager extends TelephonyManager {
         // When the system property CURRENT_ACTIVE_PHONE, has not been set,
         // use the system property for default network type.
         // This is a fail safe, and can only happen at first boot.
-        String mode = getTelephonyProperty("ro.telephony.default_network", subscription, null);
-        if (mode != null) {
+        String mode = getTelephonyProperty("ro.telephony.default_network", null);
+        if (!TextUtils.isEmpty(mode)) {
             return PhoneFactory.getPhoneType(Integer.parseInt(mode));
         }
         return PHONE_TYPE_NONE;
@@ -595,8 +593,8 @@ public class MSimTelephonyManager extends TelephonyManager {
     public String getNetworkOperatorName(int subscription) {
         if (!isMultiSimEnabled) return super.getNetworkOperatorName();
 
-        return getTelephonyProperty(TelephonyProperties.PROPERTY_OPERATOR_ALPHA,
-                subscription, "");
+        return getTelephonyProperty(subscription == 0 ? TelephonyProperties.PROPERTY_OPERATOR_ALPHA
+                : TelephonyProperties.PROPERTY_OPERATOR2_ALPHA, "");
     }
 
     /**
@@ -612,8 +610,9 @@ public class MSimTelephonyManager extends TelephonyManager {
     public String getNetworkOperator(int subscription) {
         if (!isMultiSimEnabled) return super.getNetworkOperator();
 
-        return getTelephonyProperty(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC,
-                subscription, "");
+        return getTelephonyProperty(
+                subscription == 0 ? TelephonyProperties.PROPERTY_OPERATOR_NUMERIC
+                        : TelephonyProperties.PROPERTY_OPERATOR2_NUMERIC, "");
      }
 
     /**
@@ -626,8 +625,9 @@ public class MSimTelephonyManager extends TelephonyManager {
      */
     public boolean isNetworkRoaming(int subscription) {
         if (!isMultiSimEnabled) return super.isNetworkRoaming();
-        return "true".equals(getTelephonyProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
-             subscription, null));
+        return "true".equals(getTelephonyProperty(
+                subscription == 0 ? TelephonyProperties.PROPERTY_OPERATOR_ISROAMING
+                        : TelephonyProperties.PROPERTY_OPERATOR2_ISROAMING, null));
     }
 
     /**
@@ -721,8 +721,8 @@ public class MSimTelephonyManager extends TelephonyManager {
     public int getSimState(int slotId) {
         if (!isMultiSimEnabled) return super.getSimState();
 
-        String prop =
-            getTelephonyProperty(TelephonyProperties.PROPERTY_SIM_STATE, slotId, "");
+        String prop = getTelephonyProperty(slotId == 0 ? TelephonyProperties.PROPERTY_SIM_STATE
+                : TelephonyProperties.PROPERTY_SIM2_STATE, "");
         if ("ABSENT".equals(prop)) {
             return SIM_STATE_ABSENT;
         }
@@ -1141,88 +1141,6 @@ public class MSimTelephonyManager extends TelephonyManager {
     }
 
     /**
-     * Sets the telephony property separately with the value specified.
-     *
-     * @hide
-     */
-    public static boolean setDualTelephonyProperty(String property, int index, String value) {
-      //now we have two icc operator numeric property,the old method need extend
-        if (property.equals(PROPERTY_OPERATOR_ISO_COUNTRY)){
-            property = index == 0 ? PROPERTY_OPERATOR_ISO_COUNTRY : PROPERTY_OPERATOR2_ISO_COUNTRY;
-            SystemProperties.set(property, value);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Sets the telephony property with the value specified.
-     *
-     * @hide
-     */
-    public static void setTelephonyProperty(String property, int index, String value) {
-        if(setDualTelephonyProperty(property,index,value))
-            return;
-        String propVal = "";
-        String p[] = null;
-        String prop = SystemProperties.get(property);
-
-        if (prop != null) {
-            p = prop.split(",");
-        }
-
-        if (index < 0) return;
-
-        for (int i = 0; i < index; i++) {
-            String str = "";
-            if ((p != null) && (i < p.length)) {
-                str = p[i];
-            }
-            propVal = propVal + str + ",";
-        }
-
-        propVal = propVal + value;
-        if (p != null) {
-            for (int i = index+1; i < p.length; i++) {
-                propVal = propVal + "," + p[i];
-            }
-        }
-        SystemProperties.set(property, propVal);
-    }
-
-    /**
-     * Gets the telephony property.
-     *
-     * @hide
-     */
-    public static String getTelephonyProperty(String property, int index, String defaultVal) {
-        String propVal = null;
-        boolean bDualSet = false;
-
-        //now we have two icc operator numeric property,the old method need extend
-        if (property.equals(PROPERTY_ICC_OPERATOR_NUMERIC)){
-            bDualSet = true;
-            property = index == 0 ? PROPERTY_ICC_OPERATOR_NUMERIC : PROPERTY_ICC2_OPERATOR_NUMERIC;
-        }
-        else if(property.equals(PROPERTY_OPERATOR_ISO_COUNTRY)){
-            bDualSet = true;
-            property = index == 0 ? PROPERTY_OPERATOR_ISO_COUNTRY : PROPERTY_OPERATOR2_ISO_COUNTRY;
-        }
-
-        String prop = SystemProperties.get(property);
-        if(bDualSet)
-            return prop == null ? defaultVal : prop;
-
-        if ((prop != null) && (prop.length() > 0)) {
-            String values[] = prop.split(",");
-            if ((index >= 0) && (index < values.length) && (values[index] != null)) {
-                propVal = values[index];
-            }
-        }
-        return propVal == null ? defaultVal : propVal;
-    }
-
-    /**
      * Returns Default subscription.
      * Returns default value 0, if default subscription is not available
      */
@@ -1288,8 +1206,9 @@ public class MSimTelephonyManager extends TelephonyManager {
      */
     public String getSimOperator(int subscription) {
         if (!isMultiSimEnabled) return getSimOperator();
-        String property = subscription == 0 ? PROPERTY_ICC_OPERATOR_NUMERIC : PROPERTY_ICC2_OPERATOR_NUMERIC;
-        return SystemProperties.get(property);
+        return getTelephonyProperty(
+                subscription == 0 ? TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC
+                        : TelephonyProperties.PROPERTY_ICC2_OPERATOR_NUMERIC, "");
     }
 
     /**
@@ -1303,8 +1222,9 @@ public class MSimTelephonyManager extends TelephonyManager {
      */
     public String getSimOperatorName(int subscription) {
         if (!isMultiSimEnabled) return getSimOperatorName();
-        String alpha = getTelephonyProperty(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA,
-                subscription, "");
+        String alpha = getTelephonyProperty(
+                subscription == 0 ? TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA
+                        : TelephonyProperties.PROPERTY_ICC2_OPERATOR_ALPHA, "");
         if ("".equals(alpha)) {
             String numeric = getSimOperator(subscription);
             if (numeric != null && numeric.length() > 3)

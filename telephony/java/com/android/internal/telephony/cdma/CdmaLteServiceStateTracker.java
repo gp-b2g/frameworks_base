@@ -39,6 +39,7 @@ import android.util.EventLog;
 
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.gsm.GsmDataConnectionTracker;
+import com.android.internal.telephony.gsm.MSimGSMPhone;
 
 public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     CDMALTEPhone mCdmaLtePhone;
@@ -330,7 +331,9 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         newSS.setStateOutOfService(); // clean slate for next time
 
         if (hasNetworkTypeChanged) {
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
+            phone.setSystemProperty(
+                    (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_DATA2_NETWORK_TYPE
+                            : TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                     ServiceState.radioTechnologyToString(networkType));
             mRatChangedRegistrants.notifyRegistrants();
         }
@@ -374,14 +377,20 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
             String operatorNumeric;
 
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ALPHA,
+            phone.setSystemProperty(
+                    (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_OPERATOR2_ALPHA
+                            : TelephonyProperties.PROPERTY_OPERATOR_ALPHA,
                     ss.getOperatorAlphaLong());
 
             operatorNumeric = ss.getOperatorNumeric();
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, operatorNumeric);
+            phone.setSystemProperty(
+                    (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_OPERATOR2_NUMERIC
+                            : TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, operatorNumeric);
 
             if (operatorNumeric == null) {
-                phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
+                phone.setSystemProperty(
+                        (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_OPERATOR2_ISO_COUNTRY
+                                : TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
                 mGotCountryCode = false;
             } else {
                 String isoCountryCode = "";
@@ -394,7 +403,9 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                     loge("countryCodeForMcc error" + ex);
                 }
 
-                phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
+                phone.setSystemProperty(
+                        (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_OPERATOR2_ISO_COUNTRY
+                                : TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
                         isoCountryCode);
                 mGotCountryCode = true;
                 if (mNeedFixZone) {
@@ -402,7 +413,9 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 }
             }
 
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
+            phone.setSystemProperty(
+                    (phone.getSubscription() != 0) ? TelephonyProperties.PROPERTY_OPERATOR2_ISROAMING
+                            : TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
                     ss.getRoaming() ? "true" : "false");
 
             updateSpnDisplay();

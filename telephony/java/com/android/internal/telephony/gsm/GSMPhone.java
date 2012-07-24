@@ -1337,7 +1337,9 @@ public class GSMPhone extends PhoneBase {
                 }
 
                 if (LOCAL_DEBUG) Log.d(LOG_TAG, "Baseband version: " + ar.result);
-                setSystemProperty(PROPERTY_BASEBAND_VERSION, (String)ar.result);
+                if (!TextUtils.isEmpty((String) ar.result)) {
+                    setSystemProperty(PROPERTY_BASEBAND_VERSION, (String) ar.result);
+                }
             break;
 
             case EVENT_GET_IMEI_DONE:

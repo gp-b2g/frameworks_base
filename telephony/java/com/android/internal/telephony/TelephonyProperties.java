@@ -45,6 +45,12 @@ public interface TelephonyProperties
      *  CDMA networks.
      */
     static final String PROPERTY_OPERATOR_ALPHA = "gsm.operator.alpha";
+
+    /** Alpha name of current registered operator.<p>
+     *  Availability: when registered to a network. Result may be unreliable on
+     *  CDMA networks.
+     */
+    static final String PROPERTY_OPERATOR2_ALPHA = "gsm.operator2.alpha";
     //TODO: most of these properties are generic, substitute gsm. with phone. bug 1856959
 
     /** Numeric name (MCC+MNC) of current registered operator.<p>
@@ -52,6 +58,12 @@ public interface TelephonyProperties
      *  CDMA networks.
      */
     static final String PROPERTY_OPERATOR_NUMERIC = "gsm.operator.numeric";
+
+    /** Numeric name (MCC+MNC) of current registered operator.<p>
+     *  Availability: when registered to a network. Result may be unreliable on
+     *  CDMA networks.
+     */
+    static final String PROPERTY_OPERATOR2_NUMERIC = "gsm.operator2.numeric";
 
     /** 'true' if the device is on a manually selected network
      *
@@ -64,6 +76,12 @@ public interface TelephonyProperties
      *  Availability: when registered to a network
      */
     static final String PROPERTY_OPERATOR_ISROAMING = "gsm.operator.isroaming";
+
+    /** 'true' if the device is considered roaming on this network for GSM
+     *  purposes.
+     *  Availability: when registered to a network
+     */
+    static final String PROPERTY_OPERATOR2_ISROAMING = "gsm.operator2.isroaming";
 
     /** The ISO country code equivalent of the current registered operator's
      *  MCC (Mobile Country Code)<p>
@@ -95,12 +113,21 @@ public interface TelephonyProperties
 
     static final String CURRENT_ACTIVE_PHONE = "gsm.current.phone-type";
 
+    static final String CURRENT2_ACTIVE_PHONE = "gsm.current2.phone-type";
+
     //****** SIM Card
     /**
      * One of <code>"UNKNOWN"</code> <code>"ABSENT"</code> <code>"PIN_REQUIRED"</code>
      * <code>"PUK_REQUIRED"</code> <code>"PERSO_LOCKED"</code> or <code>"READY"</code>
      */
     static String PROPERTY_SIM_STATE = "gsm.sim.state";
+
+    //****** SIM Card
+    /**
+     * One of <code>"UNKNOWN"</code> <code>"ABSENT"</code> <code>"PIN_REQUIRED"</code>
+     * <code>"PUK_REQUIRED"</code> <code>"PERSO_LOCKED"</code> or <code>"READY"</code>
+     */
+    static String PROPERTY_SIM2_STATE = "gsm.sim2.state";
 
     /** The MCC+MNC (mobile country code+mobile network code) of the
      *  provider of the SIM. 5 or 6 decimal digits.
@@ -118,14 +145,28 @@ public interface TelephonyProperties
      */
     static String PROPERTY_ICC_OPERATOR_ALPHA = "gsm.sim.operator.alpha";
 
+    /** PROPERTY_ICC_OPERATOR_ALPHA is also known as the SPN, or Service Provider Name.
+     *  Availability: SIM state must be "READY"
+     */
+    static String PROPERTY_ICC2_OPERATOR_ALPHA = "gsm.sim2.operator.alpha";
+
     /** ISO country code equivalent for the SIM provider's country code*/
     static String PROPERTY_ICC_OPERATOR_ISO_COUNTRY = "gsm.sim.operator.iso-country";
+
+    /** ISO country code equivalent for the SIM provider's country code*/
+    static String PROPERTY_ICC2_OPERATOR_ISO_COUNTRY = "gsm.sim2.operator.iso-country";
 
     /**
      * Indicates the available radio technology.  Values include: <code>"unknown"</code>,
      * <code>"GPRS"</code>, <code>"EDGE"</code> and <code>"UMTS"</code>.
      */
     static String PROPERTY_DATA_NETWORK_TYPE = "gsm.network.type";
+
+    /**
+     * Indicates the available radio technology.  Values include: <code>"unknown"</code>,
+     * <code>"GPRS"</code>, <code>"EDGE"</code> and <code>"UMTS"</code>.
+     */
+    static String PROPERTY_DATA2_NETWORK_TYPE = "gsm.network2.type";
 
     /** Indicate if phone is in emergency callback mode */
     static final String PROPERTY_INECM_MODE = "ril.cdma.inecmmode";

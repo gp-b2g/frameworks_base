@@ -646,13 +646,7 @@ public class TelephonyManager {
      * @see #SIM_STATE_CARD_IO_ERROR
      */
     public int getSimState() {
-        String prop = null;
-        if (isMultiSimEnabled) {
-            int subId = MSimTelephonyManager.getDefault().getDefaultSubscription();
-            prop = getTelephonyProperty(TelephonyProperties.PROPERTY_SIM_STATE, subId, "");
-        } else {
-            prop = SystemProperties.get(TelephonyProperties.PROPERTY_SIM_STATE);
-        }
+        String prop = SystemProperties.get(TelephonyProperties.PROPERTY_SIM_STATE);
         if ("ABSENT".equals(prop)) {
             return SIM_STATE_ABSENT;
         }
@@ -1219,22 +1213,17 @@ public class TelephonyManager {
                 com.android.internal.R.bool.config_sms_capable);
     }
 
-   /**
+    /**
      * Gets the telephony property.
-     *
+     * 
      * @hide
      */
-    public static String getTelephonyProperty(String property, int index, String defaultVal) {
-        String propVal = null;
+    public static String getTelephonyProperty(String property, String defaultVal) {
         String prop = SystemProperties.get(property);
-
         if ((prop != null) && (prop.length() > 0)) {
             String values[] = prop.split(",");
-            if ((index >= 0) && (index < values.length) && (values[index] != null)) {
-                propVal = values[index];
-            }
+            prop = values[0];
         }
-        return propVal == null ? defaultVal : propVal;
+        return prop == null ? defaultVal : prop;
     }
-
 }

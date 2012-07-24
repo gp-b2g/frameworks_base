@@ -995,7 +995,10 @@ public class CDMAPhone extends PhoneBase {
                 }
 
                 if (DBG) Log.d(LOG_TAG, "Baseband version: " + ar.result);
-                setSystemProperty(TelephonyProperties.PROPERTY_BASEBAND_VERSION, (String)ar.result);
+                if (!TextUtils.isEmpty((String) ar.result)) {
+                    setSystemProperty(TelephonyProperties.PROPERTY_BASEBAND_VERSION,
+                            (String) ar.result);
+                }
             }
             break;
 

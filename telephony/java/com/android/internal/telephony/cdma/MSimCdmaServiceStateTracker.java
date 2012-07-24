@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ final class MSimCdmaServiceStateTracker extends CdmaServiceStateTracker {
 
     @Override
     protected String getSystemProperty(String property, String defValue) {
-        return MSimTelephonyManager.getTelephonyProperty(property, ((MSimCDMAPhone)phone).getSubscription(), defValue);
+        return MSimTelephonyManager.getTelephonyProperty(property, defValue);
     }
 
     @Override

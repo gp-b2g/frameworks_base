@@ -39,14 +39,6 @@ import com.android.internal.telephony.IccCardStatus.PinState;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.MSimConstants;
 import com.android.internal.telephony.UiccManager.AppFamily;
-import static com.android.internal.telephony.Phone.CDMA_SUBSCRIPTION_NV;
-
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC2_OPERATOR_NUMERIC;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
-
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_SIM_STATE;
 
 public class MSimIccCardProxy extends IccCardProxy {
     private static final String LOG_TAG = "RIL_MSimIccCardProxy";
@@ -97,16 +89,17 @@ public class MSimIccCardProxy extends IccCardProxy {
                     String operator = ((SIMRecords)mIccRecords).getOperatorNumeric();
                     int sub = mCardIndex;
                     if (operator != null) {
-                      String property = sub == 0 ? PROPERTY_ICC_OPERATOR_NUMERIC : PROPERTY_ICC2_OPERATOR_NUMERIC;
+                      String property = sub == 0 ? TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC : TelephonyProperties.PROPERTY_ICC2_OPERATOR_NUMERIC;
                       SystemProperties.set(property, operator);
                     } else {
                         Log.e(LOG_TAG, "EVENT_RECORDS_LOADED Operator name is null");
                     }
                     String countryCode = ((SIMRecords)mIccRecords).getCountryCode();
                     if (countryCode != null) {
-                        MSimTelephonyManager.setTelephonyProperty
-                                (PROPERTY_ICC_OPERATOR_ISO_COUNTRY, sub,
-                                 MccTable.countryCodeForMcc(Integer.parseInt(countryCode)));
+                        SystemProperties.set(
+                                sub == 0 ? TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY
+                                        : TelephonyProperties.PROPERTY_ICC2_OPERATOR_ISO_COUNTRY,
+                                MccTable.countryCodeForMcc(Integer.parseInt(countryCode)));
                     } else {
                         Log.e(LOG_TAG, "EVENT_RECORDS_LOADED Country code is null");
                     }
@@ -120,8 +113,10 @@ public class MSimIccCardProxy extends IccCardProxy {
                     AsyncResult ar = (AsyncResult)msg.obj;
                     int eventCode = (Integer) ar.result;
                     if (eventCode == SIMRecords.EVENT_SPN) {
-                        MSimTelephonyManager.setTelephonyProperty
-                                (PROPERTY_ICC_OPERATOR_ALPHA, sub, mIccRecords.spn);
+                        SystemProperties.set(
+                                sub == 0 ? TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA
+                                        : TelephonyProperties.PROPERTY_ICC2_OPERATOR_ALPHA,
+                                mIccRecords.spn);
                     }
                 }
                 break;
@@ -190,21 +185,26 @@ public class MSimIccCardProxy extends IccCardProxy {
                 && mCurrentAppType == AppFamily.APP_FAM_3GPP) {
             // sub0
             if (0 == mSubscriptionData.subId) {
-                SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, "");
+                SystemProperties.set(TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
             }
             // sub1
             else if (1 == mSubscriptionData.subId) {
-                SystemProperties.set(PROPERTY_ICC2_OPERATOR_NUMERIC, "");
+                SystemProperties.set(TelephonyProperties.PROPERTY_ICC2_OPERATOR_NUMERIC, "");
             }
-            MSimTelephonyManager.setTelephonyProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, mSubscriptionData.subId, "");
-            MSimTelephonyManager.setTelephonyProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSubscriptionData.subId, "");
+            SystemProperties
+                    .set(mSubscriptionData.subId == 0 ? TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY
+                            : TelephonyProperties.PROPERTY_ICC2_OPERATOR_ISO_COUNTRY, "");
+            SystemProperties.set(
+                    mSubscriptionData.subId == 0 ? TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA
+                            : TelephonyProperties.PROPERTY_ICC2_OPERATOR_ALPHA, "");
          }
     }
 
     private void updateStateProperty() {
         if (mSubscriptionData != null) {
-            MSimTelephonyManager.setTelephonyProperty
-                (PROPERTY_SIM_STATE, mSubscriptionData.subId, getState().toString());
+            SystemProperties.set
+                    (mSubscriptionData.subId == 0 ? TelephonyProperties.PROPERTY_SIM_STATE
+                            : TelephonyProperties.PROPERTY_SIM2_STATE, getState().toString());
         }
     }
 
@@ -254,12 +254,12 @@ public class MSimIccCardProxy extends IccCardProxy {
             return;
         }
         mExternalState = newState;
-        MSimTelephonyManager.setTelephonyProperty(PROPERTY_SIM_STATE,
-                mCardIndex, getState().toString());
+        SystemProperties.set(mCardIndex == 0 ? TelephonyProperties.PROPERTY_SIM_STATE
+                : TelephonyProperties.PROPERTY_SIM2_STATE, getState().toString());
         broadcastIccStateChangedIntent(mExternalState.getIntentString(), null);
         if (mSubscriptionData != null) {
-            MSimTelephonyManager.setTelephonyProperty
-                    (PROPERTY_SIM_STATE, mCardIndex, getState().toString());
+            SystemProperties.set(mCardIndex == 0 ? TelephonyProperties.PROPERTY_SIM_STATE
+                    : TelephonyProperties.PROPERTY_SIM2_STATE, getState().toString());
         }
         // If Quiet mode has not been evaluated yet
         // don't broadcast anything

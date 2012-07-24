@@ -24,6 +24,7 @@ import android.content.SharedPreferences;
 import android.database.SQLException;
 import android.os.Handler;
 import android.os.Message;
+import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Telephony;
@@ -203,9 +204,9 @@ public class MSimGSMPhone extends GSMPhone {
     @Override
     protected void setProperties() {
         //Change the system property
-        MSimTelephonyManager.setTelephonyProperty(TelephonyProperties.CURRENT_ACTIVE_PHONE,
-                mSubscription,
-                new Integer(Phone.PHONE_TYPE_GSM).toString());
+        SystemProperties.set(mSubscription == 0 ? TelephonyProperties.CURRENT_ACTIVE_PHONE
+                : TelephonyProperties.CURRENT2_ACTIVE_PHONE, new Integer(Phone.PHONE_TYPE_GSM)
+                .toString());
     }
 
     @Override
@@ -222,14 +223,15 @@ public class MSimGSMPhone extends GSMPhone {
         if(getUnitTestMode()) {
             return;
         }
-        MSimTelephonyManager.setTelephonyProperty(property, mSubscription, value);
+        //MSimTelephonyManager.setTelephonyProperty(property, mSubscription, value);
+        super.setSystemProperty(property, value);
     }
 
     public String getSystemProperty(String property, String defValue) {
         if(getUnitTestMode()) {
             return null;
         }
-        return MSimTelephonyManager.getTelephonyProperty(property, mSubscription, defValue);
+        return MSimTelephonyManager.getTelephonyProperty(property, defValue);
     }
 
     public void updateDataConnectionTracker() {

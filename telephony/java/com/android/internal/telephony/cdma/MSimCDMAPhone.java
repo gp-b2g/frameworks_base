@@ -233,18 +233,23 @@ public class MSimCDMAPhone extends CDMAPhone {
     // Set the properties per subscription
     private void setProperties() {
         //Change the system property
-        MSimTelephonyManager.setTelephonyProperty(TelephonyProperties.CURRENT_ACTIVE_PHONE,
-                mSubscription,
-                new Integer(Phone.PHONE_TYPE_CDMA).toString());
+//        MSimTelephonyManager.setTelephonyProperty(TelephonyProperties.CURRENT_ACTIVE_PHONE,
+//                mSubscription,
+//                new Integer(Phone.PHONE_TYPE_CDMA).toString());
+        setSystemProperty(mSubscription == 0 ? TelephonyProperties.CURRENT_ACTIVE_PHONE
+                : TelephonyProperties.CURRENT2_ACTIVE_PHONE, new Integer(
+                Phone.PHONE_TYPE_CDMA).toString());
         // Sets operator alpha property by retrieving from build-time system property
         String operatorAlpha = SystemProperties.get("ro.cdma.home.operator.alpha");
-        setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, operatorAlpha);
+        setSystemProperty(mSubscription == 0 ? PROPERTY_ICC_OPERATOR_ALPHA
+                : TelephonyProperties.PROPERTY_ICC2_OPERATOR_ALPHA, operatorAlpha);
 
         // Sets operator numeric property by retrieving from build-time system property
         String operatorNumeric = SystemProperties.get(PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
         //if the home operator numeric is empty, do not set it as icc operator numeric
         if (!TextUtils.isEmpty(operatorNumeric)) {
-            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+            setSystemProperty(mSubscription == 0 ? PROPERTY_ICC_OPERATOR_NUMERIC
+                    : TelephonyProperties.PROPERTY_ICC2_OPERATOR_NUMERIC, operatorNumeric);
         }
         // Sets iso country property by retrieving from build-time system property
         setIsoCountryProperty(operatorNumeric);
@@ -268,14 +273,15 @@ public class MSimCDMAPhone extends CDMAPhone {
         if(getUnitTestMode()) {
             return;
         }
-        MSimTelephonyManager.setTelephonyProperty(property, mSubscription, value);
+        //MSimTelephonyManager.setTelephonyProperty(property, mSubscription, value);
+        super.setSystemProperty(property, value);
     }
 
     public String getSystemProperty(String property, String defValue) {
         if(getUnitTestMode()) {
             return null;
         }
-        return MSimTelephonyManager.getTelephonyProperty(property, mSubscription, defValue);
+        return MSimTelephonyManager.getTelephonyProperty(property, defValue);
     }
 
     public void updateDataConnectionTracker() {
