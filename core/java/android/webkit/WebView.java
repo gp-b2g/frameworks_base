@@ -3375,6 +3375,24 @@ public class WebView extends AbsoluteLayout
         }
     }
 
+    /**
+     * Call this to do any extra processing associated with this WebView
+     * when it is moved to a background tab.
+     *
+     * Note: This is different from onPause which is has a wider entry path.
+     * This function is called exclusively when this webview is moved to a
+     * background tab.
+     *
+     * @hide
+     */
+    public void onMoveToBackgroundTab() {
+        checkThread();
+        if (mHTML5VideoViewManager != null
+                && nativeShouldSuspendVideosInBackgroundTab()) {
+            mHTML5VideoViewManager.suspend();
+        }
+    }
+
     @Override
     protected void onWindowVisibilityChanged(int visibility) {
         super.onWindowVisibilityChanged(visibility);
@@ -9866,4 +9884,5 @@ public class WebView extends AbsoluteLayout
      */
     private static native void     nativeOnTrimMemory(int level);
     private static native void nativeSetPauseDrawing(int instance, boolean pause);
+    private static native boolean nativeShouldSuspendVideosInBackgroundTab();
 }
