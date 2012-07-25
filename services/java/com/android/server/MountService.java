@@ -665,7 +665,13 @@ class MountService extends IMountService.Stub
                             state = Environment.MEDIA_SHARED;
                             Slog.i(TAG, "Media shared on daemon connection");
                         } else {
-                            throw new Exception(String.format("Unexpected state %d", st));
+                            //FIX:
+                            //DO NOT throw exception here, in case of one volume corruption,
+                            //others could be also updated without interruption
+                            //throw new Exception(String.format("Unexpected state %d", st));
+
+                            Slog.e(TAG, "Unexpected state " + st + ", set to unmountable state");
+                            state = Environment.MEDIA_UNMOUNTABLE;
                         }
 
                         if (state != null) {
