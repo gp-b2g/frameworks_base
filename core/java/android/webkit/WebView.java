@@ -1119,7 +1119,7 @@ public class WebView extends AbsoluteLayout
         }
 
         boolean mIsBrowserManagementOn =
-            android.os.SystemProperties.getBoolean("browser.management", true);
+            android.os.SystemProperties.getBoolean("browser.management", false);
         if (DebugFlags.WEB_VIEW) {
             Log.d(LOGTAG,"BrowserManagement sys prop is "+ mIsBrowserManagementOn);
         }
