@@ -72,7 +72,7 @@ public class LightsService  extends ILightService.Stub {
             Settings.System.getUriFor(BUTTON_LIGHT_ENABLE);
     private static final Uri BUTTON_LIGHT_BRIGHTNESS_URI =
             Settings.System.getUriFor(BUTTON_LIGHT_BRIGHTNESS);
-    private boolean mButtonLightEnable = false;
+    private boolean mButtonLightEnable = true;
     private static final int DEF_BUTTON_LIGHT_BRIGHTNESS = 2;
     private int mButtonBrightness = DEF_BUTTON_LIGHT_BRIGHTNESS;
 
@@ -254,7 +254,7 @@ public class LightsService  extends ILightService.Stub {
                 }
             });
         mButtonLightEnable = 1 == Settings.System.getInt(
-                mContext.getContentResolver(), BUTTON_LIGHT_ENABLE, 0);
+                mContext.getContentResolver(), BUTTON_LIGHT_ENABLE, 1);
 
         mContext.getContentResolver().registerContentObserver(
             BUTTON_LIGHT_BRIGHTNESS_URI, true,
