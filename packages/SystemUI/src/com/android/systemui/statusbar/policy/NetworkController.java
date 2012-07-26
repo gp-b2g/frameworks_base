@@ -64,8 +64,8 @@ import com.android.systemui.R;
 public class NetworkController extends BroadcastReceiver {
     // debug
     static final String TAG = "StatusBar.NetworkController";
-    static final boolean DEBUG = true;
-    static final boolean CHATTY = true; // additional diagnostics, but not logspew
+    static final boolean DEBUG = false;
+    static final boolean CHATTY = false; // additional diagnostics, but not logspew
 
     // FMC related
     protected static final String FMC_STATE_CHANGED_ACTION = "android.fmc.FMC_STATE_CHANGED_ACTION";
