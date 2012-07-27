@@ -1552,9 +1552,9 @@ status_t AwesomePlayer::seekTo_l(int64_t timeUs) {
 
         if ((mFlags & PREPARED) && mVideoSource != NULL) {
             modifyFlags(SEEK_PREVIEW, SET);
-            if (isPostProcEnabled()) {
+            //if (isPostProcEnabled()) {
                 mVideoSource->start();
-            }
+            //}
             postVideoEvent_l();
         }
     }
