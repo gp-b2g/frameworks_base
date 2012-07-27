@@ -62,8 +62,11 @@ public class MSimNetworkController extends NetworkController {
     static final boolean DEBUG = false;
     static final boolean CHATTY = false; // additional diagnostics, but not logspew
 
+    private static final int MESSAGE_DELAY_INTENT = 1;
+
     // telephony
     boolean[] mMSimDataConnected;
+    boolean mIsSetPreferred = false;
     IccCard.State[] mMSimState;
     int[] mMSimDataActivity;
     ServiceState[] mMSimServiceState;
@@ -302,6 +305,11 @@ public class MSimNetworkController extends NetworkController {
                 || action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
             updateWifiState(intent);
             refreshViews(MSimTelephonyManager.getDefault().getDefaultSubscription());
+        } else if (action.equals(SET_PREFERRED_NETWORK_ACTION)) {
+            Log.d(TAG, "SET_PREFERRED_NETWORK_ACTION");
+            mIsSetPreferred = intent.getBooleanExtra("isSetPreferred", false);
+            Message msg = Message.obtain(mHandler, MESSAGE_DELAY_INTENT);
+            mHandler.sendMessageDelayed(msg, 15000);
         } else if (action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED)) {
             updateSimState(intent);
             updateDataIcon(MSimTelephonyManager.getDefault().getDefaultSubscription());
@@ -335,6 +343,18 @@ public class MSimNetworkController extends NetworkController {
         }
     }
 
+    protected Handler mHandler = new Handler() {
+
+        @Override
+        public void handleMessage(Message msg) {
+            if (msg.what == MESSAGE_DELAY_INTENT) {
+                Log.d(TAG, "MESSAGE_DELAY_INTENT is completed");
+                mIsSetPreferred = false;
+                refreshViews(0);
+            }
+        }
+    };
+
     // ===== Telephony ==============================================================
 
     private PhoneStateListener getPhoneStateListener(int subscription) {
@@ -358,6 +378,9 @@ public class MSimNetworkController extends NetworkController {
                         + mSubscription + "state=" + state.getState());
                 }
                 mMSimServiceState[mSubscription] = state;
+                if (mMSimServiceState[mSubscription].getState()==ServiceState.STATE_IN_SERVICE && mSubscription == 0) {
+                    mIsSetPreferred = false;
+                }
                 if (SystemProperties.getBoolean("ro.config.combined_signal", true)) {
                     /*
                      * if combined_signal is set to true only then consider data
@@ -1008,33 +1031,6 @@ public class MSimNetworkController extends NetworkController {
                     + " mBluetoothTetherIconId=0x" + Integer.toHexString(mBluetoothTetherIconId));
         }
 
-        if (mMSimLastPhoneSignalIconId[subscription] != mMSimPhoneSignalIconId[subscription]
-         || mMSimLastDataDirectionIconId[subscription] != mMSimcombinedActivityIconId[subscription]
-         || mLastWifiIconId                 != mWifiIconId
-         || mMSimLastDataTypeIconId[subscription] != mMSimDataTypeIconId[subscription]
-         || mMSimLastSimIconId[subscription] != mNoMSimIconId[subscription])
-        {
-            // NB: the mLast*s will be updated later
-            for (MSimSignalCluster cluster : mSimSignalClusters) {
-                cluster.setWifiIndicators(
-                        mWifiConnected, // only show wifi in the cluster if connected
-                        mWifiIconId,
-                        mWifiActivityIconId,
-                        mContentDescriptionWifi);
-                cluster.setMobileDataIndicators(
-                        mHasMobileDataFeature,
-                        mMSimPhoneSignalIconId[subscription],
-                        mMSimMobileActivityIconId[subscription],
-                        mMSimDataTypeIconId[subscription],
-                        mMSimContentDescriptionPhoneSignal[subscription],
-                        mMSimContentDescriptionDataType[subscription],
-                        mNoMSimIconId[subscription], subscription, mMSimServiceState);
-                if (DEBUG)
-                    Log.d(TAG, "refreshSignalCluster, refreshViews mNoMSimIconId[" + subscription
-                            + "]=" + mNoMSimIconId[subscription]);
-                cluster.setIsAirplaneMode(mAirplaneMode);
-            }
-        }
 
         // the phone icon on phones
         if (mMSimLastPhoneSignalIconId[subscription] != mMSimPhoneSignalIconId[subscription]) {
@@ -1165,6 +1161,36 @@ public class MSimNetworkController extends NetworkController {
             }
         }
 
+        if (mMSimLastPhoneSignalIconId[subscription] != mMSimPhoneSignalIconId[subscription]
+                || mMSimLastDataDirectionIconId[subscription] != mMSimcombinedActivityIconId[subscription]
+                || mLastWifiIconId                 != mWifiIconId
+                || mMSimLastDataTypeIconId[subscription] != mMSimDataTypeIconId[subscription]
+                || mMSimLastSimIconId[subscription] != mNoMSimIconId[subscription])
+               {
+                   // NB: the mLast*s will be updated later
+                   for (MSimSignalCluster cluster : mSimSignalClusters) {
+                       cluster.setWifiIndicators(
+                               mWifiConnected, // only show wifi in the cluster if connected
+                               mWifiIconId,
+                               mWifiActivityIconId,
+                               mContentDescriptionWifi);
+                       if (mIsSetPreferred && subscription==0) {
+                           Log.d(TAG, "mIsSetPreferred = " + mIsSetPreferred);
+                           return;
+                       } else {
+                           cluster.setMobileDataIndicators(
+                                   mHasMobileDataFeature,
+                                   mMSimPhoneSignalIconId[subscription],
+                                   mMSimMobileActivityIconId[subscription],
+                                   mMSimDataTypeIconId[subscription],
+                                   mMSimContentDescriptionPhoneSignal[subscription],
+                                   mMSimContentDescriptionDataType[subscription],
+                                   mNoMSimIconId[subscription], subscription, mMSimServiceState);
+                       }
+                       Log.d(TAG, "refreshSignalCluster, refreshViews mNoMSimIconId[" + subscription + "]=" + mNoMSimIconId[subscription]);
+                       cluster.setIsAirplaneMode(mAirplaneMode);
+                   }
+               }
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args, int subscription) {

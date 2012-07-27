@@ -395,6 +395,11 @@ public class SubscriptionManager extends Handler {
     }
 
     private void restoreGsmPhoneNWModeIfNeed() {
+        boolean otaEnabled = SystemProperties.getBoolean("ril.gta.enabled", true);
+        if (!otaEnabled) {
+            return;
+        }
+
         if (mCurrentDds == 0 &&
             MSimPhoneFactory.getPhone(0).getPhoneType() == Phone.PHONE_TYPE_GSM ) {
             int mode =  android.provider.Settings.System.getInt(

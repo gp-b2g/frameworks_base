@@ -69,6 +69,8 @@ public class NetworkController extends BroadcastReceiver {
 
     // FMC related
     protected static final String FMC_STATE_CHANGED_ACTION = "android.fmc.FMC_STATE_CHANGED_ACTION";
+    // setPreferredNetwork related
+    protected static final String SET_PREFERRED_NETWORK_ACTION = "android.network.SET_PREFERRED_NETWORK_ACTION";
     // private static final String ENABLE_FMC_ACTION = "android.fmc.ENABLE_FMC_ACTION";
     private static final String FMC_ENABLED_STATUS = "fmc_enabled_status";
 
@@ -226,6 +228,7 @@ public class NetworkController extends BroadcastReceiver {
         filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
         filter.addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED);
         filter.addAction(FMC_STATE_CHANGED_ACTION);
+        filter.addAction(SET_PREFERRED_NETWORK_ACTION);
         mWimaxSupported = mContext.getResources().getBoolean(
                 com.android.internal.R.bool.config_wimaxEnabled);
         if(mWimaxSupported) {

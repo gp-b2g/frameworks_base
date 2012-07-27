@@ -21,6 +21,7 @@ package com.android.internal.telephony;
 import android.app.ActivityManagerNative;
 import android.app.IActivityManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.SharedPreferences;
 import android.net.LinkCapabilities;
@@ -761,6 +762,10 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     public void setPreferredNetworkType(int networkType, Message response) {
         mCM.setPreferredNetworkType(networkType, response);
+        Intent intent = new Intent("android.network.SET_PREFERRED_NETWORK_ACTION");
+        intent.putExtra("isSetPreferred", true);
+        mContext.sendBroadcast(intent);
+        Log.d(LOG_TAG, "setPreferredNetworkType have setted");
     }
 
     public void getPreferredNetworkType(Message response) {
