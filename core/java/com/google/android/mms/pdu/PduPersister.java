@@ -789,7 +789,10 @@ public class PduPersister {
                             cv.put(Telephony.Mms.Part.TEXT, new EncodedStringValue(data).getString());
                         }
                     } else {
+                        EncodedStringValue ev = new EncodedStringValue(data);
                         cv.put(Telephony.Mms.Part.TEXT, new EncodedStringValue(data).getString());
+                        // Update the charset in database, make sure part have the right charset.
+                        cv.put(Telephony.Mms.Part.CHARSET, ev.getCharacterSet());
                     }
                 }
                 if (mContentResolver.update(uri, cv, null, null) != 1) {

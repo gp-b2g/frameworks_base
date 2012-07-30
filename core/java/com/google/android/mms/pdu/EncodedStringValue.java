@@ -163,8 +163,10 @@ public class EncodedStringValue implements Cloneable {
             		Log.v(TAG, e.getMessage(), e);
             	}
             	try {
+                    mCharacterSet = CharacterSets.ISO_8859_1;
                     return new String(mData, CharacterSets.MIMENAME_ISO_8859_1);
                 } catch (UnsupportedEncodingException _) {
+                    mCharacterSet = CharacterSets.ANY_CHARSET;
                     return new String(mData); // system default encoding.
                 }
             }
