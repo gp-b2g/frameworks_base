@@ -156,7 +156,7 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null) {
                     mPreviousType= ((int[])ar.result)[0];
-                    log("current network preferred mode: type="+mPreviousType);
+                    log("current network preferred mode: type= " + mPreviousType);
                     if (mPreviousType != Phone.NT_MODE_GSM_ONLY) {
                         MSimPhoneFactory.getPhone(0).setPreferredNetworkType(Phone.NT_MODE_GSM_ONLY,
                             obtainMessage(EVENT_SET_PREFERRED_NETWORK_TYPE));
@@ -332,14 +332,16 @@ public final class MSimGsmDataConnectionTracker extends GsmDataConnectionTracker
             if (DBG)
                 log("Setup Data Complete result ok");
             // GTA
+            boolean otaEnabled = SystemProperties.getBoolean("ril.gta.enabled", true);
             if ( 0 != mPhone.getSubscription()
                     && MSimPhoneFactory.getPhone(0).getIccCard().getIccCardState() != IccCard.State.ABSENT
                     && MSimPhoneFactory.getPhone(0).getIccCard().getIccCardState() != IccCard.State.UNKNOWN
-                    && MSimPhoneFactory.getPhone(0).getPhoneType() == Phone.PHONE_TYPE_GSM) {
+                    && MSimPhoneFactory.getPhone(0).getPhoneType() == Phone.PHONE_TYPE_GSM
+                    && otaEnabled) {
                 // first check the current slot1's network preferred mode
                 MSimPhoneFactory.getPhone(0).getPreferredNetworkType(
                             obtainMessage(EVENT_GET_PREFERRED_NETWORK_TYPE));
-                log("onDataSetupComplete sent EVENT_GET_PREFERRED_NETWORK_TYPE");
+                log("onDataSetupComplete sent EVENT_GET_PREFERRED_NETWORK_TYPE otaEnabled is:" + otaEnabled);
             }
         }
         super.onDataSetupComplete(ar);
