@@ -1260,6 +1260,8 @@ public class MediaPlayer
      */
     public void release() {
         stayAwake(false);
+        // make sure none of the listeners get called anymore
+        mEventHandler.removeCallbacksAndMessages(null);
         updateSurfaceScreenOn();
         mContext = null;
         mUri = null;

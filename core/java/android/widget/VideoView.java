@@ -615,7 +615,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
      */
     private void release(boolean cleartargetstate) {
         if (mMediaPlayer != null) {
-            mMediaPlayer.reset();
+            //mMediaPlayer.reset();
             mMediaPlayer.release();
             mMediaPlayer = null;
             mCurrentState = STATE_IDLE;
