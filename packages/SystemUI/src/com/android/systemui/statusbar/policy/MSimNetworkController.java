@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+//  Last Change:  2012-07-30 18:00:51
  * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -331,6 +332,7 @@ public class MSimNetworkController extends NetworkController {
             refreshViews(MSimTelephonyManager.getDefault().getDefaultSubscription());
         } else if (action.equals(Intent.ACTION_AIRPLANE_MODE_CHANGED)) {
             updateAirplaneModeFromIntent(intent);
+            updateSimIcon();
             refreshViews(MSimTelephonyManager.getDefault().getDefaultSubscription());
         } else if (action.equals(WimaxManagerConstants.NET_4G_STATE_CHANGED_ACTION) ||
                 action.equals(WimaxManagerConstants.SIGNAL_LEVEL_CHANGED_ACTION) ||
@@ -517,7 +519,8 @@ public class MSimNetworkController extends NetworkController {
     private final void updateTelephonySignalStrength(int subscription) {
         if (!hasService(subscription) &&
                 mDataServiceState[subscription] != ServiceState.STATE_IN_SERVICE) {
-            if (DEBUG) Slog.d(TAG, "No service ");
+            if (DEBUG)
+                Slog.d(TAG, "No service ");
             mMSimPhoneSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
             mMSimDataSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
         } else {
@@ -531,7 +534,6 @@ public class MSimNetworkController extends NetworkController {
 
                 mMSimPhoneSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
                 mMSimDataSignalIconId[subscription] = R.drawable.stat_sys_signal_null;
-
                 mMSimContentDescriptionPhoneSignal[subscription] = mContext.getString(
                         AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[0]);
             } else {
@@ -683,6 +685,19 @@ public class MSimNetworkController extends NetworkController {
         refreshViews(cardIndex);
     }
 
+    private final void updateSimIcon() {
+        if (!mAirplaneMode) {
+            for (int i = 0; i < MSimTelephonyManager.getDefault().getPhoneCount(); i++) {
+                if (mMSimState[i] == IccCard.State.ABSENT) {
+                    mNoMSimIconId[i] = R.drawable.stat_sys_no_sim;
+                }
+                else {
+                    mNoMSimIconId[i] = 0;
+                }
+            }
+        }
+    }
+
     private final void updateDataIcon(int subscription) {
         int iconId = 0;
         boolean visible = true;
@@ -832,7 +847,6 @@ public class MSimNetworkController extends NetworkController {
 
     protected void refreshViews(int subscription) {
         Context context = mContext;
-
         String wifiLabel = "";
         String combinedLabel = "";
         String mobileLabel = "";
