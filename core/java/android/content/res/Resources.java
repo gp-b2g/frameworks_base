@@ -1945,7 +1945,8 @@ public class Resources {
                     // Log only framework resources
                     if ((id >>> 24) == 0x1) {
                         final String name = getResourceName(id);
-                        if (name != null) android.util.Log.d(TAG, "Loading framework drawable #"
+                        if (name != null)
+                            Log.d(TAG, "Loading framework drawable #"
                                 + Integer.toHexString(id) + ": " + name
                                 + " at " + file);
                     }
@@ -1970,60 +1971,48 @@ public class Resources {
 
                 } else {
                     try {
-						//try first from theme package in SD card.
+                        //try first from theme package in SD card.
                         String currentTheme = SystemProperties.get("persist.sys.qrd_theme.current", "default");
-						
-						boolean bNeedFallback = true;
-						
-						if (!currentTheme.equals("default")) {
-							String packageDirInTheme = null;
+                        boolean bNeedFallback = true;
+
+                        if (!currentTheme.equals("default")) {
+                            String packageDirInTheme = null;
                             if ((id >>> 24) != 0x1)
                                 packageDirInTheme = getResourcePackageName(id);
                             else
                                 packageDirInTheme = "framework_res";
-                                
-							if (null != packageDirInTheme) {
-								String themeBasePath;
-								if (!currentTheme.startsWith("0x"))
-									themeBasePath = "/system/qrd_theme/";
-								else
-									themeBasePath = "/data/qrd_theme/";
-								
-								ZipFile themeSrc = new ZipFile(themeBasePath + currentTheme + ".zip");
-								InputStream stream = null;
-								String filePathInTheme = packageDirInTheme + "/" + file;
-								android.util.Log.e("filePathInTheme", filePathInTheme);									
-								ZipEntry entry = themeSrc.getEntry(filePathInTheme);
-								if (entry != null) {
-									stream = themeSrc.getInputStream(entry);									
-									dr = Drawable.createFromStream(stream, null);
-									if (null != dr) {
-										bNeedFallback = false;
-										android.util.Log.e("filePathInTheme", "use theme instead"); 
-									}
-								}
-								themeSrc.close();
 
-								
-							}
-						}
+                            if (null != packageDirInTheme) {
+                                String themeBasePath;
+                                if (!currentTheme.startsWith("0x"))
+                                    themeBasePath = "/system/qrd_theme/";
+                                else
+                                    themeBasePath = "/data/qrd_theme/";
 
-						//fallback
+                                ZipFile themeSrc = new ZipFile(themeBasePath + currentTheme + ".zip");
+                                InputStream stream = null;
+                                String filePathInTheme = packageDirInTheme + "/" + file;
+                                ZipEntry entry = themeSrc.getEntry(filePathInTheme);
+                                if (entry != null) {
+                                    stream = themeSrc.getInputStream(entry);
+                                    dr = Drawable.createFromStream(stream, null);
+                                    if (null != dr) {
+                                        bNeedFallback = false;
+                                        Log.e(TAG, filePathInTheme + ", use theme instead");
+                                    }
+                                }
+                                themeSrc.close();
+                            }
+                        }
 
-						if (bNeedFallback) {
-
-						//android.util.Log.e("filePathInTheme", "fallback to res");	
-						
-                        InputStream is = mAssets.openNonAsset(
+                        //fallback
+                        if (bNeedFallback) {
+                            InputStream is = mAssets.openNonAsset(
                                 value.assetCookie, file, AssetManager.ACCESS_STREAMING);
-        //                System.out.println("Opened file " + file + ": " + is);
-                        dr = Drawable.createFromResourceStream(this, value, is,
+                            dr = Drawable.createFromResourceStream(this, value, is,
                                 file, null);
-                        is.close();
-        //                System.out.println("Created stream: " + dr);
-							}
-
-                        
+                            is.close();
+                        }
                     } catch (Exception e) {
                         NotFoundException rnf = new NotFoundException(
                             "File " + file + " from drawable resource ID #0x"
