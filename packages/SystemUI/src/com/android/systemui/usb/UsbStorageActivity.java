@@ -71,6 +71,7 @@ public class UsbStorageActivity extends Activity
     private static final int DLG_CONFIRM_KILL_STORAGE_USERS = 1;
     private static final int DLG_ERROR_SHARING = 2;
     static final boolean localLOGV = false;
+    static boolean mUsbIsConnected = false;
     private boolean mDestroyed;
 
     // UI thread
@@ -84,6 +85,7 @@ public class UsbStorageActivity extends Activity
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(UsbManager.ACTION_USB_STATE)) {
+                mUsbIsConnected = intent.getExtras().getBoolean(UsbManager.USB_CONNECTED);
                 handleUsbStateChanged(intent);
             }
         }
