@@ -862,6 +862,9 @@ sp<MediaSource> StagefrightRecorder::createAudioSource() {
         AudioParameter result(valueStr);
         int value;
         if ( mAudioEncoder == AUDIO_ENCODER_AMR_NB &&
+             (mAudioSource == AUDIO_SOURCE_VOICE_CALL ||
+             mAudioSource == AUDIO_SOURCE_VOICE_UPLINK ||
+             mAudioSource == AUDIO_SOURCE_VOICE_DOWNLINK) &&
             result.getInt(String8("AMR"),value) == NO_ERROR ) {
             tunneledSource = true;
             tunnelMime = MEDIA_MIMETYPE_AUDIO_AMR_NB;
