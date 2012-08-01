@@ -65,7 +65,8 @@ class ScreenRotationAnimation {
         mContext = context;
 
         // Screenshot does NOT include rotation!
-        mSnapshotRotation = 0;
+        mSnapshotRotation = ((4 - android.os.SystemProperties.getInt("ro.sf.hwrotation",0) / 90) % 4);
+
         if (originalRotation == Surface.ROTATION_90
                 || originalRotation == Surface.ROTATION_270) {
             mWidth = originalHeight;
