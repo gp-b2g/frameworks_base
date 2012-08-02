@@ -691,7 +691,8 @@ public class NetworkController extends BroadcastReceiver {
     }
 
     private final void updateSimIcon() {
-        Slog.d(TAG,"In updateSimIcon simState= " + mSimState);
+        if (DEBUG)
+            Slog.d(TAG, "In updateSimIcon simState= " + mSimState);
         if (mSimState ==  IccCard.State.ABSENT) {
             mNoSimIconId = R.drawable.stat_sys_no_sim;
         } else {
@@ -952,7 +953,8 @@ public class NetworkController extends BroadcastReceiver {
         final String action = intent.getAction();
         if (FMC_STATE_CHANGED_ACTION.equals(action)) {
             final int status = intent.getIntExtra("FmcStatus", -1);
-            Log.d(TAG, "updateFmc status =" + status);
+            if (DEBUG)
+                Log.d(TAG, "updateFmc status =" + status);
             handleFmcStatusDisplay(intent);
         }
     }
@@ -981,7 +983,8 @@ public class NetworkController extends BroadcastReceiver {
     }
 
     private void updateFmcSignal() {
-        Log.d(TAG, "updateFmcSignalIcon mFmcState=" + mFmcState);
+        if (DEBUG)
+            Log.d(TAG, "updateFmcSignalIcon mFmcState=" + mFmcState);
         if (mFmcState < FMC_NOT_START || mFmcState > FMC_ENABLED)
             return;
 
