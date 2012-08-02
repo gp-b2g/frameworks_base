@@ -63,11 +63,14 @@ public class MSimNetworkController extends NetworkController {
     static final boolean DEBUG = false;
     static final boolean CHATTY = false; // additional diagnostics, but not logspew
 
+    //for GTA feature when switch DDS
     private static final int MESSAGE_DELAY_INTENT = 1;
+    //GTA delayed refresh time is 15 seconds
+    private static final int GTA_DELAYED_TIME  = 15*1000;
+    boolean mIsSetPreferred = false;
 
     // telephony
     boolean[] mMSimDataConnected;
-    boolean mIsSetPreferred = false;
     IccCard.State[] mMSimState;
     int[] mMSimDataActivity;
     ServiceState[] mMSimServiceState;
@@ -311,7 +314,7 @@ public class MSimNetworkController extends NetworkController {
                 Log.d(TAG, "SET_PREFERRED_NETWORK_ACTION");
             mIsSetPreferred = intent.getBooleanExtra("isSetPreferred", false);
             Message msg = Message.obtain(mHandler, MESSAGE_DELAY_INTENT);
-            mHandler.sendMessageDelayed(msg, 15000);
+            mHandler.sendMessageDelayed(msg, GTA_DELAYED_TIME);
         } else if (action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED)) {
             updateSimState(intent);
             updateDataIcon(MSimTelephonyManager.getDefault().getDefaultSubscription());
@@ -1051,19 +1054,16 @@ public class MSimNetworkController extends NetworkController {
                 || mMSimLastDataDirectionIconId[subscription] != mMSimcombinedActivityIconId[subscription]
                 || mLastWifiIconId != mWifiIconId
                 || mMSimLastDataTypeIconId[subscription] != mMSimDataTypeIconId[subscription]
-                || mMSimLastSimIconId[subscription] != mNoMSimIconId[subscription])
-        {
+                || mMSimLastSimIconId[subscription] != mNoMSimIconId[subscription]) {
             // NB: the mLast*s will be updated later
             for (MSimSignalCluster cluster : mSimSignalClusters) {
                 cluster.setWifiIndicators(
-                        mWifiConnected, // only show wifi in the cluster if
-                                        // connected
+                        mWifiConnected, // only show wifi in the cluster if connected
                         mWifiIconId,
                         mWifiActivityIconId,
                         mContentDescriptionWifi);
-                if (mIsSetPreferred && subscription == 0) {
-                    Log.d(TAG, "mIsSetPreferred = " + mIsSetPreferred);
-                    return;
+                if (mIsSetPreferred && subscription==0) {
+                   Log.d(TAG, "icon don't refresh in GSM tuneaway's period");
                 } else {
                     cluster.setMobileDataIndicators(
                             mHasMobileDataFeature,
