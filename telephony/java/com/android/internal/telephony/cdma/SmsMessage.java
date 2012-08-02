@@ -633,8 +633,10 @@ public class SmsMessage extends SmsMessageBase {
                             numberType = addrBis.read(3);
                             addr.ton = numberType;
 
-                            if (addr.numberMode == CdmaSmsAddress.NUMBER_MODE_NOT_DATA_NETWORK)
+                            if (addr.numberMode == CdmaSmsAddress.NUMBER_MODE_NOT_DATA_NETWORK) {
                                 addr.numberPlan = addrBis.read(4);
+                                isInternationalAddress = (addr.numberPlan == CdmaSmsAddress.NUMBERING_PLAN_ISDN_TELEPHONY);
+                            }
                         }
 
                         addr.numberOfDigits = addrBis.read(8);
