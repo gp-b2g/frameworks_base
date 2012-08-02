@@ -710,6 +710,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     }
 
     public void suspend() {
+/*
         int uriType = getURIType(mUri);
         if (mCurrentState != STATE_PREPARING) {
             switch (uriType) {
@@ -730,7 +731,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
                     break;
             }
         }
-
+*/
         //default operation
         if(mSeekWhenPrepared == 0) {
           mSeekWhenPrepared = getCurrentPosition();
@@ -740,6 +741,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     }
 
     public void resume() {
+/*
         if (mMediaPlayer != null) {
             int uriType = getURIType(mUri);
             switch (uriType) {
@@ -763,7 +765,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
                     break;
             }
         }
-
+*/
         //default operation
         openVideo();
     }
