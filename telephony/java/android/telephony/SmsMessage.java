@@ -524,6 +524,14 @@ public class SmsMessage {
 
     /**
      * {@hide}
+     * Returns return if the address is an international number, else false.
+     */
+    public boolean isInternationalAddress() {
+        return mWrappedSmsMessage.isInternationalAddress();
+    }
+
+    /**
+     * {@hide}
      * Returns the recipient address,  Returns null if recipient address
      * unavailable.
      */

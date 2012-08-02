@@ -89,6 +89,9 @@ public abstract class SmsMessageBase {
     /** TP-Message-Reference - Message Reference of sent message. @hide */
     public int messageRef;
 
+    /** { @hide } */
+    protected boolean isInternationalAddress;
+
     /**
      * For a specific text string, this object describes protocol
      * properties of encoding it for transmission as message user
@@ -174,6 +177,14 @@ public abstract class SmsMessageBase {
         }
 
         return originatingAddress.getAddressString();
+    }
+
+    /**
+     * {@hide}
+     * Returns return if the address is an international number, else false.
+     */
+    public boolean isInternationalAddress() {
+        return isInternationalAddress;
     }
 
     /**
