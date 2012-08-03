@@ -67,8 +67,9 @@ class ScreenRotationAnimation {
         // Screenshot does NOT include rotation!
         mSnapshotRotation = ((4 - android.os.SystemProperties.getInt("ro.sf.hwrotation",0) / 90) % 4);
 
-        if (originalRotation == Surface.ROTATION_90
-                || originalRotation == Surface.ROTATION_270) {
+        int deltaRotation = deltaRotation(originalRotation, mSnapshotRotation);
+        if (deltaRotation == Surface.ROTATION_90
+                || deltaRotation == Surface.ROTATION_270) {
             mWidth = originalHeight;
             mHeight = originalWidth;
         } else {
