@@ -5331,7 +5331,8 @@ public class WindowManagerService extends IWindowManager.Stub
         //       an orientation that has different metrics than it expected.
         //       eg. Portrait instead of Landscape.
 
-        int rotation = mPolicy.rotationForOrientationLw(mForcedAppOrientation, mRotation);
+        int rotation = isKeyguardLocked() ? Surface.ROTATION_0 : mPolicy.rotationForOrientationLw(
+                mForcedAppOrientation, mRotation);
         boolean altOrientation = !mPolicy.rotationHasCompatibleMetricsLw(
                 mForcedAppOrientation, rotation);
 

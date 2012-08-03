@@ -25,13 +25,8 @@ import android.content.res.Resources;
 import android.graphics.PixelFormat;
 import android.graphics.Canvas;
 import android.os.IBinder;
-import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.os.SystemProperties;
-import android.provider.Settings;
 import android.util.Log;
-import android.view.IWindowManager;
-import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewManager;
@@ -100,22 +95,6 @@ public class KeyguardViewManager implements KeyguardWindowController {
         protected void dispatchDraw(Canvas canvas) {
             super.dispatchDraw(canvas);
             mCallback.keyguardDoneDrawing();
-        }
-    }
-
-    private boolean isRotationEnabled = false;
-
-    private void setRotation(boolean isEnabled) {
-        try {
-            IWindowManager wm = IWindowManager.Stub.asInterface(ServiceManager
-                    .getService(Context.WINDOW_SERVICE));
-            if (isEnabled) {
-                wm.thawRotation();
-            } else {
-                wm.freezeRotation(Surface.ROTATION_0);
-            }
-        } catch (RemoteException exc) {
-            Log.w(TAG, "can not reset rotation");
         }
     }
 
@@ -206,13 +185,6 @@ public class KeyguardViewManager implements KeyguardWindowController {
         mViewManager.updateViewLayout(mKeyguardHost, mWindowLayoutParams);
         mKeyguardHost.setVisibility(View.VISIBLE);
         mKeyguardView.requestFocus();
-
-        isRotationEnabled = Settings.System.getInt(mContext.getContentResolver(),
-                Settings.System.ACCELEROMETER_ROTATION, 0) != 0 && !enableScreenRotation;
-        if(isRotationEnabled){
-            Log.w(TAG, "disable the rotation when lock");
-            setRotation(false);
-        }
     }
 
     public void setNeedsInput(boolean needsInput) {
@@ -309,11 +281,6 @@ public class KeyguardViewManager implements KeyguardWindowController {
      */
     public synchronized void hide() {
         if (DEBUG) Log.d(TAG, "hide()");
-
-        if(isRotationEnabled){
-            Log.w(TAG, "reset the rotation as user set");
-            setRotation(true);
-        }
 
         if (mKeyguardHost != null) {
             mKeyguardHost.setVisibility(View.GONE);
