@@ -725,7 +725,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
     void showGlobalActionsDialog() {
         if (mGlobalActions == null) {
-            mGlobalActions = new GlobalActions(mContext,mOrientationListener);
+            mGlobalActions = new GlobalActions(mContext);
         }
         final boolean keyguardShowing = mKeyguardMediator.isShowingAndNotHidden();
         mGlobalActions.showDialog(keyguardShowing, isDeviceProvisioned());

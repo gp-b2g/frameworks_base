@@ -51,8 +51,8 @@ import android.telephony.MSimTelephonyManager;
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.ITelephonyMSim;
 import android.util.Log;
+import android.view.IWindowManager;
 import android.view.WindowManager;
-import android.view.WindowOrientationListener;
 
 import com.qrd.plugin.feature_query.FeatureQuery;
 import java.io.FileInputStream;
@@ -81,6 +81,7 @@ public final class ShutdownThread extends Thread {
 
     // Provides shutdown assurance in case the system_server is killed
     public static final String SHUTDOWN_ACTION_PROPERTY = "sys.shutdown.requested";
+    public static final String SHUTDOWN_RUNNING_PROPERTY = "sys.shutdown.running";
     public static final String RADIO_SHUTDOWN_PROPERTY = "sys.radio.shutdown";
 
     private static final String SYSFS_MSM_EFS_SYNC_COMPLETE = "/sys/devices/platform/rs300000a7.65536/sync_sts";
@@ -107,10 +108,6 @@ public final class ShutdownThread extends Thread {
     private ShutdownThread() {
     }
 
-    private static WindowOrientationListener mWindowOrientationListener;
-    public static void setListener(WindowOrientationListener wol){
-        mWindowOrientationListener = wol;
-    }
     /**
      * Request a clean shutdown, waiting for subsystems to clean up their
      * state etc.  Must be called from a Looper thread in which its UI
@@ -210,7 +207,16 @@ public final class ShutdownThread extends Thread {
         return fileName[i];   
     }
     
-    
+    private static void lockDevice() {
+        SystemProperties.set(SHUTDOWN_RUNNING_PROPERTY, "true");
+        IWindowManager wm = IWindowManager.Stub.asInterface(ServiceManager
+                .getService(Context.WINDOW_SERVICE));
+        try {
+            wm.updateRotation(false);
+        } catch (RemoteException e) {
+            Log.w(TAG, "boot animation can not lock device!");
+        }
+    }
     
     private static void beginShutdownSequence(Context context) {
         synchronized (sIsStartedGuard) {
@@ -222,10 +228,7 @@ public final class ShutdownThread extends Thread {
         }
 
         if (FeatureQuery.FEATURE_BOOT_ANIMATION && checkAnimationFileExist()) {
-            if (mWindowOrientationListener != null) {
-                mWindowOrientationListener.disable();
-                mWindowOrientationListener = null;
-            }
+            lockDevice();
             showShutdownAnimation();
             // playShutdownMusic(MUSIC_SHUTDOWN_FILE);
             String shutDownFile = getShutdownMusicFilePath();

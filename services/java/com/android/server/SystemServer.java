@@ -107,6 +107,15 @@ class ServerThread extends Thread {
             }
         }
 
+        // reset the properties for shutdown running
+        {
+            String shutdownRunning = SystemProperties.get(ShutdownThread.SHUTDOWN_RUNNING_PROPERTY,
+                    "");
+            if (shutdownRunning != null && shutdownRunning.length() > 0) {
+                SystemProperties.set(ShutdownThread.SHUTDOWN_RUNNING_PROPERTY, "");
+            }
+        }
+
         String factoryTestStr = SystemProperties.get("ro.factorytest");
         int factoryTest = "".equals(factoryTestStr) ? SystemServer.FACTORY_TEST_OFF
                 : Integer.parseInt(factoryTestStr);

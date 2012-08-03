@@ -42,7 +42,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import com.android.internal.R;
 import com.android.internal.app.ShutdownThread;
-import com.android.internal.policy.impl.PhoneWindowManager.MyOrientationListener;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.google.android.collect.Lists;
@@ -98,15 +97,6 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         TelephonyManager telephonyManager =
                 (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         telephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_SERVICE_STATE);
-    }
-
-    /**
-     * @param context everything needs a context :(
-     * @param orientationListener and also an orientation listener :(
-     */
-    public GlobalActions(Context context, MyOrientationListener orientationListener) {
-        this(context);
-        mOrientationListener = orientationListener;
     }
 
     /**
@@ -181,7 +171,6 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
                     R.string.global_action_power_off) {
 
                 public void onPress() {
-                    ShutdownThread.setListener(mOrientationListener);
                     // shutdown by making sure radio and power are handled accordingly.
                     ShutdownThread.shutdown(mContext, true);
                 }
@@ -264,7 +253,6 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         return dialog;
     }
 
-    private MyOrientationListener mOrientationListener;
     private void prepareDialog() {
         final boolean silentModeOn =
                 mAudioManager.getRingerMode() != AudioManager.RINGER_MODE_NORMAL;

@@ -34,6 +34,7 @@ import static android.view.WindowManager.LayoutParams.TYPE_INPUT_METHOD_DIALOG;
 import static android.view.WindowManager.LayoutParams.TYPE_WALLPAPER;
 
 import com.android.internal.app.IBatteryStats;
+import com.android.internal.app.ShutdownThread;
 import com.android.internal.policy.PolicyManager;
 import com.android.internal.policy.impl.PhoneWindowManager;
 import com.android.internal.view.BaseInputHandler;
@@ -5298,6 +5299,10 @@ public class WindowManagerService extends IWindowManager.Stub
         Binder.restoreCallingIdentity(origId);
     }
 
+    private boolean isShutdownRunning() {
+        return SystemProperties.get(ShutdownThread.SHUTDOWN_RUNNING_PROPERTY, "").length() > 0;
+    }
+
     /**
      * Updates the current rotation.
      *
@@ -5331,8 +5336,8 @@ public class WindowManagerService extends IWindowManager.Stub
         //       an orientation that has different metrics than it expected.
         //       eg. Portrait instead of Landscape.
 
-        int rotation = isKeyguardLocked() ? Surface.ROTATION_0 : mPolicy.rotationForOrientationLw(
-                mForcedAppOrientation, mRotation);
+        int rotation = (isKeyguardLocked() || isShutdownRunning()) ? Surface.ROTATION_0 : mPolicy
+                .rotationForOrientationLw(mForcedAppOrientation, mRotation);
         boolean altOrientation = !mPolicy.rotationHasCompatibleMetricsLw(
                 mForcedAppOrientation, rotation);
 
