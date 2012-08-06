@@ -33,9 +33,11 @@ import android.provider.Settings;
 import android.provider.Settings.Secure;
 import android.provider.Telephony;
 import android.telephony.CellLocation;
+import android.telephony.MSimTelephonyManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.TelephonyManager;
 import com.android.internal.telephony.CallTracker;
 import android.text.TextUtils;
 import android.util.Log;
@@ -63,6 +65,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
+import com.android.internal.telephony.MSimPhoneFactory;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.Phone;
@@ -70,6 +73,7 @@ import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
+import com.android.internal.telephony.SubscriptionManager;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.UiccCard;
@@ -79,6 +83,7 @@ import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.IccVmNotSupportedException;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.VideoPhoneInterfaceManager;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -108,6 +113,7 @@ public class GSMPhone extends PhoneBase {
     private static final int CHECK_CALLFORWARDING_STATUS = 75;
 
     // Instance Variables
+    GsmCallTracker mCT;
     GsmServiceStateTracker mSST;
     ArrayList <GsmMmiCode> mPendingMMIs = new ArrayList<GsmMmiCode>();
     SimPhoneBookInterfaceManager mSimPhoneBookIntManager;
@@ -146,6 +152,11 @@ public class GSMPhone extends PhoneBase {
     GSMPhone (Context context, CommandsInterface ci, PhoneNotifier notifier, boolean unitTestMode) {
         super(notifier, context, ci, unitTestMode);
 
+        //move videophone and usim init to GSMPhone
+        if(!(TelephonyManager.getDefault().isMultiSimEnabled()) && (SystemProperties.getBoolean("apps.videocall",false))){
+            mVideoPhoneMgr = new VideoPhoneInterfaceManager(this);
+            if(LOCAL_DEBUG) Log.d(LOG_TAG, "mVideoPhoneMgr=" + mVideoPhoneMgr);
+        }
         if (ci instanceof SimulatedRadioControl) {
             mSimulatedRadioControl = (SimulatedRadioControl) ci;
         }
@@ -487,6 +498,11 @@ public class GSMPhone extends PhoneBase {
     }
 
     public void
+    acceptCallVT() throws CallStateException {
+        mCT.acceptCallVT();
+    }
+
+    public void
     rejectCall() throws CallStateException {
         mCT.rejectCall();
     }
@@ -584,8 +600,11 @@ public class GSMPhone extends PhoneBase {
                 if (call.getState() != GsmCall.State.IDLE) {
                     if (LOCAL_DEBUG) Log.d(LOG_TAG,
                             "MmiCode 1: hangup foreground");
+                    if (null != call.getEarliestConnection() && call.getEarliestConnection().isVoice()) {
+                    	// only hangup the voice call
                     //mCT.hangupForegroundResumeBackground();
                     mCT.hangup(call);
+                    }
                 } else {
                     if (LOCAL_DEBUG) Log.d(LOG_TAG,
                             "MmiCode 1: switchWaitingOrHoldingAndActive");
@@ -1015,9 +1034,44 @@ public class GSMPhone extends PhoneBase {
             } else {
                 resp = onComplete;
             }
+            /*mCM.setCallForward(commandInterfaceCFAction,
+                    commandInterfaceCFReason,
+                    serviceclass,
+                    dialingNumber,
+                    timerSeconds,
+                    resp);*/
+            
             mCM.setCallForward(commandInterfaceCFAction,
                     commandInterfaceCFReason,
                     CommandsInterface.SERVICE_CLASS_VOICE,
+                    dialingNumber,
+                    timerSeconds,
+                    resp);
+        }
+    }
+    
+    
+    
+    // CSVT Call Forwarding implementation
+    public void setVideoCallForwardingOption(int commandInterfaceCFAction,
+            int commandInterfaceCFReason,
+            String dialingNumber,
+            int timerSeconds,
+            Message onComplete) {
+        if (    (isValidCommandInterfaceCFAction(commandInterfaceCFAction)) &&
+                (isValidCommandInterfaceCFReason(commandInterfaceCFReason))) {
+
+            Message resp;
+            /*if (commandInterfaceCFReason == CF_REASON_UNCONDITIONAL) {
+                mSetCfNumber = dialingNumber;
+                resp = obtainMessage(EVENT_SET_CALL_FORWARD_DONE,
+                        isCfEnable(commandInterfaceCFAction) ? 1 : 0, 0, onComplete);
+            } else {*/
+                resp = onComplete;
+            //}
+            mCM.setCallForward(commandInterfaceCFAction,
+                    commandInterfaceCFReason,
+                    CommandsInterface.SERVICE_CLASS_DATA_SYNC,
                     dialingNumber,
                     timerSeconds,
                     resp);
@@ -1822,4 +1876,66 @@ public class GSMPhone extends PhoneBase {
         return;
     }
 
+    public void setInternalDataEnabled(boolean enable, Message onCompleteMsg) {
+        ((GsmDataConnectionTracker)mDataConnectionTracker).setInternalDataEnabled(enable, onCompleteMsg);
+    }
+
+    //Borqs b089: interface added for video call
+    public void endVideoCall() throws CallStateException {
+    	mCT.hangupVTCall();
+    }
+    
+    public void rejectCallVT() throws CallStateException {
+    	mCT.rejectVTCall(CallFailCause.USER_BUSY);
+    }
+    
+    public void requestFallback() throws CallStateException {
+        mCT.rejectVTCall(CallFailCause.INCOMPATIBILITY_DESTINATION);
+    	//mCT.requestFallback(number);
+    }
+    
+    public Connection dialVideoCall (String dialString) throws CallStateException {
+    	
+    	/*if(2 == getSubscription())
+    		return null;*/
+    	
+    	SubscriptionManager subMgr = SubscriptionManager.getInstance();
+    	
+    	/*if(null == subMgr.getCurrentSubscription(0)) {
+    		Log.d(LOG_TAG,"Wrong subscription");
+    		return null;
+    	}
+    			
+    	MSimTelephonyManager mSimTelephonyManager = MSimTelephonyManager.getDefault();
+    	mSimTelephonyManager.setPreferredDataSubscription(0);*/
+    	//MSimPhoneFactory.setDefaultSubscription(0);
+    	
+        // Need to make sure dialString gets parsed properly
+        String newDialString = PhoneNumberUtils.stripSeparators(dialString);
+    
+        // handle in-call MMI first if applicable
+        if (handleInCallMmiCommands(newDialString)) {
+            return null;
+        }
+    
+        // Only look at the Network portion for mmi
+        String networkPortion = PhoneNumberUtils.extractNetworkPortion(newDialString);
+        GsmMmiCode mmi = GsmMmiCode.newFromDialString(networkPortion, this, mUiccApplication);
+        if (LOCAL_DEBUG) Log.d(LOG_TAG,
+                               "dialing w/ mmi '" + mmi + "'...");
+    
+        if (mmi == null) {
+            return mCT.dialVT(newDialString, CommandsInterface.CLIR_DEFAULT);
+        } else if (mmi.isTemporaryModeCLIR()) {
+            return mCT.dialVT(mmi.dialingNumber, mmi.getCLIRMode());
+        } else {
+            mPendingMMIs.add(mmi);
+            mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
+            mmi.processCode();
+    
+    
+            // FIXME should this return null or something else?
+            return null;
+        }    
+    }
 }

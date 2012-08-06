@@ -137,6 +137,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     int mCallRingContinueToken;
     int mCallRingDelay;
     public boolean mIsTheCurrentActivePhone = true;
+    public VideoPhoneInterfaceManager mVideoPhoneMgr; //added by borqs b089: for videotelephony support
     boolean mIsVoiceCapable = true;
     protected UiccManager mUiccManager = null;
     public IccRecords mIccRecords;
@@ -1271,6 +1272,12 @@ public abstract class PhoneBase extends Handler implements Phone {
         return mIccRecords.getUsimServiceTable();
     }
 
+    //Borqs b089: interface added for video call
+	 public void endVideoCall() throws CallStateException {
+	     Log.e(LOG_TAG, "This function only for video call.");
+	 }
+	 
+
     public void handleTimerInEmergencyCallbackMode(int action) {
         Log.e(LOG_TAG, "handleTimerInEmergencyCallbackMode, unsupported for this phone");
     }
@@ -1344,4 +1351,17 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     public abstract void avoidCurrentCdmaSystem(boolean on,Message response);
+	
+	public Connection dialVideoCall (String dialString) throws CallStateException {
+    	return null;
+    }
+    
+    public void requestFallback() throws CallStateException {    	
+    }
+    
+    public void rejectCallVT() throws CallStateException {    	
+    }
+    
+    public void acceptCallVT() throws CallStateException {    	
+    }
 }

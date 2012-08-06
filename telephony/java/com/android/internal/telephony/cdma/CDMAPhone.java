@@ -429,6 +429,10 @@ public class CDMAPhone extends PhoneBase {
     }
 
     public void
+    acceptCallVT() throws CallStateException {
+    }
+
+    public void
     rejectCall() throws CallStateException {
         mCT.rejectCall();
     }
@@ -802,6 +806,14 @@ public class CDMAPhone extends PhoneBase {
             int timerSeconds,
             Message onComplete) {
         Log.e(LOG_TAG, "setCallForwardingOption: not possible in CDMA");
+    }
+    
+    public void setVideoCallForwardingOption(int commandInterfaceCFReason,
+            int commandInterfaceCFAction,
+            String dialingNumber,
+            int timerSeconds,
+            Message onComplete) {
+    	Log.e(LOG_TAG, "setVideoCallForwardingOption: not possible in CDMA");
     }
 
     public void

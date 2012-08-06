@@ -1471,6 +1471,7 @@ private:
                 int                                 mLPASampleRate;
                 int                                 mLPANumChannels;
                 volatile bool                       mAllChainsLocked;
+                bool                                mVTActive;
 };
 
 

@@ -38,6 +38,7 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.CommandsInterface;
 
 import java.text.ParseException;
 import java.util.List;
@@ -144,6 +145,9 @@ public class SipPhone extends SipPhoneBase {
         }
     }
 
+    public void acceptCallVT() throws CallStateException {        
+    }
+
     public void rejectCall() throws CallStateException {
         synchronized (SipPhone.class) {
             if (ringingCall.getState().isRinging()) {
@@ -184,6 +188,20 @@ public class SipPhone extends SipPhoneBase {
             Log.e(LOG_TAG, "dial()", e);
             throw new CallStateException("dial error: " + e);
         }
+    }
+
+    //Borqs b089: interface added for video call
+	 public void endVideoCall() throws CallStateException {
+	     Log.e(LOG_TAG, "This function only for video call.");
+	 }
+	 
+	 public void requestFallback() throws CallStateException {
+	     Log.e(LOG_TAG, "This function only for video call.");
+	 }
+	 
+
+    public Connection dialVideoCall (String dialString) throws CallStateException {
+    	return null;
     }
 
     public void switchHoldingAndActive() throws CallStateException {

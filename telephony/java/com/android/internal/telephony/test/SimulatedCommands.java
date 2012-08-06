@@ -730,6 +730,22 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
+    public void hangupVTCall (Message result){
+    }
+    
+    public void dialVT(String address, int clirMode, Message result) {
+    }   
+    
+    /*public void modifyCallInitiate(String address, CommandsInterface.CallModify callModify, Message result) {    	
+    }
+    
+    public void modifyCallConfirm(String address, CommandsInterface.CallModify callModify, Message result) {    	
+    }*/
+    
+    public void answerVTCall (int cause, Message result){
+    }  
+    
+
     /**
      * cause code returned as Integer in Message.obj.response
      * Returns integer cause code defined in TS 24.008

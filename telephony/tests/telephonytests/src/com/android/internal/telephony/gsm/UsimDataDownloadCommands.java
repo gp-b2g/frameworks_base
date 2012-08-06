@@ -23,6 +23,7 @@ import android.os.SystemClock;
 import android.util.Log;
 
 import com.android.internal.telephony.BaseCommands;
+import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.CallDetails;
 import com.android.internal.telephony.IccIoResult;
 import com.android.internal.telephony.UUSInfo;
@@ -283,6 +284,10 @@ class UsimDataDownloadCommands extends BaseCommands {
     @Override
     public void acceptCall(Message result) {
     }
+    
+    @Override
+    public void answerVTCall (int cause, Message result){
+    } 
 
     @Override
     public void rejectCall(Message result) {
@@ -690,7 +695,13 @@ class UsimDataDownloadCommands extends BaseCommands {
 
     public void avoidCurrentCdmaSystem(boolean on,Message result){
     }
-
-    public void enableEngineerMode(int on) {
+    
+    public void dialVT(String address, int clirMode, Message result){    	
+    }
+    
+    public void hangupVTCall (Message result){    	
+    }
+	
+	 public void enableEngineerMode(int on) {
     }
 }

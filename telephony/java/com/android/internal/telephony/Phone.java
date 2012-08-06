@@ -35,6 +35,7 @@ import com.android.internal.telephony.gsm.UsimServiceTable;
 import com.android.internal.telephony.ims.IsimRecords;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.QosSpec;
+import com.android.internal.telephony.CommandsInterface;
 
 import java.util.List;
 
@@ -742,6 +743,18 @@ public interface Phone {
      */
     void acceptCall() throws CallStateException;
 
+
+    /**
+     * Answers a ringing Video call.
+     * Answering occurs asynchronously, and final notification occurs via
+     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
+     * java.lang.Object) registerForPreciseCallStateChanged()}.
+     *
+     * @exception CallStateException when no call is ringing or waiting
+     */
+    void acceptCallVT() throws CallStateException;
+    
+
     /**
      * Answers a ringing or waiting call. Active calls, if any, go on hold.
      * Answering occurs asynchronously, and final notification occurs via
@@ -1109,6 +1122,28 @@ public interface Phone {
                                  int timerSeconds,
                                  Message onComplete);
 
+    
+    /**
+     * setCallForwardingOptions
+     * sets a call forwarding option.
+     *
+     * @param commandInterfaceCFReason is one of the valid call forwarding
+     *        CF_REASONS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param commandInterfaceCFAction is one of the valid call forwarding
+     *        CF_ACTIONS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param dialingNumber is the target phone number to forward calls to
+     * @param timerSeconds is used by CFNRy to indicate the timeout before
+     *        forwarding is attempted.
+     * @param onComplete a callback message when the action is completed.
+     */
+    void setVideoCallForwardingOption(int commandInterfaceCFReason,
+                                 int commandInterfaceCFAction,
+                                 String dialingNumber,
+                                 int timerSeconds,
+                                 Message onComplete);
+    
     /**
      * getOutgoingCallerIdDisplay
      * gets outgoing caller id display. The return value of
@@ -1858,6 +1893,40 @@ public interface Phone {
      * @param h Handler to be removed from the registrant list.
      */
     void unsetOnEcbModeExitResponse(Handler h);
+
+    /**
+     * Reject, end a video call. 
+     * Reject occurs asynchronously, and final notification occurs via
+     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
+     * java.lang.Object) registerForPreciseCallStateChanged()}.
+     *
+     * @exception CallStateException when no video call is active
+     */
+    void endVideoCall() throws CallStateException;
+    void rejectCallVT() throws CallStateException;
+
+    /**
+     * Request fallback for an incoming video call. 
+     * Fallback request will cause VT rejected, which occurs asynchronously, 
+     * and final notification occurs via
+     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
+     * java.lang.Object) registerForPreciseCallStateChanged()}.
+     *
+     * @exception CallStateException when no video call is ringing
+     */
+    void requestFallback() throws CallStateException;
+
+    /**
+     * Initiate a new video call connection. This happens asynchronously, so you
+     * cannot assume the path for video call is connected (or a call index has been
+     * assigned) until PhoneStateChanged notification has occurred.
+     *
+     * @exception CallStateException if a new outgoing call is not currently
+     * possible because no more call slots exist or a call exists that is
+     * dialing, alerting, ringing, or waiting.  Other errors are
+     * handled asynchronously.
+     */
+    public Connection dialVideoCall (String dialString) throws CallStateException;
 
     /**
      * Return if the current radio is LTE on CDMA. This

@@ -168,6 +168,8 @@ public class AudioManager {
     public static final int STREAM_DTMF = AudioSystem.STREAM_DTMF;
     /** @hide The audio stream for text to speech (TTS) */
     public static final int STREAM_TTS = AudioSystem.STREAM_TTS;
+    /** @hide The audio stream for video telephony */
+    public static final int STREAM_VIDEO_TELEPHONY = AudioSystem.STREAM_VIDEO_TELEPHONY; 
     /** @hide The audio stream for FM Radio (FM) */
     public static final int STREAM_FM = AudioSystem.STREAM_FM;
     /** Number of audio streams */
@@ -189,7 +191,8 @@ public class AudioManager {
         7,  // STREAM_SYSTEM_ENFORCED
         11, // STREAM_DTMF
         11, // STREAM_TTS
-        4  // STREAM_FM
+        4,    // STREAM_VIDEO_TELEPHONY
+        11  // STREAM_FM
     };
 
     /**

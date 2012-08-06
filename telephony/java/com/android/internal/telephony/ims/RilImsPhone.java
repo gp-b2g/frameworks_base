@@ -412,6 +412,14 @@ public class RilImsPhone extends PhoneBase {
             String dialingNumber, int timerSeconds, Message onComplete) {
         logUnexpectedMethodCall("setCallForwardingOption");
     }
+    
+    public void setVideoCallForwardingOption(int commandInterfaceCFReason,
+            int commandInterfaceCFAction,
+            String dialingNumber,
+            int timerSeconds,
+            Message onComplete) {
+    	Log.e(LOG_TAG, "setVideoCallForwardingOption: not possible in CDMA");
+    }
 
     @Override
     public void getAvailableNetworks(Message response) {

@@ -70,7 +70,23 @@ public abstract class Connection {
         CDMA_PREEMPTED,
         CDMA_NOT_EMERGENCY,              /* not an emergency call */
         CDMA_ACCESS_BLOCKED,            /* Access Blocked by CDMA network */
-        ERROR_UNSPECIFIED
+        ERROR_UNSPECIFIED,
+         //added by borqs
+        UNASSIGNED_NUMBER, 
+        OPERATOR_DETERMINED_BARRING, /* network operator or service provider is not prepared to allow*/
+        USER_ALERTING_NO_ANSWER, 
+        INCOMPATIBILITY, /*for video call: fall back request*/ 
+        RESOURCE_UNAVAIL, /*for video call: in 2G network, or weak signal*/
+        NUMBER_CHANGED,
+        NORMAL_UNSPECIFIED, /*report a normal event only when no other cause in the normal class applies.*/
+        BEARER_NOT_AVAIL,
+        BEARER_NOT_AUTHORIZATION,
+        OUT_OF_3G_SERVICE, /*For video call:out of 3G service during VT*/
+        PROTOCOL_ERROR_UNSPECIFIED,
+        BEARER_NOT_SUPPORTED_65,
+        BEARER_NOT_SUPPORTED_79,
+        NO_USER_RESPONDING,
+        LOCAL_PHONE_OUT_OF_3G_Service /*For video call:local out of 3G service during VT*/
     }
 
     Object userData;
@@ -330,4 +346,12 @@ public abstract class Connection {
     {
         return null;
     }
+    /**
+     * borqs b089
+     * Returns true of this connection originated as voice call 
+     * or false if this call originated as other call (video call) 
+     */
+    public boolean isVoice(){
+       return true;
+       }
 }

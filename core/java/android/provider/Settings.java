@@ -1583,6 +1583,8 @@ public final class Settings {
          */
         public static final String VOLUME_MUSIC = "volume_music";
 
+        public static final String VOLUME_VIDEO_TELEPHONY = "volume_vt";
+
         public static final String VOLUME_FM = "volume_fm";
 
         public static final String DUMMY_STRING_FOR_PADDING = "";
@@ -1639,7 +1641,7 @@ public final class Settings {
             VOLUME_VOICE, VOLUME_SYSTEM, VOLUME_RING, VOLUME_MUSIC,
             VOLUME_ALARM, VOLUME_NOTIFICATION, VOLUME_BLUETOOTH_SCO,
             DUMMY_STRING_FOR_PADDING,DUMMY_STRING_FOR_PADDING,
-            DUMMY_STRING_FOR_PADDING,VOLUME_FM
+            DUMMY_STRING_FOR_PADDING,VOLUME_VIDEO_TELEPHONY,VOLUME_FM
         };
 
         /**

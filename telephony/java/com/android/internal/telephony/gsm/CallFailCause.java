@@ -28,12 +28,33 @@ public interface CallFailCause {
     // Unassigned/Unobtainable number
     static final int UNOBTAINABLE_NUMBER = 1;
 
+	 //This cause indicates that the MS has tried to access a service that the MS's network operator or service
+	 //provider is not prepared to allow.
+	 static final int OPERATOR_DETERMINED_BARRING = 8;
+
+	 /*This cause indicates that the call is being cleared because one of the
+	  *  users involved in the call has requested that the call be cleared.*/
     static final int NORMAL_CLEARING     = 16;
     // Busy Tone
     static final int USER_BUSY           = 17;
 
+    static final int NO_USER_RESPONDING           = 18;
+    
+    
+    //This cause is used when a user has provided an alerting indication but has not provided a connect
+    //indication within a prescribed period of time.
+    static final int USER_ALERTING_NO_ANSWER = 19;
+    
+    // treat this same way as USER_BUSY
+    static final int CALL_REJECTED           = 21;
+
     // No Tone
     static final int NUMBER_CHANGED      = 22;
+    //b205 add:this cause indicates that the remote terminal out of TD service during VT
+    static final int DESTINATION_OUT_OF_ORDER = 27;    
+    //This cause indicates that the called user cannot be reached because the called party number is not a valid
+    //format or is not complete.
+    static final int INVALID_NUMBER = 28;
     static final int STATUS_ENQUIRY      = 30;
     static final int NORMAL_UNSPECIFIED  = 31;
 
@@ -42,11 +63,17 @@ public interface CallFailCause {
     static final int TEMPORARY_FAILURE   = 41;
     static final int SWITCHING_CONGESTION    = 42;
     static final int CHANNEL_NOT_AVAIL   = 44;
+    static final int RESOURCES_UNAVAILABLE = 47;
     static final int QOS_NOT_AVAIL       = 49;
+    static final int LOCAL_PHONE_OUT_OF_3G_Service = 52;
+    static final int BEARER_NOT_AUTHORIZATION = 57;
     static final int BEARER_NOT_AVAIL    = 58;
-
+    static final int BEARER_NOT_SUPPORTED_65 = 65;
     // others
     static final int ACM_LIMIT_EXCEEDED = 68;
+    static final int BEARER_NOT_SUPPORTED_79 = 79;
+    static final int INCOMPATIBILITY_DESTINATION = 88;
+    static final int PROTOCOL_ERROR_UNSPECIFIED = 111;
     static final int CALL_BARRED        = 240;
     static final int FDN_BLOCKED        = 241;
 

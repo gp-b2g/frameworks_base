@@ -29,6 +29,7 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.MSimTelephonyManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.net.Uri;
@@ -41,6 +42,7 @@ import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.SubscriptionManager;
 import com.android.internal.telephony.UiccCardApplication;
+import com.android.internal.telephony.VideoPhoneInterfaceManager;
 import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.MSimPhoneFactory;
 
@@ -83,6 +85,14 @@ public class MSimGSMPhone extends GSMPhone {
         mVmCountKey = mVmCountKey + mSubscription;
         mVmId = mVmId + mSubscription;
 
+        if(/*SystemProperties.getBoolean("apps.videocall",false)*/true){
+        	if(0 == mSubscription) {
+        		mVideoPhoneMgr = new VideoPhoneInterfaceManager(this);
+        		if(LOCAL_DEBUG) Log.d("MSimGSMPhone", "mVideoPhoneMgr=" + mVideoPhoneMgr);
+        	}
+            
+        }
+        
         mDataConnectionTracker = new MSimGsmDataConnectionTracker (this);
 
         SubscriptionManager subMgr = SubscriptionManager.getInstance();

@@ -988,6 +988,35 @@ status_t AudioFlinger::setParameters(int ioHandle, const String8& keyValuePairs)
         return PERMISSION_DENIED;
     }
 
+    // set incall tone parameters for VT
+    if (strstr(keyValuePairs.string(), "incalltone=") != NULL) {
+        if (mVTActive) {
+            LOGD("AudioFlinger::setParameters(), VT is running, write parameter to DirectOutputThread, %s", keyValuePairs.string());
+            sp<PlaybackThread> thread;
+            {
+                for (size_t i = 0; i < mPlaybackThreads.size(); i++) {
+                    thread = mPlaybackThreads.valueAt(i);
+                    if (thread->type() != PlaybackThread::DIRECT) continue;
+                    result = thread->setParameters(keyValuePairs);
+                    if (result != NO_ERROR) {
+                        LOGE("error when set paramter to DirectOutputThread, result: %d", result);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    if(!strcmp(keyValuePairs.string(), "videotelephony=on"))
+        mVTActive = true;
+    else if(!strcmp(keyValuePairs.string(), "videotelephony=off")) {
+        if(!mVTActive) {
+            LOGD("already set videotelephony=off, return directly this time.");
+            return NO_ERROR;
+        }
+        mVTActive = false;
+    }
+
 #ifdef SRS_PROCESSING
     AudioParameter param = AudioParameter(keyValuePairs);
     String8 key = String8(AudioParameter::keyRouting);
@@ -1089,8 +1118,22 @@ status_t AudioFlinger::setParameters(int ioHandle, const String8& keyValuePairs)
 
 String8 AudioFlinger::getParameters(int ioHandle, const String8& keys)
 {
-//    LOGV("getParameters() io %d, keys %s, tid %d, calling tid %d",
-//            ioHandle, keys.string(), gettid(), IPCThreadState::self()->getCallingPid());
+   LOGD("getParameters() io %d, keys %s, tid %d, calling tid %d",
+            ioHandle, keys.string(), gettid(), IPCThreadState::self()->getCallingPid());
+
+    AudioParameter param = AudioParameter(keys);
+
+    String8 valueVt;
+    String8 keyVt = String8("is_video_telephony_on");
+    if (param.get(keyVt, valueVt) == NO_ERROR) {
+        if(mVTActive) {
+            LOGD("getParameters(). return string: is_video_telephony_on=1");
+            return String8("is_video_telephony_on=1");
+        } else{
+            LOGD("getParameters(). return string: is_video_telephony_on=0");
+            return String8("is_video_telephony_on=0");
+        }
+    }
 
     if (ioHandle == 0) {
         String8 out_s8;

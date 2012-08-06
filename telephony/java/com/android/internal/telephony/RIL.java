@@ -2641,8 +2641,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_ENTER_DEPERSONALIZATION_CODE: ret =  responseInts(p); break;
             case RIL_REQUEST_GET_CURRENT_CALLS: ret =  responseCallList(p); break;
             case RIL_REQUEST_DIAL: ret =  responseVoid(p); break;
+            case RIL_REQUEST_DIAL_VT: ret =  responseVoid(p); break;            
             case RIL_REQUEST_GET_IMSI: ret =  responseString(p); break;
             case RIL_REQUEST_HANGUP: ret =  responseVoid(p); break;
+            case RIL_REQUEST_HANGUP_VT: ret = responseVoid(p);break;
+            case RIL_REQUEST_ANSWER_VT: ret = responseVoid(p);break;
             case RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND: ret =  responseVoid(p); break;
             case RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND: ret =  responseVoid(p); break;
             case RIL_REQUEST_SWITCH_WAITING_OR_HOLDING_AND_ACTIVE: ret =  responseVoid(p); break;
@@ -2890,6 +2893,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_SIM_SMS_STORAGE_FULL: ret =  responseVoid(p); break;
             case RIL_UNSOL_SIM_REFRESH: ret =  responseSimRefresh(p); break;
             case RIL_UNSOL_CALL_RING: ret =  responseCallRing(p); break;
+            case RIL_UNSOL_CALL_RING_VT: ret =  responseCallRing(p); break;
             case RIL_UNSOL_RESTRICTED_STATE_CHANGED: ret = responseInts(p); break;
             case RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED:  ret =  responseVoid(p); break;
             case RIL_UNSOL_RESPONSE_CDMA_NEW_SMS:  ret =  responseCdmaSms(p); break;
@@ -3119,6 +3123,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                             new AsyncResult (null, ret, null));
                 }
                 break;
+
+            case RIL_UNSOL_CALL_RING_VT:
+                if (RILJ_LOGD) unsljLogRet(response, ret);
+                break;
+      
 
             case RIL_UNSOL_RESTRICTED_STATE_CHANGED:
                 if (RILJ_LOGD) unsljLogvRet(response, ret);
@@ -4162,8 +4171,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_ENTER_DEPERSONALIZATION_CODE: return "ENTER_DEPERSONALIZATION_CODE";
             case RIL_REQUEST_GET_CURRENT_CALLS: return "GET_CURRENT_CALLS";
             case RIL_REQUEST_DIAL: return "DIAL";
+            case RIL_REQUEST_DIAL_VT: return "DIAL_VT";
             case RIL_REQUEST_GET_IMSI: return "GET_IMSI";
             case RIL_REQUEST_HANGUP: return "HANGUP";
+            case RIL_REQUEST_HANGUP_VT: return "HANGUP_VT";
+            case RIL_REQUEST_ANSWER_VT: return "ANSWER_VT";
             case RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND: return "HANGUP_WAITING_OR_BACKGROUND";
             case RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND: return "HANGUP_FOREGROUND_RESUME_BACKGROUND";
             case RIL_REQUEST_SWITCH_WAITING_OR_HOLDING_AND_ACTIVE: return "REQUEST_SWITCH_WAITING_OR_HOLDING_AND_ACTIVE";
@@ -4310,6 +4322,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_SIM_SMS_STORAGE_FULL: return "UNSOL_SIM_SMS_STORAGE_FULL";
             case RIL_UNSOL_SIM_REFRESH: return "UNSOL_SIM_REFRESH";
             case RIL_UNSOL_CALL_RING: return "UNSOL_CALL_RING";
+            case RIL_UNSOL_CALL_RING_VT: return "UNSOL_CALL_RING_VT";
             case RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED: return "UNSOL_RESPONSE_SIM_STATUS_CHANGED";
             case RIL_UNSOL_RESPONSE_CDMA_NEW_SMS: return "UNSOL_RESPONSE_CDMA_NEW_SMS";
             case RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS: return "UNSOL_RESPONSE_NEW_BROADCAST_SMS";
@@ -4628,7 +4641,34 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         send(rr);
     }
-    public void enableEngineerMode(int on) {
+
+    public void dialVT(String address,int clirMode,Message result){
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_DIAL_VT,result);
+    	//RILRequest rr = RILRequest.obtain(RIL_REQUEST_DIAL,result);
+        rr.mp.writeString(address);
+        rr.mp.writeInt(clirMode);
+        rr.mp.writeInt(0);
+        if (RILJ_LOGD) riljLog(rr.serialString()+"> "+requestToString(rr.mRequest));
+        send(rr);
+    }
+
+    public void hangupVTCall(Message result){
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_HANGUP_VT,result);
+        //RILRequest rr = RILRequest.obtain(RIL_REQUEST_HANGUP,result);
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        send(rr);
+    }
+
+    public void answerVTCall(int cause,Message result){
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_ANSWER_VT,result);
+        //RILRequest rr = RILRequest.obtain(RIL_REQUEST_ANSWER,result);
+        rr.mp.writeInt(1);
+        rr.mp.writeInt(cause);
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        send(rr);
+    }
+	
+	 public void enableEngineerMode(int on) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_ENABLE_ENGINEER_MODE, null);
 
         rr.mp.writeInt(1);
@@ -4639,4 +4679,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         send(rr);
     }
+
+    
 }

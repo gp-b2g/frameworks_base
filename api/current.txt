@@ -16283,6 +16283,7 @@ package android.provider {
     field public static final java.lang.String CACHED_NAME = "name";
     field public static final java.lang.String CACHED_NUMBER_LABEL = "numberlabel";
     field public static final java.lang.String CACHED_NUMBER_TYPE = "numbertype";
+    field public static final java.lang.String CALLTYPE = "call_type";
     field public static final android.net.Uri CONTENT_FILTER_URI;
     field public static final java.lang.String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/calls";
     field public static final java.lang.String CONTENT_TYPE = "vnd.android.cursor.dir/calls";
@@ -16290,11 +16291,15 @@ package android.provider {
     field public static final java.lang.String DATE = "date";
     field public static final java.lang.String DEFAULT_SORT_ORDER = "date DESC";
     field public static final java.lang.String DURATION = "duration";
+    field public static final int INCOMING_CSVT_TYPE = 5; // 0x5
     field public static final int INCOMING_TYPE = 1; // 0x1
     field public static final java.lang.String IS_READ = "is_read";
+    field public static final int MISSED_CSVT_TYPE = 7; // 0x7
     field public static final int MISSED_TYPE = 3; // 0x3
     field public static final java.lang.String NEW = "new";
     field public static final java.lang.String NUMBER = "number";
+    field public static final int OUTGOING_CSVT_TYPE = 6; // 0x6
+    field public static final int OUTGOING_FAILED_TYPE = 4; // 0x4
     field public static final int OUTGOING_TYPE = 2; // 0x2
     field public static final java.lang.String TYPE = "type";
   }
@@ -17868,6 +17873,7 @@ package android.provider {
     field public static final java.lang.String VOLUME_RING = "volume_ring";
     field public static final java.lang.String[] VOLUME_SETTINGS;
     field public static final java.lang.String VOLUME_SYSTEM = "volume_system";
+    field public static final java.lang.String VOLUME_VIDEO_TELEPHONY = "volume_vt";
     field public static final java.lang.String VOLUME_VOICE = "volume_voice";
     field public static final java.lang.String WAIT_FOR_DEBUGGER = "wait_for_debugger";
     field public static final java.lang.String WALLPAPER_ACTIVITY = "wallpaper_activity";

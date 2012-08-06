@@ -488,4 +488,13 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     public void avoidCurrentCdmaSystem(boolean on,Message result){
     }
 
+    public void dialVT(String address, int clirMode, Message result) {    	
+    }
+    
+    public void hangupVTCall (Message result) {    	
+    }
+    
+    public void answerVTCall (int cause, Message result){
+    }
+
 }

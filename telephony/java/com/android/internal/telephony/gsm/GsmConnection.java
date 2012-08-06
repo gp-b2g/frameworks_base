@@ -86,6 +86,9 @@ public class GsmConnection extends Connection {
     static final int PAUSE_DELAY_MILLIS = 3 * 1000;
     static final int WAKE_LOCK_TIMEOUT_MILLIS = 60*1000;
 
+    //add for csvt
+    boolean isVoice;
+
     //***** Inner Classes
 
     class MyHandler extends Handler {
@@ -121,6 +124,7 @@ public class GsmConnection extends Connection {
         address = dc.number;
 
         isIncoming = dc.isMT;
+        isVoice = dc.isVoice;
         createTime = System.currentTimeMillis();
         numberPresentation = dc.numberPresentation;
         uusInfo = dc.uusInfo;
@@ -148,6 +152,7 @@ public class GsmConnection extends Connection {
         index = -1;
 
         isIncoming = false;
+        isVoice = ct.isMOVoice;
         createTime = System.currentTimeMillis();
 
         this.parent = parent;
@@ -335,14 +340,44 @@ public class GsmConnection extends Connection {
 
         switch (causeCode) {
             case CallFailCause.USER_BUSY:
+            case CallFailCause.CALL_REJECTED:
                 return DisconnectCause.BUSY;
+            case CallFailCause.OPERATOR_DETERMINED_BARRING:
+                return DisconnectCause.OPERATOR_DETERMINED_BARRING;
+            case CallFailCause.USER_ALERTING_NO_ANSWER:
+                return DisconnectCause.USER_ALERTING_NO_ANSWER;
+            case CallFailCause.NUMBER_CHANGED:
+                return DisconnectCause.NUMBER_CHANGED;
+            case CallFailCause.INVALID_NUMBER:
+                return DisconnectCause.INVALID_NUMBER;
+            case CallFailCause.BEARER_NOT_AVAIL:
+            	return DisconnectCause.BEARER_NOT_AVAIL;
+            case CallFailCause.NORMAL_UNSPECIFIED:
+                return DisconnectCause.NORMAL_UNSPECIFIED;
+            case CallFailCause.BEARER_NOT_SUPPORTED_65:
+                return DisconnectCause.BEARER_NOT_SUPPORTED_65;
+            case CallFailCause.BEARER_NOT_SUPPORTED_79:
+                return DisconnectCause.BEARER_NOT_SUPPORTED_79;                        
+            case CallFailCause.NO_USER_RESPONDING:
+                return DisconnectCause.NO_USER_RESPONDING;
+            case CallFailCause.LOCAL_PHONE_OUT_OF_3G_Service:
+               return DisconnectCause.LOCAL_PHONE_OUT_OF_3G_Service;
+            case CallFailCause.PROTOCOL_ERROR_UNSPECIFIED:
+                return DisconnectCause.PROTOCOL_ERROR_UNSPECIFIED;
+            case CallFailCause.INCOMPATIBILITY_DESTINATION: 
+                return DisconnectCause.INCOMPATIBILITY;                   
+            case CallFailCause.RESOURCES_UNAVAILABLE: 
+               return DisconnectCause.RESOURCE_UNAVAIL;
+            case CallFailCause.BEARER_NOT_AUTHORIZATION:
+                return DisconnectCause.BEARER_NOT_AUTHORIZATION;
+            case CallFailCause.DESTINATION_OUT_OF_ORDER:
+                return DisconnectCause.OUT_OF_3G_SERVICE;
 
             case CallFailCause.NO_CIRCUIT_AVAIL:
             case CallFailCause.TEMPORARY_FAILURE:
             case CallFailCause.SWITCHING_CONGESTION:
             case CallFailCause.CHANNEL_NOT_AVAIL:
             case CallFailCause.QOS_NOT_AVAIL:
-            case CallFailCause.BEARER_NOT_AVAIL:
                 return DisconnectCause.CONGESTION;
 
             case CallFailCause.ACM_LIMIT_EXCEEDED:
@@ -366,8 +401,8 @@ public class GsmConnection extends Connection {
             case CallFailCause.DIAL_MODIFIED_TO_DIAL:
                 return DisconnectCause.DIAL_MODIFIED_TO_DIAL;
 
-            case CallFailCause.ERROR_UNSPECIFIED:
             case CallFailCause.NORMAL_CLEARING:
+            case CallFailCause.ERROR_UNSPECIFIED:            
             default:
                 GSMPhone phone = owner.phone;
                 int serviceState = phone.getServiceState().getState();
@@ -497,6 +532,15 @@ public class GsmConnection extends Connection {
         parent.attachFake(this, GsmCall.State.HOLDING);
 
         onStartedHolding();
+    }
+
+    /*package*/ int
+    getGSMIndex() throws CallStateException {
+        if (index >= 0) {
+            return index + 1;
+        } else {
+            throw new CallStateException ("GSM index not yet assigned");
+        }
     }
 
     /**
@@ -730,5 +774,10 @@ public class GsmConnection extends Connection {
     @Override
     public UUSInfo getUUSInfo() {
         return uusInfo;
+    }
+    
+    public boolean isVoice()
+    {
+        return isVoice;
     }
 }

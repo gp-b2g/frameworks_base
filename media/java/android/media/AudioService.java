@@ -193,6 +193,7 @@ public class AudioService extends IAudioService.Stub {
         7,  // STREAM_SYSTEM_ENFORCED
         15, // STREAM_DTMF
         15,  // STREAM_TTS
+        5,   // STREAM_VIDEO_TELEPHONY
         7 // STREAM_FM
     };
     /* STREAM_VOLUME_ALIAS[] indicates for each stream if it uses the volume settings
@@ -210,6 +211,7 @@ public class AudioService extends IAudioService.Stub {
         AudioSystem.STREAM_SYSTEM,  // STREAM_SYSTEM_ENFORCED
         AudioSystem.STREAM_VOICE_CALL, // STREAM_DTMF
         AudioSystem.STREAM_MUSIC,  // STREAM_TTS
+        AudioSystem.STREAM_VOICE_CALL, //STREAM_VIDEO_TELEPHONY
         AudioSystem.STREAM_FM
     };
 
@@ -588,6 +590,9 @@ public class AudioService extends IAudioService.Stub {
             }
             index = streamState.mIndex;
         }
+
+         if(streamType == AudioSystem.STREAM_VIDEO_TELEPHONY)
+            streamType = AudioSystem.STREAM_VOICE_CALL;
 
         sendVolumeUpdate(streamType, oldIndex, index, flags);
     }
@@ -1894,6 +1899,11 @@ public class AudioService extends IAudioService.Stub {
             } catch (RemoteException e) {
                 Log.w(TAG, "Couldn't connect to phone service", e);
             }
+
+            boolean isVtOn = false;
+            String result = AudioSystem.getParameters("is_video_telephony_on");
+            //if(DEBUG) Log.d(TAG, "getActiveStreamType().  isVtOnStr: " + result + ", isOffhook: " + isOffhook);
+            if(result.equals("is_video_telephony_on=1"))  isVtOn = true;
 
             if (isOffhook || getMode() == AudioManager.MODE_IN_COMMUNICATION) {
                 if (AudioSystem.getForceUse(AudioSystem.FOR_COMMUNICATION)

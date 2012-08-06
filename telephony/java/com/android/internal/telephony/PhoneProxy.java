@@ -494,6 +494,11 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.acceptCall();
     }
 
+    public void acceptCallVT() throws CallStateException {
+        mActivePhone.acceptCallVT();
+    }
+    
+
     public void acceptCall(int callType) throws CallStateException {
         mActivePhone.acceptCall(callType);
     }
@@ -563,7 +568,17 @@ public class PhoneProxy extends Handler implements Phone {
         return mActivePhone.dial(dialString, uusInfo, calldetails);
     }
 
-    public void enableEngineerMode(int on) {
+    
+    //Borqs b089: interface added for video call
+    public void endVideoCall() throws CallStateException {
+        Log.e(LOG_TAG, "This function only for video call.");
+    }
+    
+    public Connection dialVideoCall (String dialString) throws CallStateException {
+    	return mActivePhone.dialVideoCall(dialString);
+    }
+	
+	public void enableEngineerMode(int on) {
         // This function should be overridden by the class GSMPhone and CDMAPhone.
         mActivePhone.enableEngineerMode(on);
     }
@@ -653,6 +668,15 @@ public class PhoneProxy extends Handler implements Phone {
             int timerSeconds, Message onComplete) {
         mActivePhone.setCallForwardingOption(commandInterfaceCFReason,
             commandInterfaceCFAction, dialingNumber, timerSeconds, onComplete);
+    }
+    
+    public void setVideoCallForwardingOption(int commandInterfaceCFReason,
+            int commandInterfaceCFAction,
+            String dialingNumber,
+            int timerSeconds,
+            Message onComplete) {
+        mActivePhone.setVideoCallForwardingOption(commandInterfaceCFReason,
+                commandInterfaceCFAction, dialingNumber, timerSeconds, onComplete);
     }
 
     public void getOutgoingCallerIdDisplay(Message onComplete) {
@@ -1062,4 +1086,11 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.avoidCurrentCdmaSystem(on,onCompleteMsg);
     }
 
+    
+    public void requestFallback() throws CallStateException {
+    }
+    
+    public void rejectCallVT() throws CallStateException {    	
+    }
+    
 }

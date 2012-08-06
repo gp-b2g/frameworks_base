@@ -57,7 +57,7 @@ public final class GsmCallTracker extends CallTracker {
     static final String LOG_TAG = "GSM";
     private static final boolean REPEAT_POLLING = false;
 
-    private static final boolean DBG_POLL = false;
+    private static final boolean DBG_POLL = true;
 
     //***** Constants
 
@@ -85,6 +85,17 @@ public final class GsmCallTracker extends CallTracker {
     GSMPhone phone;
 
     boolean desiredMute = false;    // false = mute off
+
+    Phone.State state = Phone.State.IDLE;
+    //do not receive the response after we send out DIAL request
+    //static final int EVENT_PENDING_MO_TIMEOUT = 100;
+    //Borqs b089 for video call
+    public boolean isMOVoice = true;
+
+
+
+    //***** Events
+
 
     //***** Constructors
 
@@ -218,6 +229,8 @@ public final class GsmCallTracker extends CallTracker {
             throw new CallStateException("cannot dial in current state");
         }
 
+        isMOVoice = true;
+
         pendingMO = new GsmConnection(phone.getContext(), dialString, this, foregroundCall);
         hangupPendingMO = false;
 
@@ -302,6 +315,23 @@ public final class GsmCallTracker extends CallTracker {
             throw new CallStateException("phone not ringing");
         }
     }
+
+    public void
+    acceptCallVT () throws CallStateException {
+        // FIXME if SWITCH fails, should retry with ANSWER
+        // in case the active/holding call disappeared and this
+        // is no longer call waiting
+
+        if (ringingCall.getState() == GsmCall.State.INCOMING) {
+            Log.i("phone", "acceptCall: incoming...");
+            // Always unmute when answering a new call
+            setMute(false);
+            cm.answerVTCall(0, obtainCompleteMessage());
+        } else {
+            throw new CallStateException("phone not ringing");
+        }
+    }
+    
 
     public void
     rejectCall () throws CallStateException {
@@ -1039,7 +1069,119 @@ public final class GsmCallTracker extends CallTracker {
             case EVENT_RADIO_NOT_AVAILABLE:
                 handleRadioNotAvailable();
             break;
+            /*case EVENT_PENDING_MO_TIMEOUT:
+                if (pendingMO != null) {
+                    log("timeout for waiting for DIAL response,clear pendingMO");
+                    handlePendingMOTimeout();
+                }*/
+            default:
+                log("CallTracker receive unknown msg:" + msg.what);
         }
+    }
+
+    void
+    rejectVTCall (int cause) throws CallStateException
+    {
+        // AT+CHLD=0 means "release held or UDUB"
+        // so if the phone isn't ringing, this could hang up held
+        if (phone.getState() != Phone.State.IDLE) {
+            cm.answerVTCall(cause, obtainCompleteMessage()); 
+        } else {
+            throw new CallStateException("phone not ringing");
+        }
+    }
+
+    void
+    hangupVTCall () throws CallStateException
+    {
+        // AT+CHLD=0 means "release held or UDUB"
+        // so if the phone isn't ringing, this could hang up held
+        if (phone.getState() != Phone.State.IDLE) {
+          cm.hangupVTCall(obtainCompleteMessage());
+        } else {
+            throw new CallStateException("phone not ringing");
+        }
+    }
+    
+    //Borqs b089, for reject incoming video call if call is busy
+    private boolean haveVideoCall(int index, List l)
+    {
+        for (int i = 0, curDC = 0, dcSize = l.size() 
+                ; i < connections.length; i++) {
+            GsmConnection conn = connections[i];
+            DriverCall dc = null;
+    
+            // polledCall list is sparse
+            if (curDC < dcSize) {
+                dc = (DriverCall) l.get(curDC);
+    
+                if (dc.index == i+1) {
+                    curDC++;
+                } else {
+                    dc = null;
+                }
+            }
+    
+            if(dc != null && !dc.isVoice) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+       /**
+     * clirMode is one of the CLIR_ constants
+     */
+    public Connection
+    dialVT (String dialString, int clirMode) throws CallStateException {
+        // note that this triggers call state changed notif
+        clearDisconnected();
+    
+        if (!canDial()) {
+            throw new CallStateException("cannot dial in current state");
+        }
+    
+        if (foregroundCall.getState() != GsmCall.State.IDLE) {
+            //we should have failed in !canDial() above before we get here
+            throw new CallStateException("cannot dial video call in current state");
+        }
+    
+        isMOVoice = false;
+    
+        pendingMO = new GsmConnection(phone.getContext(), dialString, this, foregroundCall);
+        hangupPendingMO = false;
+    
+        if (pendingMO.address == null || pendingMO.address.length() == 0
+            || pendingMO.address.indexOf(PhoneNumberUtils.WILD) >= 0
+        ) {
+            // Phone number is invalid
+            pendingMO.cause = Connection.DisconnectCause.INVALID_NUMBER;
+            // handlePollCalls() will notice this call not present
+            // and will mark it as dropped.
+            pollCallsWhenSafe();
+        } else {
+            // Always unmute when initiating a new call
+            // 09/23 set mute is not through tapi,it is implemented on audio system
+            //setMute(false);
+
+            cm.dialVT(pendingMO.address, clirMode, obtainCompleteMessage());
+            //post a Message to notify if no response returned from rild after
+            //a timeout
+            //Message msg = obtainMessage(EVENT_PENDING_MO_TIMEOUT);
+            //sendMessageDelayed(msg,PENDING_MO_TIMEOUT);
+        }
+
+        updatePhoneState();
+        phone.notifyPreciseCallStateChanged();
+        return pendingMO;
+    }
+    
+    /**
+     * clirMode is one of the CLIR_ constants
+     */
+    Connection
+    dialVT (String dialString) throws CallStateException {
+        return dialVT(dialString, CommandsInterface.CLIR_DEFAULT);
     }
 
     protected void log(String msg) {

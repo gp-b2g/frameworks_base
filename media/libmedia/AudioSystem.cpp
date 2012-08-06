@@ -596,7 +596,7 @@ audio_io_handle_t AudioSystem::getOutput(audio_stream_type_t stream,
         (stream != AUDIO_STREAM_FM) &&
         ((stream != AUDIO_STREAM_VOICE_CALL && stream != AUDIO_STREAM_BLUETOOTH_SCO) ||
          channels != AUDIO_CHANNEL_OUT_MONO ||
-         (samplingRate != 8000 && samplingRate != 16000))) {
+        (samplingRate != 8000 && samplingRate != 16000)) || (stream == AUDIO_STREAM_VIDEO_TELEPHONY)) {
         Mutex::Autolock _l(gLock);
         output = AudioSystem::gStreamOutputMap.valueFor(stream);
         LOGV_IF((output != 0), "getOutput() read %d from cache for stream %d", output, stream);
@@ -605,7 +605,7 @@ audio_io_handle_t AudioSystem::getOutput(audio_stream_type_t stream,
         const sp<IAudioPolicyService>& aps = AudioSystem::get_audio_policy_service();
         if (aps == 0) return 0;
         output = aps->getOutput(stream, samplingRate, format, channels, flags);
-        if ((flags & AUDIO_POLICY_OUTPUT_FLAG_DIRECT) == 0) {
+          if ((flags & AUDIO_POLICY_OUTPUT_FLAG_DIRECT) == 0 || (stream == AUDIO_STREAM_VIDEO_TELEPHONY)) {
             Mutex::Autolock _l(gLock);
             AudioSystem::gStreamOutputMap.add(stream, output);
         }

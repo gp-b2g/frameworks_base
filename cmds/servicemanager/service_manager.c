@@ -52,6 +52,7 @@ static struct {
     { AID_RADIO, "simphonebook_msim" },
     { AID_RADIO, "iphonesubinfo_msim" },
     { AID_RADIO, "isms_msim" },
+    { AID_RADIO, "videophone" },
 };
 
 void *svcmgr_handle;

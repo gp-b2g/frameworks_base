@@ -314,6 +314,14 @@ abstract class SipPhoneBase extends PhoneBase {
             int commandInterfaceCFReason, String dialingNumber,
             int timerSeconds, Message onComplete) {
     }
+    
+    public void setVideoCallForwardingOption(int commandInterfaceCFReason,
+            int commandInterfaceCFAction,
+            String dialingNumber,
+            int timerSeconds,
+            Message onComplete) {
+    	Log.e(LOG_TAG, "setVideoCallForwardingOption: not possible in CDMA");
+    }
 
     public void getOutgoingCallerIdDisplay(Message onComplete) {
         // FIXME: what to reply?

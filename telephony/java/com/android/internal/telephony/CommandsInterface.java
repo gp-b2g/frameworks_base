@@ -1860,4 +1860,35 @@ public interface CommandsInterface {
    /** avoid current cdma system
    */
     public void avoidCurrentCdmaSystem(boolean on,Message result);
+    
+    /** 
+     * Dial out video call
+     *  returned message
+     *  retMsg.obj = AsyncResult ar
+     *  ar.exception carries exception on failure
+     *  ar.userObject contains the orignal value of result.obj
+     *  ar.result is null on success and failure
+     *
+     * CLIR_DEFAULT     == on "use subscription default value"
+     * CLIR_SUPPRESSION == on "CLIR suppression" (allow CLI presentation)
+     * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
+     */
+    public void dialVT(String address, int clirMode, Message result);
+    
+    /**
+     *  Answer the video call. 
+     *  ar.exception carries exception on failure
+     *  ar.userObject contains the orignal value of result.obj
+     *  ar.result is null on success and failure
+     */
+    public void answerVTCall (int cause, Message result);
+
+    
+    /**
+    *  Disconnect the video call.
+    *  ar.exception carries exception on failure
+    *  ar.userObject contains the orignal value of result.obj
+    *  ar.result is null on success and failure
+    */    
+    public void hangupVTCall (Message result);
 }
