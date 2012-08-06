@@ -27,6 +27,7 @@ import com.android.internal.telephony.MSimConstants;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.location.Country;
 import android.location.CountryDetector;
 import android.net.Uri;
 import android.os.SystemProperties;
@@ -1800,8 +1801,9 @@ public class PhoneNumberUtils
         String countryIso;
         CountryDetector detector = (CountryDetector) context.getSystemService(
                 Context.COUNTRY_DETECTOR);
-        if (detector != null) {
-            countryIso = detector.detectCountry().getCountryIso();
+        Country c = null;
+        if (detector != null && (c = detector.detectCountry()) != null) {
+            countryIso = c.getCountryIso();
         } else {
             Locale locale = context.getResources().getConfiguration().locale;
             countryIso = locale.getCountry();
