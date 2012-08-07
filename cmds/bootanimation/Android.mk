@@ -25,9 +25,6 @@ LOCAL_SHARED_LIBRARIES := \
 ifeq ($(strip $(QRDExt_BootAnimation_gp)),no)
 else
 LOCAL_CFLAGS += -DBOOT_ANIMATION_ENABLE
-INTERNAL_RES_PATH := vendor/qcom/proprietary/qrdplus/InternalUseOnly/CarrierSpecific/Resource/boot_animation
-$(shell mkdir -p $(TARGET_OUT)/media)
-$(shell cp -r $(INTERNAL_RES_PATH)/$(QRDExt_BootAnimation_gp)/* $(TARGET_OUT)/media)
 endif
 # Boot Animation Processing
 
