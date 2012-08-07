@@ -1087,13 +1087,20 @@ status_t MediaPlayerService::Client::getParameter(int key, Parcel *reply) {
     return p->getParameter(key, reply);
 }
 
-status_t MediaPlayerService::Client::initRender(bool* state)
+status_t MediaPlayerService::Client::suspend()
 {
-    LOGV("initRender");
+    LOGV("suspend");
     sp<MediaPlayerBase> p = getPlayer();
     if (p == 0) return UNKNOWN_ERROR;
-    *state = p->initRender();
-    return NO_ERROR;
+    return p->suspend();
+}
+
+status_t MediaPlayerService::Client::resume()
+{
+    LOGV("resume");
+    sp<MediaPlayerBase> p = getPlayer();
+    if (p == 0) return UNKNOWN_ERROR;
+    return p->resume();
 }
 
 void MediaPlayerService::Client::notify(

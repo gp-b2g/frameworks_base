@@ -756,16 +756,25 @@ android_media_MediaPlayer_getParameter(JNIEnv *env, jobject thiz, jint key, jobj
 }
 
 static jboolean
-android_media_MediaPlayer_initRender(JNIEnv *env, jobject thiz)
+android_media_MediaPlayer_suspend(JNIEnv *env, jobject thiz)
 {
-    LOGV("initRender");
     sp<MediaPlayer> mp = getMediaPlayer(env, thiz);
-        if (mp == NULL) {
-        LOGE("mp = null in initRender");
+    if (mp == NULL) {
         jniThrowException(env, "java/lang/IllegalStateException", NULL);
         return false;
     }
-    return mp->initRender();
+    return mp->suspend();
+}
+
+static jboolean
+android_media_MediaPlayer_resume(JNIEnv *env, jobject thiz)
+{
+    sp<MediaPlayer> mp = getMediaPlayer(env, thiz);
+    if (mp == NULL) {
+        jniThrowException(env, "java/lang/IllegalStateException", NULL);
+        return false;
+    }
+    return mp->resume();
 }
 
 // ----------------------------------------------------------------------------
@@ -812,7 +821,8 @@ static JNINativeMethod gMethods[] = {
     {"native_pullBatteryData", "(Landroid/os/Parcel;)I",        (void *)android_media_MediaPlayer_pullBatteryData},
     {"setParameter",        "(ILandroid/os/Parcel;)Z",          (void *)android_media_MediaPlayer_setParameter},
     {"getParameter",        "(ILandroid/os/Parcel;)V",          (void *)android_media_MediaPlayer_getParameter},
-    {"initRender",          "()Z",                              (void *)android_media_MediaPlayer_initRender},
+    {"suspend",             "()Z",                              (void *)android_media_MediaPlayer_suspend},
+    {"resume",              "()Z",                              (void *)android_media_MediaPlayer_resume},
 };
 
 static const char* const kClassPathName = "android/media/MediaPlayer";

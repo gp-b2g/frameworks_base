@@ -204,7 +204,8 @@ public:
             status_t        attachAuxEffect(int effectId);
             status_t        setParameter(int key, const Parcel& request);
             status_t        getParameter(int key, Parcel* reply);
-            bool            initRender();
+            bool            suspend();
+            bool            resume();
 
 private:
             void            clear_l();

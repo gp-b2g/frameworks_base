@@ -106,7 +106,8 @@ struct AwesomePlayer {
 
     status_t dump(int fd, const Vector<String16> &args) const;
 
-    bool initRender();
+    status_t suspend();
+    status_t resume();
 
 private:
     friend struct AwesomeEvent;
@@ -295,6 +296,7 @@ private:
     status_t startAudioPlayer_l(bool sendErrorNotification = true);
 
     void shutdownVideoDecoder_l();
+    void shutdownAudioDecoder_l();
     status_t setNativeWindow_l(const sp<ANativeWindow> &native);
 
     bool isStreamingHTTP() const;

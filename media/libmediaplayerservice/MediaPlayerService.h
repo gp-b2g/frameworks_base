@@ -284,7 +284,8 @@ private:
         virtual status_t        attachAuxEffect(int effectId);
         virtual status_t        setParameter(int key, const Parcel &request);
         virtual status_t        getParameter(int key, Parcel *reply);
-        virtual status_t        initRender(bool* state);
+        virtual status_t        suspend();
+        virtual status_t        resume();
 
         sp<MediaPlayerBase>     createPlayer(player_type playerType);
 
