@@ -86,7 +86,6 @@ public final class GsmCallTracker extends CallTracker {
 
     boolean desiredMute = false;    // false = mute off
 
-    Phone.State state = Phone.State.IDLE;
     //do not receive the response after we send out DIAL request
     //static final int EVENT_PENDING_MO_TIMEOUT = 100;
     //Borqs b089 for video call

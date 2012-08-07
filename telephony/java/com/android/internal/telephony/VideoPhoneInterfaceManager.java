@@ -92,6 +92,14 @@ public class VideoPhoneInterfaceManager extends IVideoTelephony.Stub {
 
     Phone mPhone;
 
+    public void dispose(){
+        Log.e(TAG, "unregister handler!");
+        mPhone.unregisterForPreciseCallStateChanged(mHandler);
+        mPhone.unregisterForRingbackTone(mHandler);
+        mPhone.unregisterForNewRingingConnection(mHandler);
+        mPhone.unregisterForDisconnect(mHandler);
+    }
+
     public VideoPhoneInterfaceManager( Phone phone) {
         mPhone = phone;
         mPhone.registerForPreciseCallStateChanged(mHandler , VT_PHONE_STATE_CHANGED, null);
