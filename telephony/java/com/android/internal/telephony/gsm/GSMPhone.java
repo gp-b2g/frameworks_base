@@ -112,8 +112,6 @@ public class GSMPhone extends PhoneBase {
     // Event constant for checking if Call Forwarding is enabled
     private static final int CHECK_CALLFORWARDING_STATUS = 75;
 
-    // Instance Variables
-    GsmCallTracker mCT;
     GsmServiceStateTracker mSST;
     ArrayList <GsmMmiCode> mPendingMMIs = new ArrayList<GsmMmiCode>();
     SimPhoneBookInterfaceManager mSimPhoneBookIntManager;
@@ -246,6 +244,9 @@ public class GSMPhone extends PhoneBase {
 
             mPendingMMIs.clear();
 
+            if (mVideoPhoneMgr != null) {
+                mVideoPhoneMgr.dispose();
+            }
             //Force all referenced classes to unregister their former registered events
             mCT.dispose();
             mDataConnectionTracker.dispose();
@@ -499,7 +500,7 @@ public class GSMPhone extends PhoneBase {
 
     public void
     acceptCallVT() throws CallStateException {
-        mCT.acceptCallVT();
+        ((GsmCallTracker)mCT).acceptCallVT();
     }
 
     public void
@@ -1882,15 +1883,15 @@ public class GSMPhone extends PhoneBase {
 
     //Borqs b089: interface added for video call
     public void endVideoCall() throws CallStateException {
-    	mCT.hangupVTCall();
+        ((GsmCallTracker)mCT).hangupVTCall();
     }
     
     public void rejectCallVT() throws CallStateException {
-    	mCT.rejectVTCall(CallFailCause.USER_BUSY);
+        ((GsmCallTracker)mCT).rejectVTCall(CallFailCause.USER_BUSY);
     }
     
     public void requestFallback() throws CallStateException {
-        mCT.rejectVTCall(CallFailCause.INCOMPATIBILITY_DESTINATION);
+        ((GsmCallTracker)mCT).rejectVTCall(CallFailCause.INCOMPATIBILITY_DESTINATION);
     	//mCT.requestFallback(number);
     }
     
@@ -1925,9 +1926,9 @@ public class GSMPhone extends PhoneBase {
                                "dialing w/ mmi '" + mmi + "'...");
     
         if (mmi == null) {
-            return mCT.dialVT(newDialString, CommandsInterface.CLIR_DEFAULT);
+            return ((GsmCallTracker)mCT).dialVT(newDialString, CommandsInterface.CLIR_DEFAULT);
         } else if (mmi.isTemporaryModeCLIR()) {
-            return mCT.dialVT(mmi.dialingNumber, mmi.getCLIRMode());
+            return ((GsmCallTracker)mCT).dialVT(mmi.dialingNumber, mmi.getCLIRMode());
         } else {
             mPendingMMIs.add(mmi);
             mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
