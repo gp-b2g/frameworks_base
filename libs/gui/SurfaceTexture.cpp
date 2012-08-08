@@ -944,14 +944,7 @@ void SurfaceTexture::computeCurrentTransformMatrix() {
     for (int i = 0; i < 16; i++) {
         xform[i] = mtxIdentity[i];
     }
-
-    if (mCurrentTransform & NATIVE_WINDOW_TRANSFORM_ROT_90) {
-     float result[16];
-     mtxMul(result, xform, mtxRot90);
-     for (int i = 0; i < 16; i++) {
-     xform[i] = result[i];
-   }
-  } 
+ 
     if (mCurrentTransform & NATIVE_WINDOW_TRANSFORM_FLIP_H) {
         float result[16];
         mtxMul(result, xform, mtxFlipH);
@@ -966,6 +959,14 @@ void SurfaceTexture::computeCurrentTransformMatrix() {
             xform[i] = result[i];
         }
     }
+
+    if (mCurrentTransform & NATIVE_WINDOW_TRANSFORM_ROT_90) {
+     float result[16];
+     mtxMul(result, xform, mtxRot90);
+     for (int i = 0; i < 16; i++) {
+     xform[i] = result[i];
+   }
+  }
 
     sp<GraphicBuffer>& buf(mSlots[mCurrentTexture].mGraphicBuffer);
     float tx, ty, sx, sy;
