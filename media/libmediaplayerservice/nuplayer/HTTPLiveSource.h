@@ -48,6 +48,8 @@ struct NuPlayer::HTTPLiveSource : public NuPlayer::Source {
 
     virtual void notifyRenderingPosition(int64_t nRenderingTS);
 
+    virtual bool setCbfForSeekDone(const sp<AMessage> &notify);
+
 protected:
     virtual ~HTTPLiveSource();
 
@@ -70,6 +72,7 @@ private:
 
     int64_t mNewSeekTime;
     int64_t mCurrentPlayingTime;
+    sp<AMessage> mSeekDoneNotify;
 
     DISALLOW_EVIL_CONSTRUCTORS(HTTPLiveSource);
 };
