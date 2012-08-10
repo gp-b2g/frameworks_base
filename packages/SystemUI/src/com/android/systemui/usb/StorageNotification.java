@@ -102,8 +102,8 @@ public class StorageNotification extends StorageEventListener {
 
         Slog.i(TAG, String.format("UMS connection changed to %s (media state %s)", connected, st));
 
-        if (connected && (st.equals(
-                Environment.MEDIA_REMOVED) || st.equals(Environment.MEDIA_CHECKING))) {
+	/* Environment.MEDIA_REMOVED is not work for internal storage, remove it */
+        if (connected && (st.equals(Environment.MEDIA_CHECKING))) {
             /*
              * No card or card being checked = don't display
              */
