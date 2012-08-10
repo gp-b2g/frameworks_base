@@ -129,7 +129,12 @@ public class StorageNotification extends StorageEventListener {
         Slog.i(TAG, String.format(
                 "Media {%s} state changed from {%s} -> {%s}", path, oldState, newState));
         if (newState.equals(Environment.MEDIA_SHARED)) {
+            /*
+             * If USB disconnected, should not show the notification.
+             * Enable Phone's SD storage.
+             */
             if(!UsbStorageActivity.mUsbIsConnected) {
+                mStorageManager.disableUsbMassStorage();
                 return;
             }
             /*
