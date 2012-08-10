@@ -527,4 +527,44 @@
     <apn carrier="Vivo MMS" apn="mms.vivo.com.br" mcc="724" mnc="06" user="vivo" server="" password="vivo" proxy="" port="" mmsproxy="200.142.130.104" mmsport="80" mmsc="http://termnat.vivomms.com.br:8088/mms" type="mms"/>
     <apn carrier="Vivo MMS" apn="mms.vivo.com.br" mcc="724" mnc="10" user="vivo" server="" password="vivo" proxy="" port="" mmsproxy="200.142.130.104"	mmsport="80" mmsc="http://termnat.vivomms.com.br:8088/mms" type="mms"/>
     <apn carrier="Vivo MMS" apn="mms.vivo.com.br" mcc="724" mnc="11" user="vivo" server="" password="vivo" proxy="" port="" mmsproxy="200.142.130.104"	mmsport="80" mmsc="http://termnat.vivomms.com.br:8088/mms" type="mms"/>
+    <!-- Indonesia -->
+    <apn carrier="Telkomsel GPRS" mcc="510" mnc="10" apn="telkomsel" user="wap" password="wap123" type="default"/>
+    <apn carrier="Telkomsel MMS" mcc="510" mnc="10" apn="mms" user="wap" password="wap123" mmsc="http://mms.telkomsel.com" mmsproxy="10.1.89.150" mmsport="8000" type="mms"/>
+    <apn carrier="Indosat GPRS" mcc="510" mnc="01" apn="indosatgprs" user="indosat" password="indosat" type="default"/>
+    <apn carrier="Indosat MMS" mcc="510" mnc="01" apn="indosatmms" user="indosat" password="indosat" mmsc="http://mmsc.indosat.com" mmsproxy="10.19.19.19" mmsport="8080" type="mms"/>
+    <apn carrier="XL GPRS" mcc="510" mnc="11" apn="www.xlgprs.net" user="xlgprs" password="proxl" type="default"/>
+    <apn carrier="XL MMS" mcc="510" mnc="11" apn="www.xlmms.net" user="xlgprs" password="proxl" mmsc="http://mmsc.xl.net.id/servlets/mms" mmsproxy="202.152.240.50" mmsport="8080" type="mms"/>
+    <apn carrier="3 GPRS" mcc="510" mnc="89" apn="3gprs" user="3gprs" password="3gprs" proxy="10.4.0.10" port="3128" type="default"/>
+    <apn carrier="3 MMS" mcc="510" mnc="89" apn="3mms" user="3mms" password="3mms" mmsc="http://mms.three.co.id" mmsproxy="10.4.0.10" mmsport="3128" type="mms"/>
+    <apn carrier="AXIS GPRS" mcc="510" mnc="08" apn="AXIS" user="axis" password="123456" type="default"/>
+    <apn carrier="AXIS MMS" mcc="510" mnc="08" apn="AXISmms" user="axis" password="123456" proxy="10.8.3.8" port="8080" mmsc="http://mmsc.AXIS" mmsproxy="10.8.3.8" mmsport="8080" type="mms"/>
+    <!-- Philippines -->
+    <apn carrier="GLOBE" mcc="515" mnc="02" apn="www.globe.com.ph" proxy="203.177.042.214" port="8080" type="default,supl"/>
+    <apn carrier="GLOBE MMS" mcc="515" mnc="02" apn="mms.globe.com.ph" mmsc="http://192.40.100.22:10021/mmsc" mmsproxy="192.40.100.20" mmsport="8080" type="mms"/>
+    <apn carrier="SMART GPRS" mcc="515" mnc="03" apn="Smart1" proxy="010.102.061.046" port="8080" type="default,supl"/>
+    <apn carrier="Smart Internet" mcc="515" mnc="03" apn="internet" proxy="010.102.061.046" port="8080"/>
+    <apn carrier="SMART MMS" mcc="515" mnc="03" apn="mms" mmsc="http://10.102.61.238:8002" mmsproxy="10.102.61.46" mmsport="8080" type="mms"/>
+    <apn carrier="SUN WAP GPRS" mcc="515" mnc="05" apn="wap" proxy="202.138.159.078" port="8080" type="default,supl"/>
+    <apn carrier="SUN MMS" mcc="515" mnc="05" apn="mms" mmsc="http://mmscenter.suncellular.com.ph" mmsproxy="202.138.159.78" mmsport="8080" type="mms"/>
+    <apn carrier="SUN WAP GPRS" mcc="515" mnc="18" apn="redmms" proxy="10.138.3.35" port="8080" type="default,supl"/>
+    <apn carrier="RED MOBILE MMS" mcc="515" mnc="18" apn="redmms" mmsc="http://10.102.61.193:8002/mmsc" mmsproxy="10.138.3.35" mmsport="8080" type="mms"/>
+    <!-- Thailand -->
+    <apn carrier="DTAC GPRS" mcc="520" mnc="18" apn="www.dtac.co.th" user="" password="" type="default,supl"/>
+    <apn carrier="DTAC MMS" mcc="520" mnc="18" apn="mms" user="" password="" mmsc="http://mms.dtac.co.th:8002" mmsproxy="203.155.200.133" mmsport="8080" type="mms"/>
+    <apn carrier="AIS GPRS" mcc="520" mnc="01" apn="internet" user="ais" password="ais" type="default,supl"/>
+    <apn carrier="AIS MMS" mcc="520" mnc="01" apn="multimedia" user="ais" password="ais" mmsc="http://mms.mobilelife.co.th" mmsproxy="203.170.229.034" mmsport="8080" type="mms"/>
+    <apn carrier="TRUE GPRS" mcc="520" mnc="99" apn="internet" user="true" password="true" type="default,supl"/>
+    <apn carrier="TRUE MMS" mcc="520" mnc="99" apn="mms" user="true" password="true" mmsc="http://mms.trueworld.net:8002" mmsproxy="010.004.007.039" mmsport="8080" type="mms"/>
+    <apn carrier="TOT3G" mcc="520" mnc="15" apn="internet" user="" password="" type="default,supl"/>
+    <!-- Vietname -->
+    <apn carrier="Mobifone" mcc="452" mnc="01" apn="m-wap" user="mms" type="default"/>
+    <apn carrier="Mobifone MMS" mcc="452" mnc="01" apn="m-i090" user="mms" mmsc="http://203.162.21.114/mmsc" mmsproxy="203.162.21.114" mmsport="3130" type="mms"/>
+    <apn carrier="Vinaphone" mcc="452" mnc="02" apn="m3-world" user="mms" type="default"/>
+    <apn carrier="Vinaphone MMS" mcc="452" mnc="02" apn="m3-mms" user="mms" password="mms" mmsc="http://mms.vinaphone.com.vn" mmsproxy="10.1.10.46" mmsport="8000" type="mms"/>
+    <apn carrier="Viettelmobile" mcc="452" mnc="04" apn="v-internet" type="default"/>
+    <apn carrier="Viettelmobile MMS" mcc="452" mnc="04" apn="v-mms" mmsc="http://mms.viettelmobile.com.vn/mms/wapenc" mmsproxy="192.168.233.10" mmsport="8080" type="mms"/>
+    <apn carrier="Vietnamobile" mcc="452" mnc="05" apn="internet" type="default"/>
+    <apn carrier="Vietnamobile MMS" mcc="452" mnc="05" apn="mms" mmsc="http://10.10.128.58/servlets/mms" mmsproxy="10.10.128.44" mmsport="8080" type="mms"/>
+    <apn carrier="BeeLine" mcc="452" mnc="07" user="mms" apn="internet" type="default"/>
+    <apn carrier="Beeline MMS" mcc="452" mnc="07" apn="mms" user="mms" password="mms" mmsc="http://mms" mmsproxy="10.16.70.199" mmsport="8080" type="mms"/>
 </apns>
