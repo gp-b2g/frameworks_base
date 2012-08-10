@@ -585,6 +585,23 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 mSocket = s;
                 Log.i(LOG_TAG, "Connected to '" + rilSocket + "' socket");
 
+                    String str = (mInstanceId == null || mInstanceId == 0) ? "SUB1" : "SUB2";
+
+                    // It's possible that RIL(2) connects before RIL(1).
+                    // In such cases, rild should be able to identify
+                    // the mismatch in client id and update accordingly.
+                    // RIL sends the subscription data as string ("SUB1"/"SUB2")
+                    // to avoid cross connection at socket level.
+                    Log.i(LOG_TAG, "Sending  SUB data : " + str);
+                    byte[] data = str.getBytes();
+                    try {
+                        mSocket.getOutputStream().write(data);
+                        Log.i(LOG_TAG, "Data sent!!");
+                    } catch (IOException ex) {
+                        Log.e(LOG_TAG, "IOException", ex);
+                    } catch (RuntimeException exc) {
+                        Log.e(LOG_TAG, "Uncaught exception ", exc);
+                    }
                 int length = 0;
                 try {
                     InputStream is = mSocket.getInputStream();
