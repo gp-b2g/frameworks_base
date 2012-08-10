@@ -592,7 +592,8 @@ class MountService extends IMountService.Stub
 
         Slog.d(TAG, "volume state changed for " + path + " (" + oldState + " -> " + state + ")");
 
-        if (path.equals(mExternalStoragePath)) {
+        //external storage may not be primary volume
+        if (path.equals(mExternalStoragePath) || isExternalStorage(path)) {
             // Update state on PackageManager, but only of real events
             if (!mEmulateExternalStorage) {
                 if (Environment.MEDIA_UNMOUNTED.equals(state)) {
