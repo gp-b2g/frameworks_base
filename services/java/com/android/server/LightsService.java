@@ -64,6 +64,9 @@ public class LightsService  extends ILightService.Stub {
     private final Light mLights[] = new Light[LIGHT_ID_COUNT];
 
     public final String PERSIST_BUTTON_LIGHT_TIMEOUT = "persist.sys.timeout.light.but";
+    private final String HW_PLATFORM = "ro.hw_platform";
+    private final String HW_PLATFORM_SKU5 = "msm8x25_sku5";
+    private boolean mButtonLightExist = false;
     public final int BUTTON_LIGHT_TIMEOUT_DEFAULT = 1500;
     private int mButtonLightTimeout = BUTTON_LIGHT_TIMEOUT_DEFAULT;
     private final int MSG_BUTTON_LIGHT_TIMEOUT = 1;
@@ -76,15 +79,22 @@ public class LightsService  extends ILightService.Stub {
     private static final int DEF_BUTTON_LIGHT_BRIGHTNESS = 2;
     private int mButtonBrightness = DEF_BUTTON_LIGHT_BRIGHTNESS;
 
+
+    public boolean buttonLightExist() {
+        return mButtonLightExist;
+    }
+
     public void turnOnButtonLight() {
         setBrightnessButtonLight(mButtonBrightness);
     }
 
     public void setBrightnessButtonLight(int brightness) {
-        if(mButtonLightEnable) {
-            getLight(LIGHT_ID_BUTTONS).setBrightness(brightness);
-        } else {
-            getLight(LIGHT_ID_BUTTONS).setBrightness(0);
+        if(buttonLightExist()) {
+            if(mButtonLightEnable) {
+                getLight(LIGHT_ID_BUTTONS).setBrightness(brightness);
+            } else {
+                getLight(LIGHT_ID_BUTTONS).setBrightness(0);
+            }
         }
     }
 
@@ -241,6 +251,13 @@ public class LightsService  extends ILightService.Stub {
                 }
             }
         };
+
+        String hw_platform = SystemProperties.get(HW_PLATFORM);
+        if(hw_platform != null && hw_platform.equals(HW_PLATFORM_SKU5)) {
+            mButtonLightExist = true;
+        } else {
+            mButtonLightExist = false;
+        }
 
         mContext.getContentResolver().registerContentObserver(
             BUTTON_LIGHT_ENABLE_URI, true,
