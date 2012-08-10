@@ -749,19 +749,35 @@ void MediaPlayer::died()
 
 }
 
-bool MediaPlayer::initRender() {
-    LOGV("MediaPlayer::initRender");
+bool MediaPlayer::suspend() {
+    LOGV("MediaPlayer::suspend");
     Mutex::Autolock _l(mLock);
     if (mPlayer == 0) {
         LOGE("mPlay = 0");
         return false;
     }
-    bool temp = false;
-    status_t ret = mPlayer->initRender(&temp);
+
+    status_t ret = mPlayer->suspend();
     if (OK != ret) {
-        LOGE("MediaPlayer::initRender return with error ret=%d, temp=%d",ret,temp);
+        LOGE("MediaPlayer::suspend return with error ret=%d", ret);
         return false;
     }
-    return temp;
+    return true;
+}
+
+bool MediaPlayer::resume() {
+    LOGV("MediaPlayer::resume");
+    Mutex::Autolock _l(mLock);
+    if (mPlayer == 0) {
+        LOGE("mPlay = 0");
+        return false;
+    }
+
+    status_t ret = mPlayer->resume();
+    if (OK != ret) {
+        LOGE("MediaPlayer::resume return with error ret=%d", ret);
+        return false;
+    }
+    return true;
 }
 }; // namespace android

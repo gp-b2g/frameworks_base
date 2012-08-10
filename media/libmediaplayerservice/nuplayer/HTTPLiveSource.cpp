@@ -44,7 +44,8 @@ NuPlayer::HTTPLiveSource::HTTPLiveSource(
       mFinalResult(OK),
       mOffset(0),
       mCurrentPlayingTime(-1),
-      mNewSeekTime(-1) {
+      mNewSeekTime(-1),
+      mSeekDoneNotify(NULL) {
     if (headers) {
         mExtraHeaders = *headers;
 
@@ -197,6 +198,11 @@ status_t NuPlayer::HTTPLiveSource::seekTo(int64_t seekTimeUs) {
 
     mNewSeekTime = newSeekTime;
 
+    if (mSeekDoneNotify != NULL) {
+        sp<AMessage> notify = mSeekDoneNotify->dup();
+        notify->post();
+    }
+
     return OK;
 }
 
@@ -211,6 +217,11 @@ bool NuPlayer::HTTPLiveSource::isSeekable() {
 status_t NuPlayer::HTTPLiveSource::getNewSeekTime(int64_t *newSeek) {
     *newSeek = mNewSeekTime;
     return OK;
+}
+
+bool NuPlayer::HTTPLiveSource::setCbfForSeekDone(const sp<AMessage> &notify) {
+    mSeekDoneNotify = notify;
+    return true;
 }
 
 }  // namespace android

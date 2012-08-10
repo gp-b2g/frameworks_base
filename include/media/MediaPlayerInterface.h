@@ -145,7 +145,8 @@ public:
     virtual player_type playerType() = 0;
     virtual status_t    setParameter(int key, const Parcel &request) = 0;
     virtual status_t    getParameter(int key, Parcel *reply) = 0;
-    virtual bool        initRender() {return false;}
+    virtual status_t    suspend() {return UNKNOWN_ERROR;}
+    virtual status_t    resume() {return UNKNOWN_ERROR;}
 
     // Invoke a generic method on the player by using opaque parcels
     // for the request and reply.

@@ -56,7 +56,8 @@ enum {
     SET_VIDEO_SURFACETEXTURE,
     SET_PARAMETER,
     GET_PARAMETER,
-    INIT_RENDER,
+    SUSPEND,
+    RESUME,
 };
 
 class BpMediaPlayer: public BpInterface<IMediaPlayer>
@@ -293,12 +294,19 @@ public:
         return remote()->transact(GET_PARAMETER, data, reply);
     }
 
-    status_t initRender(bool* state)
+    status_t suspend()
     {
         Parcel data, reply;
         data.writeInterfaceToken(IMediaPlayer::getInterfaceDescriptor());
-        remote()->transact(INIT_RENDER, data, &reply);
-        *state = reply.readInt32();
+        remote()->transact(SUSPEND, data, &reply);
+        return reply.readInt32();
+    }
+
+    status_t resume()
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IMediaPlayer::getInterfaceDescriptor());
+        remote()->transact(RESUME, data, &reply);
         return reply.readInt32();
     }
 
@@ -470,11 +478,15 @@ status_t BnMediaPlayer::onTransact(
             CHECK_INTERFACE(IMediaPlayer, data, reply);
             return getParameter(data.readInt32(), reply);
         } break;
-        case INIT_RENDER: {
+        case SUSPEND: {
             CHECK_INTERFACE(IMediaPlayer, data, reply);
-            bool state;
-            status_t ret = initRender(&state);
-            reply->writeInt32(state);
+            status_t ret = suspend();
+            reply->writeInt32(ret);
+            return NO_ERROR;
+        } break;
+        case RESUME: {
+            CHECK_INTERFACE(IMediaPlayer, data, reply);
+            status_t ret = resume();
             reply->writeInt32(ret);
             return NO_ERROR;
         } break;

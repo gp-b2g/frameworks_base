@@ -1384,6 +1384,17 @@ void AwesomePlayer::shutdownVideoDecoder_l() {
     LOGV("video decoder shutdown completed");
 }
 
+void AwesomePlayer::shutdownAudioDecoder_l() {
+    mAudioSource->pause();
+    mAudioPlayer->pause();
+
+    wp<MediaSource> tmp = mAudioSource;
+    mAudioSource.clear();
+    mTimeSource = NULL;
+    delete mAudioPlayer;
+    mAudioPlayer = NULL;
+}
+
 status_t AwesomePlayer::setNativeWindow_l(const sp<ANativeWindow> &native) {
 
     if (isPostProcEnabled()) {
@@ -2820,16 +2831,41 @@ void AwesomePlayer::modifyFlags(unsigned value, FlagMode mode) {
     }
 }
 
-bool AwesomePlayer::initRender(){
-    LOGV("initRender");
-    initRenderer_l();
-    if (mVideoBuffer != NULL){
-        LOGV("will render the buffer before suspend");
-        mVideoRenderer->render(mVideoBuffer);
+status_t AwesomePlayer::suspend() {
+    if (mVideoSource == NULL) {
+        return OK;
     }
-    return true;
+
+    pause_l();
+
+    modifyFlags(AUDIOPLAYER_STARTED, CLEAR);
+
+    shutdownAudioDecoder_l();
+
+    mVideoRenderer.clear();
+    mVideoRenderer = NULL;
+    shutdownVideoDecoder_l();
+
+    return OK;
 }
 
+status_t AwesomePlayer::resume() {
+	if (mVideoTrack != NULL && mVideoSource == NULL) {
+        status_t err = initVideoDecoder();
+        if (err != OK) {
+            return err;
+        }
+    }
+
+    if (mAudioTrack != NULL && mAudioSource == NULL) {
+        status_t err = initAudioDecoder();
+        if (err != OK) {
+            return err;
+        }
+    }
+
+    return OK;
+}
 //Statistics profiling
 void AwesomePlayer::logStatistics() {
     const char *mime;

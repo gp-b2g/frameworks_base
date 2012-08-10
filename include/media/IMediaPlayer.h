@@ -89,7 +89,8 @@ public:
     virtual status_t        getMetadata(bool update_only,
                                         bool apply_filter,
                                         Parcel *metadata) = 0;
-    virtual status_t        initRender(bool* state) = 0;
+    virtual status_t        suspend() = 0;
+    virtual status_t        resume() = 0;
 };
 
 // ----------------------------------------------------------------------------

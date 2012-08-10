@@ -186,9 +186,14 @@ status_t StagefrightPlayer::getParameter(int key, Parcel *reply) {
     return mPlayer->getParameter(key, reply);
 }
 
-bool StagefrightPlayer::initRender() {
-    LOGV("initRender");
-    return mPlayer->initRender();
+status_t StagefrightPlayer::suspend() {
+    LOGV("suspend");
+    return mPlayer->suspend();
+}
+
+status_t StagefrightPlayer::resume() {
+    LOGV("resume");
+    return mPlayer->resume();
 }
 
 status_t StagefrightPlayer::getMetadata(

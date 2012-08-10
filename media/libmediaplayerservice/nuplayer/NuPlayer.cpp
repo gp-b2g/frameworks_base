@@ -554,7 +554,7 @@ void NuPlayer::onMessageReceived(const sp<AMessage> &msg) {
             LOGV("kWhatSeek seekTimeUs=%lld us (%.2f secs)",
                  seekTimeUs, seekTimeUs / 1E6);
 
-            mSource->setCbfForSeekDone(new AMessage(kWhatSeekDone, id()));
+            bool bSeekDoneCbf = mSource->setCbfForSeekDone(new AMessage(kWhatSeekDone, id()));
             nRet = mSource->seekTo(seekTimeUs);
 
             if (mLiveSourceType == kHttpLiveSource) {
@@ -611,6 +611,9 @@ void NuPlayer::onMessageReceived(const sp<AMessage> &msg) {
             }
 
             mSeeking = true;
+            if (!bSeekDoneCbf) {
+                (new AMessage(kWhatSeekDone, id()))->post();
+            }
             if (mDriver != NULL) {
                 sp<NuPlayerDriver> driver = mDriver.promote();
                 if (driver != NULL) {

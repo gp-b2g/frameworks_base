@@ -2038,5 +2038,9 @@ public class MediaPlayer
     /**
      * @hide pending API council
      */
-    public native boolean initRender();
+    public native boolean suspend();
+    /**
+     * @hide pending API council
+     */
+    public native boolean resume();
 }

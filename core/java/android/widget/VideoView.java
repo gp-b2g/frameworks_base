@@ -65,15 +65,14 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     private static final int STATE_PLAYBACK_COMPLETED = 5;
     private static final int STATE_SUSPEND            = 6;
     private static final int STATE_RESUME             = 7;
-    private static final int STATE_SUSPEND_UNSUPPORTED = 8;
 
     //Framework Type, URI decided.
-    private static final int URI_HTTP     = 1;
-    private static final int URI_RTSP     = 2;
-    private static final int URI_HTTPLIVE = 3;
-    private static final int URI_HTTPDASH = 4;
-    private static final int URI_CONTENT  = 5;
-    private static final int URI_OTHER    = 6;
+    private static final int URI_LOCAL_FILE    = 0;
+    private static final int URI_HTTP          = 1;
+    private static final int URI_RTSP          = 2;
+    private static final int URI_HTTPLIVE      = 3;
+    private static final int URI_HTTPDASH      = 4;
+    private static final int URI_OTHER         = 5;
 
     // mCurrentState is a VideoView object's current state.
     // mTargetState is the state that a method caller intends to reach.
@@ -82,6 +81,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     // of STATE_PAUSED.
     private int mCurrentState = STATE_IDLE;
     private int mTargetState  = STATE_IDLE;
+    private int mStateWhenSuspended = STATE_IDLE;       //state before calling suspend()
 
     // All the stuff we need for playing and showing a video
     private SurfaceHolder mSurfaceHolder = null;
@@ -102,7 +102,6 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     private boolean     mCanSeekBack;
     private boolean     mCanSeekForward;
     private int         m3DAttributes;
-    private int         mStateWhenSuspended;       //state before calling suspend()
     private VideoViewReceiver mReceiver = null;
 
     public VideoView(Context context) {
@@ -193,6 +192,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
         requestFocus();
         mCurrentState = STATE_IDLE;
         mTargetState  = STATE_IDLE;
+        mStateWhenSuspended = STATE_IDLE;
     }
 
     private final class VideoViewReceiver extends BroadcastReceiver {
@@ -201,15 +201,13 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
             if (action == null) {
                 return;
             } else if (action.equals("android.media.videoview.BACKTOHOME")) {
-                if (getURIType(mUri) != URI_CONTENT && getURIType(mUri) != URI_HTTP) {
-                    release(true);
-                }
-
+                //Press Home Key
                 if (mReceiver != null){
                     mContext.unregisterReceiver(mReceiver);
                     mReceiver = null;
                 }
             } else if(action.equals("android.intent.action.USER_PRESENT")) {
+                //Unlock the Screen
                 if (mMediaPlayer != null && mTargetState == STATE_PLAYING) {
                     start();
                 }
@@ -244,6 +242,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
             mMediaPlayer = null;
             mCurrentState = STATE_IDLE;
             mTargetState  = STATE_IDLE;
+            mStateWhenSuspended = STATE_IDLE;
         }
     }
 
@@ -317,7 +316,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
             } else if (scheme.startsWith("rtsp://")) {
                 return URI_RTSP;
             } else if (scheme.startsWith("content://")) {
-                return URI_CONTENT;
+                return URI_LOCAL_FILE;
             }
         }
         return URI_OTHER;
@@ -385,7 +384,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
                     // We didn't actually change the size (it was already at the size
                     // we need), so we won't get a "surface changed" callback, so
                     // start the video here instead of in the callback.
-                    if (mTargetState == STATE_PLAYING) {
+                    if (mStateWhenSuspended == STATE_IDLE && mTargetState == STATE_PLAYING) {
                         start();
                         if (mMediaController != null) {
                             mMediaController.show();
@@ -564,27 +563,10 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
                 mContext.registerReceiver(mReceiver,filter);
             }
 
-            if (mMediaPlayer != null) {
-                int uriType = getURIType(mUri);
-                if (mCurrentState == STATE_PAUSED && mTargetState == STATE_SUSPEND) {
-                    switch (uriType) {
-                        case URI_HTTP:
-                        case URI_CONTENT:
-                            mMediaPlayer.setDisplay(mSurfaceHolder);
-                            //mMediaPlayer.initRender();
-                            mTargetState = mStateWhenSuspended;
-                            return;
-                        case URI_RTSP:
-                        case URI_HTTPLIVE:
-                        case URI_HTTPDASH:
-                            //TO DO
-                            break;
-                        case URI_OTHER:
-                            break;
-                        default:
-                            break;
-                    }
-                }
+            if (mMediaPlayer != null && getURIType(mUri) == URI_HTTP && mTargetState == STATE_SUSPEND) {
+                mMediaPlayer.setDisplay(mSurfaceHolder);
+                mTargetState = mStateWhenSuspended;
+                return;
             }
             openVideo();
         }
@@ -601,10 +583,8 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
                 mReceiver = null;
             }
 
-            if (getURIType(mUri) == URI_HTTP || getURIType(mUri) == URI_CONTENT) {
-                if (mCurrentState == STATE_PAUSED && mTargetState == STATE_SUSPEND) {
-                    return;
-                }
+            if (getURIType(mUri) == URI_HTTP && mTargetState == STATE_SUSPEND) {
+                return;
             }
             release(true);
         }
@@ -710,62 +690,37 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
     }
 
     public void suspend() {
-/*
-        int uriType = getURIType(mUri);
-        if (mCurrentState != STATE_PREPARING) {
-            switch (uriType) {
-                case URI_HTTP:
-                case URI_CONTENT:
-                    mStateWhenSuspended = mTargetState;
-                    pause();
-                    mTargetState = STATE_SUSPEND;
-                    return;
-                case URI_RTSP:
-                case URI_HTTPLIVE:
-                case URI_HTTPDASH:
-                    //TO DO
-                    break;
-                case URI_OTHER:
-                    break;
-                default:
-                    break;
+        if (mCurrentState == STATE_PAUSED || mCurrentState == STATE_PLAYING) {
+            mStateWhenSuspended = mCurrentState;
+        }
+
+        //for http streaming, just release the codec, not the whole player
+        if (mCurrentState != STATE_PREPARING && getURIType(mUri) == URI_HTTP && mMediaPlayer != null) {
+            if (mMediaPlayer.suspend()) {
+                mTargetState = STATE_SUSPEND;
+                return;
             }
         }
-*/
+
         //default operation
         if(mSeekWhenPrepared == 0) {
-          mSeekWhenPrepared = getCurrentPosition();
+            mSeekWhenPrepared = getCurrentPosition();
         }
         Log.v(TAG, "suspend( ) - will resume at " + mSeekWhenPrepared);
         release(false);
     }
 
     public void resume() {
-/*
-        if (mMediaPlayer != null) {
-            int uriType = getURIType(mUri);
-            switch (uriType) {
-                case URI_HTTP:
-                case URI_CONTENT:
-                    if (mCurrentState == STATE_PAUSED && mTargetState == STATE_SUSPEND){
-                        if (mSurfaceHolder != null) {
-                            mTargetState = (mStateWhenSuspended == STATE_PLAYING) ? STATE_PLAYING : STATE_PAUSED;
-                        }
-                        return;
-                    }
-                    break;
-                case URI_RTSP:
-                case URI_HTTPLIVE:
-                case URI_HTTPDASH:
-                    //TO DO
-                    break;
-                case URI_OTHER:
-                    break;
-                default:
-                    break;
+        //http source configure the new decoder, and resuem to play
+        if (mMediaPlayer != null && getURIType(mUri) == URI_HTTP) {
+            if (mTargetState == STATE_SUSPEND && mSurfaceHolder != null) {
+                if (mMediaPlayer.resume()) {
+                    mTargetState = (mStateWhenSuspended == STATE_PLAYING) ? STATE_PLAYING : STATE_PAUSED;
+                    return;
+                }
             }
         }
-*/
+
         //default operation
         openVideo();
     }
