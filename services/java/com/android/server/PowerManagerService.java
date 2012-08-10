@@ -242,6 +242,7 @@ public class PowerManagerService extends IPowerManager.Stub
     private int mLightDarkThreshold = DEF_DARK_THRESHOLD_IF_UNAVAILABLE;
     private int mLightBrightThreshold = DEF_BRIGHT_THRESHOLD_IF_UNAVAILABLE;
     private int mButtonLightBrightness = DEF_BUTTON_LIGHT_BRIGHTNESS;
+    private boolean mLightSensorStateChange = false;
     private int mLightSensorValue = -1;
     private int mLightSensorValuePre = -1;
     private boolean mProxIgnoredBecauseScreenTurnedOff = false;
@@ -1625,6 +1626,13 @@ public class PowerManagerService extends IPowerManager.Stub
                     }
 
                     if (mContext != null && ActivityManagerNative.isSystemReady()) {
+                        // Before send the turn off intent, disable the light sensor.
+                        if(mLightSensorEnabled) {
+                            mLightSensorStateChange = true;
+                            enableLightSensorLocked(false, LS_FOR_BUTTON_LIGHT);
+                        } else {
+                            mLightSensorStateChange = false;
+                        }
                         mContext.sendOrderedBroadcast(mScreenOffIntent, null,
                                 mScreenOffBroadcastDone, mHandler, 0, null, null);
                     } else {
@@ -1962,6 +1970,9 @@ public class PowerManagerService extends IPowerManager.Stub
                     }
                     if (reallyTurnScreenOn) {
                         err = setScreenStateLocked(true);
+                        if(mLightSensorStateChange) {
+                            enableLightSensorLocked(true, LS_FOR_BUTTON_LIGHT);
+                        }
                         long identity = Binder.clearCallingIdentity();
                         try {
                             mBatteryStats.noteScreenBrightness(getPreferredBrightness());
@@ -2885,8 +2896,8 @@ public class PowerManagerService extends IPowerManager.Stub
             if (!enabled) {
                 // cancel timeout and clear mUserState so the keyguard can set a short timeout
                 setTimeoutLocked(SystemClock.uptimeMillis(), 0);
-            } else {
-                // key-guard is unlocked. Tunr on button back-light
+            } else if(isScreenOn()){
+                // key-guard is diabled and screen is on. Tunr on button back-light
                 mLightsService.turnOnButtonLightOneShot();
             }
         }
@@ -3242,6 +3253,11 @@ public class PowerManagerService extends IPowerManager.Stub
         if (mDebugLightSensor) {
             Slog.d(TAG, "enableLightSensorLocked enable=" + enable
                     + " mAutoBrightessEnabled=" + mAutoBrightessEnabled);
+        }
+        if(!mLightsService.buttonLightExist()
+                && LS_FOR_BUTTON_LIGHT == reason) {
+            // Do nothing because light sensor doesn't exist.
+            return;
         }
         boolean autoEnabledBefore = LS_FOR_AUTO_BRIGHT ==
                 (LS_FOR_AUTO_BRIGHT & mLightEnableReason);
