@@ -34,15 +34,23 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.Registrant;
 import android.preference.PreferenceManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.provider.Settings;
+import android.security.IMessageToken;
+import android.security.ISecurityManager;
+import android.security.SecurityManager;
+import android.security.SecurityManagerNative;
+import android.security.SecurityResult;
 import android.telephony.SmsMessage;
 import android.telephony.ServiceState;
 import android.util.Log;
@@ -56,6 +64,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 
 import com.android.internal.R;
@@ -66,6 +75,88 @@ import static android.telephony.SmsManager.RESULT_ERROR_NULL_PDU;
 import static android.telephony.SmsManager.RESULT_ERROR_RADIO_OFF;
 import static android.telephony.SmsManager.RESULT_ERROR_LIMIT_EXCEEDED;
 import static android.telephony.SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE;
+
+class SmsSendRequest implements SmsRequest {
+        static int sNextSerial = 0;
+        static Object sSerialMonitor = new Object();
+
+        int mSerial;
+        String destAddr;
+        String scAddr;
+        List<String> parts;
+        List<PendingIntent> sentIntents;
+        List<PendingIntent> deliveryIntents;
+        boolean isMultiText;
+        SMSDispatcher dispatcher; 
+
+        static SmsSendRequest obtain(String destAddr, String scAddr, List<String> parts,
+                List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents, SMSDispatcher dispatcher) {
+            SmsSendRequest ssr = null;
+            ssr = new SmsSendRequest();
+            synchronized(sSerialMonitor) {
+                ssr.mSerial = sNextSerial++;
+            }
+            ssr.destAddr = destAddr;
+            ssr.scAddr = scAddr;
+            ssr.parts = parts;
+            ssr.sentIntents = sentIntents;
+            ssr.deliveryIntents = deliveryIntents;
+            ssr.isMultiText = true;
+            ssr.dispatcher = dispatcher;
+            return ssr;
+        }
+
+        static SmsSendRequest obtain(String destAddr, String scAddr, String text,
+                PendingIntent sentIntent, PendingIntent deliveryIntent, SMSDispatcher dispatcher) {
+            SmsSendRequest ssr = null;
+            ssr = new SmsSendRequest();
+            synchronized(sSerialMonitor) {
+                ssr.mSerial = sNextSerial++;
+            }
+            ssr.destAddr = destAddr;
+            ssr.scAddr = scAddr;
+            ssr.parts = new ArrayList<String>(1);
+            ssr.sentIntents = new ArrayList<PendingIntent>(1);
+            ssr.deliveryIntents = new ArrayList<PendingIntent>(1);
+            ssr.parts.add(text);
+            ssr.sentIntents.add(sentIntent);
+            ssr.deliveryIntents.add(deliveryIntent);
+            ssr.isMultiText = false;
+            ssr.dispatcher = dispatcher;
+            return ssr;
+        }
+
+        private SmsSendRequest() {
+        }
+}
+
+class SmsReceiveRequest implements SmsRequest{
+        static int sNextSerial = 0;
+        static Object sSerialMonitor = new Object();
+
+        int mSerial;
+        Intent intent;
+        String permission;
+        SMSDispatcher dispatcher;
+
+        static SmsReceiveRequest obtain(Intent intent, String permission, SMSDispatcher dispatcher) {
+            SmsReceiveRequest srr = null;
+            srr = new SmsReceiveRequest();
+            synchronized(sSerialMonitor) {
+                srr.mSerial = sNextSerial++;
+            }
+            srr.intent = intent;
+            srr.permission = permission;
+            srr.dispatcher = dispatcher;
+            return srr;
+        }
+
+        private SmsReceiveRequest() {
+        }
+}
+
+interface SmsRequest {
+}
 
 public abstract class SMSDispatcher extends Handler {
     static final String TAG = "SMS";    // accessed from inner class
@@ -146,6 +237,14 @@ public abstract class SMSDispatcher extends Handler {
 
     static final protected int EVENT_UPDATE_ICC_MWI = 20;
 
+    static final protected int EVENT_SEND_SMS_CHECK_TIMEOUT = 21;
+
+    static final protected int EVENT_RECEIVE_SMS_CHECK_TIMEOUT = 22;
+
+    static final protected int SEND_SMS_CHECK_TIMEOUT = 2000;   // ms
+
+    static final protected int RECEIVE_SMS_CHECK_TIMEOUT = 2000;    // ms
+
     /** Must be static as they are referenced by 3 derived instances, Ims/Cdma/GsmSMSDispatcher */
     /** true if IMS is registered, false otherwise.*/
     static protected boolean mIms = false;
@@ -214,10 +313,87 @@ public abstract class SMSDispatcher extends Handler {
     private ArrayList<SmsTracker> mPendingMessagesList;
     private boolean mSyncronousSending;
 
+    private static ISecurityManager mSm;
+    private static HashMap<Integer, SmsRequest> mSmsRequestsList;
+
+    private static boolean mInterceptSending = false;
+    private static boolean mInterceptReceived = false;
+
     protected static int getNextConcatenatedRef() {
         sConcatenatedRef += 1;
         return sConcatenatedRef;
     }
+
+    private static IMessageToken mCallback = new IMessageToken.Stub() {
+        /**
+        * Called when the service has a new message to be checked.
+        */
+        public int onInterceptMessage(int ident, int action) {
+            Log.d(TAG, "onInterceptMessage - ident: " + ident + ", action: " + action);
+            int result = SecurityResult.INTERCPET_MESSAGE_DUPLICATE;
+            SmsRequest request = null;
+            synchronized(mSmsRequestsList) {
+                request = mSmsRequestsList.get(ident);
+                if (request != null) {
+                    Log.d(TAG, "find sms request: " + request + ", remove it from list.");
+                    mSmsRequestsList.remove(ident);
+                }
+            }
+            Log.d(TAG, "onInterceptMessage - find request: " + request);
+            if (request != null) {
+                if (action == SecurityManager.ACTION_MESSAGE_PASS) {
+                    Log.d(TAG, "Pass sms request: " + request);
+                    if (request instanceof SmsSendRequest) {
+                        Log.d(TAG, "handle sms send request: " + request);
+                        SmsSendRequest ssr = (SmsSendRequest) request;
+                        ssr.dispatcher.handleSmsSendRequest(ssr);
+                        result =  SecurityResult.INTERCEPT_MESSAGE_SUCCESS;
+                    } else if (request instanceof SmsReceiveRequest) {
+                        Log.d(TAG, "dispatch sms receive request: " + request);
+                        SmsReceiveRequest srr = (SmsReceiveRequest) request;
+                        srr.dispatcher.dispatchDirectly(srr.intent, srr.permission);
+                        result =  SecurityResult.INTERCEPT_MESSAGE_SUCCESS;
+                    }
+                } else if (action == SecurityManager.ACTION_MESSAGE_BLOCK){
+                    Log.d(TAG, "Block sms request: " + request);
+                    result = SecurityResult.INTERCEPT_MESSAGE_SUCCESS;
+                }
+            }
+            Log.d(TAG, "onInterceptMessage - result: " + result);
+            return result;
+        }
+
+        /**
+        * Called when the sending message monitor service should be enabled
+        */
+        public void onEnableSendingMessageIntercept() {
+            Log.d(TAG, "enable sending message");
+            mInterceptSending = true;
+        }
+
+        /**
+        * Called when the sending message monitor service should be disabled
+        */
+        public void onDisableSendingMessageIntercept() {
+            Log.d(TAG, "disable sending message");
+            mInterceptSending = false;
+        }
+
+        /**
+        * Called when the recevied message monitor service should be enabled
+        */
+        public void onEnableReceivedMessageIntercept() {
+            Log.d(TAG, "enable received message");
+            mInterceptReceived = true;
+        }
+
+        /**
+            * Called when the received message monitor service should be disabled
+            */
+        public void onDisableReceivedMessageIntercept() {
+            mInterceptReceived = false;
+        }
+    };
 
     /**
      * Create a new SMS dispatcher.
@@ -252,6 +428,19 @@ public abstract class SMSDispatcher extends Handler {
                 + " mSmsSendDisabled=" + mSmsSendDisabled);
         mUiccManager = UiccManager.getInstance();
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
+    }
+
+    protected static void initSecurityCheck() {
+        mSm = SecurityManagerNative.getDefault();
+        mSmsRequestsList = new HashMap<Integer, SmsRequest>();
+        if (mSm != null) {
+            try {
+                mSm.applyMessageToken(mCallback);
+            } catch (RemoteException e) {
+                Log.e(TAG, "applyMessageToken error. Reset SecurityManager to null!");
+                mSm = null;
+            }
+        }
     }
 
     protected void updatePhoneObject(Phone phone) {
@@ -416,6 +605,43 @@ public abstract class SMSDispatcher extends Handler {
                 storeVoiceMailCount();
             }
             break;
+
+        case EVENT_SEND_SMS_CHECK_TIMEOUT:
+            int ident = msg.arg1;
+            Log.d(TAG, "EVENT_SEND_SMS_CHECK_TIMEOUT - ident: " + ident);
+            SmsRequest sendRequest = null;
+            synchronized (mSmsRequestsList) {
+                sendRequest = mSmsRequestsList.get(ident);
+                if (sendRequest != null) {
+                    mSmsRequestsList.remove(ident);
+                }
+            }
+            if (sendRequest != null) {
+                Log.d(TAG, "EVENT_RECEIVE_SMS_CHECK_TIMEOUT - ident: " + ident + ", send request: " + sendRequest);
+                handleSmsSendRequest((SmsSendRequest) sendRequest);
+            } else {
+                Log.d(TAG, "No sending sms found for ident " + ident);
+            }
+            break;
+
+        case EVENT_RECEIVE_SMS_CHECK_TIMEOUT:
+            ident = msg.arg1;
+            Log.d(TAG, "EVENT_RECEIVE_SMS_CHECK_TIMEOUT - ident: " + ident);
+            SmsRequest receiveRequest = null;
+            synchronized (mSmsRequestsList) {
+                receiveRequest = mSmsRequestsList.get(ident);
+                if (receiveRequest != null) {
+                    mSmsRequestsList.remove(receiveRequest);
+                }
+            }
+            if (receiveRequest != null) {
+                Log.d(TAG, "EVENT_RECEIVE_SMS_CHECK_TIMEOUT - ident: " + ident + ", receive request: " + receiveRequest);
+                SmsReceiveRequest srr = (SmsReceiveRequest) receiveRequest;
+                dispatchDirectly(srr.intent, srr.permission);
+            } else {
+                Log.d(TAG, "No received sms found for ident " + ident);
+            }
+            break;
         }
     }
 
@@ -434,11 +660,52 @@ public abstract class SMSDispatcher extends Handler {
      * @param permission Receivers are required to have this permission
      */
     void dispatch(Intent intent, String permission) {
+        // If we should take security check, we will send the request to SecurityManagerService and return directly.
+        if (mSm != null && mInterceptReceived) {
+            dispatchToBeChecked(intent, permission);
+            return;
+        }
+
         // Hold a wake lock for WAKE_LOCK_TIMEOUT seconds, enough to give any
         // receivers time to take their own wake locks.
         mWakeLock.acquire(WAKE_LOCK_TIMEOUT);
         mContext.sendOrderedBroadcast(intent, permission, mResultReceiver,
                 this, Activity.RESULT_OK, null, null);
+    }
+
+    protected void dispatchDirectly(Intent intent, String permission) {
+        // Hold a wake lock for WAKE_LOCK_TIMEOUT seconds, enough to give any
+        // receivers time to take their own wake locks.
+        mWakeLock.acquire(WAKE_LOCK_TIMEOUT);
+        mContext.sendOrderedBroadcast(intent, permission, mResultReceiver,
+                this, Activity.RESULT_OK, null, null);
+    }
+
+    protected void dispatchToBeChecked(Intent intent, String permission) {
+        Bundle message = createMessageBundle(intent, ISecurityManager.MESSAGE_RECEIVED);
+        int errorCode = SecurityResult.REMOTE_ERROR;
+        try {
+            synchronized (mSmsRequestsList) {
+                Bundle result = mSm.sendMessageToBeChecked(message);
+                errorCode = result.getInt(ISecurityManager.BROADCAST_RESULT, SecurityResult.REMOTE_ERROR);
+                if (errorCode == SecurityResult.REMOTE_NO_ERROR) {
+                    int ident = result.getInt(ISecurityManager.MESSAGE_IDENT_KEY);
+                    Log.d(TAG, "dispatchToBeChecked - ident: " + ident);
+                    SmsRequest request = SmsReceiveRequest.obtain(intent, permission, this);
+                    mSmsRequestsList.put(ident, request);
+                    sendMessageDelayed(
+                        obtainMessage(EVENT_RECEIVE_SMS_CHECK_TIMEOUT, ident, 0), RECEIVE_SMS_CHECK_TIMEOUT);
+                }
+            }
+            if (errorCode != SecurityResult.REMOTE_NO_ERROR) {
+                Log.e(TAG, "dispatchToBeChecked - sendMessageToBeChecked return error: " + errorCode);
+                dispatchDirectly(intent, permission);
+            }
+        } catch (RemoteException e) {
+            Log.e(TAG, "dispatchToBeChecked - sendMessageToBeChecked error", e);
+            // ignore it, and dispatch the intent directly.
+            dispatchDirectly(intent, permission);
+        }
     }
 
     /**
@@ -974,6 +1241,73 @@ public abstract class SMSDispatcher extends Handler {
 
     }
 
+    protected void sendMultipartTextToBeChecked(String destAddr, String scAddr,
+            ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
+            ArrayList<PendingIntent> deliveryIntents) {
+        Bundle message = createMessageBundle(destAddr, parts, ISecurityManager.MESSAGE_SENDING);
+        int errorCode = SecurityResult.REMOTE_ERROR;
+        try {
+            synchronized (mSmsRequestsList) {
+                Bundle result = mSm.sendMessageToBeChecked(message);
+                errorCode = result.getInt(ISecurityManager.BROADCAST_RESULT, SecurityResult.REMOTE_ERROR);
+                if (errorCode == SecurityResult.REMOTE_NO_ERROR) {
+                    int ident = result.getInt(ISecurityManager.MESSAGE_IDENT_KEY);
+                    Log.d(TAG, "sendMultipartTextToBeChecked - ident: " + ident);
+                    SmsRequest request = SmsSendRequest.obtain(destAddr, scAddr, parts, sentIntents, deliveryIntents, this);
+                    mSmsRequestsList.put(ident, request);
+                    sendMessageDelayed(obtainMessage(EVENT_SEND_SMS_CHECK_TIMEOUT, ident, 0), SEND_SMS_CHECK_TIMEOUT);
+                }
+            }
+            if (errorCode != SecurityResult.REMOTE_NO_ERROR) {
+                Log.e(TAG, "sendMultipartTextToBeChecked - sendMessageToBeChecked return error: " + errorCode);
+                sendMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents);
+            }
+        } catch (RemoteException e) {
+            Log.e(TAG, "sendMultipartTextToBeChecked error", e);
+            // ignore it, and send sms directly.
+            sendMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents);
+        }
+    }
+
+    protected void sendTextToBeChecked(String destAddr, String scAddr,
+            String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        Bundle message = createMessageBundle(destAddr, text, ISecurityManager.MESSAGE_SENDING);
+        int errorCode = SecurityResult.REMOTE_ERROR;
+        try {
+            synchronized (mSmsRequestsList) {
+                Bundle result = mSm.sendMessageToBeChecked(message);
+                errorCode = result.getInt(ISecurityManager.BROADCAST_RESULT, SecurityResult.REMOTE_ERROR);
+                if (errorCode == SecurityResult.REMOTE_NO_ERROR) {
+                    int ident = result.getInt(ISecurityManager.MESSAGE_IDENT_KEY);
+                    Log.d(TAG, "sendTextToBeChecked - ident: " + ident);
+                    SmsRequest request = SmsSendRequest.obtain(destAddr, scAddr, text, sentIntent, deliveryIntent, this);
+                    mSmsRequestsList.put(ident, request);
+                    sendMessageDelayed(obtainMessage(EVENT_SEND_SMS_CHECK_TIMEOUT, ident, 0), SEND_SMS_CHECK_TIMEOUT);
+                }
+            }
+            if (errorCode != SecurityResult.REMOTE_NO_ERROR) {
+                Log.e(TAG, "sendTextToBeChecked - sendMessageToBeChecked return error: " + errorCode);
+                sendText(destAddr, scAddr, text, sentIntent, deliveryIntent);
+            }
+        } catch (RemoteException e) {
+            Log.e(TAG, "send text to be checked error", e);
+            // ignore it, and send sms directly.
+            sendText(destAddr, scAddr, text, sentIntent, deliveryIntent);
+        }
+    }
+
+    protected void handleSmsSendRequest(SmsSendRequest ssr) {
+        if (ssr.isMultiText) {
+            // multitext sms
+            sendMultipartText(ssr.destAddr, ssr.scAddr, (ArrayList<String>) ssr.parts,
+                    (ArrayList<PendingIntent>) ssr.sentIntents, (ArrayList<PendingIntent>) ssr.deliveryIntents);
+        } else {
+            // single text sms
+            sendText(ssr.destAddr, ssr.scAddr, ssr.parts.get(0),
+                    ssr.sentIntents.get(0), ssr.deliveryIntents.get(0));
+        }
+    }
+
     /**
      * Create a new SubmitPdu and send it.
      */
@@ -1085,6 +1419,55 @@ public abstract class SMSDispatcher extends Handler {
         Resources r = Resources.getSystem();
         return (intent != null) ? intent.getTargetPackage()
             : r.getString(R.string.sms_control_default_app_name);
+    }
+
+    /**
+    * Create a sending message bundle for intercept check.
+    */
+    protected Bundle createMessageBundle(String addr, List<String> parts, String type) {
+        StringBuilder sb = new StringBuilder();
+        for (String s: parts) {
+            sb.append(s);
+        }
+
+        return createMessageBundle(addr, sb.toString(), type);
+    }
+
+    /**
+    * Create a sending message bundle for intercept check.
+    */
+    protected Bundle createMessageBundle(String addr, String text, String type) {
+        Log.d(TAG, "createMessageBundle - addr: " + addr + ", text: " + text + ", type: " + type);
+        Bundle b = new Bundle();
+        b.putString(ISecurityManager.MESSAGE_PHONE_NUMBER_KEY, addr);
+        b.putString(ISecurityManager.MESSAGE_CONTENT_KEY, text);
+        b.putString(ISecurityManager.MESSAGE_DIRECTION_KEY, type);
+
+        return b;
+    }
+
+     /**
+    * Create a received message bundle for intercept check.
+    */
+    protected Bundle createMessageBundle(Intent intent, String type) {
+        Log.d(TAG, "createMessageBundle - intent: " + intent + ", type: " + type);
+        Bundle b = new Bundle();
+        b.putParcelable(ISecurityManager.MESSAGE_CONTENT_KEY, intent);
+        b.putString(ISecurityManager.MESSAGE_DIRECTION_KEY, type);
+
+        return b;
+    }
+
+    protected static boolean hasSecurityCheck() {
+        return (mSm != null);
+    }
+
+    protected static boolean isInterceptSending() {
+        return mInterceptSending;
+    }
+
+    protected static boolean isInterceptReceived() {
+        return mInterceptReceived;
     }
 
     /**

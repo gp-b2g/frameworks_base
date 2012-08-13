@@ -137,6 +137,11 @@ LOCAL_SRC_FILES += \
 	core/java/android/os/ILightService.aidl \
 	core/java/android/os/IRemoteCallback.aidl \
 	core/java/android/os/IVibratorService.aidl \
+	core/java/android/security/ISecurityCallback.aidl \
+	core/java/android/security/ICallToken.aidl \
+	core/java/android/security/IMessageToken.aidl \
+	core/java/android/security/IPermissionToken.aidl \
+	core/java/android/security/IReceiverToken.aidl \
 	core/java/android/service/wallpaper/IWallpaperConnection.aidl \
 	core/java/android/service/wallpaper/IWallpaperEngine.aidl \
 	core/java/android/service/wallpaper/IWallpaperService.aidl \
@@ -313,6 +318,9 @@ aidl_files := \
 	frameworks/base/telephony/java/android/telephony/ServiceState.aidl \
 	frameworks/base/telephony/java/com/android/internal/telephony/IPhoneSubInfo.aidl \
 	frameworks/base/telephony/java/com/android/internal/telephony/ITelephony.aidl \
+	frameworks/base/core/java/android/security/FirewallEntry.aidl \
+	frameworks/base/core/java/android/security/PermissionEntry.aidl \
+	frameworks/base/core/java/android/security/ActionReceiverEntry.aidl \
 
 gen := $(TARGET_OUT_COMMON_INTERMEDIATES)/framework.aidl
 $(gen): PRIVATE_SRC_FILES := $(aidl_files)

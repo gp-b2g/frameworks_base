@@ -36,6 +36,7 @@ import android.os.StrictMode;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.security.ISecurityManager;
 import android.server.BluetoothA2dpService;
 import android.server.BluetoothService;
 import android.server.search.SearchManagerService;
@@ -53,9 +54,12 @@ import com.android.server.am.ActivityManagerService;
 import com.android.server.net.NetworkPolicyManagerService;
 import com.android.server.net.NetworkStatsService;
 import com.android.server.pm.PackageManagerService;
+import com.android.server.sm.SecurityManagerService;
 import com.android.server.usb.UsbService;
 import com.android.server.wm.WindowManagerService;
 import com.android.internal.atfwd.AtCmdFwdService;
+
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 import dalvik.system.VMRuntime;
 import dalvik.system.Zygote;
@@ -143,6 +147,7 @@ class ServerThread extends Thread {
         ThrottleService throttle = null;
         NetworkTimeUpdateService networkTimeUpdater = null;
         CpuGovernorService cpuGovernorManager = null;
+        SecurityManagerService sm = null;
 
         // Critical services...
         try {
@@ -269,6 +274,11 @@ class ServerThread extends Thread {
 
             Slog.i(TAG, "DynamicMemoryManager Service");
             dmm = new DynamicMemoryManagerService(context);
+            Slog.i(TAG, "SecurityManagerService");
+
+            if (FeatureQuery.FEATURE_SECURITY) {
+               sm = SecurityManagerService.main(context);
+            }
 
             cpuGovernorManager = new CpuGovernorService(context);
 
@@ -279,6 +289,10 @@ class ServerThread extends Thread {
             Slog.e("System", "******************************************");
             Slog.e("System", "************ Failure starting core service", e);
         }
+
+        //begin to verify app.
+        PackageManagerService pmservice = (PackageManagerService)pm;
+        pmservice.invokeAppVerify();
 
         DevicePolicyManagerService devicePolicy = null;
         StatusBarManagerService statusBar = null;
@@ -678,6 +692,7 @@ class ServerThread extends Thread {
         final NetworkTimeUpdateService networkTimeUpdaterF = networkTimeUpdater;
         final TextServicesManagerService textServiceManagerServiceF = tsms;
         final StatusBarManagerService statusBarF = statusBar;
+        final SecurityManagerService smF = sm;
 
         // We now tell the activity manager it is okay to run third party
         // code.  It will call back into us once it has gotten to the state
@@ -778,6 +793,13 @@ class ServerThread extends Thread {
                     if (textServiceManagerServiceF != null) textServiceManagerServiceF.systemReady();
                 } catch (Throwable e) {
                     reportWtf("making Text Services Manager Service ready", e);
+                }
+                try {
+                    if (FeatureQuery.FEATURE_SECURITY) {
+                        if (smF != null) smF.systemReady();
+                    }
+                } catch (Throwable e) {
+                    reportWtf("making Security Manager Service ready", e);
                 }
             }
         });

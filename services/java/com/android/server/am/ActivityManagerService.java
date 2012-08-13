@@ -29,6 +29,8 @@ import com.android.server.Watchdog;
 import com.android.server.am.ActivityStack.ActivityState;
 import com.android.server.wm.WindowManagerService;
 
+import com.qrd.plugin.feature_query.FeatureQuery;
+
 import dalvik.system.Zygote;
 
 import android.app.Activity;
@@ -107,6 +109,10 @@ import android.os.StrictMode;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.security.IReceiverToken;
+import android.security.ISecurityManager;
+import android.security.SecurityManagerNative;
+import android.security.SecurityResult;
 import android.text.format.Time;
 import android.util.EventLog;
 import android.util.Pair;
@@ -6949,8 +6955,16 @@ public final class ActivityManagerService extends ActivityManagerNative
     public void systemReady(final Runnable goingCallback) {
         synchronized(this) {
             if (mSystemReady) {
+                if (FeatureQuery.FEATURE_SECURITY) {
+                   Slog.e(TAG, "activitymanager init security manager");
+                   initSecurityManager();
+                }
+
                 if (goingCallback != null) goingCallback.run();
                 return;
+            } else {
+                Slog.d(TAG, "init security manager");
+                initSecurityManager();
             }
             
             // Check to see if there are any update receivers to run.
@@ -12915,6 +12929,12 @@ public final class ActivityManagerService extends ActivityManagerNative
     private final void deliverToRegisteredReceiverLocked(BroadcastRecord r,
             BroadcastFilter filter, boolean ordered) {
         boolean skip = false;
+        if (FeatureQuery.FEATURE_SECURITY) {
+           if (isReceiverControlEnabled()) {
+              if(checkIfBlockAction(r.intent.getAction(), filter.packageName))
+                  return;
+           }
+        }
         if (filter.requiredPermission != null) {
             int perm = checkComponentPermission(filter.requiredPermission,
                     r.callingPid, r.callingUid, -1, true);
@@ -14962,5 +14982,79 @@ public final class ActivityManagerService extends ActivityManagerNative
     public boolean switchUser(int userid) {
         // TODO
         return true;
+    }
+
+    private ISecurityManager mSm = null;
+    private HashMap<String, ArrayList<String>> mReceiverActions;
+    private boolean mReceiverControl = true;
+
+    private void initSecurityManager() {
+        mSm = SecurityManagerNative.getDefault();
+        mReceiverActions = new HashMap<String, ArrayList<String>>();
+        if (mSm != null) {
+            try {
+                mSm.applyReceiverToken(mReceiverToken);
+            } catch (RemoteException e) {
+                Log.e(TAG, "applyReceiverToken error. Reset SecurityManager to null!");
+                mSm = null;
+            }
+        }
+    }
+
+    private boolean isReceiverControlEnabled() {
+        return mSystemReady && mReceiverControl;
+    }
+
+    private boolean isValidReceiverAction(String action, String packageName) {
+        return true;
+    }
+
+    private IReceiverToken mReceiverToken = new IReceiverToken.Stub() {
+        //implement receiver token here for security manager
+        public int blockAction(String action, String packageName) {
+              if (!isValidReceiverAction(action, packageName))
+                  return SecurityResult.INVALID_RECEVIER_ACTION;
+ 
+              ArrayList<String> actions = mReceiverActions.get(packageName);
+              if (actions == null) {
+                  actions = new ArrayList<String>();
+                  actions.add(action);
+                  mReceiverActions.put(packageName, actions);
+              } else {
+                  actions.add(action);
+              }
+              return SecurityResult.BLOCK_ACTION_SUCCESS;
+         }
+
+         public int restoreAction(String action, String packageName) {
+              if (!isValidReceiverAction(action, packageName))
+                  return SecurityResult.INVALID_RECEVIER_ACTION;
+
+              ArrayList<String> actions = mReceiverActions.get(packageName);
+
+              actions.remove(action);
+              if (actions.size() == 0) {
+                  actions = null;
+                  mReceiverActions.remove(packageName);
+              }
+              return SecurityResult.RESTORE_ACTION_SUCCESS;
+         }
+
+         public void onEnableReceiverControl() {
+              mReceiverControl = true;
+         }
+ 
+         public void onDisableReceiverControl() {
+              mReceiverControl = false;
+         }
+    };
+
+    private boolean checkIfBlockAction(String action, String packageName) {
+        Slog.d(TAG, "checkIfBlockAction: action: " + action + "/pkg:" + packageName);
+        ArrayList<String> actions = mReceiverActions.get(packageName);
+        if (actions != null && actions.contains(action)) {
+            return true;
+        }
+        return false;
     }
 }
