@@ -21,7 +21,7 @@
 
 <!-- If you edit this version, also edit the version in the partner-supplied
     apns-conf.xml configuration file -->
-<apns version="8">
+<apns version="7">
     <apn carrier="China Mobile" apn="cmnet" mcc="460" mnc="00" user="" server="" password="" proxy="" port="" mmsproxy="" mmsport="" mmsc="" type="default"/>
     <apn carrier="China Mobile" apn="cmnet" mcc="460" mnc="00" user="" server="" password="" proxy="" port="" mmsproxy="" mmsport="" mmsc="" type="supl"/>
     <apn carrier="China Mobile MMS" apn="cmwap" mcc="460" mnc="00" user="" server="" password="" proxy="10.0.0.172" port="80" mmsproxy="10.0.0.172" mmsport="80" mmsc="http://mmsc.monternet.com" type="mms"/>
