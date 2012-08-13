@@ -73,4 +73,10 @@ interface IVideoTelephony {
      
     void registerListener(IVideoTelephonyListener l);
     void unregisterListener(IVideoTelephonyListener l);
+
+    /**
+     * Check if the video phone is enabled.
+     * @return true if the video phone enabled.
+     */
+    boolean isEnabled();
 }
