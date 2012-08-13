@@ -31,6 +31,8 @@ import com.android.server.DeviceStorageMonitorService;
 import com.android.server.EventLogTags;
 import com.android.server.IntentResolver;
 
+import com.qrd.plugin.feature_query.FeatureQuery;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -93,6 +95,12 @@ import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.security.SystemKeyStore;
+import android.security.IPermissionToken;
+import android.security.ISecurityManager;
+import android.security.SecurityManager;
+import android.security.SecurityManagerNative;
+import android.security.SecurityRecord;
+import android.security.SecurityResult;
 import android.util.DisplayMetrics;
 import android.util.EventLog;
 import android.util.Log;
@@ -102,6 +110,11 @@ import android.util.SparseArray;
 import android.util.Xml;
 import android.view.Display;
 import android.view.WindowManager;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
+
 
 import java.io.File;
 import java.io.FileDescriptor;
@@ -408,6 +421,10 @@ public class PackageManagerService extends IPackageManager.Stub {
 
     final private DefaultContainerConnection mDefContainerConn =
             new DefaultContainerConnection();
+
+    //Object of AppVerify, using reflection
+    private Object mAppVerifyObj;
+    
     class DefaultContainerConnection implements ServiceConnection {
         public void onServiceConnected(ComponentName name, IBinder service) {
             if (DEBUG_SD_INSTALL) Log.i(TAG, "onServiceConnected");
@@ -1164,6 +1181,44 @@ public class PackageManagerService extends IPackageManager.Stub {
         } // synchronized (mInstallLock)
     }
 
+    public void invokeAppVerify(){
+        String AvsJar = "/system/framework/com.qrdplus.security.jar";
+        String AvsClassName = "com.qrdplus.security.AppVerify";
+        Object[] consArgs = {mContext, !mRestoredSettings};
+        Class[] argTypes = {Context.class, boolean.class};
+        try{
+            dalvik.system.PathClassLoader mLoader = new dalvik.system.PathClassLoader(AvsJar,ClassLoader.getSystemClassLoader());
+            Class AvsClass = mLoader.loadClass(AvsClassName);
+            if(AvsClass != null){
+                 Constructor cons = AvsClass.getConstructor(argTypes);
+                 mAppVerifyObj = cons.newInstance(consArgs);
+            }
+        } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+        } catch (SecurityException e) {
+                e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+        } catch (InstantiationException e) {
+                e.printStackTrace();
+        } catch (IllegalAccessException e) {
+                e.printStackTrace();
+        } catch (InvocationTargetException e) {
+                e.printStackTrace();
+        }
+    }
+
+    private Object invokeMethod(Object methodObject, String methodName, Object[] args) throws Exception {
+        Class ownerClass = methodObject.getClass();
+        Class[] argsClass = new Class[args.length];
+        for (int i = 0, j = args.length; i < j; i++) {
+           argsClass[i] = args[i].getClass();
+        }
+        Method method = ownerClass.getMethod(methodName, argsClass);
+        return method.invoke(methodObject, args);
+    }
     public boolean isFirstBoot() {
         return !mRestoredSettings;
     }
@@ -1839,6 +1894,12 @@ public class PackageManagerService extends IPackageManager.Stub {
     }
 
     public int checkPermission(String permName, String pkgName) {
+        if (FeatureQuery.FEATURE_SECURITY) {
+          if (isPermControlEnabled()) {
+            if (isPeeledInPackage(permName, pkgName))
+                return PackageManager.PERMISSION_DENIED;
+          }
+        }
         synchronized (mPackages) {
             PackageParser.Package p = mPackages.get(pkgName);
             if (p != null && p.mExtras != null) {
@@ -1856,6 +1917,12 @@ public class PackageManagerService extends IPackageManager.Stub {
     }
 
     public int checkUidPermission(String permName, int uid) {
+        if (FeatureQuery.FEATURE_SECURITY) {
+          if (isPermControlEnabled()) {
+            if (isPeeledInUid(permName, uid))
+                return PackageManager.PERMISSION_DENIED;
+          }
+        }
         synchronized (mPackages) {
             Object obj = mSettings.getUserIdLPr(uid);
             if (obj != null) {
@@ -5173,6 +5240,18 @@ public class PackageManagerService extends IPackageManager.Stub {
                     args.doPostInstall(res.returnCode);
                 }
 
+                if (FeatureQuery.FEATURE_SECURITY) {
+                  if (res.returnCode == PackageManager.INSTALL_SUCCEEDED){
+                    String apkPath = args.getCodePath();
+                    String pkgName = res.name;
+                        if(DEBUG_INSTALL) Log.v(TAG,"start verify app");
+                        try{
+                            invokeMethod(mAppVerifyObj, "verifyAtInstall", new Object[]{pkgName, apkPath});
+                        } catch (Exception e){
+                            if(DEBUG_INSTALL) Log.v(TAG,"avm Exception");
+                        }
+                  }
+                }
                 // A restore should be performed at this point if (a) the install
                 // succeeded, (b) the operation is not an update, and (c) the new
                 // package has a backupAgent defined.
@@ -6869,6 +6948,18 @@ public class PackageManagerService extends IPackageManager.Stub {
             public void run() {
                 mHandler.removeCallbacks(this);
                 final int returnCode = deletePackageX(packageName, true, true, flags);
+
+                if (FeatureQuery.FEATURE_SECURITY) {
+                    if(returnCode == PackageManager.DELETE_SUCCEEDED){
+                        if(DEBUG_INSTALL) Log.v(TAG,"check verified app to remove it");
+                        try {
+                            invokeMethod(mAppVerifyObj, "updateAtUninstall", new Object[]{packageName});
+                        } catch (Exception e){
+                            if(DEBUG_INSTALL) Log.v(TAG,"avm Exception");
+                        }
+                    }
+                }
+
                 if (observer != null) {
                     try {
                         observer.packageDeleted(packageName, returnCode);
@@ -7729,10 +7820,15 @@ public class PackageManagerService extends IPackageManager.Stub {
         // Read the compatibilty setting when the system is ready.
         boolean compatibilityModeEnabled = android.provider.Settings.System.getInt(
                 mContext.getContentResolver(),
-                android.provider.Settings.System.COMPATIBILITY_MODE, 0) == 1;
+                android.provider.Settings.System.COMPATIBILITY_MODE, 1) == 1;
         PackageParser.setCompatibilityModeEnabled(compatibilityModeEnabled);
         if (DEBUG_SETTINGS) {
             Log.d(TAG, "compatibility mode:" + compatibilityModeEnabled);
+        }
+        
+        if (FeatureQuery.FEATURE_SECURITY) {        
+            Log.d(TAG, "system Ready and init security manager");
+            initSecurityManager();
         }
     }
 
@@ -8679,5 +8775,180 @@ public class PackageManagerService extends IPackageManager.Stub {
         synchronized (mPackages) {
             return mSettings.getVerifierDeviceIdentityLPw();
         }
+    }
+    private IPermissionToken mPermCallback = new IPermissionToken.Stub() {
+         public int revokePackagePermission(String permission, String packageName, int type) {
+              if (!isValidPackagePerm(permission, packageName))
+                  return SecurityResult.INVALID_PKG_PERM;
+              HashMap<String, Integer> perms = mPkgPerms.get(packageName);
+              if (perms == null) {
+                  perms = new HashMap<String, Integer>();
+                  perms.put(permission, type);
+                  mPkgPerms.put(packageName, perms);
+              } else {
+                  perms.put(permission, type);
+              }
+              return SecurityResult.REVOKE_PERM_SUCCESS;
+         }
+         public int grantPackagePermission(String permission, String packageName) {
+              if (!isValidPackagePerm(permission, packageName))
+                  return SecurityResult.INVALID_PKG_PERM;
+              HashMap<String, Integer> perms = mPkgPerms.get(packageName);
+              if (perms == null) {
+                  return SecurityResult.INVALID_PKG_PERM;  
+              }
+              perms.remove(permission);
+              if (perms.size() == 0) {
+                  perms = null;
+                  mPkgPerms.remove(packageName);
+              }
+              return SecurityResult.GRANT_PERM_SUCCESS;
+          }
+         public int revokeUidPermission(String permission, int uid, int type) {
+              if (!isValidUidPerm(permission, uid))
+                  return SecurityResult.INVALID_UID_PERM;
+              HashMap<String,Integer> perms = mUidPerms.get(uid);
+              if (perms == null) {
+                  perms = new HashMap<String,Integer>();
+                  perms.put(permission, type);
+                  mUidPerms.put(uid, perms);
+              } else {
+                  perms.put(permission, type);
+              }
+              return SecurityResult.REVOKE_PERM_SUCCESS;
+         }
+         public int grantUidPermission(String permission, int uid) {
+              if (!isValidUidPerm(permission, uid))
+                  return SecurityResult.INVALID_UID_PERM;
+              HashMap<String,Integer> perms = mUidPerms.get(uid);
+              if (perms == null) {
+                  return SecurityResult.INVALID_UID_PERM;  
+              }
+              perms.remove(permission);
+              if (perms.size() == 0) {
+                  perms = null;
+                  mUidPerms.remove(uid);
+              }
+              return SecurityResult.GRANT_PERM_SUCCESS;
+         }
+         public int revokePackagePermissionList(List<String> permissionList, String packageName, int type) {
+              int ret = SecurityResult.INVALID_PKG_PERM;
+              Iterator<String> it = permissionList.iterator();
+              while (it.hasNext()) {
+                  int result = revokePackagePermission(it.next(), packageName, type);
+                  if (result == SecurityResult.REVOKE_PERM_SUCCESS) {
+                      ret = SecurityResult.REVOKE_PERM_SUCCESS;
+                  }
+              }
+              return ret;
+         }
+         public int grantPackagePermissionList(List<String> permissionList, String packageName) {
+              int ret = SecurityResult.INVALID_PKG_PERM;
+              Iterator<String> it = permissionList.iterator();
+              while (it.hasNext()) {
+                  int result = grantPackagePermission(it.next(), packageName);
+                  if (result == SecurityResult.GRANT_PERM_SUCCESS) {
+                      ret = SecurityResult.GRANT_PERM_SUCCESS;
+                  }
+              }
+              return ret;
+          }
+         public int revokeUidPermissionList(List<String> permissionList, int uid, int type) {
+              int ret = SecurityResult.INVALID_UID_PERM;
+              Iterator<String> it = permissionList.iterator();
+              while (it.hasNext()) {
+                  int result = revokeUidPermission(it.next(), uid, type);
+                  if (result == SecurityResult.REVOKE_PERM_SUCCESS) {
+                      ret = SecurityResult.REVOKE_PERM_SUCCESS;
+                  }
+              }
+              return ret;
+         }
+         public int grantUidPermissionList(List<String> permissionList, int uid) {
+              int ret = SecurityResult.INVALID_UID_PERM;
+              Iterator<String> it = permissionList.iterator();
+              while (it.hasNext()) {
+                  int result = grantUidPermission(it.next(), uid);
+                  if (result == SecurityResult.GRANT_PERM_SUCCESS) {
+                      ret = SecurityResult.GRANT_PERM_SUCCESS;
+                  }
+              }
+              return ret;
+         }
+         public void onEnablePermissionControl() {
+              mPermissionControl = true;
+         }
+         public void onDisablePermissionControl() {
+              mPermissionControl = false;
+         }
+    };
+    private boolean isValidPackagePerm(String permission, String packageName) {
+         synchronized (mPackages) {
+             PackageParser.Package p = mPackages.get(packageName);
+             if (p != null && p.mExtras != null) {
+                 PackageSetting ps = (PackageSetting)p.mExtras;
+                 if (ps.sharedUser != null) {
+                     if (ps.sharedUser.grantedPermissions.contains(permission)) {
+                         return true;
+                     }
+                 } else if (ps.grantedPermissions.contains(permission)) {
+                     return true;
+                 }
+             }
+         }
+         return false;
+    }
+    private boolean isValidUidPerm(String permission, int uid) {
+         synchronized (mPackages) {
+             Object obj = mSettings.getUserIdLPr(uid);
+             if (obj != null) {
+                 GrantedPermissions gp = (GrantedPermissions)obj;
+                 if (gp.grantedPermissions.contains(permission)) {
+                     return true;
+                 }
+             } else {
+                 HashSet<String> perms = mSystemPermissions.get(uid);
+                 if (perms != null && perms.contains(permission)) {
+                     return true;
+                 }
+             }
+         }
+         return false;
+    }
+    private boolean isPeeledInPackage(String permName, String pkg) {
+         HashMap<String, Integer> perms = mPkgPerms.get(pkg);
+         if (perms == null)
+             return false;
+         if (perms.containsKey(permName)) 
+             return true;
+         return false;
+    }
+    private boolean isPeeledInUid(String permName, int uid) {
+         HashMap<String, Integer> perms = mUidPerms.get(uid);
+         if (perms == null)
+             return false;
+         if (perms.containsKey(permName))
+            return true;
+         return false;
+    }
+    private ISecurityManager mSm = null;
+    private SparseArray<HashMap<String, Integer>> mUidPerms;
+    private HashMap<String, HashMap<String, Integer>> mPkgPerms;
+    private boolean mPermissionControl = false;
+    private void initSecurityManager() {
+        mSm = SecurityManagerNative.getDefault();
+        mPkgPerms = new HashMap<String, HashMap<String, Integer>>();
+        mUidPerms = new SparseArray<HashMap<String, Integer>>();
+        if (mSm != null) {
+            try {
+                mSm.applyPermissionToken(mPermCallback);
+            } catch (RemoteException e) {
+                Log.e(TAG, "applyPermissionToken error. Reset SecurityManager to null!");
+                mSm = null;
+            }
+        }
+    }
+    private boolean isPermControlEnabled() {
+        return mPermissionControl;
     }
 }

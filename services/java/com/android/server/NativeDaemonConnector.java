@@ -38,7 +38,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  * daemon which uses the libsysutils FrameworkListener
  * protocol.
  */
-final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdog.Monitor {
+public final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdog.Monitor {
     private static final boolean LOCAL_LOGD = true;
 
     private BlockingQueue<String> mResponseQueue;
@@ -71,7 +71,7 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
         public static final int FailedRangeEnd                 = 599;
     }
 
-    NativeDaemonConnector(INativeDaemonConnectorCallbacks callbacks,
+    public NativeDaemonConnector(INativeDaemonConnectorCallbacks callbacks,
                           String socket, int responseQueueSize, String logTag) {
         mCallbacks = callbacks;
         if (logTag != null)

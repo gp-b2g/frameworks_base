@@ -17,7 +17,7 @@
 
 package com.android.server;
 
-interface INativeDaemonConnectorCallbacks {
+public interface INativeDaemonConnectorCallbacks {
 
     void onDaemonConnected();
     boolean onEvent(int code, String raw, String[] cooked);

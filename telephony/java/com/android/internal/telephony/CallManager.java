@@ -21,21 +21,30 @@ package com.android.internal.telephony;
 import com.android.internal.telephony.CallDetails;
 import com.android.internal.telephony.sip.SipPhone;
 
+import com.qrd.plugin.feature_query.FeatureQuery;
+
 import android.content.Context;
 import android.media.AudioManager;
 import android.media.AudioSystem;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.Registrant;
 import android.os.SystemProperties;
+import android.os.RemoteException;
+import android.security.ICallToken;
+import android.security.ISecurityManager;
+import android.security.SecurityManagerNative;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 
@@ -61,7 +70,7 @@ public final class CallManager {
 
     private static final String LOG_TAG ="CallManager";
     private static final boolean DBG = true;
-    private static final boolean VDBG = false;
+    private static final boolean VDBG = true;
 
     private static final int EVENT_DISCONNECT = 100;
     private static final int EVENT_PRECISE_CALL_STATE_CHANGED = 101;
@@ -192,6 +201,9 @@ public final class CallManager {
         mBackgroundCalls = new ArrayList<Call>();
         mForegroundCalls = new ArrayList<Call>();
         mDefaultPhone = null;
+        if (FeatureQuery.FEATURE_SECURITY) {
+           initSecurityManager();
+		}
     }
 
     /**
@@ -2088,7 +2100,14 @@ public final class CallManager {
                             Log.w(LOG_TAG, "new ringing connection", e);
                         }
                     } else {
-                        mNewRingingConnectionRegistrants.notifyRegistrants((AsyncResult) msg.obj);
+                      if (FeatureQuery.FEATURE_SECURITY) {
+                        if (!isDialControlEnabled())
+                            mNewRingingConnectionRegistrants.notifyRegistrants((AsyncResult) msg.obj);
+                        else
+                            checkRingingCall(mNewRingingConnectionRegistrants, (AsyncResult) msg.obj);
+                      } else {
+                            mNewRingingConnectionRegistrants.notifyRegistrants((AsyncResult) msg.obj);
+                      }
                     }
                     break;
                 case EVENT_UNKNOWN_CONNECTION:
@@ -2099,7 +2118,14 @@ public final class CallManager {
                     if (VDBG) Log.d(LOG_TAG, " handleMessage (EVENT_INCOMING_RING)");
                     // The event may come from RIL who's not aware of an ongoing fg call
                     if (!hasActiveFgCall()) {
-                        mIncomingRingRegistrants.notifyRegistrants((AsyncResult) msg.obj);
+                      if (FeatureQuery.FEATURE_SECURITY) {
+                        if (!isDialControlEnabled())
+                            mIncomingRingRegistrants.notifyRegistrants((AsyncResult) msg.obj);
+                        else
+                            checkRingingCall(mIncomingRingRegistrants, (AsyncResult) msg.obj);
+                      } else {
+                            mIncomingRingRegistrants.notifyRegistrants((AsyncResult) msg.obj);
+                      }
                     }
                     break;
                 case EVENT_RINGBACK_TONE:
@@ -2211,5 +2237,119 @@ public final class CallManager {
         }
         b.append("\n}");
         return b.toString();
+    }
+
+    private ICallToken mDialCallback = new ICallToken.Stub() {
+         //here implement dial token to security control
+          /**
+                   * Called when the service has a incomint call to be checked.
+                   */
+          public int onInterceptCall(int ident, int action) {
+              if (action == ISecurityManager.CALL_PASS) {
+                  Iterator<AsyncResultItem> it = mAsynResults.iterator();
+                  while (it.hasNext()) {
+                      AsyncResultItem item = it.next();
+                      item.registrants.notifyRegistrants(item.result);
+                  }
+                  mAsynResults.clear();
+              } else {
+                  try {
+                      getFirstActiveRingingCall().hangup();
+                  } catch (CallStateException e) {
+                        return -1;
+                  }
+              }
+              return 0;
+          }
+          /**
+                   * Called when the incoming call monitor service should be enabled
+                   */
+           public void onEnableCallIntercept() {
+                   mDialControl = true;
+          }
+          /**
+                 * Called when the incoming call monitor service should be disabled
+                 */
+           public void onDisableCallIntercept() {
+                   mDialControl = false;
+          }
+    };
+
+    private ISecurityManager mSm = null;
+    private HashMap<Integer, CallItem> mCheckCalls;
+    private ArrayList<AsyncResultItem> mAsynResults;
+    private boolean mDialControl = false;
+
+    private void initSecurityManager() {
+        mSm = SecurityManagerNative.getDefault();
+        mCheckCalls = new HashMap<Integer, CallItem>();
+        mAsynResults = new ArrayList<AsyncResultItem>();
+
+        if (mSm != null) {
+            try {
+                mSm.applyCallToken(mDialCallback);
+            } catch (RemoteException e) {
+                Log.e(LOG_TAG, "applyPermissionToken error. Reset SecurityManager to null!");
+                mSm = null;
+            }
+        }
+    }
+
+    private void checkRingingCall(RegistrantList registrants, AsyncResult r) {
+        mAsynResults.add(new AsyncResultItem(registrants, r));
+        Bundle result = null;
+        Log.d(LOG_TAG, "checkRingingCall - hasActiveRingingCall: " + hasActiveRingingCall()
+                + ", hasActiveFgCall" + hasActiveFgCall());
+        if (hasActiveRingingCall()) {
+            Call ringing = getFirstActiveCall(mRingingCalls);
+            Bundle data = new Bundle();
+
+            data.putString(ISecurityManager.CALL_PHONE_NUMBER_KEY, ringing.getEarliestConnection().getAddress());
+            data.putInt(ISecurityManager.CALL_SUBSCRIPTION_KEY, ringing.getPhone().getSubscription());
+            try {
+                result = mSm.sendCallToBeChecked(data);
+            } catch (RemoteException e) {
+
+            }
+        }
+
+        if (result != null) {
+            int ident = result.getInt(ISecurityManager.CALL_IDENT_KEY);
+            String number = result.getString(ISecurityManager.CALL_PHONE_NUMBER_KEY);
+            int subscription = result.getInt(ISecurityManager.CALL_SUBSCRIPTION_KEY);
+            mCheckCalls.put(ident, new CallItem(number, subscription));
+        }
+    }
+
+    private final class CallItem {
+        private String mNumber;
+        private int mSubscription;
+
+        public CallItem(String number, int subscription) {
+            mNumber = number;
+            mSubscription = subscription;
+        }
+
+        public String getNumber() {
+            return mNumber;
+        }
+
+        public int getSubscription() {
+            return mSubscription;
+        }
+    }
+
+    private boolean isDialControlEnabled() {
+        return mDialControl;
+    }
+
+    private final class AsyncResultItem {
+        RegistrantList registrants;
+        AsyncResult result;
+
+        public AsyncResultItem(RegistrantList registrants, AsyncResult result) {
+            this.registrants = registrants;
+            this.result = result;
+        }
     }
 }

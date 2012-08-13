@@ -26,6 +26,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -53,6 +54,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Process;
 import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.os.WorkSource;
 import android.provider.Settings;
 import android.util.Log;
@@ -72,6 +74,8 @@ import com.android.server.location.MockProvider;
 import com.android.server.location.PassiveProvider;
 import com.android.server.location.GeoFencerBase;
 import com.android.server.location.GeoFencerProxy;
+import com.qrd.plugin.feature_query.FeatureQuery;
+
 import com.qrd.plugin.feature_query.FeatureQuery;
 
 import java.io.FileDescriptor;
@@ -651,6 +655,18 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         if (LocationManager.GPS_PROVIDER.equals(provider)
                  || LocationManager.PASSIVE_PROVIDER.equals(provider)
                  || LocationManager.HYBRID_PROVIDER.equals(provider)) {
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                try {
+                   IPackageManager pm = IPackageManager.Stub.asInterface(
+                         ServiceManager.getService("package"));
+                   if(pm.checkUidPermission(ACCESS_FINE_LOCATION,Binder.getCallingUid())
+                         == PackageManager.PERMISSION_DENIED)
+                   return null;
+                } catch (RemoteException e){
+                }
+            }
+
             if (mContext.checkCallingOrSelfPermission(ACCESS_FINE_LOCATION)
                     != PackageManager.PERMISSION_GRANTED) {
                 throw new SecurityException("Provider " + provider
@@ -739,6 +755,18 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         for (int i = mProviders.size() - 1; i >= 0; i--) {
             LocationProviderInterface p = mProviders.get(i);
             String name = p.getName();
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                try {
+                   IPackageManager pm = IPackageManager.Stub.asInterface(
+                         ServiceManager.getService("package"));
+                   if(pm.checkUidPermission(ACCESS_FINE_LOCATION,Binder.getCallingUid())
+                         == PackageManager.PERMISSION_DENIED)
+                   return out;
+                } catch (RemoteException e){
+                }
+            }
+
             if (isAllowedProviderSafe(name)) {
                 if (enabledOnly && !isAllowedBySettingsLocked(name)) {
                     continue;
@@ -1454,6 +1482,18 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         if (mGpsStatusProvider == null) {
             return false;
         }
+
+        if(FeatureQuery.FEATURE_SECURITY){
+             try {
+               IPackageManager pm = IPackageManager.Stub.asInterface(
+                     ServiceManager.getService("package"));
+               if(pm.checkUidPermission(ACCESS_FINE_LOCATION,Binder.getCallingUid())
+                     == PackageManager.PERMISSION_DENIED)
+               return false;
+             } catch (RemoteException e){
+             }
+        }
+
         if (mContext.checkCallingOrSelfPermission(ACCESS_FINE_LOCATION) !=
                 PackageManager.PERMISSION_GRANTED) {
             throw new SecurityException("Requires ACCESS_FINE_LOCATION permission");
@@ -1765,6 +1805,17 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
                     ", longitude = " + longitude +
                     ", expiration = " + expiration +
                     ", intent = " + intent);
+        }
+
+        if(FeatureQuery.FEATURE_SECURITY){
+            try {
+                  IPackageManager pm = IPackageManager.Stub.asInterface(
+                        ServiceManager.getService("package"));
+                  if(pm.checkUidPermission(ACCESS_FINE_LOCATION,Binder.getCallingUid())
+                        == PackageManager.PERMISSION_DENIED)
+                  return;
+            } catch (RemoteException e){
+            }
         }
 
         // Require ability to access all providers for now

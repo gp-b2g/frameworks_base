@@ -11,7 +11,7 @@ LOCAL_SRC_FILES := \
 
 LOCAL_MODULE:= services
 
-LOCAL_JAVA_LIBRARIES := android.policy
+LOCAL_JAVA_LIBRARIES := android.policy com.qrd.plugin.feature_query
 
 LOCAL_JAVA_LIBRARIES += com.qrd.plugin.feature_query
 LOCAL_NO_EMMA_INSTRUMENT := true

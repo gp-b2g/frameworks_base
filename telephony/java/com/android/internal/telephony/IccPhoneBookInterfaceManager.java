@@ -18,16 +18,20 @@
 package com.android.internal.telephony;
 
 import android.content.ContentValues;
+import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.os.AsyncResult;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.IccProvider;
 
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -305,6 +309,18 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
      * @return List of AdnRecord
      */
     public List<AdnRecord> getAdnRecordsInEf(int efid) {
+
+        if(FeatureQuery.FEATURE_SECURITY){
+            try {
+                  IPackageManager pm = IPackageManager.Stub.asInterface(
+                        ServiceManager.getService("package"));
+                  if(pm.checkUidPermission(android.Manifest.permission.READ_CONTACTS,Binder.getCallingUid())
+                        == PackageManager.PERMISSION_DENIED){
+                          return null;
+                  }
+            } catch (RemoteException e){
+            }
+        }
 
         if (phone.getContext().checkCallingOrSelfPermission(
                 android.Manifest.permission.READ_CONTACTS)

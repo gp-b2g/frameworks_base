@@ -18,16 +18,21 @@ package com.android.internal.telephony;
 
 import android.app.PendingIntent;
 import android.content.Context;
+import android.content.pm.IPackageManager;
+import android.content.pm.PackageManager;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
+import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.util.Log;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.util.HexDump;
+
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -160,6 +165,11 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         if(ServiceManager.getService("isms") == null) {
             ServiceManager.addService("isms", this);
         }
+        if (FeatureQuery.FEATURE_SECURITY) {
+           if (!SMSDispatcher.hasSecurityCheck()) {
+               SMSDispatcher.initSecurityCheck();
+           }
+        }
     }
 
     public void dispose() {
@@ -201,6 +211,18 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         if (DBG) log("updateMessageOnIccEf: index=" + index +
                 " status=" + status + " ==> " +
                 "("+ Arrays.toString(pdu) + ")");
+
+        if(FeatureQuery.FEATURE_SECURITY){
+            try {
+                  IPackageManager pm = IPackageManager.Stub.asInterface(
+                  ServiceManager.getService("package"));
+                  if(pm.checkUidPermission(android.Manifest.permission.SEND_SMS,Binder.getCallingUid())
+                       == PackageManager.PERMISSION_DENIED)
+                      return false;
+            } catch (RemoteException e){
+            }
+        }
+
         enforceReceiveAndSend("Updating message on UIcc");
         synchronized(mLock) {
             mSuccess = false;
@@ -251,6 +273,18 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         if (DBG) log("copyMessageToIccEf: status=" + status + " ==> " +
                 "pdu=("+ Arrays.toString(pdu) +
                 "), smsm=(" + Arrays.toString(smsc) +")");
+
+        if(FeatureQuery.FEATURE_SECURITY){
+            try {
+                  IPackageManager pm = IPackageManager.Stub.asInterface(
+                  ServiceManager.getService("package"));
+                  if(pm.checkUidPermission(android.Manifest.permission.SEND_SMS,Binder.getCallingUid())
+                       == PackageManager.PERMISSION_DENIED)
+                      return false;
+            } catch (RemoteException e){
+            }
+        }
+
         enforceReceiveAndSend("Copying message to UIcc");
         synchronized(mLock) {
             mSuccess = false;
@@ -335,6 +369,17 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      */
     public void sendData(String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        if(FeatureQuery.FEATURE_SECURITY){
+            try {
+                  IPackageManager pm = IPackageManager.Stub.asInterface(
+                  ServiceManager.getService("package"));
+                  if(pm.checkUidPermission(android.Manifest.permission.SEND_SMS,Binder.getCallingUid())
+                       == PackageManager.PERMISSION_DENIED)
+                      return;
+            } catch (RemoteException e){
+            }
+        }
+
         mContext.enforceCallingPermission(
                 "android.permission.SEND_SMS",
                 "Sending SMS message");
@@ -372,6 +417,17 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      */
     public void sendText(String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        if(FeatureQuery.FEATURE_SECURITY){
+            try {
+                  IPackageManager pm = IPackageManager.Stub.asInterface(
+                  ServiceManager.getService("package"));
+                  if(pm.checkUidPermission(android.Manifest.permission.SEND_SMS,Binder.getCallingUid())
+                       == PackageManager.PERMISSION_DENIED)
+                      return;
+            } catch (RemoteException e){
+            }
+        }
+
         mContext.enforceCallingOrSelfPermission(
                 "android.permission.SEND_SMS",
                 "Sending SMS message");
@@ -380,7 +436,13 @@ public class IccSmsInterfaceManager extends ISms.Stub {
                 " text='"+ text + "' sentIntent=" +
                 sentIntent + " deliveryIntent=" + deliveryIntent);
         }
-        mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent);
+        log("hasSecurityCheck: " + SMSDispatcher.hasSecurityCheck() + ", enable sending: " + SMSDispatcher.isInterceptSending());
+        if (SMSDispatcher.hasSecurityCheck() && SMSDispatcher.isInterceptSending()) {
+            log("send Text to be checked");
+            mDispatcher.sendTextToBeChecked(destAddr, scAddr, text, sentIntent, deliveryIntent);
+        } else {
+            mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent);
+        }
     }
 
     /**
@@ -410,6 +472,17 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      */
     public void sendMultipartText(String destAddr, String scAddr, List<String> parts,
             List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents) {
+        if(FeatureQuery.FEATURE_SECURITY){
+            try {
+                  IPackageManager pm = IPackageManager.Stub.asInterface(
+                  ServiceManager.getService("package"));
+                  if(pm.checkUidPermission(android.Manifest.permission.SEND_SMS,Binder.getCallingUid())
+                       == PackageManager.PERMISSION_DENIED)
+                      return;
+            } catch (RemoteException e){
+            }
+        }
+
         mContext.enforceCallingPermission(
                 "android.permission.SEND_SMS",
                 "Sending SMS message");
@@ -420,8 +493,15 @@ public class IccSmsInterfaceManager extends ISms.Stub {
                         ", part[" + (i++) + "]=" + part);
             }
         }
-        mDispatcher.sendMultipartText(destAddr, scAddr, (ArrayList<String>) parts,
-                (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents);
+        log("hasSecurityCheck: " + SMSDispatcher.hasSecurityCheck() + ", enable sending: " + SMSDispatcher.isInterceptSending());
+        if (SMSDispatcher.hasSecurityCheck() && SMSDispatcher.isInterceptSending()) {
+            log("send MultipartText to be checked");
+            mDispatcher.sendMultipartTextToBeChecked(destAddr, scAddr, (ArrayList<String>) parts,
+                    (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents);
+        } else {
+            mDispatcher.sendMultipartText(destAddr, scAddr, (ArrayList<String>) parts,
+                    (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents);
+        }
     }
 
     /**

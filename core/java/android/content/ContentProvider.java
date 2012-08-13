@@ -16,6 +16,7 @@
 
 package android.content;
 
+import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.content.pm.PathPermission;
 import android.content.pm.ProviderInfo;
@@ -29,7 +30,11 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.os.Process;
+import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.util.Log;
+
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -91,6 +96,8 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
     private String mWritePermission;
     private PathPermission[] mPathPermissions;
     private boolean mExported;
+
+    private String wperm2;
 
     private Transport mTransport = new Transport();
 
@@ -286,7 +293,21 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
                     == PackageManager.PERMISSION_GRANTED) {
                 return;
             }
-            
+
+            if(FeatureQuery.FEATURE_SECURITY){
+              if(rperm == android.Manifest.permission.READ_CONTACTS
+                     || rperm == android.Manifest.permission.READ_SMS){
+                try {
+                   IPackageManager pm = IPackageManager.Stub.asInterface(
+                         ServiceManager.getService("package"));
+                   if(pm.checkUidPermission(rperm,Binder.getCallingUid())
+                         == PackageManager.PERMISSION_DENIED)
+                   return;
+                } catch (RemoteException e){
+                }
+              }
+            }
+
             String msg = "Permission Denial: reading "
                     + ContentProvider.this.getClass().getName()
                     + " uri " + uri + " from pid=" + Binder.getCallingPid()
@@ -332,7 +353,11 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
                     == PackageManager.PERMISSION_GRANTED) {
                 return true;
             }
-            
+
+            if(FeatureQuery.FEATURE_SECURITY){
+               wperm2 = wperm;
+            }
+
             return false;
         }
         

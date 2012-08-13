@@ -18973,6 +18973,25 @@ package android.sax {
 
 package android.security {
 
+  public class ActionReceiverEntry implements android.os.Parcelable {
+    ctor public ActionReceiverEntry();
+    method public int describeContents();
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final android.os.Parcelable.Creator CREATOR;
+    field public java.lang.String[] blockedActions;
+    field public java.lang.String packageName;
+  }
+
+  public class FirewallEntry implements android.os.Parcelable {
+    ctor public FirewallEntry();
+    method public int describeContents();
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final android.os.Parcelable.Creator CREATOR;
+    field public boolean mobileBlocked;
+    field public int uid;
+    field public boolean wifiBlocked;
+  }
+
   public final class KeyChain {
     ctor public KeyChain();
     method public static void choosePrivateKeyAlias(android.app.Activity, android.security.KeyChainAliasCallback, java.lang.String[], java.security.Principal[], java.lang.String, int, java.lang.String);
@@ -18993,6 +19012,105 @@ package android.security {
     ctor public KeyChainException(java.lang.String);
     ctor public KeyChainException(java.lang.String, java.lang.Throwable);
     ctor public KeyChainException(java.lang.Throwable);
+  }
+
+  public class PermissionEntry implements android.os.Parcelable {
+    ctor public PermissionEntry();
+    method public int describeContents();
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final android.os.Parcelable.Creator CREATOR;
+    field public java.lang.String packageName;
+    field public java.lang.String[] revokedPermissions;
+  }
+
+  public class SecurityManager {
+    method public int addCallBlackItem(android.os.Bundle);
+    method public boolean attachHandler(android.os.Handler);
+    method public int blockActionReceiver(java.lang.String, java.lang.String);
+    method public static android.security.SecurityManager getInstance(android.content.Context);
+    method public int grantPermission(java.lang.String, java.lang.String);
+    method public int grantPermission(java.lang.String, int);
+    method public int grantPermission(java.util.List<java.lang.String>, java.lang.String);
+    method public int grantPermission(java.util.List<java.lang.String>, int);
+    method public int interceptCall(int, int);
+    method public int interceptMessage(int, int);
+    method public int registerSecurityMonitor(int);
+    method public int removeCallBlackItem(android.os.Bundle);
+    method public int restoreActionReceiver(java.lang.String, java.lang.String);
+    method public int revokePermission(java.lang.String, java.lang.String, int);
+    method public int revokePermission(java.lang.String, int, int);
+    method public int revokePermission(java.util.List<java.lang.String>, java.lang.String, int);
+    method public int revokePermission(java.util.List<java.lang.String>, int, int);
+    method public int setCallBlackList(android.os.Bundle);
+    method public int setFirewallPolicy(android.os.Bundle);
+    method public int setPowerSaverMode(int);
+    field public static final int ACTION_CALL_BLOCK = 2; // 0x2
+    field public static final int ACTION_CALL_PASS = 1; // 0x1
+    field public static final int ACTION_MESSAGE_BLOCK = 1; // 0x1
+    field public static final int ACTION_MESSAGE_PASS = 0; // 0x0
+    field public static final int ALL_MESSAGE_WATCHER = 4; // 0x4
+    field public static final java.lang.String CALL_KEY_DATE = "date";
+    field public static final java.lang.String CALL_KEY_IDENT = "ident";
+    field public static final java.lang.String CALL_KEY_PHONE_NUMBER = "phoneNumber";
+    field public static final java.lang.String CALL_KEY_SUBSCRIPTION = "subscription";
+    field public static final int FIREWALL_TYPE_ALL = 3; // 0x3
+    field public static final int FIREWALL_TYPE_MOBILE = 1; // 0x1
+    field public static final int FIREWALL_TYPE_WIFI = 2; // 0x2
+    field public static final java.lang.String MESSAGE_DIRECTION_RECEIVED = "received";
+    field public static final java.lang.String MESSAGE_DIRECTION_SENDING = "sending";
+    field public static final java.lang.String MESSAGE_KEY_CONTENT = "content";
+    field public static final java.lang.String MESSAGE_KEY_DIRECTION = "direction";
+    field public static final java.lang.String MESSAGE_KEY_IDENT = "ident";
+    field public static final java.lang.String MESSAGE_KEY_PHONE_NUMBER = "phoneNumber";
+    field public static final int MODE_HIGH_TEMPERATURE = 4; // 0x4
+    field public static final int MODE_LIGHT_COMPUTING = 8; // 0x8
+    field public static final int MODE_LOW_BATTERY = 2; // 0x2
+    field public static final int MODE_SCREEN_OFF = 1; // 0x1
+    field public static final int MONITOR_CALL = 2; // 0x2
+    field public static final int MONITOR_CALL_BLOCKED = 3; // 0x3
+    field public static final int MONITOR_CALL_IN_APP = 8; // 0x8
+    field public static final int MONITOR_CALL_IN_SYS = 16; // 0x10
+    field public static final int MONITOR_MESSAGE = 1; // 0x1
+    field public static final int PERM_DYNAMIC = 1; // 0x1
+    field public static final int PERM_STATIC = 0; // 0x0
+    field public static final int RECEVIED_MESSAGE_WATCHER = 2; // 0x2
+    field public static final int SENDING_MESSAGE_WATCHER = 1; // 0x1
+  }
+
+  public final class SecurityResult {
+    ctor public SecurityResult();
+    field public static final int ADD_BLACK_ITEM_SUCCESS = 0; // 0x0
+    field public static final int APPLY_TOKEN_SUCCESS = 0; // 0x0
+    field public static final int AUTHORIZED_PACKAGE = 1; // 0x1
+    field public static final int BLOCK_ACTION_SUCCESS = 0; // 0x0
+    field public static final int DUPLICATE_BLACK_ITEM = 2; // 0x2
+    field public static final int GRANT_DUPLICATE_PERM = 2; // 0x2
+    field public static final int GRANT_PERM_SUCCESS = 0; // 0x0
+    field public static final int INSERT_BLACK_LIST_SUCCESS = 0; // 0x0
+    field public static final int INTERCEPT_MESSAGE_SUCCESS = 0; // 0x0
+    field public static final int INTERCPET_MESSAGE_DUPLICATE = 1; // 0x1
+    field public static final int INVALID_CALL_BLACK_ITEM = 1; // 0x1
+    field public static final int INVALID_CALL_BLACK_LIST = 2; // 0x2
+    field public static final int INVALID_HANDLER = 2; // 0x2
+    field public static final int INVALID_PERM_TYPE = 3; // 0x3
+    field public static final int INVALID_PKG_PERM = 1; // 0x1
+    field public static final int INVALID_RECEVIER_ACTION = 1; // 0x1
+    field public static final int INVALID_UID_PERM = 1; // 0x1
+    field public static final int NON_EXISTED_BLACK_ITEM = 2; // 0x2
+    field public static final int NOT_AUTHORIZED_PACKAGE = 0; // 0x0
+    field public static final int REGISTER_FAILURE = 1; // 0x1
+    field public static final int REGISTER_SUCCESS = 0; // 0x0
+    field public static final int REMOTE_ERROR = 99; // 0x63
+    field public static final int REMOTE_NO_ERROR = 0; // 0x0
+    field public static final int REMOVE_BLACK_ITEM_SUCCESS = 0; // 0x0
+    field public static final int RESTORE_ACTION_SUCCESS = 0; // 0x0
+    field public static final int REVOKE_DUPLICATE_PERM = 2; // 0x2
+    field public static final int REVOKE_PERM_SUCCESS = 0; // 0x0
+    field public static final int SET_FIREWALL_INVALID_INPUT = 1; // 0x1
+    field public static final int SET_FIREWALL_SUCCESS = 0; // 0x0
+    field public static final int SET_POWERMODE_INIT_ERROR = 2; // 0x2
+    field public static final int SET_POWERMODE_SUCCESS = 0; // 0x0
+    field public static final int SET_POWERMODE_UNSUPPORTED = 1; // 0x1
   }
 
 }
