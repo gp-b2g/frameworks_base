@@ -98,6 +98,8 @@ public class VideoPhoneInterfaceManager extends IVideoTelephony.Stub {
         mPhone.unregisterForRingbackTone(mHandler);
         mPhone.unregisterForNewRingingConnection(mHandler);
         mPhone.unregisterForDisconnect(mHandler);
+
+        mPhone = null;
     }
 
     public VideoPhoneInterfaceManager( Phone phone) {
@@ -116,12 +118,32 @@ public class VideoPhoneInterfaceManager extends IVideoTelephony.Stub {
         ServiceManager.addService("videophone", this); 
         //need to update commands/binder/servicemanage.c accordingly
     }
-    
+
+    private void enforceVideoPhoneEnabled(){
+        if(mPhone == null){
+            throw new IllegalArgumentException("video phone not enabled!");
+        }
+    }
+
+    /**
+     * For all phone, telephony will start it as a GSM phone. If reply failed,
+     * telephony will restart it as other type phone. This will make the video
+     * phone manager add to system service map and all type phone in slot1
+     * always can get this manager, so add this method to check is video phone
+     * enabled.
+     * 
+     * @return
+     */
+    public boolean isEnabled() {
+        return mPhone != null;
+    }
+
     public boolean getIccFdnEnabled() {
         return mPhone.getIccCard().getIccFdnEnabled();
     }
 
     public void call(String number) {
+        enforceVideoPhoneEnabled();
         if(DEBUG) Log.v(TAG,"call: " + number);
         Log.d(TAG,"calling....");
         
@@ -150,6 +172,7 @@ public class VideoPhoneInterfaceManager extends IVideoTelephony.Stub {
     }
     
     public void endCall() {
+        enforceVideoPhoneEnabled();
         if(DEBUG) Log.v(TAG, " endCall() mConnection="+mConnection);
         try {
         	if(null == mConnection) {
@@ -164,6 +187,7 @@ public class VideoPhoneInterfaceManager extends IVideoTelephony.Stub {
     }
     
     public void fallBack(){
+        enforceVideoPhoneEnabled();
         if(DEBUG) Log.v(TAG, " fall back Call() ");
         try {
             mPhone.requestFallback();
@@ -173,7 +197,8 @@ public class VideoPhoneInterfaceManager extends IVideoTelephony.Stub {
         }
     }
     
-    public void answerCall(){       
+    public void answerCall(){
+        enforceVideoPhoneEnabled();
         if(DEBUG) Log.v(TAG, " acceptCall() ");
         try {
             mPhone.acceptCallVT();
@@ -184,6 +209,7 @@ public class VideoPhoneInterfaceManager extends IVideoTelephony.Stub {
     }
     
     public void rejectCall(){
+        enforceVideoPhoneEnabled();
         if(DEBUG) Log.v(TAG, " rejectCall() ");
         try {
         	mPhone.rejectCallVT();
@@ -194,6 +220,7 @@ public class VideoPhoneInterfaceManager extends IVideoTelephony.Stub {
     }
     
     public void startDtmf(char c) {
+        enforceVideoPhoneEnabled();
     	if(DEBUG) Log.v(TAG, " startDtmf() with c "+c);
         try {
         	mPhone.startDtmf(c);
@@ -203,6 +230,7 @@ public class VideoPhoneInterfaceManager extends IVideoTelephony.Stub {
     }
     
     public void stopDtmf() {
+        enforceVideoPhoneEnabled();
     	if(DEBUG) Log.v(TAG, " stopDtmf()...");
         try {
         	mPhone.stopDtmf();
@@ -458,7 +486,8 @@ public class VideoPhoneInterfaceManager extends IVideoTelephony.Stub {
         }
     }
     
-    public boolean isVtIdle() {    	
+    public boolean isVtIdle() {
+        enforceVideoPhoneEnabled();
     	Connection conn = mPhone.getForegroundCall().getEarliestConnection();
         if(conn != null && conn.isVoice()){        	
             if(DEBUG) Log.v(TAG,"not video call, return");
