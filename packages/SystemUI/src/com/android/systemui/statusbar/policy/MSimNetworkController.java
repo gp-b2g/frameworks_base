@@ -714,6 +714,7 @@ public class MSimNetworkController extends NetworkController {
 
         // Update icon only if DDS in properly set and "subscription" matches DDS.
         if (subscription != dataSub) {
+            mMSimDataConnected[subscription] = false;
             return;
         }
 
