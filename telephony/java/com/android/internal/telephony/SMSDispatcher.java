@@ -357,6 +357,10 @@ public abstract class SMSDispatcher extends Handler {
                 } else if (action == SecurityManager.ACTION_MESSAGE_BLOCK){
                     Log.d(TAG, "Block sms request: " + request);
                     result = SecurityResult.INTERCEPT_MESSAGE_SUCCESS;
+                    if (request instanceof SmsReceiveRequest) {
+                        SmsReceiveRequest srr = (SmsReceiveRequest) request;
+                        srr.dispatcher.acknowledgeLastIncomingSms(true, Activity.RESULT_OK, null);
+                    }
                 }
             }
             Log.d(TAG, "onInterceptMessage - result: " + result);
