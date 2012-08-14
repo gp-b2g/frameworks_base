@@ -72,6 +72,13 @@ public class ConnectivityManager {
     public static final String CONNECTIVITY_ACTION = "android.net.conn.CONNECTIVITY_CHANGE";
 
     /**
+     * Broadcast that will be sent when setMobileDataEnabled is called
+     *
+     * @hide
+     */
+    public static final String MOBILE_CONNECTIVITY_ACTION = "android.net.conn.MOBILE_CONNECTIVITY_CHANGE";
+
+    /**
      * Identical to {@link #CONNECTIVITY_ACTION} broadcast, but sent without any
      * applicable {@link Settings.Secure#CONNECTIVITY_CHANGE_DELAY}.
      *
@@ -118,6 +125,14 @@ public class ConnectivityManager {
      * it with {@link android.content.Intent#getStringExtra(String)}.
      */
     public static final String EXTRA_REASON = "reason";
+
+    /**
+     * The lookup key for a boolean that indicates whether mobile data is enabled
+     *
+     * @hide
+     */
+    public static final String EXTRA_ENABLED = "enable";
+
     /**
      * The lookup key for a string that provides optionally supplied
      * extra information about the network state. The information

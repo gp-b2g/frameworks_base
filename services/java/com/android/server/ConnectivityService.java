@@ -1517,6 +1517,9 @@ private NetworkStateTracker makeWimaxStateTracker() {
 
         mHandler.sendMessage(mHandler.obtainMessage(EVENT_SET_MOBILE_DATA,
                 (enabled ? ENABLED : DISABLED), INVALID_MSG_ARG));
+        Intent intent = new Intent(ConnectivityManager.MOBILE_CONNECTIVITY_ACTION);
+        intent.putExtra(ConnectivityManager.EXTRA_ENABLED, enabled);
+        mContext.sendBroadcast(intent);
     }
 
     private void handleSetMobileData(boolean enabled) {
