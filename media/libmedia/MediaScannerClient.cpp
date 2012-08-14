@@ -213,6 +213,7 @@ void MediaScannerClient::endFile()
 {
     if (mLocaleEncoding != kEncodingNone) {
         int size = mNames->size();
+        int count = 0;
         uint32_t encoding    = kEncodingAll;
         uint32_t tmpEncoding = kEncodingAll;
         uint32_t srcEncoding = kEncodingNone;
@@ -221,11 +222,21 @@ void MediaScannerClient::endFile()
         for (int i = 0; i < mNames->size(); i++) {
             tmpEncoding = possibleEncodings(mValues->getEntry(i));
             // If no multibyte encoding is detected or GBK is the only possible multibyte encoding, just ignore
-            if( (kEncodingNone != tmpEncoding) && (kEncodingCP1252 != tmpEncoding)
-                && ((kEncodingGBK | kEncodingCP1252) != tmpEncoding) ) {
-                encoding &= tmpEncoding;
+            if( (kEncodingNone == tmpEncoding) || ((kEncodingGBK | kEncodingCP1252) == tmpEncoding) ) {
+                continue;
             }
+
+            if( kEncodingCP1252 == tmpEncoding ) {
+                ++count;
+                continue;
+            }
+
+            encoding &= tmpEncoding;
             LOGV("value: %s, tmpEncoding: %x\n", mValues->getEntry(i), tmpEncoding);
+        }
+
+        if(count >= 2) {
+            encoding = kEncodingAll;
         }
         LOGV("possibleEncodings: %x\n", encoding);
 
