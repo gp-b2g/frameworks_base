@@ -329,7 +329,7 @@ public class MediaRecorder
         setVideoEncodingBitRate(profile.videoBitRate);
         setVideoEncoder(profile.videoCodec);
         if (profile.quality >= CamcorderProfile.QUALITY_TIME_LAPSE_LOW &&
-             profile.quality <= CamcorderProfile.QUALITY_TIME_LAPSE_QVGA) {
+             profile.quality <= CamcorderProfile.QUALITY_TIME_LAPSE_WQVGA) {
             // Enable time lapse. Also don't set audio for time lapse.
             setParameter(String.format("time-lapse-enable=1"));
         } else if( profile.audioCodec >= 0){
