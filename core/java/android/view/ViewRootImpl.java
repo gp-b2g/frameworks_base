@@ -166,6 +166,8 @@ public final class ViewRootImpl extends Handler implements ViewParent,
 
     final int mTargetSdkVersion;
 
+    final String mProcessName;
+
     int mSeq;
 
     View mView;
@@ -350,6 +352,7 @@ public final class ViewRootImpl extends Handler implements ViewParent,
         mWinFrame = new Rect();
         mWindow = new W(this);
         mTargetSdkVersion = context.getApplicationInfo().targetSdkVersion;
+        mProcessName = context.getApplicationInfo().processName;
         mInputMethodCallback = new InputMethodCallback(this);
         mViewVisibility = View.GONE;
         mTransparentRegion = new Region();
@@ -603,7 +606,10 @@ public final class ViewRootImpl extends Handler implements ViewParent,
 
         // Don't enable hardware acceleration when the application is in compatibility mode
         if (mTranslator != null) return;
-
+        if (mProcessName != null && mProcessName.equals("com.sina.weibo")){
+            if(DBG) Log.w(HardwareRenderer.LOG_TAG,"disable hardware render for "+mProcessName);
+            return;
+        }
         // Try to enable hardware acceleration if requested
         final boolean hardwareAccelerated = 
                 (attrs.flags & WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED) != 0;
