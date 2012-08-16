@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -278,12 +279,14 @@ void SoftAMR::onQueueFilled(OMX_U32 portIndex) {
         OMX_BUFFERHEADERTYPE *outHeader = outInfo->mHeader;
 
         if (inHeader->nFlags & OMX_BUFFERFLAG_EOS) {
+            mAnchorTimeUs = inHeader->nTimeStamp;
             inQueue.erase(inQueue.begin());
             inInfo->mOwnedByUs = false;
             notifyEmptyBufferDone(inHeader);
 
             outHeader->nFilledLen = 0;
             outHeader->nFlags = OMX_BUFFERFLAG_EOS;
+            outHeader->nTimeStamp = mAnchorTimeUs;
 
             outQueue.erase(outQueue.begin());
             outInfo->mOwnedByUs = false;
