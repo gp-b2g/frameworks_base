@@ -17,6 +17,7 @@ import android.os.storage.StorageManager;
 import android.os.storage.StorageVolume;
 import android.util.Log;
 import android.view.WindowManager;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.internal.R;
@@ -144,9 +145,17 @@ public class ExternalStorageFormatter extends Service
         String status = mStorageVolume == null ?
                 Environment.getExternalStorageState() :
                 mStorageManager.getVolumeState(mStorageVolume.getPath());
+        String  description = mStorageVolume == null ?
+                null:
+                mStorageVolume.getDescription();
+        boolean USBStorage = getString(R.string.storage_usb).equals(description);
         if (Environment.MEDIA_MOUNTED.equals(status)
                 || Environment.MEDIA_MOUNTED_READ_ONLY.equals(status)) {
-            updateProgressDialog(R.string.progress_unmounting);
+            if(USBStorage){
+                updateProgressDialog(R.string.usb_progress_unmounting);
+            }else {
+                updateProgressDialog(R.string.progress_unmounting);
+            }
             IMountService mountService = getMountService();
             final String extStoragePath = mStorageVolume == null ?
                     Environment.getExternalStorageDirectory().toString() :
@@ -160,7 +169,11 @@ public class ExternalStorageFormatter extends Service
         } else if (Environment.MEDIA_NOFS.equals(status)
                 || Environment.MEDIA_UNMOUNTED.equals(status)
                 || Environment.MEDIA_UNMOUNTABLE.equals(status)) {
-            updateProgressDialog(R.string.progress_erasing);
+            if(USBStorage){
+                updateProgressDialog(R.string.usb_progress_erasing);
+            }else {
+                updateProgressDialog(R.string.progress_erasing);
+            }
             final IMountService mountService = getMountService();
             final String extStoragePath = mStorageVolume == null ?
                     Environment.getExternalStorageDirectory().toString() :
@@ -170,12 +183,21 @@ public class ExternalStorageFormatter extends Service
                     @Override
                     public void run() {
                         boolean success = false;
+                        String  description = mStorageVolume == null ?
+                                null:
+                                mStorageVolume.getDescription();
+                        boolean USBStorage = getString(R.string.storage_usb).equals(description);
                         try {
                             mountService.formatVolume(extStoragePath);
                             success = true;
                         } catch (Exception e) {
-                            Toast.makeText(ExternalStorageFormatter.this,
-                                    R.string.format_error, Toast.LENGTH_LONG).show();
+                            if(USBStorage){
+                                Toast.makeText(ExternalStorageFormatter.this,
+                                        R.string.usb_format_error, Toast.LENGTH_LONG).show();
+                            }else{
+                                Toast.makeText(ExternalStorageFormatter.this,
+                                        R.string.format_error, Toast.LENGTH_LONG).show();
+                            }
                         }
                         if (success) {
                             if (mFactoryReset) {
@@ -204,15 +226,21 @@ public class ExternalStorageFormatter extends Service
                 Log.w(TAG, "Unable to locate IMountService");
             }
         } else if (Environment.MEDIA_BAD_REMOVAL.equals(status)) {
-            fail(R.string.media_bad_removal);
+                fail(R.string.media_bad_removal);
         } else if (Environment.MEDIA_CHECKING.equals(status)) {
+            if(USBStorage)
+                fail(R.string.usb_media_checking);
+            else
             fail(R.string.media_checking);
         } else if (Environment.MEDIA_REMOVED.equals(status)) {
-            fail(R.string.media_removed);
+                fail(R.string.media_removed);
         } else if (Environment.MEDIA_SHARED.equals(status)) {
-            fail(R.string.media_shared);
+            if(USBStorage)
+                fail(R.string.usb_media_shared);
+            else
+                fail(R.string.media_shared);
         } else {
-            fail(R.string.media_unknown_state);
+                fail(R.string.media_unknown_state);
             Log.w(TAG, "Unknown storage state: " + status);
             stopSelf();
         }
