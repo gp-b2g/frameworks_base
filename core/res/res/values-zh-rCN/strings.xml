@@ -1117,16 +1117,21 @@
   </plurals>
     <string name="action_mode_done" msgid="7217581640461922289">"完成"</string>
     <string name="progress_unmounting" product="nosdcard" msgid="535863554318797377">"正在卸载 USB 存储设备..."</string>
+    <string name="usb_progress_unmounting">"正在卸载 USB 存储设备..."</string>
     <string name="progress_unmounting" product="default" msgid="5556813978958789471">"正在卸载 SD 卡..."</string>
     <string name="progress_erasing" product="nosdcard" msgid="4183664626203056915">"正在格式化 USB 存储设备"</string>
+    <string name="usb_progress_erasing">"正在格式化 USB 存储设备"</string>
     <string name="progress_erasing" product="default" msgid="2115214724367534095">"正在格式化 SD 卡..."</string>
     <string name="format_error" product="nosdcard" msgid="6299769563624776948">"无法清除 USB 存储设备。"</string>
+    <string name="usb_format_error">"无法清除 USB 存储设备。"</string>
     <string name="format_error" product="default" msgid="7315248696644510935">"无法清除 SD 卡。"</string>
     <string name="media_bad_removal" msgid="7960864061016603281">"SD 卡尚未卸载就被移除。"</string>
     <string name="media_checking" product="nosdcard" msgid="418188720009569693">"系统正在检查 USB 存储设备。"</string>
+    <string name="usb_media_checking">"系统正在检查 USB 存储设备。"</string>
     <string name="media_checking" product="default" msgid="7334762503904827481">"目前正在检查 SD 卡。"</string>
     <string name="media_removed" msgid="7001526905057952097">"SD 卡已移除。"</string>
     <string name="media_shared" product="nosdcard" msgid="5830814349250834225">"某台计算机正在使用 USB 存储设备。"</string>
+    <string name="usb_media_shared">"某台计算机正在使用 USB 存储设备。"</string>
     <string name="media_shared" product="default" msgid="5706130568133540435">"目前有计算机正在使用 SD 卡。"</string>
     <string name="media_unknown_state" msgid="729192782197290385">"外部媒体处于未知状态。"</string>
     <string name="share" msgid="1778686618230011964">"分享"</string>
