@@ -485,16 +485,17 @@ public class VideoPhoneInterfaceManager extends IVideoTelephony.Stub {
         mCallbacks.finishBroadcast();
         }
     }
-    
+
     public boolean isVtIdle() {
         enforceVideoPhoneEnabled();
-    	Connection conn = mPhone.getForegroundCall().getEarliestConnection();
-        if(conn != null && conn.isVoice()){        	
-            if(DEBUG) Log.v(TAG,"not video call, return");
+        if (mPhone.getState() == Phone.State.IDLE) {
+            Log.d(TAG, "phone state is idle");
             return true;
+        } else {
+            Connection conn = mPhone.getForegroundCall().getEarliestConnection();
+            Log.d(TAG, "conn.isVoice:" + (conn == null ? "null" : conn.isVoice()));
+            return (conn == null || conn.isVoice());
         }
-        Phone.State s = mPhone.getState();        
-		return (mPhone.getState() == Phone.State.IDLE);
     }
 }
 
