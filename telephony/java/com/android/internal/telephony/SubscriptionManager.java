@@ -345,10 +345,12 @@ public class SubscriptionManager extends Handler {
                 } else {
                     Log.d(LOG_TAG,"EVENT_SET_PREFERRED_NETWORK_TYPE succeed");
                }
+               enableDataAfterSetNWMode();
                break;
 
             case EVENT_GET_PREFERRED_NETWORK_TYPE:
                 ar = (AsyncResult) msg.obj;
+                boolean needSetNWMode =  false;
                 if (ar.exception == null) {
                     int type = ((int[])ar.result)[0];
                     int mode =  android.provider.Settings.System.getInt(
@@ -359,11 +361,14 @@ public class SubscriptionManager extends Handler {
                         MSimPhoneFactory.getPhone(0).setPreferredNetworkType(mode,
                             obtainMessage(EVENT_SET_PREFERRED_NETWORK_TYPE));
                         Log.d(LOG_TAG,"send request to set to "+mode);
+                        needSetNWMode = true;
                     }
                 } else {
                     // Weird state, disable the setting
                     Log.i(LOG_TAG, "get preferred network type, exception="+ar.exception);
                 }
+                if (needSetNWMode == false)
+                    enableDataAfterSetNWMode();
                 break;
 
             default:
@@ -394,10 +399,10 @@ public class SubscriptionManager extends Handler {
         }
     }
 
-    private void restoreGsmPhoneNWModeIfNeed() {
+    private boolean restoreGsmPhoneNWModeIfNeed() {
         boolean otaEnabled = SystemProperties.getBoolean("ril.gta.enabled", true);
         if (!otaEnabled) {
-            return;
+            return false;
         }
 
         if (mCurrentDds == 0 &&
@@ -411,9 +416,35 @@ public class SubscriptionManager extends Handler {
                 MSimPhoneFactory.getPhone(0).getPreferredNetworkType(
                             obtainMessage(EVENT_GET_PREFERRED_NETWORK_TYPE));
                 Log.d(LOG_TAG,"restoreGsmPhoneNWModeIfNeed sent EVENT_GET_PREFERRED_NETWORK_TYPE");
+                return true;
             }
         }
+        return false;
     }
+
+    private void enableDataAfterSetNWMode() {
+        // Enable the data connectivity on new dds.
+        logd("enableDataAfterSetNWMode"
+                + "  Enable Data Connectivity on Subscription " + mCurrentDds);
+        MSimProxyManager.getInstance().enableDataConnectivity(mCurrentDds);
+        mDataActive = true;
+
+        //Subscription is changed to this new sub, need to update the DB to mark
+        //the respective profiles as "current".
+        //MSimProxyManager.getInstance().updateCurrentCarrierInProvider(mCurrentDds);
+
+        // Reset the flag.
+        mDisableDdsInProgress = false;
+
+        // Send the message back to callee with result.
+        if (mSetDdsCompleteMsg != null) {
+            AsyncResult.forMessage(mSetDdsCompleteMsg, true, null);
+            logd("Enable Data Connectivity Done!! Sending the cnf back!");
+            mSetDdsCompleteMsg.sendToTarget();
+            mSetDdsCompleteMsg = null;
+        }
+    }
+
 
     /**
      * Handles the SET_DATA_SUBSCRIPTION_DONE event
@@ -430,7 +461,8 @@ public class SubscriptionManager extends Handler {
             MSimProxyManager.getInstance().updateDataConnectionTracker(0);
             MSimProxyManager.getInstance().updateDataConnectionTracker(1);
 
-            restoreGsmPhoneNWModeIfNeed();
+            if (restoreGsmPhoneNWModeIfNeed())
+                return;
 
             // Enable the data connectivity on new dds.
             logd("setDataSubscriptionSource is Successful"
