@@ -673,7 +673,7 @@ status_t CameraService::Client::startPreviewMode() {
 
 	String8 params(mHardware->getParameters().flatten());
 	CameraParameters param(params);
-	param.getPreviewSize(&frameWidth, &frameHeight);
+	//param.getPreviewSize(&frameWidth, &frameHeight);
 
     if (mPreviewWindow != 0) {
         native_window_set_scaling_mode(mPreviewWindow.get(),
@@ -1221,115 +1221,6 @@ void CameraService::Client::copyFrameAndPostCopiedFrame(
         camera_frame_metadata_t *metadata) {
     LOG2("copyFrameAndPostCopiedFrame");
 
-//Rotate preview frame recieved from HAL
-    static int icnt = 0;
-    // stretch start
-    int pmem_fd = open("/dev/pmem_adsp", O_RDWR|O_SYNC);
-    void* fb_rotate = 0;
-    if (pmem_fd > 0)
-    {
-        fb_rotate = (void*)mmap(0, size*2, PROT_READ|PROT_WRITE, MAP_SHARED, pmem_fd, 0);
-    }
-    else
-        return;
-
-    int fb_fd = -1;
-    if (fb_fd == -1) {
-        fb_fd = open("/dev/graphics/fb0", O_RDWR);
-        if (fb_fd < 0) {
-            return;
-        }
-    }
-	struct mdp_blit_req* blitReq;
-
-    union {
-        char dummy[sizeof(struct mdp_blit_req_list) + sizeof(struct mdp_blit_req)*1];
-        struct mdp_blit_req_list list;
-    } imgFrame;
-
-    memset(&imgFrame, 0, sizeof(imgFrame));
-    imgFrame.list.count = 1;
-
-    blitReq = &(imgFrame.list.req[0]);
-    blitReq->src.width  = frameWidth;
-    blitReq->src.height = frameHeight;
-    blitReq->src.format = MDP_Y_CBCR_H2V2;//MDP_Y_CRCB_H2V2;
-    blitReq->src.offset = (uint32_t)offset;
-    blitReq->src.memory_id = heap->getHeapID();
-    blitReq->src.priv = 0;
-
-    blitReq->dst.width  = frameHeight;
-    blitReq->dst.height = frameWidth;
-    blitReq->dst.format = MDP_Y_CBCR_H2V2;//MDP_Y_CRCB_H2V2;
-    blitReq->dst.offset = 0;
-    blitReq->dst.memory_id = pmem_fd;
-
-    //blitReq->transp_mask = 0xF81F;
-    blitReq->transp_mask = 0xffffffff;
-    //blitReq->flags = 0;
-    if(mCameraFacing == CAMERA_FACING_FRONT)
-        blitReq->flags = MDP_ROT_270;
-    else
-        blitReq->flags = MDP_ROT_90;
-
-    blitReq->alpha  = 0xFF;
-    blitReq->dst_rect.x = 0;
-    blitReq->dst_rect.y = 0;
-    blitReq->dst_rect.w = frameHeight;
-    blitReq->dst_rect.h = frameWidth;
-
-    blitReq->src_rect.x = 0;
-    blitReq->src_rect.y = 0;
-    blitReq->src_rect.w = frameWidth;
-    blitReq->src_rect.h = frameHeight;
-
-    int erro = 0;
-    if (erro = ioctl(fb_fd, MSMFB_BLIT, &imgFrame.list))
-        LOGE("chiz MSMFB_BLIT error1%d\n", (uint)erro);
-
-    memset(&imgFrame, 0, sizeof(imgFrame));
-    imgFrame.list.count = 1;
-
-    blitReq = &(imgFrame.list.req[0]);
-    blitReq->src.width  = frameHeight;
-    blitReq->src.height = frameWidth;
-    blitReq->src.format = MDP_Y_CBCR_H2V2;//MDP_Y_CRCB_H2V2;
-    blitReq->src.offset = 0;
-    blitReq->src.memory_id = pmem_fd;
-    blitReq->src.priv = 0;
-
-    blitReq->dst.width  = frameWidth;
-    blitReq->dst.height = frameHeight;
-    blitReq->dst.format = MDP_Y_CBCR_H2V2;//MDP_Y_CRCB_H2V2;
-    blitReq->dst.offset = size;
-    blitReq->dst.memory_id = pmem_fd;
-
-    //blitReq->transp_mask = 0xF81F;
-    blitReq->transp_mask = 0xffffffff;
-    //blitReq->flags = 0;
-    if(mCameraFacing == CAMERA_FACING_FRONT)
-        blitReq->flags = MDP_FLIP_LR;
-
-    blitReq->alpha  = 0xFF;
-    blitReq->dst_rect.x = 0;
-    blitReq->dst_rect.y = 0;
-    blitReq->dst_rect.w = frameWidth;
-    blitReq->dst_rect.h = frameHeight;
-
-    blitReq->src_rect.x = 0;
-    blitReq->src_rect.y = 0;
-    blitReq->src_rect.w = frameHeight;
-    blitReq->src_rect.h = frameWidth;
-
-    if (erro = ioctl(fb_fd, MSMFB_BLIT, &imgFrame.list))
-        LOGE("chiz MSMFB_BLIT error2d\n", (uint)erro);
-
-    if (fb_fd > 0) {
-        close(fb_fd);
-        fb_fd = -1;
-    }
-//Rotate preview frame end
-
     // It is necessary to copy out of pmem before sending this to
     // the callback. For efficiency, reuse the same MemoryHeapBase
     // provided it's big enough. Don't allocate the memory or
@@ -1350,39 +1241,8 @@ void CameraService::Client::copyFrameAndPostCopiedFrame(
     }
     previewBuffer = mPreviewBuffer;
 
-#if 0
-/*	static int frameCnt = 0, frameCnt1 = 0;
-	int written;
-	//if (frameCnt >= 0 && frameCnt <= 10 ) {
-	char buf[128], buf1[128];
-	snprintf(buf, sizeof(buf), "/data/tmp/%d_preview.yuv", frameCnt);
-	snprintf(buf1, sizeof(buf), "/data/tmp/%d_preview1.yuv", frameCnt1);
-	int file_fd = open(buf, O_RDWR | O_CREAT, 0777);
-	int file_fd1 = open(buf1, O_RDWR | O_CREAT, 0777);
-	if (file_fd < 0 && file_fd1 < 0) {
-		LOGE("cannot open file\n");
-		}
-	else
-	{
-		LOGV("dumping data");
-		written = write(file_fd, (uint8_t *)(fb_rotate+size), size);
-		written = write(file_fd1, (uint8_t *)heap->base() + offset, size);
-		if(written < 0)
-		LOGE("error in data write");
-	}
-	close(file_fd);
-	close(file_fd1);
-	//}
-	frameCnt++;
-	frameCnt1++;*/
-#endif
-
-	memcpy(previewBuffer->base(), fb_rotate + size, size);
-
+	memcpy(previewBuffer->base(), (uint8_t *)heap->base() + offset, size);
     sp<MemoryBase> frame = new MemoryBase(previewBuffer, 0, size);
-
-    munmap(fb_rotate, size*2);
-    close(pmem_fd);
 
     if (frame == 0) {
         LOGE("failed to allocate space for frame callback");

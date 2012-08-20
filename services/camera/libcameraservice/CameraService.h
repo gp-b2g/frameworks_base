@@ -212,11 +212,7 @@ private:
         // is found to be disabled. It returns true if mLock is grabbed.
         bool                    lockIfMessageWanted(int32_t msgType);
         int                     mburstCnt;
-		//Frame rotate changes
-		int pmem_fd;
-		void* fb_rotate;
-		int fb_fd;
-		int frameWidth, frameHeight;
+		
     };
 
     camera_module_t *mModule;
