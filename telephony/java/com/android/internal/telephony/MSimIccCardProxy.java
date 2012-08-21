@@ -243,12 +243,6 @@ public class MSimIccCardProxy extends IccCardProxy {
 
     @Override
     protected void setExternalState(State newState) {
-        CardSubscriptionManager cardSubMgr = CardSubscriptionManager.getInstance();
-        if ((newState == IccCard.State.ABSENT) &&
-            (cardSubMgr.getCardSubscriptions(mCardIndex) != null)) {
-            // HERE we set the state to deactivated - walkround
-            newState = IccCard.State.CARD_DEACTIVATED;
-        }
 
         if (newState == mExternalState) {
             return;

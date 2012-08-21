@@ -299,6 +299,12 @@ public class IccCardProxy extends Handler implements IccCard {
             return;
         }
 
+        if (TelephonyManager.getDefault().isMultiSimEnabled() && mUiccApplication == null
+            && mUiccCard != null && mUiccCard.getCardState() == CardState.CARDSTATE_PRESENT) {
+            setExternalState(State.CARD_DEACTIVATED);
+            return;
+        }
+
         if (mUiccCard.getCardState() == CardState.CARDSTATE_ERROR) {
             setExternalState(State.CARD_IO_ERROR);
             return;
