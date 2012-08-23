@@ -865,6 +865,7 @@ public class SubscriptionManager extends Handler {
         // this card.  If there is any, and which are not yet activated,
         // activate them!
         SubscriptionData cardSubInfo = mCardSubMgr.getCardSubscriptions(cardIndex);
+        Subscription userSub = mUserPrefSubs.subscription[cardIndex];
 
         logd("processCardInfoAvailable: cardIndex = " + cardIndex
                 + "\n Card Sub Info = " + cardSubInfo);
@@ -873,43 +874,42 @@ public class SubscriptionManager extends Handler {
         // this card), then notify a prompt to user.  Let user select
         // the subscriptions from new card!
         mIsNewCard [cardIndex] = true;
-        for (Subscription userSub : mUserPrefSubs.subscription) {
-            if (cardSubInfo.hasSubscription(userSub)) {
-                mIsNewCard[cardIndex] = false;
+        if (cardSubInfo.hasSubscription(userSub)) {
+            mIsNewCard[cardIndex] = false;
 
-                int subId = cardIndex;
-                Subscription currentSub = getCurrentSubscription(SubscriptionId.values()[subId]);
+            int subId = cardIndex;
+            Subscription currentSub = getCurrentSubscription(SubscriptionId.values()[subId]);
 
-                logd("processCardInfoAvailable: subId = " + subId
-                        + "\n user pref sub = " + userSub
-                        + "\n current sub   = " + currentSub);
+            logd("processCardInfoAvailable: subId = " + subId
+                    + "\n user pref sub = " + userSub
+                    + "\n current sub   = " + currentSub);
 
-                // TODO Need to check if this subscription is already in the pending list!
-                // If already there, no need to add again!
+            // TODO Need to check if this subscription is already in the pending list!
+            // If already there, no need to add again!
 
-                Subscription sub = new Subscription();
-                sub.copyFrom(cardSubInfo.getSubscription(userSub));
-                sub.slotId = cardIndex;
-                sub.subId = subId;
-                if (((mUserPrefSubs.subscription[subId].subStatus == SubscriptionStatus.SUB_ACTIVATED)
-                    || (mUserPrefSubs.subscription[subId].subStatus == SubscriptionStatus.SUB_INVALID))
-                    && (currentSub.subStatus != SubscriptionStatus.SUB_ACTIVATED)) {
-                    // Need to activate this Subscription!!! - userSub.subId
-                    // Push to the queue, so that start the SET_UICC_SUBSCRIPTION
-                    // only when the both cards are ready.
-                    logd("processCardInfoAvailable --DEBUG--: subId = "
-                         + subId + " need to activate!!!");
+            Subscription sub = new Subscription();
+            sub.copyFrom(cardSubInfo.getSubscription(userSub));
+            sub.slotId = cardIndex;
+            sub.subId = subId;
+            if (((mUserPrefSubs.subscription[subId].subStatus == SubscriptionStatus.SUB_ACTIVATED)
+                || (mUserPrefSubs.subscription[subId].subStatus == SubscriptionStatus.SUB_INVALID))
+                && (currentSub.subStatus != SubscriptionStatus.SUB_ACTIVATED)) {
+                // Need to activate this Subscription!!! - userSub.subId
+                // Push to the queue, so that start the SET_UICC_SUBSCRIPTION
+                // only when the both cards are ready.
+                logd("processCardInfoAvailable --DEBUG--: subId = "
+                     + subId + " need to activate!!!");
 
-                    sub.subStatus = SubscriptionStatus.SUB_ACTIVATE;
-                    mActivatePending.put(SubscriptionId.values()[subId], sub);
-                } else if ((mUserPrefSubs.subscription[subId].subStatus == SubscriptionStatus.SUB_DEACTIVATED)
-                           && (currentSub.subStatus != SubscriptionStatus.SUB_DEACTIVATED)) {
-                    //if the subscription is deactivated, should set card info to current subscription
-                    sub.subStatus = SubscriptionStatus.SUB_DEACTIVATED;
-                    currentSub.copyFrom(sub);
-                }
+                sub.subStatus = SubscriptionStatus.SUB_ACTIVATE;
+                mActivatePending.put(SubscriptionId.values()[subId], sub);
+            } else if ((mUserPrefSubs.subscription[subId].subStatus == SubscriptionStatus.SUB_DEACTIVATED)
+                       && (currentSub.subStatus != SubscriptionStatus.SUB_DEACTIVATED)) {
+                //if the subscription is deactivated, should set card info to current subscription
+                sub.subStatus = SubscriptionStatus.SUB_DEACTIVATED;
+                currentSub.copyFrom(sub);
             }
         }
+
         logd("processCardInfoAvailable: mIsNewCard [" + cardIndex + "] = "
                 + mIsNewCard [cardIndex]);
 
