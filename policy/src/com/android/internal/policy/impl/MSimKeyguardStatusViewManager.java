@@ -64,12 +64,14 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
     private static final int MSG_AIRPLANE_MODE_CHANGED = 1;
 
     private LocaleNamesParser localeNamesParser;
+    private KeyguardScreenCallback mCallback;
 
     public MSimKeyguardStatusViewManager(View view, KeyguardUpdateMonitor updateMonitor,
                 LockPatternUtils lockPatternUtils, KeyguardScreenCallback callback,
                 boolean emergencyButtonEnabledInScreen) {
         super(view, updateMonitor, lockPatternUtils, callback, emergencyButtonEnabledInScreen);
         if (DEBUG) Log.v(TAG, "KeyguardStatusViewManager()");
+        mCallback = callback;
         mNumPhones = TelephonyManager.getDefault().getPhoneCount();
         mCarrierTextSub = new CharSequence[mNumPhones];
         mMSimPlmn = new CharSequence[mNumPhones];
@@ -319,10 +321,20 @@ class MSimKeyguardStatusViewManager extends KeyguardStatusViewManager {
                 Log.d(TAG, "handle message MSG_AIRPLANE_MODE_CHANGED");
                 for (int i = 0; i < MSimConstants.MAX_PHONE_COUNT_DS; i++) {
                     updateCarrierStateWithSimStatus(mMSimState[i], i);
+                    if (mAirplaneMode) {
+                        handleSimUnlockScreen(i);
+                    }
                 }
                 break;
             }
         }
     };
+
+    private void handleSimUnlockScreen(int subscription) {
+        if (mCallback != null) {
+            mUpdateMonitor.reportSimUnlocked(subscription);
+            mCallback.goToUnlockScreen();
+        }
+    }
 
 }
