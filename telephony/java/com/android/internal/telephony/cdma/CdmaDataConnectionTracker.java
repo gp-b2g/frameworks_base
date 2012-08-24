@@ -591,7 +591,7 @@ public class CdmaDataConnectionTracker extends DataConnectionTracker {
         /* query for data profiles stored in the modem */
         mDpt.loadProfiles();
 
-        if (mState == State.FAILED) {
+        if (mState == State.FAILED || mState == State.CONNECTED) {
             cleanUpAllConnections(null);
         }
 
