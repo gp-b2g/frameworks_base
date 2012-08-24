@@ -192,7 +192,7 @@ public class AudioManager {
         11, // STREAM_DTMF
         11, // STREAM_TTS
         4,    // STREAM_VIDEO_TELEPHONY
-        11  // STREAM_FM
+        4  // STREAM_FM
     };
 
     /**
