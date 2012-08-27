@@ -16,6 +16,7 @@
 
 package com.android.server;
 
+import android.app.AppGlobals;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -46,6 +47,8 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.server.am.BatteryStatsService;
+
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 /**
  * Since phone process can be restarted, this class provides a centralized place
@@ -134,6 +137,17 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
         mConnectedApns = new ArrayList<String>();
     }
 
+    private int checkLocationSecurityPermission() {
+        try {   
+            if(DBG)
+                Slog.i(TAG, "call checkLocationSecurityPermission/" + Binder.getCallingUid());
+            return AppGlobals.getPackageManager()
+                .checkUidPermissionBySM(android.Manifest.permission.ACCESS_COARSE_LOCATION, Binder.getCallingUid());
+        } catch (RemoteException e){
+            return PackageManager.PERMISSION_GRANTED;
+        }
+    }
+
     public void listen(String pkgForDebug, IPhoneStateListener callback, int events,
             boolean notifyNow) {
         // Slog.d(TAG, "listen pkg=" + pkgForDebug + " events=0x" +
@@ -141,6 +155,10 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
         if (events != 0) {
             /* Checks permission and throws Security exception */
             checkListenerPermission(events);
+            if (FeatureQuery.FEATURE_SECURITY
+                    && (events & PhoneStateListener.LISTEN_CELL_LOCATION) != 0 
+                    && checkLocationSecurityPermission() != PackageManager.PERMISSION_GRANTED)
+                return;
 
             synchronized (mRecords) {
                 // register

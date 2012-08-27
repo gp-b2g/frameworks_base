@@ -20,6 +20,9 @@ package android.telephony;
 import android.annotation.SdkConstant;
 import android.annotation.SdkConstant.SdkConstantType;
 import android.content.Context;
+import android.content.pm.IPackageManager;
+import android.content.pm.PackageManager;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
@@ -36,6 +39,8 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyProperties;
 
 import java.util.List;
+
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 /**
  * Provides access to information about the telephony services on
@@ -239,6 +244,10 @@ public class TelephonyManager {
      */
     public CellLocation getCellLocation() {
         try {
+            if (FeatureQuery.FEATURE_SECURITY 
+                    && checkLocationSecurityPermission() != PackageManager.PERMISSION_GRANTED)
+                return null;
+
             Bundle bundle = getITelephony().getCellLocation();
             CellLocation cl = CellLocation.newFromBundle(bundle);
             if (cl.isEmpty())
@@ -1226,5 +1235,14 @@ public class TelephonyManager {
             prop = values[0];
         }
         return prop == null ? defaultVal : prop;
+    }
+
+    protected int checkLocationSecurityPermission() {
+        try {
+            IPackageManager pm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+            return pm.checkUidPermissionBySM(android.Manifest.permission.ACCESS_COARSE_LOCATION, Binder.getCallingUid());
+        } catch (RemoteException e){
+            return PackageManager.PERMISSION_GRANTED;
+        }
     }
 }

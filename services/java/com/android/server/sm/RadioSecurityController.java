@@ -45,6 +45,7 @@ import android.security.ICallToken;
 import android.security.IMessageToken;
 import android.security.ISecurityCallback;
 import android.security.ISecurityManager;
+import android.security.SecurityManager;
 import android.security.SecurityManagerNative;
 import android.security.SecurityRecord;
 import android.security.SecurityResult;
@@ -129,6 +130,15 @@ public final class RadioSecurityController implements Watchdog.Monitor {
         mConnector.doCommand("netctrl " + status + " " + uid + " " + type);
     }
 
+    public void clearFirewallPolicy() {
+        mConnector.doCommand("netctrl radio cleanup");
+    }
+
+    public void clearFirewallPolicyByUid(int uid) {
+        mConnector.doCommand("netctrl " + "enable" + " " + uid + " " + SecurityManager.FIREWALL_TYPE_WIFI);
+        mConnector.doCommand("netctrl " + "enable" + " " + uid + " " + SecurityManager.FIREWALL_TYPE_MOBILE);
+    }
+
     final RemoteCallbackList<ISecurityCallback> mSendingMessageCallbacks = new RemoteCallbackList<ISecurityCallback>();
     final RemoteCallbackList<ISecurityCallback> mReceivedMesageCallbacks = new RemoteCallbackList<ISecurityCallback>();
 
@@ -160,7 +170,12 @@ public final class RadioSecurityController implements Watchdog.Monitor {
         ISecurityCallback callback = ISecurityCallback.Stub.asInterface(r.getCallback());
         mSendingMessageCallbacks.unregister(callback);
         mReceivedMesageCallbacks.unregister(callback);
-        // TODO: send disable message to mMessageToken
+        // TODO: If there is more thant one registered client?
+        try {
+            mMessageToken.onDisableSendingMessageIntercept();
+            mMessageToken.onDisableReceivedMessageIntercept();
+        } catch (RemoteException e) {
+        }
     }
 
     // apply message token
@@ -237,7 +252,11 @@ public final class RadioSecurityController implements Watchdog.Monitor {
     public void unMonitorCall(SecurityRecord r) {
         LOG("unMonitorCall", "pkg");
         mCallBlackListCallbacks.unregister(ISecurityCallback.Stub.asInterface(r.getCallback()));
-        // TODO: send disable message to mCallToken
+        // TODO: If there is more than one registered client?
+        try {
+            mCallToken.onDisableCallIntercept();
+        } catch (RemoteException e) {
+        }
     }
 
     // apply call token

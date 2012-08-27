@@ -18982,13 +18982,16 @@ package android.security {
     method public int describeContents();
     method public void writeToParcel(android.os.Parcel, int);
     field public static final android.os.Parcelable.Creator CREATOR;
-    field public java.lang.String[] blockedActions;
+    field public java.util.List blockedActions;
     field public java.lang.String packageName;
   }
 
   public class FirewallEntry implements android.os.Parcelable {
     ctor public FirewallEntry();
     method public int describeContents();
+    method public boolean isAllEnabled();
+    method public boolean isChanged(int, boolean);
+    method public void setBlockedValue(int, boolean);
     method public void writeToParcel(android.os.Parcel, int);
     field public static final android.os.Parcelable.Creator CREATOR;
     field public boolean mobileBlocked;
@@ -19024,27 +19027,39 @@ package android.security {
     method public void writeToParcel(android.os.Parcel, int);
     field public static final android.os.Parcelable.Creator CREATOR;
     field public java.lang.String packageName;
-    field public java.lang.String[] revokedPermissions;
+    field public java.util.List revokedPermissions;
   }
 
   public class SecurityManager {
     method public int addCallBlackItem(android.os.Bundle);
     method public boolean attachHandler(android.os.Handler);
     method public int blockActionReceiver(java.lang.String, java.lang.String);
+    method public int checkActionReceiver(java.lang.String, java.lang.String);
+    method public int checkFirewall(int, int);
+    method public int checkPermission(java.lang.String, java.lang.String);
+    method public void clearActionReceiverSettings();
+    method public void clearAllSettings();
+    method public void clearFirewallSettings();
+    method public void clearPermissionSettings();
+    method public void clearSingleSettings(java.lang.String, int);
+    method public int enablePermissionController(boolean);
+    method public int enableReceiverController(boolean);
+    method public android.security.ActionReceiverEntry getActionReceiver(java.lang.String);
+    method public java.util.List<android.security.ActionReceiverEntry> getActionReceiverList();
+    method public android.security.FirewallEntry getFirewall(int);
+    method public java.util.List<android.security.FirewallEntry> getFirewallList();
     method public static android.security.SecurityManager getInstance(android.content.Context);
+    method public android.security.PermissionEntry getPermission(java.lang.String);
+    method public java.util.List<android.security.PermissionEntry> getPermissionList();
     method public int grantPermission(java.lang.String, java.lang.String);
-    method public int grantPermission(java.lang.String, int);
     method public int grantPermission(java.util.List<java.lang.String>, java.lang.String);
-    method public int grantPermission(java.util.List<java.lang.String>, int);
     method public int interceptCall(int, int);
     method public int interceptMessage(int, int);
     method public int registerSecurityMonitor(int);
     method public int removeCallBlackItem(android.os.Bundle);
     method public int restoreActionReceiver(java.lang.String, java.lang.String);
     method public int revokePermission(java.lang.String, java.lang.String, int);
-    method public int revokePermission(java.lang.String, int, int);
     method public int revokePermission(java.util.List<java.lang.String>, java.lang.String, int);
-    method public int revokePermission(java.util.List<java.lang.String>, int, int);
     method public int setCallBlackList(android.os.Bundle);
     method public int setFirewallPolicy(android.os.Bundle);
     method public int setPowerSaverMode(int);
@@ -19083,13 +19098,19 @@ package android.security {
 
   public final class SecurityResult {
     ctor public SecurityResult();
+    field public static final int ACTION_BLOCKED = 0; // 0x0
+    field public static final int ACTION_NOT_BLOCKED = 1; // 0x1
     field public static final int ADD_BLACK_ITEM_SUCCESS = 0; // 0x0
     field public static final int APPLY_TOKEN_SUCCESS = 0; // 0x0
     field public static final int AUTHORIZED_PACKAGE = 1; // 0x1
     field public static final int BLOCK_ACTION_SUCCESS = 0; // 0x0
     field public static final int DUPLICATE_BLACK_ITEM = 2; // 0x2
+    field public static final int FIREWALL_BLOCKED = 0; // 0x0
+    field public static final int FIREWALL_NOT_BLOCKED = 1; // 0x1
     field public static final int GRANT_DUPLICATE_PERM = 2; // 0x2
     field public static final int GRANT_PERM_SUCCESS = 0; // 0x0
+    field public static final int GUARD_IS_AVAILABLE = 1; // 0x1
+    field public static final int GUARD_IS_NOT_AVAILABLE = 0; // 0x0
     field public static final int INSERT_BLACK_LIST_SUCCESS = 0; // 0x0
     field public static final int INTERCEPT_MESSAGE_SUCCESS = 0; // 0x0
     field public static final int INTERCPET_MESSAGE_DUPLICATE = 1; // 0x1
@@ -19102,6 +19123,8 @@ package android.security {
     field public static final int INVALID_UID_PERM = 1; // 0x1
     field public static final int NON_EXISTED_BLACK_ITEM = 2; // 0x2
     field public static final int NOT_AUTHORIZED_PACKAGE = 0; // 0x0
+    field public static final int PERMISSION_DENIED = 1; // 0x1
+    field public static final int PERMISSION_GRANTED = 0; // 0x0
     field public static final int REGISTER_FAILURE = 1; // 0x1
     field public static final int REGISTER_SUCCESS = 0; // 0x0
     field public static final int REMOTE_ERROR = 99; // 0x63
@@ -19652,6 +19675,7 @@ package android.telephony {
   }
 
   public class TelephonyManager {
+    method protected int checkLocationSecurityPermission();
     method public int getCallState();
     method public android.telephony.CellLocation getCellLocation();
     method public int getDataActivity();

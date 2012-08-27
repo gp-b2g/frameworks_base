@@ -175,6 +175,17 @@ public abstract class SecurityManagerNative extends Binder implements ISecurityM
                 return true;
             }
 
+            case ENABLE_PERMISSION_CONTROLLER_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+                boolean enable = (data.readByte() == 1);
+
+                int result = enablePermissionController(token, enable);
+                reply.writeNoException();
+                reply.writeInt(result);
+                return true;
+            }
+
             case REVOKE_PERMISSION_PACKAGE_TRANSACTION: {
                 data.enforceInterface(ISecurityManager.descriptor);
                 IBinder token = data.readStrongBinder();
@@ -201,32 +212,6 @@ public abstract class SecurityManagerNative extends Binder implements ISecurityM
                 return true;
             }
 
-            case REVOKE_PERMISSION_UID_TRANSACTION: {
-                data.enforceInterface(ISecurityManager.descriptor);
-                IBinder token = data.readStrongBinder();
-                String permission = data.readString();
-                int uid = data.readInt();
-                int type = data.readInt();
-
-                int result = revokePermission(token, permission, uid, type);
-                reply.writeNoException();
-                reply.writeInt(result);
-                return true;
-            }
-
-            case GRANT_PERMISSION_UID_TRANSACTION: {
-                data.enforceInterface(ISecurityManager.descriptor);
-                IBinder token = data.readStrongBinder();
-                String permission = data.readString();
-                int uid = data.readInt();
-                int type = data.readInt();
-
-                int result = grantPermission(token, permission, uid);
-                reply.writeNoException();
-                reply.writeInt(result);
-                return true;
-            }
-
             case REVOKE_PERMISSION_LIST_PACKAGE_TRANSACTION: {
                 data.enforceInterface(ISecurityManager.descriptor);
                 IBinder token = data.readStrongBinder();
@@ -248,32 +233,6 @@ public abstract class SecurityManagerNative extends Binder implements ISecurityM
                 int type = data.readInt();
 
                 int result = grantPermission(token, permissionList, packageName);
-                reply.writeNoException();
-                reply.writeInt(result);
-                return true;
-            }
-
-            case REVOKE_PERMISSION_LIST_UID_TRANSACTION: {
-                data.enforceInterface(ISecurityManager.descriptor);
-                IBinder token = data.readStrongBinder();
-                List<String> permissionList = data.createStringArrayList();
-                int uid = data.readInt();
-                int type = data.readInt();
-
-                int result = revokePermission(token, permissionList, uid, type);
-                reply.writeNoException();
-                reply.writeInt(result);
-                return true;
-            }
-
-            case GRANT_PERMISSION_LIST_UID_TRANSACTION: {
-                data.enforceInterface(ISecurityManager.descriptor);
-                IBinder token = data.readStrongBinder();
-                List<String> permissionList = data.createStringArrayList();
-                int uid = data.readInt();
-                int type = data.readInt();
-
-                int result = grantPermission(token, permissionList, uid);
                 reply.writeNoException();
                 reply.writeInt(result);
                 return true;
@@ -309,6 +268,17 @@ public abstract class SecurityManagerNative extends Binder implements ISecurityM
                 String packageName = data.readString();
 
                 int result = restoreActionReceiver(token, permission, packageName);
+                reply.writeNoException();
+                reply.writeInt(result);
+                return true;
+            }
+
+            case ENABLE_RECEIVER_CONTROLLER_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+                boolean enable = (data.readByte() == 1);
+
+                int result = enableReceiverController(token, enable);
                 reply.writeNoException();
                 reply.writeInt(result);
                 return true;
@@ -391,6 +361,160 @@ public abstract class SecurityManagerNative extends Binder implements ISecurityM
                 return true;
             }
 
+            case GET_FIREWALL_POLICY_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+                int uid = data.readInt();
+
+                FirewallEntry result = getFirewall(token, uid);
+                reply.writeNoException();
+                result.writeToParcel(reply, 0);
+                return true;
+            }
+
+            case GET_PERMISSION_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+                String packageName = data.readString();
+
+                PermissionEntry result = getPermission(token, packageName);
+                reply.writeNoException();
+                result.writeToParcel(reply, 0);
+                return true;
+            }
+
+            case GET_ACTION_RECEIVER_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+                String packageName = data.readString();
+
+                ActionReceiverEntry result = getActionReceiver(token, packageName);
+                reply.writeNoException();
+                result.writeToParcel(reply, 0);
+                return true;
+            }
+
+            case GET_FIREWALL_POLICY_LIST_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+
+                List<FirewallEntry> result = getFirewallList(token);
+                reply.writeNoException();
+                reply.writeTypedList(result);
+                return true;
+            }
+
+            case GET_PERMISSION_LIST_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+
+                List<PermissionEntry> result = getPermissionList(token);
+                reply.writeNoException();
+                reply.writeTypedList(result);
+                return true;
+            }
+
+            case GET_ACTION_RECEIVER_LIST_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+
+                List<ActionReceiverEntry> result = getActionReceiverList(token);
+                reply.writeNoException();
+                reply.writeTypedList(result);
+                return true;
+            }
+
+            case CHECK_GUARD_AVAILABLE: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                //IBinder token = data.readStrongBinder();
+
+                int result = isGuardAvailable();
+                reply.writeNoException();
+                reply.writeInt(result);
+            }
+
+            case CLEAR_ALL_SETTINGS_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+
+                clearAllSettings(token);
+                reply.writeNoException();
+                return true;
+            }
+
+            case CLEAR_FIREWALL_SETTINGS_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+
+                clearFirewallSettings(token);
+                reply.writeNoException();
+                return true;
+            }
+
+            case CLEAR_PERMISSION_SETTINGS_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+
+                clearPermissionSettings(token);
+                reply.writeNoException();
+                return true;
+            }
+
+            case CLEAR_ACTION_RECEIVER_SETTINGS_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+
+                clearActionReceiverSettings(token);
+                reply.writeNoException();
+                return true;
+            }
+
+            case CHECK_FIREWALL_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+                int uid = data.readInt();
+                int type = data.readInt();
+
+                int result = checkFirewall(token, uid, type);
+                reply.writeNoException();
+                reply.writeInt(result);
+                return true;
+            }
+
+            case CHECK_PERMISSION_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+                String packageName = data.readString();
+                String permission = data.readString();
+
+                int result = checkPermission(token, packageName, permission);
+                reply.writeNoException();
+                reply.writeInt(result);
+                return true;
+            }
+
+            case CHECK_ACTION_RECEIVER_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+                String packageName = data.readString();
+                String action = data.readString();
+
+                int result = checkActionReceiver(token, packageName, action);
+                reply.writeNoException();
+                reply.writeInt(result);
+                return true;
+            }
+
+            case CLEAR_SINGLE_SETTINGS: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+                String packageName = data.readString();
+                int uid = data.readInt();
+
+                clearSingleSettings(token, packageName, uid);
+                reply.writeNoException();
+                return true;
+            }
         }
 
         return super.onTransact(code, data, reply, flags);
@@ -539,6 +663,21 @@ class SecurityManagerProxy implements ISecurityManager
         return result;
     }
 
+    public int enablePermissionController(IBinder token, boolean enable) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+        data.writeByte((byte)(enable ? 1 : 0));
+
+        mRemote.transact(ENABLE_PERMISSION_CONTROLLER_TRANSACTION, data, reply, 0);
+        reply.readException();
+        int result = reply.readInt();
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
     public int revokePermission(IBinder token, String permission, String packageName, int type) throws RemoteException {
         Parcel data = Parcel.obtain();
         Parcel reply = Parcel.obtain();
@@ -572,39 +711,6 @@ class SecurityManagerProxy implements ISecurityManager
         return result;
     }
 
-    public int revokePermission(IBinder token,String permission,int uid,int type) throws RemoteException {
-        Parcel data = Parcel.obtain();
-        Parcel reply = Parcel.obtain();
-        data.writeInterfaceToken(ISecurityManager.descriptor);
-        data.writeStrongBinder(token);
-        data.writeString(permission);
-        data.writeInt(uid);
-        data.writeInt(type);
-
-        mRemote.transact(REVOKE_PERMISSION_UID_TRANSACTION, data, reply, 0);
-        reply.readException();
-        int result = reply.readInt();
-        reply.recycle();
-        data.recycle();
-        return result;
-    }
-
-    public int grantPermission(IBinder token,String permission,int uid) throws RemoteException {
-        Parcel data = Parcel.obtain();
-        Parcel reply = Parcel.obtain();
-        data.writeInterfaceToken(ISecurityManager.descriptor);
-        data.writeStrongBinder(token);
-        data.writeString(permission);
-        data.writeInt(uid);
-
-        mRemote.transact(GRANT_PERMISSION_UID_TRANSACTION, data, reply, 0);
-        reply.readException();
-        int result = reply.readInt();
-        reply.recycle();
-        data.recycle();
-        return result;
-    }
-
     public int revokePermission(IBinder token,List<String> permissionList,String packageName,int type) throws RemoteException {
         Parcel data = Parcel.obtain();
         Parcel reply = Parcel.obtain();
@@ -631,39 +737,6 @@ class SecurityManagerProxy implements ISecurityManager
         data.writeString(packageName);
 
         mRemote.transact(GRANT_PERMISSION_LIST_PACKAGE_TRANSACTION, data, reply, 0);
-        reply.readException();
-        int result = reply.readInt();
-        reply.recycle();
-        data.recycle();
-        return result;
-    }
-
-    public int revokePermission(IBinder token,List<String> permissionList,int uid,int type) throws RemoteException {
-        Parcel data = Parcel.obtain();
-        Parcel reply = Parcel.obtain();
-        data.writeInterfaceToken(ISecurityManager.descriptor);
-        data.writeStrongBinder(token);
-        data.writeStringList(permissionList);
-        data.writeInt(uid);
-        data.writeInt(type);
-
-        mRemote.transact(REVOKE_PERMISSION_LIST_UID_TRANSACTION, data, reply, 0);
-        reply.readException();
-        int result = reply.readInt();
-        reply.recycle();
-        data.recycle();
-        return result;
-    }
-
-    public int grantPermission(IBinder token,List<String> permissionList,int uid) throws RemoteException {
-        Parcel data = Parcel.obtain();
-        Parcel reply = Parcel.obtain();
-        data.writeInterfaceToken(ISecurityManager.descriptor);
-        data.writeStrongBinder(token);
-        data.writeStringList(permissionList);
-        data.writeInt(uid);
-
-        mRemote.transact(GRANT_PERMISSION_LIST_UID_TRANSACTION, data, reply, 0);
         reply.readException();
         int result = reply.readInt();
         reply.recycle();
@@ -710,6 +783,21 @@ class SecurityManagerProxy implements ISecurityManager
         data.writeString(packageName);
 
         mRemote.transact(RESTORE_ACTION_RECEIVER_TRANSACTION, data, reply, 0);
+        reply.readException();
+        int result = reply.readInt();
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
+    public int enableReceiverController(IBinder token, boolean enable) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+        data.writeByte((byte)(enable ? 1 : 0));
+
+        mRemote.transact(ENABLE_RECEIVER_CONTROLLER_TRANSACTION, data, reply, 0);
         reply.readException();
         int result = reply.readInt();
         reply.recycle();
@@ -820,6 +908,217 @@ class SecurityManagerProxy implements ISecurityManager
         data.recycle();
         return result;
     }
+
+    public FirewallEntry getFirewall(IBinder token, int uid) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+        data.writeInt(uid);
+
+        mRemote.transact(GET_FIREWALL_POLICY_TRANSACTION, data, reply, 0);
+        reply.readException();
+        FirewallEntry result = FirewallEntry.CREATOR.createFromParcel(reply); 
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
+    public PermissionEntry getPermission(IBinder token, String packageName) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+        data.writeString(packageName);
+
+        mRemote.transact(GET_PERMISSION_TRANSACTION, data, reply, 0);
+        reply.readException();
+        PermissionEntry result = PermissionEntry.CREATOR.createFromParcel(reply); 
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
+    public ActionReceiverEntry getActionReceiver(IBinder token, String packageName) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+        data.writeString(packageName);
+
+        mRemote.transact(GET_ACTION_RECEIVER_TRANSACTION, data, reply, 0);
+        reply.readException();
+        ActionReceiverEntry result = ActionReceiverEntry.CREATOR.createFromParcel(reply); 
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
+    public List<FirewallEntry> getFirewallList(IBinder token) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+
+        mRemote.transact(GET_FIREWALL_POLICY_LIST_TRANSACTION, data, reply, 0);
+        reply.readException();
+        List<FirewallEntry> result = reply.createTypedArrayList(FirewallEntry.CREATOR);
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
+    public List<PermissionEntry> getPermissionList(IBinder token) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+
+        mRemote.transact(GET_PERMISSION_LIST_TRANSACTION, data, reply, 0);
+        reply.readException();
+        List<PermissionEntry> result = reply.createTypedArrayList(PermissionEntry.CREATOR);
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
+    public List<ActionReceiverEntry> getActionReceiverList(IBinder token) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+
+        mRemote.transact(GET_ACTION_RECEIVER_LIST_TRANSACTION, data, reply, 0);
+        reply.readException();
+        List<ActionReceiverEntry> result = reply.createTypedArrayList(ActionReceiverEntry.CREATOR);
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
+    public int isGuardAvailable() throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+
+        mRemote.transact(CHECK_GUARD_AVAILABLE, data, reply, 0);
+        reply.readException();
+        int result = reply.readInt();
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
+    public void clearAllSettings(IBinder token) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+
+        mRemote.transact(CLEAR_ALL_SETTINGS_TRANSACTION, data, reply, 0);
+        reply.readException();
+        reply.recycle();
+        data.recycle();
+    }
+
+    public void clearFirewallSettings(IBinder token) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+
+        mRemote.transact(CLEAR_FIREWALL_SETTINGS_TRANSACTION, data, reply, 0);
+        reply.readException();
+        reply.recycle();
+        data.recycle();
+    }
+
+    public void clearPermissionSettings(IBinder token) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+
+        mRemote.transact(CLEAR_PERMISSION_SETTINGS_TRANSACTION, data, reply, 0);
+        reply.readException();
+        reply.recycle();
+        data.recycle();
+    }
+
+    public void clearActionReceiverSettings(IBinder token) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+
+        mRemote.transact(CLEAR_ACTION_RECEIVER_SETTINGS_TRANSACTION, data, reply, 0);
+        reply.readException();
+        reply.recycle();
+        data.recycle();
+    }
+
+    public int checkFirewall(IBinder token, int uid, int type) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+        data.writeInt(uid);
+        data.writeInt(type);
+
+        mRemote.transact(CHECK_FIREWALL_TRANSACTION, data, reply, 0);
+        reply.readException();
+        int result = reply.readInt(); 
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+    
+    public int checkPermission(IBinder token, String packageName, String permission) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+        data.writeString(packageName);
+        data.writeString(permission);
+
+        mRemote.transact(CHECK_PERMISSION_TRANSACTION, data, reply, 0);
+        reply.readException();
+        int result = reply.readInt(); 
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
+    public int checkActionReceiver(IBinder token, String packageName, String action) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+        data.writeString(packageName);
+        data.writeString(action);
+
+        mRemote.transact(CHECK_ACTION_RECEIVER_TRANSACTION, data, reply, 0);
+        reply.readException();
+        int result = reply.readInt(); 
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
+    public void clearSingleSettings(IBinder token, String packageName, int uid) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+        data.writeString(packageName);
+        data.writeInt(uid);
+
+        mRemote.transact(CLEAR_SINGLE_SETTINGS, data, reply, 0);
+        reply.readException();
+        reply.recycle();
+        data.recycle();
+    }
+
 
     private IBinder mRemote;
 }

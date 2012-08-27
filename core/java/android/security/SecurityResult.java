@@ -53,6 +53,9 @@ public final class SecurityResult {
     public final static int SET_FIREWALL_SUCCESS = 0;
     public final static int SET_FIREWALL_INVALID_INPUT = 1;
 
+    public final static int FIREWALL_BLOCKED = 0;
+    public final static int FIREWALL_NOT_BLOCKED = 1;
+
     //POWER OPERATION
     public final static int SET_POWERMODE_SUCCESS = 0;
     public final static int SET_POWERMODE_UNSUPPORTED = 1;
@@ -68,10 +71,15 @@ public final class SecurityResult {
     public final static int GRANT_DUPLICATE_PERM = 2;
     public final static int GRANT_PERM_SUCCESS = 0;
 
+    public final static int PERMISSION_GRANTED = 0;
+    public final static int PERMISSION_DENIED = 1;
+
     //RECEIVER OPERTAION
     public final static int INVALID_RECEVIER_ACTION = 1;
     public final static int BLOCK_ACTION_SUCCESS = 0;
     public final static int RESTORE_ACTION_SUCCESS = 0;
+    public final static int ACTION_BLOCKED = 0;
+    public final static int ACTION_NOT_BLOCKED = 1;
 
     //CALL OPERATION
     public final static int INVALID_CALL_BLACK_LIST = 2;
@@ -81,4 +89,8 @@ public final class SecurityResult {
     public final static int ADD_BLACK_ITEM_SUCCESS = 0;
     public final static int NON_EXISTED_BLACK_ITEM = 2;
     public final static int REMOVE_BLACK_ITEM_SUCCESS = 0;
+
+    //GUARD AVAILABLE CHECK
+    public final static int GUARD_IS_NOT_AVAILABLE = 0;
+    public final static int GUARD_IS_AVAILABLE = 1;
 }

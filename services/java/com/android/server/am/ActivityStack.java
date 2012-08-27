@@ -74,6 +74,8 @@ import java.util.Iterator;
 import java.util.List;
 import org.codeaurora.qrdinside.Perfman;
 
+import com.qrd.plugin.feature_query.FeatureQuery;
+
 /**
  * State and management of a single stack of activities.
  */
@@ -2377,6 +2379,17 @@ final class ActivityStack {
             }
             Slog.w(TAG, msg);
             throw new SecurityException(msg);
+        } else {
+            if (FeatureQuery.FEATURE_SECURITY
+                    && checkSecurityPermission(aInfo.permission, callingUid) != PackageManager.PERMISSION_GRANTED) {
+                if (resultRecord != null) {
+                    sendActivityResultLocked(-1,
+                        resultRecord, resultWho, requestCode,
+                        Activity.RESULT_CANCELED, null);
+                }
+                mDismissKeyguardOnNextActivity = false;
+                return err;
+            }
         }
 
         if (mMainStack) {
@@ -4289,5 +4302,17 @@ final class ActivityStack {
     
     public void dismissKeyguardOnNextActivityLocked() {
         mDismissKeyguardOnNextActivity = true;
+    }
+
+    private int checkSecurityPermission(String permission, int uid) {
+        int ret = PackageManager.PERMISSION_GRANTED;
+        try {
+            if (android.Manifest.permission.CALL_PHONE.equals(permission)
+                    || android.Manifest.permission.CALL_PRIVILEGED.equals(permission)) {
+                ret = AppGlobals.getPackageManager().checkUidPermissionBySM(permission, uid);
+            }
+        } catch (RemoteException e) {
+        }
+        return ret;
     }
 }

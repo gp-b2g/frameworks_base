@@ -40,14 +40,6 @@ interface IPermissionToken {
       */
     int grantPackagePermission(String permission, String packageName);
     /**
-      * Called when the service wants to revoke a permission on uid.
-      */
-    int revokeUidPermission(String permission, int uid, int type);
-    /**
-      * Called when the service wants to grant a permission on uid.
-      */
-    int grantUidPermission(String permission, int uid);
-    /**
      * Called when the service wants to revoke permission list on package.
      */
     int revokePackagePermissionList(in List<String> permissionList, String packageName, int type);
@@ -56,20 +48,20 @@ interface IPermissionToken {
       */
     int grantPackagePermissionList(in List<String> permissionList, String packageName);
     /**
-      * Called when the service wants to revoke permission list on uid.
-      */
-    int revokeUidPermissionList(in List<String> permissionList, int uid, int type);
-    /**
-      * Called when the service wants to grant permission list on uid.
-      */
-    int grantUidPermissionList(in List<String> permissionList, int uid);
-    /**
       * Called when the permission control service should be enabled.
       */
-    void onEnablePermissionControl();
+    void onEnablePermissionController();
     /**
       * Called when the permission control service should be disabled.
       */
-    void onDisablePermissionControl();
+    void onDisablePermissionController();
+    /**
+     * Called when the service wants to clear all the permission settings.
+    */
+    void clearPermissionSettings();
+    /**
+     * Called when the service wants to clear all the permission settings by package name.
+    */
+    void clearPermissionSettingsByPkg(String packageName);
 }
 

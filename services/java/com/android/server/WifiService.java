@@ -19,6 +19,7 @@ package com.android.server;
 import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.AppGlobals;
 import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
@@ -77,6 +78,8 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.util.AsyncChannel;
 import com.android.server.am.BatteryStatsService;
 import com.android.internal.R;
+
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 /**
  * WifiService handles remote WiFi operation requests by implementing
@@ -669,6 +672,8 @@ public class WifiService extends IWifiManager.Stub {
      */
     public WifiConfiguration getWifiApConfiguration() {
         enforceAccessPermission();
+        if(FeatureQuery.FEATURE_SECURITY
+            && checkWifiSecurityPermission() != PackageManager.PERMISSION_GRANTED) return null;
         return mWifiStateMachine.syncGetWifiApConfiguration();
     }
 
@@ -713,6 +718,8 @@ public class WifiService extends IWifiManager.Stub {
      */
     public List<WifiConfiguration> getConfiguredNetworks() {
         enforceAccessPermission();
+        if(FeatureQuery.FEATURE_SECURITY
+            && checkWifiSecurityPermission() != PackageManager.PERMISSION_GRANTED) return null;
         return mWifiStateMachine.syncGetConfiguredNetworks();
     }
 
@@ -791,6 +798,8 @@ public class WifiService extends IWifiManager.Stub {
          * Make sure we have the latest information, by sending
          * a status request to the supplicant.
          */
+        if(FeatureQuery.FEATURE_SECURITY
+            && checkWifiSecurityPermission() != PackageManager.PERMISSION_GRANTED) return null;
         return mWifiStateMachine.syncRequestConnectionInfo();
     }
 
@@ -801,6 +810,8 @@ public class WifiService extends IWifiManager.Stub {
      */
     public List<ScanResult> getScanResults() {
         enforceAccessPermission();
+        if(FeatureQuery.FEATURE_SECURITY 
+            && checkWifiSecurityPermission() != PackageManager.PERMISSION_GRANTED) return null;
         return mWifiStateMachine.syncGetScanResultsList();
     }
 
@@ -1823,6 +1834,17 @@ public class WifiService extends IWifiManager.Stub {
         }
 
         mNotificationShown = visible;
+    }
+
+    private int checkWifiSecurityPermission() {
+        try {   
+            if(DBG)
+                Slog.i(TAG, "call checkWifiSecurityPermission/" + Binder.getCallingUid());
+            return AppGlobals.getPackageManager()
+                    .checkUidPermissionBySM(android.Manifest.permission.ACCESS_WIFI_STATE, Binder.getCallingUid());
+        } catch (RemoteException e){
+            return PackageManager.PERMISSION_GRANTED;
+        }
     }
 
     private class NotificationEnabledSettingObserver extends ContentObserver {

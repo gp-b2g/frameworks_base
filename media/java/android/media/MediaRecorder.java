@@ -17,10 +17,15 @@
 
 package android.media;
 
+import android.content.pm.IPackageManager;
+import android.content.pm.PackageManager;
 import android.hardware.Camera;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.util.Log;
 import android.view.Surface;
 import android.app.Application;
@@ -33,6 +38,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 
+import com.qrd.plugin.feature_query.FeatureQuery;
 /**
  * Used to record audio and video. The recording control is based on a
  * simple state machine (see below).
@@ -649,6 +655,17 @@ public class MediaRecorder
      */
     public void prepare() throws IllegalStateException, IOException
     {
+        if(FeatureQuery.FEATURE_SECURITY){
+                try {
+                   IPackageManager pm = IPackageManager.Stub.asInterface(
+                         ServiceManager.getService("package"));
+                   if(pm.checkUidPermissionBySM(android.Manifest.permission.RECORD_AUDIO, Binder.getCallingUid())
+                         == PackageManager.PERMISSION_DENIED)
+                   return;
+                } catch (RemoteException e){
+                }
+        }
+
         if (mPath != null) {
             FileOutputStream fos = new FileOutputStream(mPath);
             try {
@@ -695,6 +712,17 @@ public class MediaRecorder
     public native void native_stop() throws IllegalStateException;
 
     public void start() throws IllegalStateException {
+        if(FeatureQuery.FEATURE_SECURITY){
+                try {
+                   IPackageManager pm = IPackageManager.Stub.asInterface(
+                         ServiceManager.getService("package"));
+                   if(pm.checkUidPermissionBySM(android.Manifest.permission.RECORD_AUDIO, Binder.getCallingUid())
+                         == PackageManager.PERMISSION_DENIED)
+                   return;
+                } catch (RemoteException e){
+                }
+        }
+
         try {
             Application application = ActivityThread.currentApplication();
             if (application != null) {
@@ -714,6 +742,17 @@ public class MediaRecorder
     }
 
     public void stop() throws IllegalStateException {
+        if(FeatureQuery.FEATURE_SECURITY){
+                try {
+                   IPackageManager pm = IPackageManager.Stub.asInterface(
+                         ServiceManager.getService("package"));
+                   if(pm.checkUidPermissionBySM(android.Manifest.permission.RECORD_AUDIO, Binder.getCallingUid())
+                         == PackageManager.PERMISSION_DENIED)
+                   return;
+                } catch (RemoteException e){
+                }
+        }
+
         try {
             Application application = ActivityThread.currentApplication();
             if (application != null) {

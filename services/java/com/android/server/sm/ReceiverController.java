@@ -70,6 +70,24 @@ public final class ReceiverController {
         return result;
     }
 
+    public int clearActionReceiverSettings() {
+        try {
+            mReceiverToken.clearActionReceiverSettings();
+        } catch (RemoteException e) {
+            return SecurityResult.REMOTE_ERROR;
+        }
+        return SecurityResult.REMOTE_NO_ERROR;
+    }
+
+    public int clearActionReceiverSettingsByPkg(String pkg) {
+        try {
+            mReceiverToken.clearActionReceiverSettingsByPkg(pkg);
+        } catch (RemoteException e) {
+            return SecurityResult.REMOTE_ERROR;
+        }
+        return SecurityResult.REMOTE_NO_ERROR;
+    }
+
     private class BlockActionReceiver implements ReceiverRecordCallback {
         public void apply(String action, String pkgName) {
             blockActionReceiver(action, pkgName);
@@ -79,5 +97,18 @@ public final class ReceiverController {
     public void systemReady() {
         SecurityRecord r = new SecurityRecord();
         r.forEachReceiverRecord(new BlockActionReceiver());
+    }
+
+    public int enableReceiverController(boolean enable) {
+        try {
+            if (enable) {
+                mReceiverToken.onEnableReceiverController();
+            } else {
+                mReceiverToken.onDisableReceiverController();
+            }
+        } catch (RemoteException e) {
+            return SecurityResult.REMOTE_ERROR;
+        }
+        return SecurityResult.REMOTE_NO_ERROR;
     }
 }

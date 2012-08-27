@@ -94,13 +94,14 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.os.SystemProperties;
-import android.security.SystemKeyStore;
 import android.security.IPermissionToken;
 import android.security.ISecurityManager;
+import android.security.PermissionEntry;
 import android.security.SecurityManager;
 import android.security.SecurityManagerNative;
 import android.security.SecurityRecord;
 import android.security.SecurityResult;
+import android.security.SystemKeyStore;
 import android.util.DisplayMetrics;
 import android.util.EventLog;
 import android.util.Log;
@@ -175,6 +176,7 @@ public class PackageManagerService extends IPackageManager.Stub {
     private static final boolean DEBUG_PACKAGE_SCANNING = false;
     private static final boolean DEBUG_APP_DIR_OBSERVER = false;
     private static final boolean DEBUG_VERIFY = false;
+    private static final boolean DEBUG_PERMS_CHECK = true;
 
     static final boolean MULTIPLE_APPLICATION_UIDS = true;
     private static final int RADIO_UID = Process.PHONE_UID;
@@ -1894,12 +1896,6 @@ public class PackageManagerService extends IPackageManager.Stub {
     }
 
     public int checkPermission(String permName, String pkgName) {
-        if (FeatureQuery.FEATURE_SECURITY) {
-          if (isPermControlEnabled()) {
-            if (isPeeledInPackage(permName, pkgName))
-                return PackageManager.PERMISSION_DENIED;
-          }
-        }
         synchronized (mPackages) {
             PackageParser.Package p = mPackages.get(pkgName);
             if (p != null && p.mExtras != null) {
@@ -1916,13 +1912,25 @@ public class PackageManagerService extends IPackageManager.Stub {
         return PackageManager.PERMISSION_DENIED;
     }
 
-    public int checkUidPermission(String permName, int uid) {
+    public int checkPermissionBySM(String permName, String pkgName) {
+      synchronized (mPackages) {
         if (FeatureQuery.FEATURE_SECURITY) {
-          if (isPermControlEnabled()) {
-            if (isPeeledInUid(permName, uid))
-                return PackageManager.PERMISSION_DENIED;
+          try {
+            if( mSm.isGuardAvailable() == SecurityResult.GUARD_IS_AVAILABLE) {
+               if (isPermControlEnabled()) {
+                  if (isRevokedInPackage(permName, pkgName))
+                  return PackageManager.PERMISSION_DENIED;
+               }
+            }
+          } catch (RemoteException e) {
+                    Log.e(TAG, "check Guard Available error.");
           }
         }
+      }
+      return PackageManager.PERMISSION_GRANTED;
+    }
+
+    public int checkUidPermission(String permName, int uid) {
         synchronized (mPackages) {
             Object obj = mSettings.getUserIdLPr(uid);
             if (obj != null) {
@@ -1938,6 +1946,25 @@ public class PackageManagerService extends IPackageManager.Stub {
             }
         }
         return PackageManager.PERMISSION_DENIED;
+    }
+
+    public int checkUidPermissionBySM(String permName, int uid) {
+       synchronized (mPackages) {
+          if (FeatureQuery.FEATURE_SECURITY) {
+              try{
+                 if( mSm.isGuardAvailable() == SecurityResult.GUARD_IS_AVAILABLE) {
+                     Log.d(TAG, "Guard is available./" + permName + "/" + uid);
+                     if (isPermControlEnabled()) {
+                         if (isRevokedInUid(permName, uid))
+                         return PackageManager.PERMISSION_DENIED;
+                     }
+                 }
+              } catch (RemoteException e) {
+                    Log.e(TAG, "check Guard Available error.");
+              }
+            }
+       }
+       return PackageManager.PERMISSION_GRANTED;
     }
 
     private BasePermission findPermissionTreeLP(String permName) {
@@ -8776,62 +8803,45 @@ public class PackageManagerService extends IPackageManager.Stub {
             return mSettings.getVerifierDeviceIdentityLPw();
         }
     }
+
     private IPermissionToken mPermCallback = new IPermissionToken.Stub() {
+
          public int revokePackagePermission(String permission, String packageName, int type) {
               if (!isValidPackagePerm(permission, packageName))
                   return SecurityResult.INVALID_PKG_PERM;
               HashMap<String, Integer> perms = mPkgPerms.get(packageName);
               if (perms == null) {
-                  perms = new HashMap<String, Integer>();
-                  perms.put(permission, type);
-                  mPkgPerms.put(packageName, perms);
+                   perms = new HashMap<String, Integer>();
+                   perms.put(permission, type);
+                   mPkgPerms.put(packageName, perms);
+                   if(DEBUG_PERMS_CHECK)Log.e(TAG, "add new " + packageName + " " + permission + " is removed.");
               } else {
-                  perms.put(permission, type);
-              }
+                   perms.put(permission, type);
+                   if(DEBUG_PERMS_CHECK)Log.e(TAG, packageName + " " + permission + " is removed.");
+               }
               return SecurityResult.REVOKE_PERM_SUCCESS;
          }
+
          public int grantPackagePermission(String permission, String packageName) {
               if (!isValidPackagePerm(permission, packageName))
                   return SecurityResult.INVALID_PKG_PERM;
               HashMap<String, Integer> perms = mPkgPerms.get(packageName);
-              if (perms == null) {
-                  return SecurityResult.INVALID_PKG_PERM;  
+              if ( perms == null){
+                   return SecurityResult.INVALID_PKG_PERM;
+              } else {
+                   perms.remove(permission);
               }
-              perms.remove(permission);
+              if(DEBUG_PERMS_CHECK)Log.e(TAG, packageName + " " + permission + " is granted.");
               if (perms.size() == 0) {
-                  perms = null;
-                  mPkgPerms.remove(packageName);
+                   perms = null;
+                   mPkgPerms.remove(packageName);
+                   if(DEBUG_PERMS_CHECK)Log.e(TAG, packageName + " pers record is granted.");
               }
               return SecurityResult.GRANT_PERM_SUCCESS;
           }
-         public int revokeUidPermission(String permission, int uid, int type) {
-              if (!isValidUidPerm(permission, uid))
-                  return SecurityResult.INVALID_UID_PERM;
-              HashMap<String,Integer> perms = mUidPerms.get(uid);
-              if (perms == null) {
-                  perms = new HashMap<String,Integer>();
-                  perms.put(permission, type);
-                  mUidPerms.put(uid, perms);
-              } else {
-                  perms.put(permission, type);
-              }
-              return SecurityResult.REVOKE_PERM_SUCCESS;
-         }
-         public int grantUidPermission(String permission, int uid) {
-              if (!isValidUidPerm(permission, uid))
-                  return SecurityResult.INVALID_UID_PERM;
-              HashMap<String,Integer> perms = mUidPerms.get(uid);
-              if (perms == null) {
-                  return SecurityResult.INVALID_UID_PERM;  
-              }
-              perms.remove(permission);
-              if (perms.size() == 0) {
-                  perms = null;
-                  mUidPerms.remove(uid);
-              }
-              return SecurityResult.GRANT_PERM_SUCCESS;
-         }
+
          public int revokePackagePermissionList(List<String> permissionList, String packageName, int type) {
+              if(DEBUG_PERMS_CHECK)Log.e(TAG, "call revokePackagePermissionList to check " + packageName);
               int ret = SecurityResult.INVALID_PKG_PERM;
               Iterator<String> it = permissionList.iterator();
               while (it.hasNext()) {
@@ -8842,7 +8852,9 @@ public class PackageManagerService extends IPackageManager.Stub {
               }
               return ret;
          }
+
          public int grantPackagePermissionList(List<String> permissionList, String packageName) {
+              if(DEBUG_PERMS_CHECK)Log.e(TAG, "call grantPackagePermissionList to check " + packageName);
               int ret = SecurityResult.INVALID_PKG_PERM;
               Iterator<String> it = permissionList.iterator();
               while (it.hasNext()) {
@@ -8853,35 +8865,24 @@ public class PackageManagerService extends IPackageManager.Stub {
               }
               return ret;
           }
-         public int revokeUidPermissionList(List<String> permissionList, int uid, int type) {
-              int ret = SecurityResult.INVALID_UID_PERM;
-              Iterator<String> it = permissionList.iterator();
-              while (it.hasNext()) {
-                  int result = revokeUidPermission(it.next(), uid, type);
-                  if (result == SecurityResult.REVOKE_PERM_SUCCESS) {
-                      ret = SecurityResult.REVOKE_PERM_SUCCESS;
-                  }
-              }
-              return ret;
-         }
-         public int grantUidPermissionList(List<String> permissionList, int uid) {
-              int ret = SecurityResult.INVALID_UID_PERM;
-              Iterator<String> it = permissionList.iterator();
-              while (it.hasNext()) {
-                  int result = grantUidPermission(it.next(), uid);
-                  if (result == SecurityResult.GRANT_PERM_SUCCESS) {
-                      ret = SecurityResult.GRANT_PERM_SUCCESS;
-                  }
-              }
-              return ret;
-         }
-         public void onEnablePermissionControl() {
+
+         public void onEnablePermissionController() {
               mPermissionControl = true;
          }
-         public void onDisablePermissionControl() {
+
+         public void onDisablePermissionController() {
               mPermissionControl = false;
          }
+
+         public void clearPermissionSettings() {
+             mPkgPerms.clear();
+         }
+
+         public void clearPermissionSettingsByPkg(String packageName) {
+             mPkgPerms.remove(packageName);
+         }
     };
+
     private boolean isValidPackagePerm(String permission, String packageName) {
          synchronized (mPackages) {
              PackageParser.Package p = mPackages.get(packageName);
@@ -8898,47 +8899,36 @@ public class PackageManagerService extends IPackageManager.Stub {
          }
          return false;
     }
-    private boolean isValidUidPerm(String permission, int uid) {
-         synchronized (mPackages) {
-             Object obj = mSettings.getUserIdLPr(uid);
-             if (obj != null) {
-                 GrantedPermissions gp = (GrantedPermissions)obj;
-                 if (gp.grantedPermissions.contains(permission)) {
-                     return true;
-                 }
-             } else {
-                 HashSet<String> perms = mSystemPermissions.get(uid);
-                 if (perms != null && perms.contains(permission)) {
-                     return true;
-                 }
-             }
+
+    private boolean isRevokedInPackage(String permName, String pkg) {
+            HashMap<String, Integer> perms = mPkgPerms.get(pkg);
+            if (perms == null)
+                return false;
+            if (perms.containsKey(permName)) {
+                Log.d(TAG, permName + "is revoked in/" + pkg);
+                return true;
+            }
+            return false;
+    }
+
+    private boolean isRevokedInUid(String permName, int uid) {
+         String [] packages = getPackagesForUid(uid);
+         if (packages == null)
+             return false;
+         for(String pkg : packages){
+             if (isRevokedInPackage(permName, pkg))
+                return true;
          }
          return false;
     }
-    private boolean isPeeledInPackage(String permName, String pkg) {
-         HashMap<String, Integer> perms = mPkgPerms.get(pkg);
-         if (perms == null)
-             return false;
-         if (perms.containsKey(permName)) 
-             return true;
-         return false;
-    }
-    private boolean isPeeledInUid(String permName, int uid) {
-         HashMap<String, Integer> perms = mUidPerms.get(uid);
-         if (perms == null)
-             return false;
-         if (perms.containsKey(permName))
-            return true;
-         return false;
-    }
+
     private ISecurityManager mSm = null;
-    private SparseArray<HashMap<String, Integer>> mUidPerms;
     private HashMap<String, HashMap<String, Integer>> mPkgPerms;
     private boolean mPermissionControl = false;
     private void initSecurityManager() {
         mSm = SecurityManagerNative.getDefault();
         mPkgPerms = new HashMap<String, HashMap<String, Integer>>();
-        mUidPerms = new SparseArray<HashMap<String, Integer>>();
+
         if (mSm != null) {
             try {
                 mSm.applyPermissionToken(mPermCallback);

@@ -2083,6 +2083,15 @@ public final class CallManager {
             switch (msg.what) {
                 case EVENT_DISCONNECT:
                     if (VDBG) Log.d(LOG_TAG, " handleMessage (EVENT_DISCONNECT)");
+                    if (FeatureQuery.FEATURE_SECURITY) {
+                        if (isDialControlEnabled()) {
+                            synchronized (mAsynResults) {
+                                mAsynResults.clear();
+                            }
+                        }
+                        isCallPassed = false;
+                        isWaitingForCheck = false;
+                    }
                     mDisconnectRegistrants.notifyRegistrants((AsyncResult) msg.obj);
                     break;
                 case EVENT_PRECISE_CALL_STATE_CHANGED:
@@ -2101,10 +2110,10 @@ public final class CallManager {
                         }
                     } else {
                       if (FeatureQuery.FEATURE_SECURITY) {
-                        if (!isDialControlEnabled())
-                            mNewRingingConnectionRegistrants.notifyRegistrants((AsyncResult) msg.obj);
-                        else
+                        if (isDialControlEnabled())
                             checkRingingCall(mNewRingingConnectionRegistrants, (AsyncResult) msg.obj);
+                        else
+                            mNewRingingConnectionRegistrants.notifyRegistrants((AsyncResult) msg.obj);
                       } else {
                             mNewRingingConnectionRegistrants.notifyRegistrants((AsyncResult) msg.obj);
                       }
@@ -2119,10 +2128,11 @@ public final class CallManager {
                     // The event may come from RIL who's not aware of an ongoing fg call
                     if (!hasActiveFgCall()) {
                       if (FeatureQuery.FEATURE_SECURITY) {
-                        if (!isDialControlEnabled())
-                            mIncomingRingRegistrants.notifyRegistrants((AsyncResult) msg.obj);
-                        else
+                        if (isDialControlEnabled() && !isCallPassed) {
                             checkRingingCall(mIncomingRingRegistrants, (AsyncResult) msg.obj);
+                        } else {
+                            mIncomingRingRegistrants.notifyRegistrants((AsyncResult) msg.obj);
+                        }
                       } else {
                             mIncomingRingRegistrants.notifyRegistrants((AsyncResult) msg.obj);
                       }
@@ -2246,19 +2256,27 @@ public final class CallManager {
                    */
           public int onInterceptCall(int ident, int action) {
               if (action == ISecurityManager.CALL_PASS) {
-                  Iterator<AsyncResultItem> it = mAsynResults.iterator();
-                  while (it.hasNext()) {
-                      AsyncResultItem item = it.next();
-                      item.registrants.notifyRegistrants(item.result);
+                  synchronized (mAsynResults) {
+                      Iterator<AsyncResultItem> it = mAsynResults.iterator();
+                      while (it.hasNext()) {
+                          AsyncResultItem item = it.next();
+                          item.registrants.notifyRegistrants(item.result);
+                      }
+                      mAsynResults.clear();
                   }
-                  mAsynResults.clear();
+                  isCallPassed = true;
               } else {
+                  synchronized (mAsynResults) {
+                      mAsynResults.clear();
+                  }
                   try {
                       getFirstActiveRingingCall().hangup();
                   } catch (CallStateException e) {
+                        isWaitingForCheck = false;
                         return -1;
                   }
               }
+              isWaitingForCheck = false;
               return 0;
           }
           /**
@@ -2279,6 +2297,8 @@ public final class CallManager {
     private HashMap<Integer, CallItem> mCheckCalls;
     private ArrayList<AsyncResultItem> mAsynResults;
     private boolean mDialControl = false;
+    private boolean isWaitingForCheck = false;  // control if we should send message to client for check. If in waiting state, we should not send it again.
+    private boolean isCallPassed = false;   // control if we should intercept incoming ring event. If call passed, we should not intercept.
 
     private void initSecurityManager() {
         mSm = SecurityManagerNative.getDefault();
@@ -2296,18 +2316,25 @@ public final class CallManager {
     }
 
     private void checkRingingCall(RegistrantList registrants, AsyncResult r) {
-        mAsynResults.add(new AsyncResultItem(registrants, r));
+        synchronized (mAsynResults) {
+            mAsynResults.add(new AsyncResultItem(registrants, r));
+        }
         Bundle result = null;
         Log.d(LOG_TAG, "checkRingingCall - hasActiveRingingCall: " + hasActiveRingingCall()
                 + ", hasActiveFgCall" + hasActiveFgCall());
-        if (hasActiveRingingCall()) {
+        if (hasActiveRingingCall() && !isWaitingForCheck) {
+            isCallPassed = false;   // call should be checked, set it to false
             Call ringing = getFirstActiveCall(mRingingCalls);
             Bundle data = new Bundle();
 
-            data.putString(ISecurityManager.CALL_PHONE_NUMBER_KEY, ringing.getEarliestConnection().getAddress());
-            data.putInt(ISecurityManager.CALL_SUBSCRIPTION_KEY, ringing.getPhone().getSubscription());
+            String number = ringing.getEarliestConnection().getAddress();
+            int sub = ringing.getPhone().getSubscription();
+            data.putString(ISecurityManager.CALL_PHONE_NUMBER_KEY, number);
+            data.putInt(ISecurityManager.CALL_SUBSCRIPTION_KEY, sub);
+            Log.d(LOG_TAG, "checkRingingCall - number: " + number + ", sub: " + sub);
             try {
                 result = mSm.sendCallToBeChecked(data);
+                isWaitingForCheck = true;   // transist to waiting state, and then we will not send later duplicate call info.
             } catch (RemoteException e) {
 
             }

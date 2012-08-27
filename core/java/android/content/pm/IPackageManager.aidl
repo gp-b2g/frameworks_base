@@ -75,9 +75,13 @@ interface IPackageManager {
     ProviderInfo getProviderInfo(in ComponentName className, int flags);
 
     int checkPermission(String permName, String pkgName);
-    
+
+    int checkPermissionBySM(String permName, String pkgName);
+
     int checkUidPermission(String permName, int uid);
-    
+
+    int checkUidPermissionBySM(String permName, int uid);
+
     boolean addPermission(in PermissionInfo info);
     
     void removePermission(String name);
