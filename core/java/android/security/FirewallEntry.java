@@ -40,6 +40,49 @@ public class FirewallEntry implements Parcelable {
     public FirewallEntry() {
     }
 
+    public boolean isChanged(int type, boolean blockedValue) {
+        switch (type) {
+            case SecurityManager.FIREWALL_TYPE_MOBILE: {
+                if (mobileBlocked != blockedValue)
+                    return true;
+                else
+                    return false;
+            }
+            case SecurityManager.FIREWALL_TYPE_WIFI: {
+                if (wifiBlocked != blockedValue)
+                    return true;
+                else
+                    return false;
+            }
+            default:
+                return false;
+        }
+    }
+
+    public void setBlockedValue(int type, boolean blockedValue) {
+        switch (type) {
+            case SecurityManager.FIREWALL_TYPE_MOBILE: {
+                mobileBlocked = blockedValue;
+                break;
+            }
+            case SecurityManager.FIREWALL_TYPE_WIFI: {
+                wifiBlocked = blockedValue;
+                break;
+            }
+            case SecurityManager.FIREWALL_TYPE_ALL: {
+                mobileBlocked = blockedValue;
+                wifiBlocked = blockedValue;
+                break;
+            }
+            default:
+                return;
+        }
+    }
+
+    public boolean isAllEnabled() {
+        return !wifiBlocked && !mobileBlocked;
+    }
+
     public String toString() {
         return "FirewallEntry{"
             + uid + ", " + mobileBlocked + ", " + wifiBlocked + "}";

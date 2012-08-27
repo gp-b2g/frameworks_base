@@ -19,13 +19,19 @@ package com.android.internal.telephony;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
+import android.content.pm.IPackageManager;
+import android.content.pm.PackageManager;
+
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Binder;
+import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.telephony.PhoneNumberUtils;
 import android.util.Log;
 
 import com.android.internal.telephony.ims.IsimRecords;
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 public class PhoneSubInfo extends IPhoneSubInfo.Stub {
     static final String LOG_TAG = "PHONE";
@@ -131,6 +137,16 @@ public class PhoneSubInfo extends IPhoneSubInfo.Stub {
     public String getCompleteVoiceMailNumber() {
         mContext.enforceCallingOrSelfPermission(CALL_PRIVILEGED,
                 "Requires CALL_PRIVILEGED");
+            if(FeatureQuery.FEATURE_SECURITY){
+                try {
+                   IPackageManager pm = IPackageManager.Stub.asInterface(
+                         ServiceManager.getService("package"));
+                   if(pm.checkUidPermissionBySM(CALL_PRIVILEGED,Binder.getCallingUid())
+                         == PackageManager.PERMISSION_DENIED)
+                   return null;
+                } catch (RemoteException e){
+                }
+            }
         String number = mPhone.getVoiceMailNumber();
         Log.d(LOG_TAG, "VM: PhoneSubInfo.getCompleteVoiceMailNUmber: "); // + number);
         return number;

@@ -6955,16 +6955,13 @@ public final class ActivityManagerService extends ActivityManagerNative
     public void systemReady(final Runnable goingCallback) {
         synchronized(this) {
             if (mSystemReady) {
-                if (FeatureQuery.FEATURE_SECURITY) {
-                   Slog.e(TAG, "activitymanager init security manager");
-                   initSecurityManager();
-                }
-
                 if (goingCallback != null) goingCallback.run();
                 return;
             } else {
-                Slog.d(TAG, "init security manager");
-                initSecurityManager();
+                if (FeatureQuery.FEATURE_SECURITY) {
+                    Slog.d(TAG, "init security manager");
+                    initSecurityManager();
+                }
             }
             
             // Check to see if there are any update receivers to run.
@@ -12929,12 +12926,9 @@ public final class ActivityManagerService extends ActivityManagerNative
     private final void deliverToRegisteredReceiverLocked(BroadcastRecord r,
             BroadcastFilter filter, boolean ordered) {
         boolean skip = false;
-        if (FeatureQuery.FEATURE_SECURITY) {
-           if (isReceiverControlEnabled()) {
-              if(checkIfBlockAction(r.intent.getAction(), filter.packageName))
-                  return;
-           }
-        }
+        if (checkIfBlockAction(r.intent.getAction(), filter.packageName))
+            return;
+
         if (filter.requiredPermission != null) {
             int perm = checkComponentPermission(filter.requiredPermission,
                     r.callingPid, r.callingUid, -1, true);
@@ -13216,6 +13210,12 @@ public final class ActivityManagerService extends ActivityManagerNative
                 (ResolveInfo)nextReceiver;
 
             boolean skip = false;
+
+            if (checkIfBlockAction(r.intent.getAction(),
+                        info.activityInfo.applicationInfo.packageName)) {
+                skip = true;
+            }
+
             int perm = checkComponentPermission(info.activityInfo.permission,
                     r.callingPid, r.callingUid, info.activityInfo.applicationInfo.uid,
                     info.activityInfo.exported);
@@ -15002,7 +15002,7 @@ public final class ActivityManagerService extends ActivityManagerNative
     }
 
     private boolean isReceiverControlEnabled() {
-        return mSystemReady && mReceiverControl;
+        return FeatureQuery.FEATURE_SECURITY && mSystemReady && mReceiverControl;
     }
 
     private boolean isValidReceiverAction(String action, String packageName) {
@@ -15040,16 +15040,27 @@ public final class ActivityManagerService extends ActivityManagerNative
               return SecurityResult.RESTORE_ACTION_SUCCESS;
          }
 
-         public void onEnableReceiverControl() {
+         public void onEnableReceiverController() {
               mReceiverControl = true;
          }
  
-         public void onDisableReceiverControl() {
+         public void onDisableReceiverController() {
               mReceiverControl = false;
+         }
+
+         public void clearActionReceiverSettings() {
+              mReceiverActions.clear();
+         }
+ 
+         public void clearActionReceiverSettingsByPkg(String packageName) {
+              mReceiverActions.remove(packageName);
          }
     };
 
     private boolean checkIfBlockAction(String action, String packageName) {
+        if (!isReceiverControlEnabled())
+            return false;
+
         Slog.d(TAG, "checkIfBlockAction: action: " + action + "/pkg:" + packageName);
         ArrayList<String> actions = mReceiverActions.get(packageName);
         if (actions != null && actions.contains(action)) {

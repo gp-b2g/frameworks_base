@@ -29,12 +29,14 @@
 
 package android.security;
 
+import java.util.List;
+
 import android.os.Parcel;
 import android.os.Parcelable;
 
 public class PermissionEntry implements Parcelable {
     public String packageName;
-    public String[] revokedPermissions;
+    public List<String> revokedPermissions;
 
     public PermissionEntry() {
     }
@@ -50,7 +52,7 @@ public class PermissionEntry implements Parcelable {
 
     public void writeToParcel(Parcel dest, int parcelableFlags) {
         dest.writeString(packageName);
-        dest.writeStringArray(revokedPermissions);
+        dest.writeStringList(revokedPermissions);
     }
 
     public static final Parcelable.Creator<PermissionEntry> CREATOR
@@ -66,7 +68,7 @@ public class PermissionEntry implements Parcelable {
 
     private PermissionEntry(Parcel source) {
         packageName = source.readString();
-        revokedPermissions = source.createStringArray();
+        revokedPermissions = source.createStringArrayList();
     }
 }
 

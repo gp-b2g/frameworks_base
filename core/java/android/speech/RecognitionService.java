@@ -20,14 +20,18 @@ import android.annotation.SdkConstant;
 import android.annotation.SdkConstant.SdkConstantType;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.util.Log;
 
+import com.qrd.plugin.feature_query.FeatureQuery;
 /**
  * This class provides a base class for recognition service implementations. This class should be
  * extended only in case you wish to implement a new speech recognizer. Please note that the
@@ -159,6 +163,16 @@ public abstract class RecognitionService extends Service {
         if (DBG) Log.d(TAG, "checkPermissions");
         if (RecognitionService.this.checkCallingOrSelfPermission(android.Manifest.permission.
                 RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            if(FeatureQuery.FEATURE_SECURITY){
+               try {
+                  IPackageManager pm = IPackageManager.Stub.asInterface(
+                  ServiceManager.getService("package"));
+                  if(pm.checkUidPermissionBySM(android.Manifest.permission.RECORD_AUDIO,Binder.getCallingUid())
+                       == PackageManager.PERMISSION_DENIED)
+                      return false;
+               } catch (RemoteException e){
+               }
+            }
             return true;
         }
         try {

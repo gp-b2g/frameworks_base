@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -170,6 +171,9 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
      * @hide
      */
     class Transport extends ContentProviderNative {
+        private String wperm2;
+        private String rperm2;
+
         ContentProvider getContentProvider() {
             return ContentProvider.this;
         }
@@ -182,6 +186,13 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
         public Cursor query(Uri uri, String[] projection,
                 String selection, String[] selectionArgs, String sortOrder) {
             enforceReadPermission(uri);
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkReadSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                    return null;
+                }
+            }
+
             return ContentProvider.this.query(uri, projection, selection,
                     selectionArgs, sortOrder);
         }
@@ -193,11 +204,25 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
 
         public Uri insert(Uri uri, ContentValues initialValues) {
             enforceWritePermission(uri);
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkWriteSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                    return null;
+                }
+            }
+
             return ContentProvider.this.insert(uri, initialValues);
         }
 
         public int bulkInsert(Uri uri, ContentValues[] initialValues) {
             enforceWritePermission(uri);
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkWriteSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                    return 0;
+                }
+            }
+
             return ContentProvider.this.bulkInsert(uri, initialValues);
         }
 
@@ -206,10 +231,21 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
             for (ContentProviderOperation operation : operations) {
                 if (operation.isReadOperation()) {
                     enforceReadPermission(operation.getUri());
+
+                    if(FeatureQuery.FEATURE_SECURITY){
+                        if (checkReadSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                            return null;
+                        }
+                    }
                 }
 
                 if (operation.isWriteOperation()) {
                     enforceWritePermission(operation.getUri());
+                    if(FeatureQuery.FEATURE_SECURITY){
+                         if (checkWriteSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                                return null;
+                         }
+                    }
                 }
             }
             return ContentProvider.this.applyBatch(operations);
@@ -217,12 +253,24 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
 
         public int delete(Uri uri, String selection, String[] selectionArgs) {
             enforceWritePermission(uri);
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkWriteSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                    return 0;
+                }
+            }
             return ContentProvider.this.delete(uri, selection, selectionArgs);
         }
 
         public int update(Uri uri, ContentValues values, String selection,
                 String[] selectionArgs) {
             enforceWritePermission(uri);
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkWriteSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                    return 0;
+                }
+            }
             return ContentProvider.this.update(uri, values, selection, selectionArgs);
         }
 
@@ -230,6 +278,19 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
                 throws FileNotFoundException {
             if (mode != null && mode.startsWith("rw")) enforceWritePermission(uri);
             else enforceReadPermission(uri);
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkWriteSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                    return null;
+                }
+            }
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkReadSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                    return null;
+                }
+            }
+
             return ContentProvider.this.openFile(uri, mode);
         }
 
@@ -237,6 +298,19 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
                 throws FileNotFoundException {
             if (mode != null && mode.startsWith("rw")) enforceWritePermission(uri);
             else enforceReadPermission(uri);
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkWriteSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                    return null;
+                }
+            }
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkReadSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                    return null;
+                }
+            }
+
             return ContentProvider.this.openAssetFile(uri, mode);
         }
 
@@ -253,6 +327,13 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
         public AssetFileDescriptor openTypedAssetFile(Uri uri, String mimeType, Bundle opts)
                 throws FileNotFoundException {
             enforceReadPermission(uri);
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkReadSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                    return null;
+                }
+            }
+
             return ContentProvider.this.openTypedAssetFile(uri, mimeType, opts);
         }
 
@@ -264,6 +345,11 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
             
             final Context context = getContext();
             final String rperm = getReadPermission();
+
+            if(FeatureQuery.FEATURE_SECURITY){
+                rperm2 = rperm;
+            }
+
             final int pid = Binder.getCallingPid();
             if (mExported && (rperm == null
                     || context.checkPermission(rperm, pid, uid)
@@ -292,20 +378,6 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
                     Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     == PackageManager.PERMISSION_GRANTED) {
                 return;
-            }
-
-            if(FeatureQuery.FEATURE_SECURITY){
-              if(rperm == android.Manifest.permission.READ_CONTACTS
-                     || rperm == android.Manifest.permission.READ_SMS){
-                try {
-                   IPackageManager pm = IPackageManager.Stub.asInterface(
-                         ServiceManager.getService("package"));
-                   if(pm.checkUidPermission(rperm,Binder.getCallingUid())
-                         == PackageManager.PERMISSION_DENIED)
-                   return;
-                } catch (RemoteException e){
-                }
-              }
             }
 
             String msg = "Permission Denial: reading "
@@ -372,6 +444,36 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
                     + ", uid=" + Binder.getCallingUid()
                     + " requires " + getWritePermission();
             throw new SecurityException(msg);
+        }
+
+        private int checkReadSecurityPermission() {
+            if(rperm2 != null && (rperm2.equals(android.Manifest.permission.READ_CONTACTS)
+                     || rperm2.equals(android.Manifest.permission.READ_SMS))){
+                try {
+                    IPackageManager pm = IPackageManager.Stub.asInterface(
+                         ServiceManager.getService("package"));
+                    return pm.checkUidPermissionBySM(rperm2, Binder.getCallingUid());
+                } catch (RemoteException e){
+                    return PackageManager.PERMISSION_GRANTED;
+                }
+            }
+
+            return PackageManager.PERMISSION_GRANTED;
+        }
+
+        private int checkWriteSecurityPermission() {
+            if(wperm2 != null && (wperm2.equals(android.Manifest.permission.WRITE_CONTACTS)
+                     || wperm2.equals(android.Manifest.permission.WRITE_SMS))){
+                try {
+                    IPackageManager pm = IPackageManager.Stub.asInterface(
+                         ServiceManager.getService("package"));
+                    return pm.checkUidPermissionBySM(wperm2, Binder.getCallingUid());
+                } catch (RemoteException e){
+                    return PackageManager.PERMISSION_GRANTED;
+                }
+            }
+
+            return PackageManager.PERMISSION_GRANTED;
         }
     }
 

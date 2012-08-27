@@ -33,12 +33,15 @@ import android.content.Context;
 import android.os.RemoteException;
 import android.security.IPermissionToken;
 import android.security.SecurityResult;
+import android.util.Log;
 
 import java.util.List;
 
 /** {@hide} */
 public final class PermissionController {
     private Context mContext;
+    private final static String TAG = "PermissionController";
+    private final static boolean DEBUG = true;
 
     PermissionController(Context context) {
         mContext = context;
@@ -49,15 +52,29 @@ public final class PermissionController {
     public void applyPermissionToken(IPermissionToken token) {
         mPermToken = token;
         try {
-            mPermToken.onEnablePermissionControl();
+            mPermToken.onEnablePermissionController();
         } catch (RemoteException e) {
 
         }
     }
 
+    public int enablePermissionController(boolean enable) {
+        try {
+            if (enable) {
+                mPermToken.onEnablePermissionController();
+            } else {
+                mPermToken.onDisablePermissionController();
+            }
+        } catch (RemoteException e) {
+            return SecurityResult.REMOTE_ERROR;
+        }
+        return SecurityResult.REMOTE_NO_ERROR;
+    }
+
     public int revokePermission(String perm, String pkg, int type) {
         int result;
         try {
+            LOG("revokePermission", "perm: " + perm + ", pkg: " + pkg);
             result = mPermToken.revokePackagePermission(perm, pkg, type);
         } catch (RemoteException e) {
             return SecurityResult.REMOTE_ERROR;
@@ -68,27 +85,8 @@ public final class PermissionController {
     public int grantPermission(String perm, String pkg) {
         int result;
         try {
+            LOG("grantPermission", "perm: " + perm + ", pkg: " + pkg);
             result = mPermToken.grantPackagePermission(perm, pkg);
-        } catch (RemoteException e) {
-            return SecurityResult.REMOTE_ERROR;
-        }
-        return result;
-    }
-
-    public int revokePermission(String perm, int uid, int type) {
-        int result;
-        try {
-            result = mPermToken.revokeUidPermission(perm, uid, type);
-        } catch (RemoteException e) {
-            return SecurityResult.REMOTE_ERROR;
-        }
-        return result;
-    }
-
-    public int grantPermission(String perm, int uid) {
-        int result;
-        try {
-            result = mPermToken.grantUidPermission(perm, uid);
         } catch (RemoteException e) {
             return SecurityResult.REMOTE_ERROR;
         }
@@ -98,6 +96,7 @@ public final class PermissionController {
     public int revokePermission(List<String> permList, String pkg, int type) {
         int result;
         try {
+            LOG("revokePermission", "permList: " + permList + ", pkg: " + pkg);
             result = mPermToken.revokePackagePermissionList(permList, pkg, type);
         } catch (RemoteException e) {
             return SecurityResult.REMOTE_ERROR;
@@ -108,6 +107,7 @@ public final class PermissionController {
     public int grantPermission(List<String> permList, String pkg) {
         int result;
         try {
+            LOG("grantPermission", "permList: " + permList + ", pkg: " + pkg);
             result = mPermToken.grantPackagePermissionList(permList, pkg);
         } catch (RemoteException e) {
             return SecurityResult.REMOTE_ERROR;
@@ -115,24 +115,28 @@ public final class PermissionController {
         return result;
     }
 
-    public int revokePermission(List<String> permList, int uid, int type) {
-        int result;
+    public int clearPermissionSettings() {
         try {
-            result = mPermToken.revokeUidPermissionList(permList, uid, type);
+            mPermToken.clearPermissionSettings();
         } catch (RemoteException e) {
             return SecurityResult.REMOTE_ERROR;
         }
-        return result;
+        return SecurityResult.REMOTE_NO_ERROR;
     }
 
-    public int grantPermission(List<String> permList, int uid) {
-        int result;
+    public int clearPermissionSettingsByPkg(String pkg) {
         try {
-            result = mPermToken.grantUidPermissionList(permList, uid);
+            mPermToken.clearPermissionSettingsByPkg(pkg);
         } catch (RemoteException e) {
             return SecurityResult.REMOTE_ERROR;
         }
-        return result;
+        return SecurityResult.REMOTE_NO_ERROR;
+    }
+
+    private void LOG(String function, String msg) {
+        if (DEBUG) {
+            Log.d(TAG, "[" + function + "] " + msg);
+        }
     }
 }
 

@@ -171,6 +171,11 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
                     "Requires android.permission.WRITE_CONTACTS permission");
         }
 
+        if(FeatureQuery.FEATURE_SECURITY){
+                if (checkSecurityPermission(android.Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                    return false;
+                }
+        }
 
         if (DBG) logd("updateAdnRecordsInEfBySearch: efid=" + efid +
                 " ("+ oldTag + "," + oldPhoneNumber + ")"+ "==>" +
@@ -206,6 +211,12 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             != PackageManager.PERMISSION_GRANTED) {
             throw new SecurityException(
                     "Requires android.permission.WRITE_CONTACTS permission");
+        }
+
+        if(FeatureQuery.FEATURE_SECURITY){
+                if (checkSecurityPermission(android.Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                    return false;
+                }
         }
 
         String oldTag = values.getAsString(IccProvider.STR_TAG);
@@ -269,6 +280,12 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
                     "Requires android.permission.WRITE_CONTACTS permission");
         }
 
+        if(FeatureQuery.FEATURE_SECURITY){
+                if (checkSecurityPermission(android.Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                    return false;
+                }
+        }
+
         if (DBG) logd("updateAdnRecordsInEfByIndex: efid=" + efid +
                 " Index=" + index + " ==> " +
                 "("+ newTag + "," + newPhoneNumber + ")"+ " pin2=" + pin2);
@@ -310,23 +327,23 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
      */
     public List<AdnRecord> getAdnRecordsInEf(int efid) {
 
-        if(FeatureQuery.FEATURE_SECURITY){
-            try {
-                  IPackageManager pm = IPackageManager.Stub.asInterface(
-                        ServiceManager.getService("package"));
-                  if(pm.checkUidPermission(android.Manifest.permission.READ_CONTACTS,Binder.getCallingUid())
-                        == PackageManager.PERMISSION_DENIED){
-                          return null;
-                  }
-            } catch (RemoteException e){
-            }
-        }
-
         if (phone.getContext().checkCallingOrSelfPermission(
                 android.Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
             throw new SecurityException(
                     "Requires android.permission.READ_CONTACTS permission");
+        } else {
+           if(FeatureQuery.FEATURE_SECURITY){
+              try {
+                  IPackageManager pm = IPackageManager.Stub.asInterface(
+                        ServiceManager.getService("package"));
+                  if(pm.checkUidPermissionBySM(android.Manifest.permission.READ_CONTACTS,Binder.getCallingUid())
+                        == PackageManager.PERMISSION_DENIED){
+                          return null;
+                  }
+              } catch (RemoteException e){
+              }
+           }
         }
 
         efid = updateEfForIccType(efid);
@@ -383,6 +400,16 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             }
         }
         return efid;
+    }
+
+    private int checkSecurityPermission(String perm) {
+        try {
+                if(DBG) loge("call checkSecurityPermission/" + Binder.getCallingUid());
+                IPackageManager pm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+                return pm.checkUidPermissionBySM(perm, Binder.getCallingUid());
+        } catch (RemoteException e){
+                return PackageManager.PERMISSION_GRANTED;
+        }
     }
 }
 

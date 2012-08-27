@@ -20,6 +20,8 @@ package android.telephony;
 import android.annotation.SdkConstant;
 import android.annotation.SdkConstant.SdkConstantType;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
@@ -37,6 +39,8 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyProperties;
 
 import java.util.List;
+
+import com.qrd.plugin.feature_query.FeatureQuery;
 
 /**
  * Provides access to information about the telephony services on
@@ -129,6 +133,10 @@ public class MSimTelephonyManager extends TelephonyManager {
     public CellLocation getCellLocation(int subscription) {
         ITelephonyMSim iTelephony = null;
         try {
+            if (FeatureQuery.FEATURE_SECURITY 
+                    && checkLocationSecurityPermission() != PackageManager.PERMISSION_GRANTED)
+                return null;
+
             iTelephony = ITelephonyMSim.Stub.asInterface(ServiceManager
                     .getService(Context.MSIM_TELEPHONY_SERVICE));
             Bundle bundle = iTelephony.getCellLocation(subscription);

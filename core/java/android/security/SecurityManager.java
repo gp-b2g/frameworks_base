@@ -268,6 +268,15 @@ public class SecurityManager {
     public static final int PERM_STATIC = 0;
     public static final int PERM_DYNAMIC = 1;
 
+    public int enablePermissionController(boolean enable) {
+        IBinder caller = getSecurityToken();
+        try {
+            return SecurityManagerNative.getDefault().enablePermissionController(caller, enable);
+        } catch (RemoteException e) {
+            return SecurityResult.REMOTE_ERROR;
+        }
+    }
+
     public int revokePermission(String permission, String packageName, int type) {
         IBinder caller = getSecurityToken();
         try {
@@ -286,24 +295,6 @@ public class SecurityManager {
         }
     }
 
-    public int revokePermission(String permission, int uid, int type) {
-        IBinder caller = getSecurityToken();
-        try {
-            return SecurityManagerNative.getDefault().revokePermission(caller, permission, uid, type);
-        } catch (RemoteException e) {
-            return SecurityResult.REMOTE_ERROR;
-        }
-    }
-
-    public int grantPermission(String permission, int uid) {
-        IBinder caller = getSecurityToken();
-        try {
-            return SecurityManagerNative.getDefault().grantPermission(caller, permission, uid);
-        } catch (RemoteException e) {
-            return SecurityResult.REMOTE_ERROR;
-        }
-    }
-
     public int revokePermission(List<String> permissionList, String packageName, int type) {
         IBinder caller = getSecurityToken();
         try {
@@ -317,24 +308,6 @@ public class SecurityManager {
         IBinder caller = getSecurityToken();
         try {
             return SecurityManagerNative.getDefault().grantPermission(caller, permissionList, packageName);
-        } catch (RemoteException e) {
-            return SecurityResult.REMOTE_ERROR;
-        }
-    }
-
-    public int revokePermission(List<String> permissionList, int uid, int type) {
-        IBinder caller = getSecurityToken();
-        try {
-            return SecurityManagerNative.getDefault().revokePermission(caller, permissionList, uid, type);
-        } catch (RemoteException e) {
-            return SecurityResult.REMOTE_ERROR;
-        }
-    }
-
-    public int grantPermission(List<String> permissionList, int uid) {
-        IBinder caller = getSecurityToken();
-        try {
-            return SecurityManagerNative.getDefault().grantPermission(caller, permissionList, uid);
         } catch (RemoteException e) {
             return SecurityResult.REMOTE_ERROR;
         }
@@ -359,4 +332,134 @@ public class SecurityManager {
         }
     }
 
+    public int enableReceiverController(boolean enable) {
+        IBinder caller = getSecurityToken();
+        try {
+            return SecurityManagerNative.getDefault().enableReceiverController(caller, enable);
+        } catch (RemoteException e) {
+            return SecurityResult.REMOTE_ERROR;
+        }
+    }
+
+    public FirewallEntry getFirewall(int uid) {
+        IBinder caller = getSecurityToken();
+        try {
+            return SecurityManagerNative.getDefault().getFirewall(caller, uid);
+        } catch (RemoteException e) {
+            return null;
+        }
+    }
+
+    public PermissionEntry getPermission(String packageName) {
+        IBinder caller = getSecurityToken();
+        try {
+            return SecurityManagerNative.getDefault().getPermission(caller, packageName);
+        } catch (RemoteException e) {
+            return null;
+        }
+    }
+
+    public ActionReceiverEntry getActionReceiver(String packageName) {
+        IBinder caller = getSecurityToken();
+        try {
+            return SecurityManagerNative.getDefault().getActionReceiver(caller, packageName);
+        } catch (RemoteException e) {
+            return null;
+        }
+    }
+
+    
+    public List<FirewallEntry> getFirewallList() {
+        IBinder caller = getSecurityToken();
+        try {
+            return SecurityManagerNative.getDefault().getFirewallList(caller);
+        } catch (RemoteException e) {
+            return null;
+        }
+    }
+
+    public List<PermissionEntry> getPermissionList() {
+        IBinder caller = getSecurityToken();
+        try {
+            return SecurityManagerNative.getDefault().getPermissionList(caller);
+        } catch (RemoteException e) {
+            return null;
+        }
+    }
+
+    public List<ActionReceiverEntry> getActionReceiverList() {
+        IBinder caller = getSecurityToken();
+        try {
+            return SecurityManagerNative.getDefault().getActionReceiverList(caller);
+        } catch (RemoteException e) {
+            return null;
+        }
+    }
+
+    public void clearAllSettings() {
+        IBinder caller = getSecurityToken();
+        try {
+            SecurityManagerNative.getDefault().clearAllSettings(caller);
+        } catch (RemoteException e) {
+        }
+    }
+
+    public void clearFirewallSettings() {
+        IBinder caller = getSecurityToken();
+        try {
+            SecurityManagerNative.getDefault().clearFirewallSettings(caller);
+        } catch (RemoteException e) {
+        }
+    }
+
+    public void clearPermissionSettings() {
+        IBinder caller = getSecurityToken();
+        try {
+            SecurityManagerNative.getDefault().clearPermissionSettings(caller);
+        } catch (RemoteException e) {
+        }
+    }
+
+    public void clearActionReceiverSettings() {
+        IBinder caller = getSecurityToken();
+        try {
+            SecurityManagerNative.getDefault().clearActionReceiverSettings(caller);
+        } catch (RemoteException e) {
+        }
+    }
+
+    public int checkFirewall(int uid, int type) {
+        IBinder caller = getSecurityToken();
+        try {
+            return SecurityManagerNative.getDefault().checkFirewall(caller, uid, type);
+        } catch (RemoteException e) {
+            return SecurityResult.REMOTE_ERROR;
+        }
+    }
+
+    public int checkPermission(String packageName, String permission) {
+        IBinder caller = getSecurityToken();
+        try {
+            return SecurityManagerNative.getDefault().checkPermission(caller, packageName, permission);
+        } catch (RemoteException e) {
+            return SecurityResult.REMOTE_ERROR;
+        }
+    }
+
+    public int checkActionReceiver(String packageName, String action) {
+        IBinder caller = getSecurityToken();
+        try {
+            return SecurityManagerNative.getDefault().checkActionReceiver(caller, packageName, action);
+        } catch (RemoteException e) {
+            return SecurityResult.REMOTE_ERROR;
+        }
+    }
+
+    public void clearSingleSettings(String packageName, int uid) {
+        IBinder caller = getSecurityToken();
+        try {
+            SecurityManagerNative.getDefault().clearSingleSettings(caller, packageName, uid);
+        } catch (RemoteException e) {
+        }
+    }
 }

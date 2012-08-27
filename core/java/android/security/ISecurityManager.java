@@ -104,27 +104,23 @@ public interface ISecurityManager extends IInterface {
 
     public int applyPermissionToken(IPermissionToken token) throws RemoteException;
 
+    public int enablePermissionController(IBinder token, boolean enable) throws RemoteException;
+
     public int revokePermission(IBinder token, String permission, String packageName, int type) throws RemoteException;
 
     public int grantPermission(IBinder token, String permission, String packageName) throws RemoteException;
 
-    public int revokePermission(IBinder token, String permission, int uid, int type) throws RemoteException;
-
-    public int grantPermission(IBinder token, String permission, int uid) throws RemoteException;
-
     public int revokePermission(IBinder token, List<String> permissionList, String packageName, int type) throws RemoteException;
 
     public int grantPermission(IBinder token, List<String> permissionList, String packageName) throws RemoteException;
-
-    public int revokePermission(IBinder token, List<String> permissionList, int uid, int type) throws RemoteException;
-
-    public int grantPermission(IBinder token, List<String> permissionList, int uid) throws RemoteException;
 
     public int applyReceiverToken(IReceiverToken token) throws RemoteException;
 
     public int blockActionReceiver(IBinder token, String action, String packageName) throws RemoteException;
 
     public int restoreActionReceiver(IBinder token, String action, String packageName) throws RemoteException;
+
+    public int enableReceiverController(IBinder token, boolean enable) throws RemoteException;
 
     public int registerCallWatcher(IBinder token, int flags) throws RemoteException;
 
@@ -139,6 +135,36 @@ public interface ISecurityManager extends IInterface {
     public int addCallBlackItem(IBinder token, Bundle call) throws RemoteException;
 
     public int removeCallBlackItem(IBinder token, Bundle call) throws RemoteException;
+
+    public FirewallEntry getFirewall(IBinder token, int uid) throws RemoteException;
+
+    public PermissionEntry getPermission(IBinder token, String packageName) throws RemoteException;
+
+    public ActionReceiverEntry getActionReceiver(IBinder token, String packageName) throws RemoteException;
+
+    public List<FirewallEntry> getFirewallList(IBinder token) throws RemoteException;
+
+    public List<PermissionEntry> getPermissionList(IBinder token) throws RemoteException;
+
+    public List<ActionReceiverEntry> getActionReceiverList(IBinder token) throws RemoteException;
+
+    public int isGuardAvailable() throws RemoteException;
+
+    public void clearAllSettings(IBinder token) throws RemoteException;
+
+    public void clearFirewallSettings(IBinder token) throws RemoteException;
+
+    public void clearPermissionSettings(IBinder token) throws RemoteException;
+
+    public void clearActionReceiverSettings(IBinder token) throws RemoteException;
+
+    public int checkFirewall(IBinder token, int uid, int type) throws RemoteException;
+    
+    public int checkPermission(IBinder token, String packageName, String permission) throws RemoteException;
+
+    public int checkActionReceiver(IBinder token, String packageName, String action) throws RemoteException;
+
+    public void clearSingleSettings(IBinder token, String packageName, int uid) throws RemoteException;
 
     String descriptor = "android.security.ISecurityManager";
 
@@ -168,5 +194,21 @@ public interface ISecurityManager extends IInterface {
     int SET_CALL_BLACK_LIST_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 23;
     int ADD_CALL_BLACK_ITEM_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 24;
     int REMOVE_CALL_BLACK_ITEM_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 25;
-
+    int GET_FIREWALL_POLICY_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 26;
+    int GET_PERMISSION_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 27;
+    int GET_ACTION_RECEIVER_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 28;
+    int GET_FIREWALL_POLICY_LIST_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 29;
+    int GET_PERMISSION_LIST_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 30;
+    int GET_ACTION_RECEIVER_LIST_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 31;
+    int ENABLE_RECEIVER_CONTROLLER_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 32;
+    int ENABLE_PERMISSION_CONTROLLER_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 33;
+    int CHECK_GUARD_AVAILABLE = IBinder.FIRST_CALL_TRANSACTION + 34;
+    int CLEAR_ALL_SETTINGS_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 35;
+    int CLEAR_FIREWALL_SETTINGS_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 36;
+    int CLEAR_PERMISSION_SETTINGS_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 37;
+    int CLEAR_ACTION_RECEIVER_SETTINGS_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 38;
+    int CHECK_FIREWALL_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 39;
+    int CHECK_PERMISSION_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 40;
+    int CHECK_ACTION_RECEIVER_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 41;
+    int CLEAR_SINGLE_SETTINGS = IBinder.FIRST_CALL_TRANSACTION + 42;
 }

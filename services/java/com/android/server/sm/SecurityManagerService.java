@@ -36,6 +36,7 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 
 import android.security.ICallToken;
 import android.security.IMessageToken;
@@ -47,23 +48,28 @@ import android.security.SecurityManager;
 import android.security.SecurityManagerNative;
 import android.security.SecurityRecord;
 import android.security.SecurityResult;
+import android.security.FirewallEntry;
+import android.security.PermissionEntry;
+import android.security.ActionReceiverEntry;
 
 import android.util.Slog;
 
-import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.HashMap;
 
 /** {@hide} */
 public final class SecurityManagerService extends SecurityManagerNative {
     static final String TAG = "SecurityManagerService";
-    static final boolean DEBUG = false;
+    static final boolean DEBUG = true;
 
     private static boolean mSystemReady = false;
 
     private static RadioSecurityController mRadioController;
 
-    HashMap<IBinder, SecurityRecord> mSecurityRecords = new HashMap<IBinder, SecurityRecord>();
+    static HashMap<IBinder, SecurityRecord> mSecurityRecords = new HashMap<IBinder, SecurityRecord>();
 
 
     class ClientDeathRecipient implements IBinder.DeathRecipient {
@@ -90,10 +96,22 @@ public final class SecurityManagerService extends SecurityManagerNative {
         mSecurityRecords.remove(token);
     }
 
+    public int isGuardAvailable() {
+        if(mSecurityRecords.isEmpty()) {
+           return SecurityResult.GUARD_IS_NOT_AVAILABLE;
+        } else {
+           return SecurityResult.GUARD_IS_AVAILABLE;
+        }
+    }
+
     public int checkAuthority(IBinder token, String packageName) {
         LOG("checkAuthority", "PKG: " + packageName);
         int result = SecurityResult.NOT_AUTHORIZED_PACKAGE;
-        result = SecurityRecord.verifyPackage(packageName);
+        if("eng".equals(SystemProperties.get("ro.build.type"))) {
+            result = SecurityResult.AUTHORIZED_PACKAGE;
+        } else {    
+            result = SecurityRecord.verifyPackage(packageName);
+        }
         if (result == SecurityResult.AUTHORIZED_PACKAGE) {
             SecurityRecord r = new SecurityRecord(token, true);
             mSecurityRecords.put(token, r);
@@ -209,6 +227,11 @@ public final class SecurityManagerService extends SecurityManagerNative {
         return SecurityResult.APPLY_TOKEN_SUCCESS;
     }
 
+    public int enablePermissionController(IBinder token, boolean enable) {
+        LOG("enablePermissionController", "enable: " + enable);
+        return mPermController.enablePermissionController(enable);
+    }
+
     public int revokePermission(IBinder token,String permission,String packageName,int type) {
         LOG("revokePermission", "perm: " + permission + "/pkg: " + packageName + "/type: " + type);
         if (type > SecurityManager.PERM_DYNAMIC || type < SecurityManager.PERM_STATIC) {
@@ -216,7 +239,8 @@ public final class SecurityManagerService extends SecurityManagerNative {
         }
         SecurityRecord record = getSecurityRecord(token);
         if (record.revokePermission(permission, packageName, type)) {
-           return mPermController.revokePermission(permission, packageName, type);
+            LOG("revokePermission", "call permcontroller");
+            return mPermController.revokePermission(permission, packageName, type);
         }
         return SecurityResult.REVOKE_DUPLICATE_PERM;
     }
@@ -225,28 +249,8 @@ public final class SecurityManagerService extends SecurityManagerNative {
         LOG("grantPermission", "perm: " + permission + "/pkg: " + packageName);
         SecurityRecord record = getSecurityRecord(token);
         if (record.grantPermission(permission, packageName)) {
-           return mPermController.grantPermission(permission, packageName);
-        }
-        return SecurityResult.GRANT_DUPLICATE_PERM;
-    }
-
-    public int revokePermission(IBinder token,String permission,int uid,int type) {
-        LOG("revokePermission", "perm: " + permission + "/uid: " + uid + "/type: " + type);
-        if (type > SecurityManager.PERM_DYNAMIC || type < SecurityManager.PERM_STATIC) {
-            return SecurityResult.INVALID_PERM_TYPE;
-        }
-        SecurityRecord record = getSecurityRecord(token);
-        if (record.revokePermission(permission, uid, type)) {
-           return mPermController.revokePermission(permission, uid, type);
-        }
-        return SecurityResult.REVOKE_DUPLICATE_PERM;
-    }
-
-    public int grantPermission(IBinder token,String permission,int uid) {
-        LOG("grantPermission", "perm: " + permission + "/uid: " + uid);
-        SecurityRecord record = getSecurityRecord(token);
-        if (record.grantPermission(permission, uid)) {
-           return mPermController.grantPermission(permission, uid);
+            LOG("grantPermission", "call permcontroller");
+            return mPermController.grantPermission(permission, packageName);
         }
         return SecurityResult.GRANT_DUPLICATE_PERM;
     }
@@ -258,7 +262,8 @@ public final class SecurityManagerService extends SecurityManagerNative {
         }
         SecurityRecord record = getSecurityRecord(token);
         if (record.revokePermission(permissionList, packageName, type)) {
-           return mPermController.revokePermission(permissionList, packageName, type);
+            LOG("revokePermission", "call permcontroller");
+            return mPermController.revokePermission(permissionList, packageName, type);
         }
         return SecurityResult.REVOKE_DUPLICATE_PERM;
     }
@@ -267,28 +272,8 @@ public final class SecurityManagerService extends SecurityManagerNative {
         LOG("grantPermission", "perm: " + permissionList + "/pkg: " + packageName);
         SecurityRecord record = getSecurityRecord(token);
         if (record.grantPermission(permissionList, packageName)) {
-           return mPermController.grantPermission(permissionList, packageName);
-        }
-        return SecurityResult.GRANT_DUPLICATE_PERM;
-    }
-
-    public int revokePermission(IBinder token,List<String> permissionList,int uid,int type) {
-        LOG("revokePermission", "perm: " + permissionList + "/uid: " + uid + "/type: " + type);
-        if (type > SecurityManager.PERM_DYNAMIC || type < SecurityManager.PERM_STATIC) {
-            return SecurityResult.INVALID_PERM_TYPE;
-        }
-        SecurityRecord record = getSecurityRecord(token);
-        if (record.revokePermission(permissionList, uid, type)) {
-           return mPermController.revokePermission(permissionList, uid, type);
-        }
-        return SecurityResult.REVOKE_DUPLICATE_PERM;
-    }
-
-    public int grantPermission(IBinder token,List<String> permissionList,int uid) {
-        LOG("restorePermission", "perm: " + permissionList + "/uid: " + uid);
-        SecurityRecord record = getSecurityRecord(token);
-        if (record.grantPermission(permissionList, uid)) {
-           return mPermController.grantPermission(permissionList, uid);
+            LOG("grantPermission", "call permcontroller");
+            return mPermController.grantPermission(permissionList, packageName);
         }
         return SecurityResult.GRANT_DUPLICATE_PERM;
     }
@@ -317,6 +302,11 @@ public final class SecurityManagerService extends SecurityManagerNative {
         return SecurityResult.RESTORE_ACTION_SUCCESS;
     }
 
+    public int enableReceiverController(IBinder token, boolean enable) {
+        LOG("enableReceiverController", "enable: " + enable);
+        return mReceiverController.enableReceiverController(enable);
+    }
+
     public int registerCallWatcher(IBinder token, int flags) {
         LOG("registerCallWatcher", "flag: " + flags);
         if (token == null || flags == 0)
@@ -341,6 +331,7 @@ public final class SecurityManagerService extends SecurityManagerNative {
     }
 
     public int applyCallToken(ICallToken token) {
+        LOG("applyCallToken", "token: " + token);
         mRadioController.applyCallToken(token);
         return SecurityResult.APPLY_TOKEN_SUCCESS;
     }
@@ -373,8 +364,129 @@ public final class SecurityManagerService extends SecurityManagerNative {
         return r.removeCallBlackItem(call);
     }
 
+
+    public FirewallEntry getFirewall(IBinder token, int uid) {
+        LOG("getFirewall", "token: " + token + ", uid: " + uid);
+        SecurityRecord r = getSecurityRecord(token);
+        return r.getFirewallByUID(uid);
+    }
+
+    public PermissionEntry getPermission(IBinder token, String packageName) {
+        LOG("getPermission", "token: " + token + ", packageName: " + packageName);
+        SecurityRecord r = getSecurityRecord(token);
+        return r.getPermissionByPackage(packageName);
+    }
+
+    public ActionReceiverEntry getActionReceiver(IBinder token, String packageName) {
+        LOG("getActionReceiver", "token: " + token + ", packageName: " + packageName);
+        SecurityRecord r = getSecurityRecord(token);
+        return r.getBlockedActionByPackage(packageName);
+    }
+
+    public List<FirewallEntry> getFirewallList(IBinder token) {
+        LOG("getFirewallList", "token: " + token);
+        SecurityRecord r = getSecurityRecord(token);
+        return r.getFirewallList();
+    }
+
+    public List<PermissionEntry> getPermissionList(IBinder token) {
+        LOG("getPermissionList", "token: " + token);
+        SecurityRecord r = getSecurityRecord(token);
+        return r.getPermissionList();
+    }
+
+    public List<ActionReceiverEntry> getActionReceiverList(IBinder token) {
+        LOG("getActionReceiverList", "token: " + token);
+        SecurityRecord r = getSecurityRecord(token);
+        return r.getBlockedActionList();
+    }
+
+    public void clearAllSettings(IBinder token) {
+        LOG("clearAllSettings", "token: " + token);
+        clearFirewallSettings(token);
+        clearPermissionSettings(token);
+        clearActionReceiverSettings(token);
+    }
+
+    public void clearFirewallSettings(IBinder token) {
+        LOG("clearFirewallSettings", "token: " + token);
+        SecurityRecord r = getSecurityRecord(token);
+        r.clearFirewalls();
+        mRadioController.clearFirewallPolicy();
+    }
+
+    public void clearPermissionSettings(IBinder token) {
+        LOG("clearPermissionSettings", "token: " + token);
+        SecurityRecord r = getSecurityRecord(token);
+        r.clearPermissions();
+        mPermController.clearPermissionSettings();
+    }
+
+    public void clearActionReceiverSettings(IBinder token) {
+        LOG("clearActionReceiverSettings", "token: " + token);
+        SecurityRecord r = getSecurityRecord(token);
+        r.clearActionReceivers();
+        mReceiverController.clearActionReceiverSettings();
+    }
+
+    public void clearSingleSettings(IBinder token, String packageName, int uid) {
+        LOG("clearSettingsByPackage", "token: " + token + "/PackageName: " + packageName + "/uid: " + uid);
+        clearFirewallSettingsByUid(token , uid);
+        clearPermissionSettingsByPkg(token, packageName);
+        clearActionReceiverSettingsByPkg(token, packageName);
+    }
+
+    public void clearFirewallSettingsByUid(IBinder token, int uid) {
+        LOG("clearFirewallSettingsByPkg", "token: " + token + "/uid: " + uid);
+        SecurityRecord r = getSecurityRecord(token);
+        r.clearFirewallsByUid(uid);
+        mRadioController.clearFirewallPolicyByUid(uid);
+    }
+
+    public void clearPermissionSettingsByPkg(IBinder token, String packageName) {
+        LOG("clearPermissionSettingsByPkg", "token: " + token + "/PackageName: " + packageName);
+        SecurityRecord r = getSecurityRecord(token);
+        r.clearPermissionsByPkg(packageName);
+        mPermController.clearPermissionSettingsByPkg(packageName);
+    }
+
+    public void clearActionReceiverSettingsByPkg(IBinder token, String packageName) {
+        LOG("clearActionReceiverSettingsByPkg", "token: " + token + "/PackageName: " + packageName);
+        SecurityRecord r = getSecurityRecord(token);
+        r.clearActionReceiversByPkg(packageName);
+        mReceiverController.clearActionReceiverSettingsByPkg(packageName);
+    }
+
+    public int checkFirewall(IBinder token, int uid, int type) {
+        LOG("checkFirewall", "token: " + token + ", uid: " + uid + ", type: " + type);
+        SecurityRecord r = getSecurityRecord(token);
+        return r.checkFirewall(uid, type);
+    }
+    
+    public int checkPermission(IBinder token, String packageName, String permission) {
+        LOG("checkPermission", "token: " + token + ", packageName: " + packageName + ", permission: " + permission);
+        SecurityRecord r = getSecurityRecord(token);
+        return r.checkPermission(packageName, permission);
+    }
+
+    public int checkActionReceiver(IBinder token, String packageName, String action) {
+        LOG("checkActionReceiver", "token: " + token + ", packageName: " + packageName + ", action: " + action);
+        SecurityRecord r = getSecurityRecord(token);
+        return r.checkBlockedAction(packageName, action);
+    }
+    
     SecurityRecord getSecurityRecord(IBinder token) {
-        return mSecurityRecords.get(token);
+        if(token == null) {
+            Collection<SecurityRecord> s = mSecurityRecords.values(); 
+            Iterator<SecurityRecord> it = s.iterator();
+            while(it.hasNext()){ 
+                   //only one Guard is available.
+                   return it.next(); 
+            }
+            return null;
+        } else {
+            return mSecurityRecords.get(token);
+        }
     }
 
     private static SecurityManagerService mSelf;

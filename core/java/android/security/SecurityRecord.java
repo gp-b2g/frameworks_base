@@ -32,11 +32,16 @@ package android.security;
 import android.content.Context;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.pm.IPackageManager;
+import android.content.pm.ApplicationInfo;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.ServiceManager;
+import android.os.RemoteException;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
@@ -55,23 +60,20 @@ public class SecurityRecord {
     private final static String TAG = "SecurityRecord";
     private final static String DATABASE_NAME = "security_record.db";
     private static final int DATABASE_VERSION = 1;
-    private static final String RECEIVER_RECORD_TABLE_NAME = "receiver_records";
-    private static final String COLUMN_NAME_ACTION = "action";
+
+    private static final String PERMISSION_RECORD_TABLE_NAME = "permission_records";
+    private static final String FIREWALL_RECORD_TABLE_NAME = "firewall_records";
+    private static final String BLOCK_ACTION_RECORD_TABLE_NAME = "block_action_records";
+    private static final String COLUMN_NAME_PERMISSION = "permission";
     private static final String COLUMN_NAME_PKGNAME = "pkg_name";
+    private static final String COLUMN_NAME_ACTION = "action";
+    private static final String COLUMN_NAME_UID = "uid";
+    private static final String COLUMN_NAME_NETWORK_TYPE = "network_type";
 
-	private static final String PERMISSION_RECORD_TABLE_NAME = "permission_records";
-	private static final String FIREWALL_RECORD_TABLE_NAME = "firewall_records";
-	private static final String BLOCK_ACTION_RECORD_TABLE_NAME = "block_action_records";
-	private static final String COLUMN_NAME_PERMISSIONS = "permissions";
-	private static final String COLUMN_NAME_ACTIONS = "actions";
-	private static final String COLUMN_NAME_UID = "uid";
-	private static final String COLUMN_NAME_BLOCK_MOBILE = "block_mobile";
-	private static final String COLUMN_NAME_BLOCK_WIFI = "block_wifi";
-
-	private IBinder mToken; // record remote clients
-	private boolean mIsAuthorized; // check if the client is authoried by check
-	private static HashMap<String, Integer> mVerificationRecords = new HashMap<String, Integer>();
-	private static DatabaseHelper mOpenHelper;
+    private IBinder mToken; // record remote clients
+    private boolean mIsAuthorized; // check if the client is authoried by check
+    private static HashMap<String, Integer> mVerificationRecords = new HashMap<String, Integer>();
+    private static DatabaseHelper mOpenHelper;
 
     private void LOG(String msg) {
         if (DBG)
@@ -81,12 +83,14 @@ public class SecurityRecord {
     public static void initialize(Context context) {
         mOpenHelper = new DatabaseHelper(context);
     }
-    
+
     public static Bundle parseSms(Bundle message) {
-        String direction = message.getString(ISecurityManager.MESSAGE_DIRECTION_KEY);
+        String direction = message
+                .getString(ISecurityManager.MESSAGE_DIRECTION_KEY);
         if (ISecurityManager.MESSAGE_RECEIVED.equals(direction)) {
             // parse received sms from intent that contains pdu array to SmsMessage array.
-            Intent intent = (Intent) (message.getParcelable(ISecurityManager.MESSAGE_CONTENT_KEY));
+            Intent intent = (Intent) (message
+                    .getParcelable(ISecurityManager.MESSAGE_CONTENT_KEY));
             SmsMessage[] msgs = Intents.getMessagesFromIntent(intent);
             StringBuilder body = new StringBuilder();
             for (SmsMessage msg : msgs) {
@@ -95,12 +99,14 @@ public class SecurityRecord {
                 }
             }
             // Replace the content in message with parsed String.
-            message.putString(ISecurityManager.MESSAGE_CONTENT_KEY, body.toString());
+            message.putString(ISecurityManager.MESSAGE_CONTENT_KEY,
+                    body.toString());
             message.putString(ISecurityManager.MESSAGE_PHONE_NUMBER_KEY,
-                msgs[0].getDisplayOriginatingAddress());
+                    msgs[0].getDisplayOriginatingAddress());
             return message;
         } else {
-            // We only need to parse received sms, so return directly for other cases.
+            // We only need to parse received sms, so return directly for other
+            // cases.
             return message;
         }
     }
@@ -117,9 +123,10 @@ public class SecurityRecord {
             Object mContent;
             String mDirection;
 
-            ShortMessageItem(int ident, String number, Object content, String direction) {
+            ShortMessageItem(int ident, String number, Object content,
+                    String direction) {
                 mIdent = ident;
-                   mNumber = number;
+                mNumber = number;
                 mContent = content;
                 mDirection = direction;
             }
@@ -127,16 +134,16 @@ public class SecurityRecord {
             @Override
             public String toString() {
                 return "ShortMessage Config{"
-                    + Integer.toHexString(System.identityHashCode(this))
-                    + "/i: " + mIdent + "/num: " + mNumber 
-                       + "/dir: " + mDirection + "}";
+                        + Integer.toHexString(System.identityHashCode(this))
+                        + "/i: " + mIdent + "/num: " + mNumber + "/dir: "
+                        + mDirection + "}";
             }
         }
 
         private class ShortMessageRecord {
-            //all sending/received messages
-               private HashMap<Integer, ShortMessageItem> mShortMessages = new HashMap<Integer, ShortMessageItem>();
-            //has been intercepted messages
+            // all sending/received messages
+            private HashMap<Integer, ShortMessageItem> mShortMessages = new HashMap<Integer, ShortMessageItem>();
+            // has been intercepted messages
             private ArrayList<ShortMessageItem> mInterceptedMessages = new ArrayList<ShortMessageItem>();
 
             int mSubscription;
@@ -149,8 +156,10 @@ public class SecurityRecord {
                 mSubscription = subscription;
             }
 
-            public void insertMessage(int ident, String number, String direction, Object content) {
-                ShortMessageItem smi = new ShortMessageItem(ident, number, content, direction);
+            public void insertMessage(int ident, String number,
+                    String direction, Object content) {
+                ShortMessageItem smi = new ShortMessageItem(ident, number,
+                        content, direction);
                 mShortMessages.put(ident, smi);
             }
 
@@ -172,8 +181,8 @@ public class SecurityRecord {
                 sb.append(mSubscription);
                 sb.append("/Intercepted{ ");
                 Iterator it = mInterceptedMessages.iterator();
-                while(it.hasNext()) {
-                    sb.append(((ShortMessageItem)it.next()).toString());
+                while (it.hasNext()) {
+                    sb.append(((ShortMessageItem) it.next()).toString());
                     sb.append(";");
                 }
                 sb.append("}\n");
@@ -184,7 +193,8 @@ public class SecurityRecord {
         }
 
         public MessageRecord() {
-            mShortMessageRecords = new ShortMessageRecord[TelephonyManager.getDefault().getPhoneCount()];
+            mShortMessageRecords = new ShortMessageRecord[TelephonyManager
+                    .getDefault().getPhoneCount()];
             for (int i = 0; i < mShortMessageRecords.length; i++) {
                 mShortMessageRecords[i] = new ShortMessageRecord(i);
             }
@@ -207,8 +217,10 @@ public class SecurityRecord {
             return mReceivedWatcher;
         }
 
-        public void insertMessage(int ident, String number, String direction, Object content, int subscription) {
-            mShortMessageRecords[subscription].insertMessage(ident, number, direction, content);
+        public void insertMessage(int ident, String number, String direction,
+                Object content, int subscription) {
+            mShortMessageRecords[subscription].insertMessage(ident, number,
+                    direction, content);
             mCheckMessageRecords.put(ident, mShortMessageRecords[subscription]);
         }
 
@@ -239,17 +251,23 @@ public class SecurityRecord {
 
     public void insertMessage(Bundle message) {
         int ident = message.getInt(ISecurityManager.MESSAGE_IDENT_KEY);
-        String number = message.getString(ISecurityManager.MESSAGE_PHONE_NUMBER_KEY);
-        String direction = message.getString(ISecurityManager.MESSAGE_DIRECTION_KEY);
+        String number = message
+                .getString(ISecurityManager.MESSAGE_PHONE_NUMBER_KEY);
+        String direction = message
+                .getString(ISecurityManager.MESSAGE_DIRECTION_KEY);
         Object content;
         if (direction.equals(ISecurityManager.MESSAGE_SENDING)) {
             content = message.getString(ISecurityManager.MESSAGE_CONTENT_KEY);
         } else {
-            content = message.getParcelable(ISecurityManager.MESSAGE_CONTENT_KEY);
+            content = message
+                    .getParcelable(ISecurityManager.MESSAGE_CONTENT_KEY);
         }
-        LOG("insertMessasge: ident: " + ident + "/number: " + number + "/content: " + "/direction: " + direction);
-        int subscription =  message.getInt(ISecurityManager.MESSAGE_SUBSCRIPTION_KEY, 0);
-        mMessageRecord.insertMessage(ident, number, direction, content, subscription);
+        LOG("insertMessasge: ident: " + ident + "/number: " + number
+                + "/content: " + "/direction: " + direction);
+        int subscription = message.getInt(
+                ISecurityManager.MESSAGE_SUBSCRIPTION_KEY, 0);
+        mMessageRecord.insertMessage(ident, number, direction, content,
+                subscription);
     }
 
     public boolean isValidMessageIdent(int ident) {
@@ -261,53 +279,191 @@ public class SecurityRecord {
     }
 
     private class FirewallRecord {
-        int mUid;
-        boolean[] mEnable = {
-                true, true
-        }; // [0] for mobile, [1] for wifi
+        private HashMap<Integer, FirewallEntry> mFirewallRecords; // blacklist
 
-        FirewallRecord(int uid, boolean enable, int type) {
-            mUid = uid;
-		    /* Index need to minus by 1 because the type value is 1(mobile)/2(wifi)*/
-            mEnable[type-1] = enable;
+        public FirewallRecord() {
+            mFirewallRecords = new HashMap<Integer, FirewallEntry>();
+            loadDatabase();
         }
 
-        FirewallRecord(FirewallRecord r) {
-            mUid = r.mUid;
-            mEnable = r.mEnable;
+        private void loadDatabase() {
+            SQLiteDatabase db = mOpenHelper.getReadableDatabase();
+            String[] columns = {COLUMN_NAME_UID, COLUMN_NAME_NETWORK_TYPE};
+            Cursor c = db.query(FIREWALL_RECORD_TABLE_NAME, columns, null,
+                    null, null, null, null);
+            while (c.moveToNext()) {
+                int uid = c.getInt(0);
+                int type = c.getInt(1);
+                addToCache(uid, type);
+            }
+            LOG("receiver record database loaded with " + c.getCount()
+                    + " records");
+            c.close();
+         }
+
+        public boolean setFirewall(int uid, boolean blocked, int type) {
+            boolean isChanged = false;
+            FirewallEntry record = mFirewallRecords.get(uid);
+            if (record == null) {
+                LOG("no record, create one");
+                if (!blocked) // Not found firewall blocked info, so it's enabled already.
+                    return false;
+                record = new FirewallEntry();
+                record.setBlockedValue(type, true);
+                mFirewallRecords.put(uid, record);
+                insertRecord(uid, type);
+                isChanged = true;
+            } else {
+                LOG("has record: " + record.toString());
+                if (record.isChanged(type, blocked)) {
+                    LOG("changed and refresh");
+                    record.setBlockedValue(type, blocked);
+                    if (!blocked) {
+                        deleteRecord(uid, type);
+                    } else {
+                        insertRecord(uid, type);
+                    }
+                    if (record.isAllEnabled()) {
+                        mFirewallRecords.remove(uid);
+                    }
+                    isChanged = true;
+                }
+            }
+            return isChanged;
         }
 
-        public boolean isChanged(int type, boolean enable) {
-            /* Index need to minus by 1 because the type value is 1(mobile)/2(wifi)*/
-            if (mEnable[type-1] != enable) {
-                mEnable[type-1] = enable;
+        private void addToCache(int uid, int type) {
+            LOG("addToCache: [uid: " + uid + ", type: " + type + "]");
+            FirewallEntry record = mFirewallRecords.get(uid);
+            if (record == null) {
+                LOG("no record found for uid " + uid);
+                record = new FirewallEntry();
+                record.setBlockedValue(type, true);
+                mFirewallRecords.put(uid, record);
+            } else {
+                LOG("find record, set block to true");
+                record.setBlockedValue(type, true);
+            }
+        }
+
+        private boolean removeFromCache(int uid, int type) {
+            LOG("removeFromCache: [uid: " + uid + ", type: " + type + "]");
+            FirewallEntry record = mFirewallRecords.get(uid);
+            if (record != null) {
+                LOG("set block to false");
+                record.setBlockedValue(type, false);
+                if (record.isAllEnabled()) {
+                    LOG("remove record for uid " + uid);
+                    mFirewallRecords.remove(uid);
+                }
                 return true;
             }
             return false;
         }
 
-        public boolean isAllEnabled() {
-            boolean isAllEnabled = true;
-            for (int i = 0; i < mEnable.length; i++) {
-                isAllEnabled = isAllEnabled && mEnable[i];
-            }
-            return isAllEnabled;
+        private boolean insertRecord(int uid, int type) {
+            LOG("insertRecord: [uid: " + uid + ", type: " + type + "]");
+            SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+            ContentValues v = new ContentValues();
+            v.put(COLUMN_NAME_UID, uid);
+            v.put(COLUMN_NAME_NETWORK_TYPE, type);
+            return (db.insert(FIREWALL_RECORD_TABLE_NAME, null, v) != -1);
         }
 
-        @Override
-        public String toString() {
-            return "FirewallRecord Config{"
-                + Integer.toHexString(System.identityHashCode(this))
-                + "/uid: " + mUid + "/mobile: " + mEnable[0]
-                + "/wifi: " + mEnable[1] + "}";
+        private boolean deleteRecord(int uid, int type) {
+            LOG("deleteRecord: [uid: " + uid + ", type: " + type + "]");
+            SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+            
+            if (type == SecurityManager.FIREWALL_TYPE_ALL) {
+                String where = COLUMN_NAME_UID + " = ?";
+                String args[] = {String.valueOf(uid)};
+                return (db.delete(FIREWALL_RECORD_TABLE_NAME, where, args) != 0);
+            } else {
+                String where = COLUMN_NAME_UID + " = ? AND " + COLUMN_NAME_NETWORK_TYPE + " = ?";
+                String args[] = {String.valueOf(uid),String.valueOf(type)};
+                return (db.delete(FIREWALL_RECORD_TABLE_NAME, where, args) != 0);
+            }
+        }
+
+        public boolean remove(int uid, int type) {
+            if (removeFromCache(uid, type)) {
+                return deleteRecord(uid, type);
+            }
+            return false;
+        }
+
+        public boolean removeByUid(int uid) {
+            if (removeFromCache(uid, SecurityManager.FIREWALL_TYPE_ALL)) {
+                return deleteRecord(uid, SecurityManager.FIREWALL_TYPE_ALL);
+            }
+            return false;
+        }
+
+        public void removeAll(){
+            clearCache();
+            deleteAllRecord();
+        }
+
+        private void deleteAllRecord() {
+            SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+            db.execSQL("delete from " + FIREWALL_RECORD_TABLE_NAME);
+        }
+
+        private void clearCache() {
+            if(mFirewallRecords != null){
+                  mFirewallRecords.clear();
+            }
+        }
+
+        public List<FirewallEntry> getEntryList() {
+            if(mFirewallRecords == null ){
+                loadDatabase();
+            }
+            List<FirewallEntry> list = new ArrayList<FirewallEntry>();
+            for (int uid : mFirewallRecords.keySet()) {
+                FirewallEntry e = getEntryByUid(uid);
+                if (e != null) {
+                   list.add(e);
+                }
+
+            }
+            return list;
+        }
+
+        public FirewallEntry getEntryByUid(int uid) {
+            if (mFirewallRecords == null) {
+                loadDatabase();
+            }
+            return mFirewallRecords.get(uid);
+        }
+
+        public int checkFirewall(int uid, int type) {
+            if (mFirewallRecords == null) {
+                loadDatabase();
+            }
+            
+            if (!mFirewallRecords.containsKey(uid)) {
+                return SecurityResult.FIREWALL_NOT_BLOCKED;
+            }
+
+            FirewallEntry e = mFirewallRecords.get(uid);
+            boolean blockedValue = false;
+            if (type == SecurityManager.FIREWALL_TYPE_MOBILE) {
+                blockedValue = e.mobileBlocked;
+            } else if (type == SecurityManager.FIREWALL_TYPE_WIFI) {
+                blockedValue = e.wifiBlocked;
+            } else if (type == SecurityManager.FIREWALL_TYPE_ALL) {
+                blockedValue = e.mobileBlocked && e.wifiBlocked;
+            }
+            if (blockedValue) {
+                return SecurityResult.FIREWALL_BLOCKED;
+            } else {
+                return SecurityResult.FIREWALL_NOT_BLOCKED;
+            }
         }
     }
 
-    
-    
-    private HashMap<Integer, FirewallRecord> mFirewallRecords = new HashMap<Integer, FirewallRecord>(); // blacklist
-    private HashMap<Integer, FirewallRecord> mAllFirewallRecords = new HashMap<Integer, FirewallRecord>(); // all
-                                                                                                           // list
+    private FirewallRecord mFirewallRecord = new FirewallRecord();
 
     public SecurityRecord() {
         mToken = null;
@@ -324,15 +480,15 @@ public class SecurityRecord {
         return mToken;
     }
 
-    public static int verifyPackage(String packageName){
+    public static int verifyPackage(String packageName) {
         return mVerificationRecords.get(packageName);
     }
 
-    public static void addVerifyInfo(String packageName, int verification){
+    public static void addVerifyInfo(String packageName, int verification) {
         mVerificationRecords.put(packageName, verification);
     }
 
-    public static void delVerifyInfo(String packageName){
+    public static void delVerifyInfo(String packageName) {
         mVerificationRecords.remove(packageName);
     }
 
@@ -340,37 +496,31 @@ public class SecurityRecord {
     // else return false
     public boolean insertFirewallRecord(int uid, boolean enable, int type) {
         LOG("insertFirewallRecord");
-        FirewallRecord record = mAllFirewallRecords.get(uid);
-        boolean isChanged = false;
-        if (record == null) {
-            LOG("no record, create one");
-            record = new FirewallRecord(uid, enable, type);
-            if (!enable) {
-                mFirewallRecords.put(uid, record);
-                LOG("put to blacklist");
-            }
-            mAllFirewallRecords.put(uid, record);
-            isChanged = true;
-        } else {
-            LOG("has record: " + record.toString());
-            isChanged = record.isChanged(type, enable);
-            if (isChanged) {
-                // changed
-                LOG("changed and refresh");
-                FirewallRecord newRecord = new FirewallRecord(record);
-                if (enable && newRecord.isAllEnabled()) {
-                    mFirewallRecords.remove(uid);
-                } else if (!enable) {
-                    if (mFirewallRecords.get(uid) != null) {
-                        mFirewallRecords.remove(uid);
-                    }
-                    mFirewallRecords.put(uid, newRecord);
-                }
-                mAllFirewallRecords.remove(uid);
-                mAllFirewallRecords.put(uid, newRecord);
-            }
-        }
-        return isChanged;
+        return mFirewallRecord.setFirewall(uid, !enable, type);
+    }
+
+    public void clearFirewalls() {
+        mFirewallRecord.removeAll();
+    }
+
+    public void clearPermissions() {
+        mPermRecord.removeAll();
+    }
+
+    public void clearActionReceivers() {
+        mReceiverRecord.removeAll();
+    }
+
+    public void clearFirewallsByUid(int uid) {
+        mFirewallRecord.removeByUid(uid);
+    }
+
+    public void clearPermissionsByPkg(String packageName) {
+        mPermRecord.removePackage(packageName);
+    }
+
+    public void clearActionReceiversByPkg(String packageName) {
+        mReceiverRecord.removePackage(packageName);
     }
 
     private class PowerSaverModeRecord {
@@ -383,9 +533,7 @@ public class SecurityRecord {
         boolean mIsLowBatteryMode;
         boolean mIsHighTemperatureMode;
         boolean mIsLightComputingMode;
-        boolean mChanged[] = {
-                false, false, false, false
-        };
+        boolean mChanged[] = { false, false, false, false };
 
         public PowerSaverModeRecord() {
             mIsScreenOffMode = false;
@@ -415,25 +563,25 @@ public class SecurityRecord {
             if (mIsScreenOffMode != source.mIsScreenOffMode) {
                 mIsScreenOffMode = source.mIsScreenOffMode;
                 mChanged[SCREEN_OFF_MODE_INDEX] = true;
-            }else{
+            } else {
                 mChanged[SCREEN_OFF_MODE_INDEX] = false;
             }
             if (mIsLowBatteryMode != source.mIsLowBatteryMode) {
                 mIsLowBatteryMode = source.mIsLowBatteryMode;
                 mChanged[LOW_BATTERY_MODE_INDEX] = true;
-            }else{
+            } else {
                 mChanged[LOW_BATTERY_MODE_INDEX] = false;
             }
             if (mIsHighTemperatureMode != source.mIsHighTemperatureMode) {
                 mIsHighTemperatureMode = source.mIsHighTemperatureMode;
                 mChanged[HIGH_TEMPERATURE_MODE_INDEX] = true;
-            }else{
+            } else {
                 mChanged[HIGH_TEMPERATURE_MODE_INDEX] = false;
             }
             if (mIsLightComputingMode != source.mIsLightComputingMode) {
                 mIsLightComputingMode = source.mIsLightComputingMode;
                 mChanged[LIGHT_COMPUTING_MODE_INDEX] = true;
-            }else{
+            } else {
                 mChanged[LIGHT_COMPUTING_MODE_INDEX] = false;
             }
         }
@@ -442,7 +590,7 @@ public class SecurityRecord {
             return mChanged[index];
         }
 
-        public void resetModeChangedFlag(){
+        public void resetModeChangedFlag() {
             mChanged[LOW_BATTERY_MODE_INDEX] = false;
             mChanged[LIGHT_COMPUTING_MODE_INDEX] = false;
             mChanged[HIGH_TEMPERATURE_MODE_INDEX] = false;
@@ -452,10 +600,10 @@ public class SecurityRecord {
         @Override
         public String toString() {
             return "PowerSaverModeRecord Config{"
-                + Integer.toHexString(System.identityHashCode(this))
-                + "/soM: " + mIsScreenOffMode + "/lbM: " + mIsLowBatteryMode
-                + "/htM: " + mIsHighTemperatureMode + "/lcM: " + mIsLightComputingMode
-                + "}";
+                    + Integer.toHexString(System.identityHashCode(this))
+                    + "/soM: " + mIsScreenOffMode + "/lbM: "
+                    + mIsLowBatteryMode + "/htM: " + mIsHighTemperatureMode
+                    + "/lcM: " + mIsLightComputingMode + "}";
         }
     }
 
@@ -469,26 +617,30 @@ public class SecurityRecord {
         if (!mModeRecord.equals(newRecord)) {
             mModeRecord.copyFrom(newRecord);
             return true;
-        }else{
+        } else {
             mModeRecord.resetModeChangedFlag();
             return false;
         }
     }
 
     public boolean isScreenOffModeChanged() {
-        return mModeRecord.isModeChanged(PowerSaverModeRecord.SCREEN_OFF_MODE_INDEX);
+        return mModeRecord
+                .isModeChanged(PowerSaverModeRecord.SCREEN_OFF_MODE_INDEX);
     }
 
     public boolean isLowBatteryModeChanged() {
-        return mModeRecord.isModeChanged(PowerSaverModeRecord.LOW_BATTERY_MODE_INDEX);
+        return mModeRecord
+                .isModeChanged(PowerSaverModeRecord.LOW_BATTERY_MODE_INDEX);
     }
 
     public boolean isHighTemperatureModeChanged() {
-        return mModeRecord.isModeChanged(PowerSaverModeRecord.HIGH_TEMPERATURE_MODE_INDEX);
+        return mModeRecord
+                .isModeChanged(PowerSaverModeRecord.HIGH_TEMPERATURE_MODE_INDEX);
     }
 
     public boolean isLightComputingModeChanged() {
-        return mModeRecord.isModeChanged(PowerSaverModeRecord.LIGHT_COMPUTING_MODE_INDEX);
+        return mModeRecord
+                .isModeChanged(PowerSaverModeRecord.LIGHT_COMPUTING_MODE_INDEX);
     }
 
     public boolean isScreenOffMode() {
@@ -508,206 +660,224 @@ public class SecurityRecord {
     }
 
     private final class PermissionRecord {
-        private static final int CATEGORY_PACKAGE = 1;
-        private static final int CATEGORY_UID = 2;
-        HashMap<Integer, UidPerm> mUidPerms;
-        HashMap<String, PackagePerm> mPkgPerms;
+        private HashMap<String, ArrayList<String>> mRecords;
 
-        private class Perm {
-            String perm;
-            int type;
-
-            public Perm (String _perm, int _type) {
-                perm = _perm;
-                type = _type;
-            }
+        PermissionRecord() {
+            mRecords = new HashMap<String, ArrayList<String>>();
+            loadDatabase();
         }
 
-        private class PermsList {
-            int category;
-            HashMap<String, Perm> list;
-
-            public PermsList(int _category) {
-                category = _category;
-                list = new HashMap<String, Perm>();
+        private void loadDatabase() {
+            SQLiteDatabase db = mOpenHelper.getReadableDatabase();
+            String[] columns = { COLUMN_NAME_PKGNAME, COLUMN_NAME_PERMISSION };
+            Cursor c = db.query(PERMISSION_RECORD_TABLE_NAME, columns, null,
+                    null, null, null, null);
+            for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext()) {
+                String pkgName = c.getString(0);
+                String permission = c.getString(1);
+                addToCache(permission, pkgName);
             }
-
-            public boolean contains(String _perm) {
-                return list.get(_perm) != null;
-            }
-
-            public void addPerm(String _perm, int type) {
-                if(!contains(_perm)) {
-                   Perm p = new Perm(_perm, type);
-                   list.put(_perm, p);
-                }
-            }
-
-            public void removePerm(String _perm) {
-                if (contains(_perm))
-                    list.remove(_perm);
-            }
-
-            public boolean isEmpty() {
-                return list.isEmpty();
-            }
+            LOG("permission recorder database loaded with " + c.getCount()
+                    + " records");
+            c.close();
         }
 
-        private final class PackagePerm extends PermsList {
-            String pkgName;
-
-            public PackagePerm(String _pkgName) {
-                super(CATEGORY_PACKAGE);
-                pkgName = _pkgName;
-            }
-
-            public String getPackageName() {
-                return pkgName;
-            }
-        }
-
-        private final class UidPerm extends PermsList {
-            int uid;
- 
-            public UidPerm(int _uid) {
-                super(CATEGORY_UID);
-                uid = _uid;
-            }
-
-            public int getUid() {
-                return uid;
-            }
-        }
-
-        public PermissionRecord() {
-            mUidPerms = new HashMap<Integer, UidPerm>();
-            mPkgPerms = new HashMap<String, PackagePerm>();
-        }
-
-        public boolean addPerm(String permission, String pkgName, int type) {
-            PackagePerm p = mPkgPerms.get(pkgName);
-            if (p == null) {
-                p = new PackagePerm(pkgName);
-                p.addPerm(permission, type);
-                mPkgPerms.put(pkgName, p);
+        private boolean addToCache(String permission, String pkgName) {
+            ArrayList<String> permissions = mRecords.get(pkgName);
+            if (permissions == null) {
+                permissions = new ArrayList<String>();
+                permissions.add(permission);
+                mRecords.put(pkgName, permissions);
                 return true;
             } else {
-                if (!p.contains(permission)) {
-                    p.addPerm(permission, type);
+                if (!permissions.contains(permission)) {
+                    permissions.add(permission);
                     return true;
                 }
             }
             return false;
         }
 
-        public boolean removePerm(String permission, String pkgName) {
-            PackagePerm p = mPkgPerms.get(pkgName);
-            if (p != null) {
-                p.removePerm(permission);
-                if(p.isEmpty())
-                    mPkgPerms.remove(pkgName);
-                return true;
-            }
-            return false;
+       private boolean insertRecord(String permission, String pkgName) {
+            try {
+                SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+                ContentValues v = new ContentValues();
+                v.put(COLUMN_NAME_PKGNAME, pkgName);
+                v.put(COLUMN_NAME_PERMISSION, permission);
 
+                return (db.insert(PERMISSION_RECORD_TABLE_NAME,
+                        COLUMN_NAME_PKGNAME, v) != -1);
+            } catch (SQLException e) {
+                LOG("insertRecord: SQLException");
+                return false;
+            }
         }
 
-        public boolean addPerm(String permission, int uid, int type) {
-            UidPerm p = mUidPerms.get(uid);
-            if (p == null) {
-                p = new UidPerm(uid);
-                p.addPerm(permission, type);
-                mUidPerms.put(uid, p);
-                return true;
-            } else {
-                if (!p.contains(permission)) {
-                    p.addPerm(permission, type);
-                    return true;
+        public boolean add(String permission, String pkgName) {
+            if (addToCache(permission, pkgName)) {
+                LOG("Permission add: [" + permission + ", " + pkgName + "]" + ", return insertRecord");
+                return insertRecord(permission, pkgName);
+            }
+            LOG("Permission add: [" + permission + ", " + pkgName + "]" + ", return false");
+            return false;
+        }
+
+        private boolean removeFromCached(String permission, String pkgName) {
+            ArrayList<String> permissions = mRecords.get(pkgName);
+            if (permissions != null) {
+                if (permission == null) {
+                    permissions.clear();
+                    mRecords.remove(pkgName);
+                } else {
+                    if(permissions.contains(permission)){
+                         permissions.remove(permission);
+                         if (permissions.isEmpty())
+                            mRecords.remove(pkgName);
+                    } else {
+                         return false;
+                    }
                 }
-            }
-            return false;
-        }
-
-        public boolean removePerm(String permission, int uid) {
-            UidPerm p = mUidPerms.get(uid);
-            if (p != null) {
-                p.removePerm(permission);
-                if(p.isEmpty())
-                    mUidPerms.remove(uid);
                 return true;
             }
             return false;
         }
 
-        public boolean addPermList(List<String> permissionList, String packageName, int type) {
-            boolean result = false;
-            Iterator<String> it = permissionList.iterator();
-            while (it.hasNext()) {
-                result |= addPerm(it.next(), packageName, type);
-            }
-            return result;
+        private boolean deleteRecord(String permission, String pkgName) {
+            SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+
+            String where = COLUMN_NAME_PKGNAME + " = ? AND "
+                    + COLUMN_NAME_PERMISSION + " = ?";
+            String[] args = { pkgName, permission };
+
+            return (db.delete(PERMISSION_RECORD_TABLE_NAME, where, args) != 0);
         }
 
-        public boolean removePermList(List<String> permissionList, String packageName) {
-            boolean result = false;
-            Iterator<String> it = permissionList.iterator();
-            while (it.hasNext()) {
-                result |= removePerm(it.next(), packageName);
+        public boolean remove(String permission, String pkgName) {
+            if (removeFromCached(permission, pkgName)) {
+                LOG("Permission remove: [" + permission + ", " + pkgName + "]" + ", return deleteRecord");
+                return deleteRecord(permission, pkgName);
             }
-            return result;
+            LOG("Permission remove: [" + permission + ", " + pkgName + "]" + ", return false");
+            return false;
         }
 
-        public boolean addPermList(List<String> permissionList, int uid, int type) {
-            boolean result = false;
-            Iterator<String> it = permissionList.iterator();
-            while (it.hasNext()) {
-                result |= addPerm(it.next(), uid, type);
+        public boolean removePackage(String pkgName) {
+            if (removeFromCached(null, pkgName)) {
+                return deleteRecord(null, pkgName);
             }
-            return result;
+            return false;
         }
 
-        public boolean removePermList(List<String> permissionList, int uid) {
-            boolean result = false;
-            Iterator<String> it = permissionList.iterator();
-            while (it.hasNext()) {
-                result |= removePerm(it.next(), uid);
+        public void removeAll() {
+            clearCached();
+            deleteAllRecord();
+        }
+
+        private void clearCached(){
+            if(mRecords != null){
+                mRecords.clear();
             }
-            return result;
+        }
+
+        private void deleteAllRecord(){
+            SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+            db.execSQL("delete from " + PERMISSION_RECORD_TABLE_NAME);
+        }
+
+        public List<PermissionEntry> getEntryList(){
+            if(mRecords == null ){
+                loadDatabase();
+            }
+            List<PermissionEntry> list = new ArrayList<PermissionEntry>();
+            for(String p : mRecords.keySet()){
+                list.add(getEntryByPackage(p));
+            }
+            return list;
+        }
+
+        public PermissionEntry getEntryByPackage(String pkgName){
+            if(mRecords == null ){
+                loadDatabase();
+            }
+            if (!mRecords.containsKey(pkgName)) {
+                return null;
+            }
+
+            PermissionEntry e = new PermissionEntry();
+            e.packageName = pkgName;
+            e.revokedPermissions = mRecords.get(pkgName);
+            
+            return e;
+        }
+
+        public int checkPermission(String pkgName, String permission) {
+            if(mRecords == null ){
+                loadDatabase();
+            }
+
+            if (!mRecords.containsKey(pkgName)) {
+                return SecurityResult.PERMISSION_GRANTED;
+            }
+
+            ArrayList<String> pList = mRecords.get(pkgName);
+            if (pList.contains(permission)) {
+                return SecurityResult.PERMISSION_DENIED;
+            } else {
+                return SecurityResult.PERMISSION_GRANTED;
+            }
         }
     }
+
     private PermissionRecord mPermRecord = new PermissionRecord();
 
     public boolean revokePermission(String permission, String pkgName, int type) {
-        return mPermRecord.addPerm(permission, pkgName, type);
+        LOG("revokePermission: " + "[permission: " + permission + ", pkgName: "+ pkgName + "]");
+        return mPermRecord.add(permission, pkgName);    // type is not used yet
     }
 
     public boolean revokePermission(String permission, int uid, int type) {
-        return mPermRecord.addPerm(permission, uid, type);
-    }
+        return true;
+    }//TODO It's work?
 
     public boolean grantPermission(String permission, String pkgName) {
-        return mPermRecord.removePerm(permission, pkgName);
+        LOG("grantPermission: " + "[permission: " + permission + ", pkgName: "+ pkgName + "]");
+        return mPermRecord.remove(permission, pkgName);
     }
 
     public boolean grantPermission(String permission, int uid) {
-        return mPermRecord.removePerm(permission, uid);
+        return true;
+    }//TODO It's work?
+
+    public boolean revokePermission(List<String> permissionList,
+            String pkgName, int type) {
+        LOG("revokePermission: " + "[permission: " + permissionList + ", pkgName: "+ pkgName + "]");    
+        // type is not used yet
+        boolean ret = false;
+        for(String perm : permissionList){
+            ret |= mPermRecord.add(perm, pkgName);
+        }
+        LOG("revokePermission list, return " + ret);
+        return ret;
     }
 
-    public boolean revokePermission(List<String> permissionList, String pkgName, int type) {
-        return mPermRecord.addPermList(permissionList, pkgName, type);
-    }
-
-    public boolean revokePermission(List<String> permissionList, int uid, int type) {
-        return mPermRecord.addPermList(permissionList, uid, type);
-    }
+    public boolean revokePermission(List<String> permissionList, int uid,
+            int type) {
+        return true;
+    }//TODO It's work?
 
     public boolean grantPermission(List<String> permissionList, String pkgName) {
-        return mPermRecord.removePermList(permissionList, pkgName);
+        LOG("grantPermission: " + "[permission: " + permissionList + ", pkgName: "+ pkgName + "]");
+        boolean ret = false;
+        for(String perm : permissionList){
+            ret |= mPermRecord.remove(perm, pkgName);
+        }
+        LOG("grantPermission list, return " + ret);
+        return ret;
     }
 
     public boolean grantPermission(List<String> permissionList, int uid) {
-        return mPermRecord.removePermList(permissionList, uid);
-    }
+        return true;
+    }//TODO It's work?
 
     private final class ReceiverRecord {
         private HashMap<String, ArrayList<String>> mRecords;
@@ -720,17 +890,19 @@ public class SecurityRecord {
         private void loadDatabase() {
             SQLiteDatabase db = mOpenHelper.getReadableDatabase();
             String[] columns = { COLUMN_NAME_PKGNAME, COLUMN_NAME_ACTION };
-            Cursor c = db.query(RECEIVER_RECORD_TABLE_NAME, columns, null, null, null, null, null);
+            Cursor c = db.query(BLOCK_ACTION_RECORD_TABLE_NAME, columns, null,
+                    null, null, null, null);
             for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext()) {
                 String pkgName = c.getString(0);
                 String action = c.getString(1);
-                addBlockActionCached(action, pkgName);
+                addToCache(action, pkgName);
             }
-            LOG("receiver record database loaded with " + c.getCount() + " records");
+            LOG("receiver record database loaded with " + c.getCount()
+                    + " records");
             c.close();
         }
 
-        private boolean addBlockActionCached(String action, String pkgName) {
+        private boolean addToCache(String action, String pkgName) {
             ArrayList<String> actions = mRecords.get(pkgName);
             if (actions == null) {
                 actions = new ArrayList<String>();
@@ -746,60 +918,140 @@ public class SecurityRecord {
             return false;
         }
 
-        private boolean insertRecord(String action, String pkgName) {
-            SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+       private boolean insertRecord(String action, String pkgName) {
+            try {
+                SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+                ContentValues v = new ContentValues();
+                v.put(COLUMN_NAME_PKGNAME, pkgName);
+                v.put(COLUMN_NAME_ACTION, action);
 
-            ContentValues v = new ContentValues();
-            v.put(COLUMN_NAME_PKGNAME, pkgName);
-            v.put(COLUMN_NAME_ACTION, action);
-
-            return (db.insert(RECEIVER_RECORD_TABLE_NAME, COLUMN_NAME_PKGNAME, v) != -1);
+                return (db.insert(BLOCK_ACTION_RECORD_TABLE_NAME,
+                        COLUMN_NAME_PKGNAME, v) != -1);
+            } catch (SQLException e) {
+                return false;
+            }
         }
 
-        public boolean addBlockAction(String action, String pkgName) {
-            if (addBlockActionCached(action, pkgName)) {
+        public boolean add(String action, String pkgName) {
+            if (addToCache(action, pkgName)) {
                 return insertRecord(action, pkgName);
             }
             return false;
         }
 
-        public boolean removeBlockActionCached(String action, String pkgName) {
+        private boolean removeFromCached(String action, String pkgName) {
             ArrayList<String> actions = mRecords.get(pkgName);
-            if (actions != null && action.contains(action)) {
-                actions.remove(action);
-                if (actions.isEmpty())
+            if (actions != null) {
+                if (action == null) {
+                    actions.clear();
                     mRecords.remove(pkgName);
+                } else {
+                    if(actions.contains(action)) {
+                         actions.remove(action);
+                         if (actions.isEmpty())
+                         mRecords.remove(pkgName);
+                    } else {
+                         return false;
+                    }
+                }
                 return true;
             }
             return false;
         }
 
-        public boolean removeRecord(String action, String pkgName) {
+        public boolean deleteRecord(String action, String pkgName) {
             SQLiteDatabase db = mOpenHelper.getWritableDatabase();
 
-            String where = COLUMN_NAME_PKGNAME + " = ? AND " + COLUMN_NAME_ACTION + " = ?";
+            String where = COLUMN_NAME_PKGNAME + " = ? AND "
+                    + COLUMN_NAME_ACTION + " = ?";
             String[] args = { pkgName, action };
 
-            return (db.delete(RECEIVER_RECORD_TABLE_NAME, where, args) != 0);
+            return (db.delete(BLOCK_ACTION_RECORD_TABLE_NAME, where, args) != 0);
         }
 
-        public boolean removeBlockAction(String action, String pkgName) {
-            if (removeBlockActionCached(action, pkgName)) {
-                return removeRecord(action, pkgName);
+        public boolean remove(String action, String pkgName) {
+            if (removeFromCached(action, pkgName)) {
+                return deleteRecord(action, pkgName);
             }
             return false;
         }
 
+        public boolean removePackage(String pkgName) {
+            if (removeFromCached(null, pkgName)) {
+                return deleteRecord(null, pkgName);
+            }
+            return false;
+        }
+
+        public void removeAll() {
+            clearCached();
+            deleteAllRecord();
+        }
+
+        private void clearCached(){
+            if(mRecords != null){
+                mRecords.clear();
+            }
+        }
+
+        private void deleteAllRecord(){
+            SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+            db.execSQL("delete from " + BLOCK_ACTION_RECORD_TABLE_NAME);
+        }
+
         public void forEach(ReceiverRecordCallback callback) {
             int count = 0;
-            for (Map.Entry<String, ArrayList<String>> entry : mRecords.entrySet()) {
+            for (Map.Entry<String, ArrayList<String>> entry : mRecords
+                    .entrySet()) {
                 String pkgName = entry.getKey();
                 for (String action : entry.getValue()) {
                     callback.apply(action, pkgName);
                     ++count;
                 }
             }
-            LOG("applied " + callback.toString() + " to " + count + " receiver records");
+            LOG("applied " + callback.toString() + " to " + count
+                    + " receiver records");
+        }
+
+        public List<ActionReceiverEntry> getEntryList(){
+            List<ActionReceiverEntry> list = new ArrayList<ActionReceiverEntry>();
+            if(mRecords == null ){
+                loadDatabase();
+            }
+            for(String p : mRecords.keySet()){
+                list.add(getEntryByPackage(p));
+            }
+            return list;
+        }
+
+        public ActionReceiverEntry getEntryByPackage(String pkgName){
+            if(mRecords == null ){
+                loadDatabase();
+            }
+            if (!mRecords.containsKey(pkgName)) {
+                return null;
+            }
+
+            ActionReceiverEntry e = new ActionReceiverEntry();
+            e.packageName = pkgName;
+            e.blockedActions = mRecords.get(pkgName);
+            return e;
+        }
+
+        public int checkBlockedAction(String pkgName, String action) {
+            if(mRecords == null ){
+                loadDatabase();
+            }
+            if (!mRecords.containsKey(pkgName)) {
+                return SecurityResult.ACTION_NOT_BLOCKED;
+            }
+
+            ArrayList<String> aList = mRecords.get(pkgName);
+            if (aList.contains(action)) {
+                return SecurityResult.ACTION_BLOCKED;
+            } else {
+                return SecurityResult.ACTION_NOT_BLOCKED;
+            }
         }
     }
 
@@ -810,11 +1062,13 @@ public class SecurityRecord {
     private ReceiverRecord mReceiverRecord = new ReceiverRecord();
 
     public boolean addBlockAction(String action, String pkgName) {
-        return mReceiverRecord.addBlockAction(action, pkgName);
+        LOG("addBlockAction: " + "[action: " + action + ", pkgName: "+ pkgName + "]");
+        return mReceiverRecord.add(action, pkgName);
     }
 
     public boolean removeBlockAction(String action, String pkgName) {
-        return mReceiverRecord.removeBlockAction(action, pkgName);
+        LOG("removeBlockAction: " + "[action: " + action + ", pkgName: "+ pkgName + "]");
+        return mReceiverRecord.remove(action, pkgName);
     }
 
     public void forEachReceiverRecord(ReceiverRecordCallback callback) {
@@ -827,14 +1081,15 @@ public class SecurityRecord {
         private int mMode;
 
         public CallRecord() {
-            mRecords = new BlackRecord[TelephonyManager.getDefault().getPhoneCount()];
+            mRecords = new BlackRecord[TelephonyManager.getDefault()
+                    .getPhoneCount()];
             for (int i = 0; i < mRecords.length; i++) {
                 mRecords[i] = new BlackRecord(i);
             }
             mCheckRecords = new HashMap<Integer, BlackRecord>();
         }
 
-        //here can be extended to contents which need by third party
+        // here can be extended to contents which need by third party
         private class BlockItem {
             private int mIdent;
             private String mNumber;
@@ -856,10 +1111,8 @@ public class SecurityRecord {
 
             @Override
             public String toString() {
-                return "BlockItem {" + " ident: "
-                    + mIdent + "/number: "
-                    + mNumber + "/date:"
-                    + mDate + "}";
+                return "BlockItem {" + " ident: " + mIdent + "/number: "
+                        + mNumber + "/date:" + mDate + "}";
             }
         }
 
@@ -894,7 +1147,8 @@ public class SecurityRecord {
             }
 
             public void insertCheckItem(int ident, String number) {
-                LOG("BlackRecord:insertCheckItem/number: " + number + "/ident: " + ident);
+                LOG("BlackRecord:insertCheckItem/number: " + number
+                        + "/ident: " + ident);
                 BlockItem item = new BlockItem(ident, number);
                 mBlocked.put(ident, item);
             }
@@ -928,15 +1182,15 @@ public class SecurityRecord {
                 sb.append(mSubscription);
                 sb.append("\nblacklist{ ");
                 Iterator it = mBlackList.iterator();
-                while(it.hasNext()) {
+                while (it.hasNext()) {
                     sb.append(it.next());
                     sb.append(";");
                 }
                 sb.append("}\n");
                 sb.append("blocked { ");
-                //traverse the block
+                // traverse the block
                 it = mBlocked.entrySet().iterator();
-                while(it.hasNext()) {
+                while (it.hasNext()) {
                     Map.Entry entry = (Map.Entry) it.next();
                     sb.append("(key:");
                     sb.append(entry.getKey());
@@ -972,36 +1226,36 @@ public class SecurityRecord {
         }
 
         public boolean isAppMode() {
-           return mMode == ISecurityManager.CALL_MODE_APP;
+            return mMode == ISecurityManager.CALL_MODE_APP;
         }
 
         public void insertCheckItem(int ident, String number, int subscription) {
-           mRecords[subscription].insertCheckItem(ident, number);
-           mCheckRecords.put(ident, mRecords[subscription]);
+            mRecords[subscription].insertCheckItem(ident, number);
+            mCheckRecords.put(ident, mRecords[subscription]);
         }
 
         public boolean isValidIdent(int ident) {
-           BlackRecord br = mCheckRecords.get(ident);
-           if (br == null) {
-               return false;
-           }
-           BlockItem bi = br.getCheckItem(ident);
-           if (bi == null) {
-               return false;
-           }
-           return true;
+            BlackRecord br = mCheckRecords.get(ident);
+            if (br == null) {
+                return false;
+            }
+            BlockItem bi = br.getCheckItem(ident);
+            if (bi == null) {
+                return false;
+            }
+            return true;
         }
 
         public boolean isBlackItem(int ident) {
-           return mCheckRecords.get(ident).isBlackItem(ident);
+            return mCheckRecords.get(ident).isBlackItem(ident);
         }
 
         public long getCallDate(int ident) {
-           return mCheckRecords.get(ident).getCallDate(ident);
+            return mCheckRecords.get(ident).getCallDate(ident);
         }
 
         public void removeBlockItem(int ident) {
-           mCheckRecords.get(ident).removeBlockItem(ident);
+            mCheckRecords.get(ident).removeBlockItem(ident);
         }
     }
 
@@ -1027,7 +1281,8 @@ public class SecurityRecord {
 
     public int insertCallBlackList(Bundle list) {
         LOG("insertCallBlackList");
-        ArrayList<String> numList = list.getStringArrayList(ISecurityManager.CALL_PHONE_NUMBER_KEY);
+        ArrayList<String> numList = list
+                .getStringArrayList(ISecurityManager.CALL_PHONE_NUMBER_KEY);
         if (numList == null || numList.size() == 0)
             return SecurityResult.INVALID_CALL_BLACK_LIST;
         Iterator it = numList.iterator();
@@ -1036,10 +1291,11 @@ public class SecurityRecord {
                 return SecurityResult.INVALID_CALL_BLACK_ITEM;
         }
 
-        int subscription = list.getInt(ISecurityManager.CALL_SUBSCRIPTION_KEY, 0);
+        int subscription = list.getInt(ISecurityManager.CALL_SUBSCRIPTION_KEY,
+                0);
         it = numList.iterator();
-        while(it.hasNext()) {
-            mCallRecord.addBlackItem((String)it.next(), subscription);
+        while (it.hasNext()) {
+            mCallRecord.addBlackItem((String) it.next(), subscription);
         }
         return SecurityResult.INSERT_BLACK_LIST_SUCCESS;
     }
@@ -1048,7 +1304,8 @@ public class SecurityRecord {
         String number = call.getString(ISecurityManager.CALL_PHONE_NUMBER_KEY);
         if (number == null)
             return SecurityResult.INVALID_CALL_BLACK_ITEM;
-        int subscription = call.getInt(ISecurityManager.CALL_SUBSCRIPTION_KEY, 0);
+        int subscription = call.getInt(ISecurityManager.CALL_SUBSCRIPTION_KEY,
+                0);
 
         if (!mCallRecord.addBlackItem(number, subscription)) {
             return SecurityResult.DUPLICATE_BLACK_ITEM;
@@ -1060,7 +1317,8 @@ public class SecurityRecord {
         String number = call.getString(ISecurityManager.CALL_PHONE_NUMBER_KEY);
         if (number == null)
             return SecurityResult.INVALID_CALL_BLACK_ITEM;
-        int subscription = call.getInt(ISecurityManager.CALL_SUBSCRIPTION_KEY, 0);
+        int subscription = call.getInt(ISecurityManager.CALL_SUBSCRIPTION_KEY,
+                0);
         LOG("removeCallBlackItem { number: " + number + "/sub: " + subscription);
         if (!mCallRecord.removeBlackItem(number, subscription)) {
             return SecurityResult.NON_EXISTED_BLACK_ITEM;
@@ -1075,8 +1333,10 @@ public class SecurityRecord {
     public void insertCallCheckItem(Bundle call) {
         int ident = call.getInt(ISecurityManager.CALL_IDENT_KEY);
         String number = call.getString(ISecurityManager.CALL_PHONE_NUMBER_KEY);
-        int subscription = call.getInt(ISecurityManager.CALL_SUBSCRIPTION_KEY, 0);
-        LOG("insertCallCheckItem: ident: " + ident + "/number: " + number + "/sub: " + subscription);
+        int subscription = call.getInt(ISecurityManager.CALL_SUBSCRIPTION_KEY,
+                0);
+        LOG("insertCallCheckItem: ident: " + ident + "/number: " + number
+                + "/sub: " + subscription);
         mCallRecord.insertCheckItem(ident, number, subscription);
     }
 
@@ -1097,517 +1357,314 @@ public class SecurityRecord {
             super(context, DATABASE_NAME, null, DATABASE_VERSION);
         }
 
-		@Override
-		public void onCreate(SQLiteDatabase db) {
-			db.execSQL("CREATE TABLE if not exists "
-					+ RECEIVER_RECORD_TABLE_NAME + "(id INTEGER PRIMAY KEY,"
-					+ COLUMN_NAME_ACTION + " TEXT, " + COLUMN_NAME_PKGNAME
-					+ " TEXT," + " UNIQUE (" + COLUMN_NAME_ACTION + ", "
-					+ COLUMN_NAME_PKGNAME + "));");
-
-			db.execSQL("CREATE TABLE if not exists "
-					+ PERMISSION_RECORD_TABLE_NAME + "(id INTEGER PRIMAY KEY,"
-					+ COLUMN_NAME_PKGNAME + " TEXT," + COLUMN_NAME_PERMISSIONS
-					+ " TEXT," + " UNIQUE (" + COLUMN_NAME_PKGNAME + "));");
-
-			db.execSQL("CREATE TABLE if not exists " + FIREWALL_RECORD_TABLE_NAME
-					+ "(id INTEGER PRIMAY KEY," + COLUMN_NAME_UID + " INTEGER,"
-					+ COLUMN_NAME_BLOCK_MOBILE + " INTEGER,"
-					+ COLUMN_NAME_BLOCK_WIFI + " INTEGER," + " UNIQUE ("
-					+ COLUMN_NAME_UID + "));");
-
-			db.execSQL("CREATE TABLE if not exists "
-					+ BLOCK_ACTION_RECORD_TABLE_NAME
-					+ "(id INTEGER PRIMAY KEY," + COLUMN_NAME_PKGNAME
-					+ " TEXT," + COLUMN_NAME_ACTIONS + " TEXT," + " UNIQUE ("
-					+ COLUMN_NAME_PKGNAME + "));");
-		}
-
-		@Override
-		public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-			// do nothing for now
-		}
-	}
-
-
-		/**
-		 * get blocked actions
-		 *
-		 * @return list of blocked action entry
-		 */
-		public List<ActionReceiverEntry> getBlockedActionList() {
-			try {
-				SQLiteDatabase db = mOpenHelper.getReadableDatabase();
-
-				String[] columns = { COLUMN_NAME_PKGNAME, COLUMN_NAME_ACTIONS };
-				Cursor c = db.query(BLOCK_ACTION_RECORD_TABLE_NAME, columns,
-						null, null, null, null, null);
-				List<ActionReceiverEntry> actions = new ArrayList<ActionReceiverEntry>();
-				for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext()) {
-					ActionReceiverEntry entry = new ActionReceiverEntry();
-					entry.packageName = c.getString(0);
-					String blockedActions = c.getString(1);
-					entry.blockedActions = blockedActions.split(";");
-					actions.add(entry);
-				}
-				c.close();
-				return actions;
-			} catch (Exception e) {
-				return null;
-			}
-		}
-
-		/**
-		 * get blocked action by package name
-		 *
-		 * @param package name
-		 * @return blocked action entry of given package name
-		 */
-		public ActionReceiverEntry getBlockedActionByPackage(String packName) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getReadableDatabase();
-
-				String[] columns = { COLUMN_NAME_PKGNAME, COLUMN_NAME_ACTIONS };
-				String where = COLUMN_NAME_PKGNAME + " = '" + packName + "'";
-				Cursor c = db.query(BLOCK_ACTION_RECORD_TABLE_NAME, columns,
-						where, null, null, null, null);
-				if (c.getCount() > 0) {
-					c.moveToFirst();
-					ActionReceiverEntry entry = new ActionReceiverEntry();
-					entry.packageName = c.getString(0);
-					String blockedActions = c.getString(1);
-					entry.blockedActions = blockedActions.split(";");
-					c.close();
-					return entry;
-				} else {
-					c.close();
-					return null;
-				}
-			} catch (Exception e) {
-				return null;
-			}
-		}
-
-		/**
-		 * get fire wall list
-		 *
-		 * @return fire wall list
-		 */
-		public List<FirewallEntry> getFirewallList() {
-			try {
-				SQLiteDatabase db = mOpenHelper.getReadableDatabase();
-
-				String[] columns = { COLUMN_NAME_UID, COLUMN_NAME_BLOCK_MOBILE,
-						COLUMN_NAME_BLOCK_WIFI };
-				Cursor c = db.query(FIREWALL_RECORD_TABLE_NAME, columns, null,
-						null, null, null, null);
-				List<FirewallEntry> firewallList = new ArrayList<FirewallEntry>();
-				for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext()) {
-					FirewallEntry entry = new FirewallEntry();
-					entry.uid = c.getInt(0);
-					entry.mobileBlocked = c.getInt(1) == 1 ? true : false;
-					entry.wifiBlocked = c.getInt(2) == 1 ? true : false;
-					firewallList.add(entry);
-				}
-				c.close();
-				return firewallList;
-			} catch (Exception e) {
-				return null;
-			}
-		}
-
-		/**
-		 * get fire wall entry by uid
-		 *
-		 * @param uid
-		 * @return fire wall entry of given uid
-		 */
-		public FirewallEntry getFirewallByUID(int uid) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getReadableDatabase();
-
-				String[] columns = { COLUMN_NAME_UID, COLUMN_NAME_BLOCK_MOBILE,
-						COLUMN_NAME_BLOCK_WIFI };
-				String where = COLUMN_NAME_UID + " = '" + uid + "'";
-				Cursor c = db.query(FIREWALL_RECORD_TABLE_NAME, columns, where,
-						null, null, null, null);
-				if (c.getCount() > 0) {
-					c.moveToFirst();
-					FirewallEntry entry = new FirewallEntry();
-					entry.uid = c.getInt(0);
-					entry.mobileBlocked = c.getInt(1) == 1 ? true : false;
-					entry.wifiBlocked = c.getInt(2) == 1 ? true : false;
-					c.close();
-					return entry;
-				} else {
-					c.close();
-					return null;
-				}
-			} catch (Exception e) {
-				return null;
-			}
-		}
-
-		/**
-		 * get permission list
-		 *
-		 * @return permission list
-		 */
-		public List<PermissionEntry> getPermissionList() {
-			try {
-				SQLiteDatabase db = mOpenHelper.getReadableDatabase();
-
-				String[] columns = { COLUMN_NAME_PKGNAME,
-						COLUMN_NAME_PERMISSIONS };
-				Cursor c = db.query(PERMISSION_RECORD_TABLE_NAME, columns,
-						null, null, null, null, null);
-				List<PermissionEntry> permissions = new ArrayList<PermissionEntry>();
-				for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext()) {
-					PermissionEntry entry = new PermissionEntry();
-					entry.packageName = c.getString(0);
-					String permissionStr = c.getString(1);
-					entry.revokedPermissions = permissionStr.split(";");
-					permissions.add(entry);
-				}
-				c.close();
-				return permissions;
-			} catch (Exception e) {
-				return null;
-			}
-		}
-
-		/**
-		 * get permission entry by package name
-		 *
-		 * @param package name
-		 * @return permission entry of given package name
-		 */
-		public PermissionEntry getPermissionByPackage(String packName) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getReadableDatabase();
-
-				String[] columns = { COLUMN_NAME_PKGNAME,
-						COLUMN_NAME_PERMISSIONS };
-				String where = COLUMN_NAME_PKGNAME + " = '" + packName + "'";
-				Cursor c = db.query(PERMISSION_RECORD_TABLE_NAME, columns,
-						where, null, null, null, null);
-				if (c.getCount() > 0) {
-					c.moveToFirst();
-					PermissionEntry entry = new PermissionEntry();
-					entry.packageName = c.getString(0);
-					String permissions = c.getString(1);
-					entry.revokedPermissions = permissions.split(";");
-					c.close();
-					return entry;
-				} else {
-					c.close();
-					return null;
-				}
-			} catch (Exception e) {
-				return null;
-			}
-		}
-
-		/**
-		 * add permission list to database
-		 *
-		 * @param permission list
-		 */
-		public void addPermissionList(List<PermissionEntry> plist) {
-
-			for (PermissionEntry entry : plist) {
-				addPermissionEntry(entry);
-			}
-		}
-
-		/**
-		 * add permission entry to database
-		 *
-		 * @param permission entry
-		 */
-		public void addPermissionEntry(PermissionEntry entry) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-
-				StringBuilder permissions = new StringBuilder();
-				int length = entry.revokedPermissions.length;
-				for (int i = 0; i < length - 1; i++) {
-					permissions.append(entry.revokedPermissions[i]).append(";");
-				}
-				permissions.append(entry.revokedPermissions[length - 1]);
-
-				ContentValues v = new ContentValues();
-
-				v.put(COLUMN_NAME_PKGNAME, entry.packageName);
-				v.put(COLUMN_NAME_PERMISSIONS, permissions.toString());
-
-				db.insert(PERMISSION_RECORD_TABLE_NAME, COLUMN_NAME_PKGNAME, v);
-			} catch (Exception e) {
-			}
-		}
-
-		/**
-		 * add fire wall list to database
-		 *
-		 * @param fire wall list
-		 */
-		public void addFirewallList(List<FirewallEntry> flist) {
-
-			for (FirewallEntry entry : flist) {
-				addFirewallEntry(entry);
-			}
-		}
-
-		/**
-		 * add fire wall entry to database
-		 *
-		 * @param fire wall entry
-		 */
-		public void addFirewallEntry(FirewallEntry entry) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-
-				ContentValues v = new ContentValues();
-
-				v.put(COLUMN_NAME_UID, entry.uid);
-				v.put(COLUMN_NAME_BLOCK_MOBILE, entry.mobileBlocked == true ? 1 : 0);
-				v.put(COLUMN_NAME_BLOCK_WIFI, entry.wifiBlocked == true ? 1 : 0);
-
-				db.insert(FIREWALL_RECORD_TABLE_NAME, COLUMN_NAME_UID, v);
-			} catch (Exception e) {
-			}
-		}
-
-		/**
-		 * add blocked action list to database
-		 *
-		 * @param blocked action list
-		 */
-		public void addBlockedActionList(List<ActionReceiverEntry> alist) {
-
-			for (ActionReceiverEntry entry : alist) {
-				addBlockedActionEntry(entry);
-			}
-		}
-
-		/**
-		 * add blocked action entry to database
-		 *
-		 * @param blocked action entry
-		 */
-		public void addBlockedActionEntry(ActionReceiverEntry entry) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-
-				StringBuilder actions = new StringBuilder();
-				int length = entry.blockedActions.length;
-				for (int i = 0; i < length - 1; i++) {
-					actions.append(entry.blockedActions[i]).append(";");
-				}
-				actions.append(entry.blockedActions[length - 1]);
-
-				ContentValues v = new ContentValues();
-
-				v.put(COLUMN_NAME_PKGNAME, entry.packageName);
-				v.put(COLUMN_NAME_ACTIONS, actions.toString());
-
-				db.insert(BLOCK_ACTION_RECORD_TABLE_NAME, COLUMN_NAME_PKGNAME,
-						v);
-			} catch (Exception e) {
-			}
-		}
-
-		/**
-		 * update permissions to database by given  permission list
-		 *
-		 * @param permission list
-		 */
-		public void updatePermissionList(List<PermissionEntry> plist) {
-
-			for (PermissionEntry entry : plist) {
-				updatePermissionEntry(entry);
-			}
-
-		}
-
-		/**
-		 * update permissions to database by given  permission entry
-		 *
-		 * @param permission entry
-		 */
-		public void updatePermissionEntry(PermissionEntry entry) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-
-				StringBuilder permissions = new StringBuilder();
-				int length = entry.revokedPermissions.length;
-				for (int i = 0; i < length - 1; i++) {
-					permissions.append(entry.revokedPermissions[i]).append(";");
-				}
-				permissions.append(entry.revokedPermissions[length - 1]);
-
-				ContentValues v = new ContentValues();
-				String where = COLUMN_NAME_PKGNAME + " = '" + entry.packageName + "'";
-				v.put(COLUMN_NAME_PKGNAME, entry.packageName);
-				v.put(COLUMN_NAME_PERMISSIONS, permissions.toString());
-
-				db.update(PERMISSION_RECORD_TABLE_NAME, v, where, null);
-			} catch (Exception e) {
-			}
-		}
-
-		/**
-		 * update fire wall to database by given fire wall list
-		 *
-		 * @param fire wall list
-		 */
-		public void updateFirewallList(List<FirewallEntry> flist) {
-
-			for (FirewallEntry entry : flist) {
-				updateFirewallEntry(entry);
-			}
-		}
-
-		/**
-		 * update fire wall to database by given fire wall entry
-		 *
-		 * @param fire wall entry
-		 */
-		public void updateFirewallEntry(FirewallEntry entry) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-
-				ContentValues v = new ContentValues();
-				String where = COLUMN_NAME_UID + " = '" + entry.uid + "'";
-				v.put(COLUMN_NAME_UID, entry.uid);
-				v.put(COLUMN_NAME_BLOCK_MOBILE, entry.mobileBlocked == true ? 1: 0);
-				v.put(COLUMN_NAME_BLOCK_WIFI, entry.wifiBlocked == true ? 1 : 0);
-
-				db.update(FIREWALL_RECORD_TABLE_NAME, v, where, null);
-			} catch (Exception e) {
-			}
-		}
-
-		/**
-		 * update blocked action to database by given blocked action list
-		 *
-		 * @param blocked action list
-		 */
-		public void updateBlockedActionList(List<ActionReceiverEntry> alist) {
-
-			for (ActionReceiverEntry entry : alist) {
-				updateBlockedActionEntry(entry);
-			}
-		}
-
-		/**
-		 * update blocked action to database by given blocked action entry
-		 *
-		 * @param blocked action entry
-		 */
-		public void updateBlockedActionEntry(ActionReceiverEntry entry) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-
-				StringBuilder actions = new StringBuilder();
-				int length = entry.blockedActions.length;
-				for (int i = 0; i < length - 1; i++) {
-					actions.append(entry.blockedActions[i]).append(";");
-				}
-				actions.append(entry.blockedActions[length - 1]);
-
-				ContentValues v = new ContentValues();
-				String where = COLUMN_NAME_PKGNAME + " = '" + entry.packageName + "'";
-				v.put(COLUMN_NAME_PKGNAME, entry.packageName);
-				v.put(COLUMN_NAME_ACTIONS, actions.toString());
-
-				db.update(BLOCK_ACTION_RECORD_TABLE_NAME, v, where, null);
-			} catch (Exception e) {
-			}
-		}
-
-		/**
-		 * delete permissions to database by given  permission list
-		 *
-		 * @param permission list
-		 */
-		public void deletePermissionList(List<PermissionEntry> plist) {
-
-			for (PermissionEntry entry : plist) {
-				deletePermissionEntry(entry);
-			}
-
-		}
-
-		/**
-		 * delset permissions to database by given  permission entry
-		 *
-		 * @param permission entry
-		 */
-		public void deletePermissionEntry(PermissionEntry entry) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-				String where = COLUMN_NAME_PKGNAME + " = '" + entry.packageName + "'";
-				db.delete(PERMISSION_RECORD_TABLE_NAME, where, null);
-			} catch (Exception e) {
-			}
-		}
-
-		/**
-		 * delete fire wall to database by given fire wall list
-		 *
-		 * @param fire wall list
-		 */
-		public void deleteFirewallList(List<FirewallEntry> flist) {
-
-			for (FirewallEntry entry : flist) {
-				deleteFirewallEntry(entry);
-			}
-		}
-
-		/**
-		 * delete fire wall to database by given fire wall entry
-		 *
-		 * @param fire wall entry
-		 */
-		public void deleteFirewallEntry(FirewallEntry entry) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-
-				String where = COLUMN_NAME_UID + " = '" + entry.uid + "'";
-
-				db.delete(FIREWALL_RECORD_TABLE_NAME, where, null);
-			} catch (Exception e) {
-			}
-		}
-
-		/**
-		 * delete blocked action to database by given blocked action list
-		 *
-		 * @param blocked action list
-		 */
-		public void deleteBlockedActionList(List<ActionReceiverEntry> alist) {
-
-			for (ActionReceiverEntry entry : alist) {
-				deleteBlockedActionEntry(entry);
-			}
-		}
-
-		/**
-		 * delete blocked action to database by given blocked action entry
-		 *
-		 * @param blocked action entry
-		 */
-		public void deleteBlockedActionEntry(ActionReceiverEntry entry) {
-			try {
-				SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-
-				String where = COLUMN_NAME_PKGNAME + " = '" + entry.packageName + "'";
-
-				db.delete(BLOCK_ACTION_RECORD_TABLE_NAME, where, null);
-			} catch (Exception e) {
-			}
-		}
-
-
+        @Override
+        public void onCreate(SQLiteDatabase db) {
+            db.execSQL("CREATE TABLE if not exists "
+                    + BLOCK_ACTION_RECORD_TABLE_NAME + "(id INTEGER PRIMAY KEY,"
+                    + COLUMN_NAME_PKGNAME + " TEXT, " + COLUMN_NAME_ACTION
+                    + " TEXT," + " UNIQUE (" + COLUMN_NAME_PKGNAME + ", "
+                    + COLUMN_NAME_ACTION + "));");
+
+            db.execSQL("CREATE TABLE if not exists "
+                    + PERMISSION_RECORD_TABLE_NAME + "(id INTEGER PRIMAY KEY,"
+                    + COLUMN_NAME_PKGNAME + " TEXT," + COLUMN_NAME_PERMISSION
+                    + " TEXT," + " UNIQUE (" + COLUMN_NAME_PKGNAME + ", "
+                    + COLUMN_NAME_PERMISSION + "));");
+
+            db.execSQL("CREATE TABLE if not exists " + FIREWALL_RECORD_TABLE_NAME
+                    + "(id INTEGER PRIMAY KEY," + COLUMN_NAME_UID + " INTEGER,"
+                    + COLUMN_NAME_NETWORK_TYPE + " INTEGER," + " UNIQUE ("
+                    + COLUMN_NAME_UID + ", " + COLUMN_NAME_NETWORK_TYPE + "));");
+
+        }
+
+        @Override
+        public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+            // do nothing for now
+        }
+    }
+
+
+    /**
+     * get blocked actions
+     * 
+     * @return list of blocked action entry
+     */
+    public List<ActionReceiverEntry> getBlockedActionList() {
+        return mReceiverRecord.getEntryList();
+    }
+
+    /**
+     * get blocked action by package name
+     *
+     * @param package name
+     * @return blocked action entry of given package name
+     */
+    public ActionReceiverEntry getBlockedActionByPackage(String pkgName) {
+        return mReceiverRecord.getEntryByPackage(pkgName);
+    }
+
+    /**
+     * get fire wall list
+     *
+     * @return fire wall list
+     */
+    public List<FirewallEntry> getFirewallList() {
+        return mFirewallRecord.getEntryList();
+    }
+
+    /**
+     * get fire wall entry by uid
+     *
+     * @param uid
+     * @return fire wall entry of given uid
+     */
+    public FirewallEntry getFirewallByUID(int uid) {
+        return mFirewallRecord.getEntryByUid(uid);
+    }
+
+    /**
+     * get permission list
+     *
+     * @return permission list
+     */
+    public List<PermissionEntry> getPermissionList() {
+        return mPermRecord.getEntryList();
+    }
+
+    /**
+     * get permission entry by package name
+     *
+     * @param package name
+     * @return permission entry of given package name
+     */
+    public PermissionEntry getPermissionByPackage(String pkgName) {
+        return mPermRecord.getEntryByPackage(pkgName);
+    }
+
+    /**
+     * add permission list to database
+     *
+     * @param permission
+     *            list
+     */
+    public void addPermissionList(List<PermissionEntry> plist) {
+
+        for (PermissionEntry entry : plist) {
+            addPermissionEntry(entry);
+        }
+    }
+
+    /**
+     * add permission entry to database
+     *
+     * @param permission
+     *            entry
+     */
+    public void addPermissionEntry(PermissionEntry entry) {
+        for (String perm : entry.revokedPermissions) {
+            addPermissionByPackage(perm, entry.packageName);
+        }
+    }
+
+    /**
+     * add single permission to database by given package name
+     *
+     * @param permission
+     * @param package name
+     */
+    public void addPermissionByPackage(String permission, String pkgName) {
+        mPermRecord.add(permission, pkgName);
+    }
+
+    /**
+     * add fire wall list to database
+     *
+     * @param fire
+     *            wall list
+     */
+    public void addFirewallList(List<FirewallEntry> flist) {
+
+        for (FirewallEntry entry : flist) {
+            addFirewallEntry(entry);
+        }
+    }
+
+    /**
+     * add fire wall entry to database
+     *
+     * @param fire
+     *            wall entry
+     */
+    public void addFirewallEntry(FirewallEntry entry) {
+        mFirewallRecord
+                .setFirewall(entry.uid, entry.mobileBlocked, SecurityManager.FIREWALL_TYPE_MOBILE);
+        mFirewallRecord
+                .setFirewall(entry.uid, entry.wifiBlocked, SecurityManager.FIREWALL_TYPE_WIFI);
+    }
+
+    /**
+     * add blocked action list to database
+     *
+     * @param blocked
+     *            action list
+     */
+    public void addBlockedActionList(List<ActionReceiverEntry> alist) {
+
+        for (ActionReceiverEntry entry : alist) {
+            addBlockedActionEntry(entry);
+        }
+    }
+
+    /**
+     * add blocked action entry to database
+     *
+     * @param blocked
+     *            action entry
+     */
+    public void addBlockedActionEntry(ActionReceiverEntry entry) {
+        for (String action : entry.blockedActions) {
+            addBlockedActionByPackage(action,
+                    entry.packageName);
+        }
+    }
+
+    /**
+     * add single blocked action to database by given package name
+     *
+     * @param blocked action
+     * @param package name
+     */
+    public void addBlockedActionByPackage(String action, String pkgName) {
+        mReceiverRecord.add(action, pkgName);
+    }
+
+    /**
+     * remove permissions to database by given permission list
+     *
+     * @param permission
+     *            list
+     */
+    public void removeAllPermissions() {
+        mPermRecord.removeAll();
+    }
+
+    /**
+     * remove permissions to database by given permission list
+     *
+     * @param permission
+     *            list
+     */
+    public void removePermissionList(List<PermissionEntry> plist) {
+        for (PermissionEntry entry : plist) {
+            removePermissionEntry(entry);
+        }
+    }
+
+    /**
+     * remove permissions to database by given permission entry
+     *
+     * @param permission
+     *            entry
+     */
+    public void removePermissionEntry(PermissionEntry entry) {
+        mPermRecord.removePackage(entry.packageName);
+    }
+
+    /**
+     * remove single permission to database by given package name
+     *
+     * @param permission
+     * @param package name
+     */
+    public void removePermissionByPackage(String permission, String pkgName) {
+        mPermRecord.remove(permission, pkgName);
+    }
+
+    /**
+     * remove fire wall to database by given fire wall list
+     *
+     * @param fire
+     *            wall list
+     */
+    public void removeAllFirewalls() {
+        mFirewallRecord.removeAll();
+    }
+
+    /**
+     * remove fire wall to database by given fire wall list
+     *
+     * @param fire
+     *            wall list
+     */
+    public void removeFirewallList(List<FirewallEntry> flist) {
+        for (FirewallEntry entry : flist) {
+            removeFirewallEntry(entry);
+        }
+    }
+
+    /**
+     * remove fire wall to database by given fire wall entry
+     *
+     * @param fire
+     *            wall entry
+     */
+    public void removeFirewallEntry(FirewallEntry entry) {
+        // TODO: mFirewallRecord.remove(entry.uid);
+    }
+
+    /**
+     * remove blocked action to database by given blocked action list
+     *
+     * @param blocked
+     *            action list
+     */
+    public void removeAllBlockedActions() {
+        mReceiverRecord.removeAll();
+    }
+
+    /**
+     * remove blocked action to database by given blocked action lis
+     *
+     * @param blocked
+     *            action list
+     */
+    public void removeBlockedActionList(List<ActionReceiverEntry> alist) {
+        for (ActionReceiverEntry entry : alist) {
+            removeBlockedActionEntry(entry);
+        }
+    }
+
+
+    /**
+     * remove blocked action to database by given blocked action entry
+     *
+     * @param blocked
+     *            action entry
+     */
+    public void removeBlockedActionEntry(ActionReceiverEntry entry) {
+        mReceiverRecord.removePackage(entry.packageName);
+    }
+
+    /**
+     * remove single blocked action to database by given package name
+     *
+     * @param blocked action
+     * @param package name
+     */
+    public void removeBlockedActionByPackage(String action,String pkgName) {
+        mReceiverRecord.remove(action, pkgName);
+    }
+
+    public int checkFirewall(int uid, int type) {
+        return mFirewallRecord.checkFirewall(uid, type);
+    }
+
+    public int checkPermission(String packageName, String permission) {
+        return mPermRecord.checkPermission(packageName, permission);
+    }
+
+    public int checkBlockedAction(String packageName, String action) {
+        return mReceiverRecord.checkBlockedAction(packageName, action);
+    }
 }

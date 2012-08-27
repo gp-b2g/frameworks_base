@@ -29,12 +29,14 @@
 
 package android.security;
 
+import java.util.List;
+
 import android.os.Parcel;
 import android.os.Parcelable;
 
 public class ActionReceiverEntry implements Parcelable {
     public String packageName;
-    public String[] blockedActions;
+    public List<String> blockedActions;
 
     public ActionReceiverEntry() {
     }
@@ -50,7 +52,7 @@ public class ActionReceiverEntry implements Parcelable {
 
     public void writeToParcel(Parcel dest, int parcelableFlags) {
         dest.writeString(packageName);
-        dest.writeStringArray(blockedActions);
+        dest.writeStringList(blockedActions);
     }
 
     public static final Parcelable.Creator<ActionReceiverEntry> CREATOR
@@ -66,7 +68,7 @@ public class ActionReceiverEntry implements Parcelable {
 
     private ActionReceiverEntry(Parcel source) {
         packageName = source.readString();
-        blockedActions = source.createStringArray();
+        blockedActions = source.createStringArrayList();
     }
 }
 

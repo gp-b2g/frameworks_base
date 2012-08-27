@@ -42,9 +42,17 @@ interface IReceiverToken {
     /**
       * Callen when the receiver control service should be enabled.
       */
-    void onEnableReceiverControl();
+    void onEnableReceiverController();
     /**
       * Called when the receiver control service should be disabled.
       */
-    void onDisableReceiverControl();
+    void onDisableReceiverController();
+    /**
+     * Called when the service wants to clear all the Action Receiver settings.
+    */
+    void clearActionReceiverSettings();
+    /**
+     * Called when the service wants to clear all the Action Receiver settings by package name.
+    */
+    void clearActionReceiverSettingsByPkg(String packageName);
 }

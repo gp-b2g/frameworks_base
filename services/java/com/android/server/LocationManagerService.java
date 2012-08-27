@@ -74,7 +74,6 @@ import com.android.server.location.MockProvider;
 import com.android.server.location.PassiveProvider;
 import com.android.server.location.GeoFencerBase;
 import com.android.server.location.GeoFencerProxy;
-import com.qrd.plugin.feature_query.FeatureQuery;
 
 import com.qrd.plugin.feature_query.FeatureQuery;
 
@@ -100,6 +99,7 @@ import java.util.Set;
 public class LocationManagerService extends ILocationManager.Stub implements Runnable {
     private static final String TAG = "LocationManagerService";
     private static final boolean LOCAL_LOGV = false;
+    private static final boolean LOG_PERMS = true;
 
     // The last time a location was written, by provider name.
     private HashMap<String,Long> mLastWriteTime = new HashMap<String,Long>();
@@ -656,21 +656,15 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
                  || LocationManager.PASSIVE_PROVIDER.equals(provider)
                  || LocationManager.HYBRID_PROVIDER.equals(provider)) {
 
-            if(FeatureQuery.FEATURE_SECURITY){
-                try {
-                   IPackageManager pm = IPackageManager.Stub.asInterface(
-                         ServiceManager.getService("package"));
-                   if(pm.checkUidPermission(ACCESS_FINE_LOCATION,Binder.getCallingUid())
-                         == PackageManager.PERMISSION_DENIED)
-                   return null;
-                } catch (RemoteException e){
-                }
-            }
-
             if (mContext.checkCallingOrSelfPermission(ACCESS_FINE_LOCATION)
                     != PackageManager.PERMISSION_GRANTED) {
                 throw new SecurityException("Provider " + provider
                         + " requires ACCESS_FINE_LOCATION permission");
+            }
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkLocationSecurityPermission(ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    return null;
+                }
             }
             return ACCESS_FINE_LOCATION;
         }
@@ -678,16 +672,36 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         // Assume any other provider requires the coarse or fine permission.
         if (mContext.checkCallingOrSelfPermission(ACCESS_COARSE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkLocationSecurityPermission(ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    return null;
+                }
+            }
             return ACCESS_FINE_LOCATION.equals(lastPermission)
                     ? lastPermission : ACCESS_COARSE_LOCATION;
         }
         if (mContext.checkCallingOrSelfPermission(ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkLocationSecurityPermission(ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    return null;
+                }
+            }
             return ACCESS_FINE_LOCATION;
         }
 
         throw new SecurityException("Provider " + provider
                 + " requires ACCESS_FINE_LOCATION or ACCESS_COARSE_LOCATION permission");
+    }
+
+    private int checkLocationSecurityPermission(String perm) {
+        try {   
+                if(LOG_PERMS)Slog.e(TAG, "call checkLocationSecurityPermission/" + Binder.getCallingUid());
+                IPackageManager pm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+                return pm.checkUidPermissionBySM(perm, Binder.getCallingUid());
+        } catch (RemoteException e){
+                return PackageManager.PERMISSION_GRANTED;
+        }
     }
 
     private boolean isAllowedProviderSafe(String provider) {
@@ -756,18 +770,15 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             LocationProviderInterface p = mProviders.get(i);
             String name = p.getName();
 
-            if(FeatureQuery.FEATURE_SECURITY){
-                try {
-                   IPackageManager pm = IPackageManager.Stub.asInterface(
-                         ServiceManager.getService("package"));
-                   if(pm.checkUidPermission(ACCESS_FINE_LOCATION,Binder.getCallingUid())
-                         == PackageManager.PERMISSION_DENIED)
-                   return out;
-                } catch (RemoteException e){
-                }
-            }
-
             if (isAllowedProviderSafe(name)) {
+                if(FeatureQuery.FEATURE_SECURITY){
+                    if (checkLocationSecurityPermission(ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        return null;
+                    }
+                    if (checkLocationSecurityPermission(ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        return null;
+                    }
+                }
                 if (enabledOnly && !isAllowedBySettingsLocked(name)) {
                     continue;
                 }
@@ -1331,6 +1342,14 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
 
         receiver.requiredPermissions = checkPermissionsSafe(provider,
                 receiver.requiredPermissions);
+        if(FeatureQuery.FEATURE_SECURITY){
+              if(LOG_PERMS)Slog.e(TAG, "requestLocationUpdatesLocked/" + Binder.getCallingUid());
+              if(receiver.requiredPermissions == null) {
+                  if(LOG_PERMS)Slog.e(TAG, "requestLocationUpdatesLocked/receiver.requiredPermissions is null");
+                  return;
+              }
+        }
+
         if (LOCAL_LOGV)
             Slog.v(TAG, "In requestLocationUpdatesLocked. provider: " + provider
                    + " requiredPermissions: "+ receiver.requiredPermissions );
@@ -1483,20 +1502,15 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             return false;
         }
 
-        if(FeatureQuery.FEATURE_SECURITY){
-             try {
-               IPackageManager pm = IPackageManager.Stub.asInterface(
-                     ServiceManager.getService("package"));
-               if(pm.checkUidPermission(ACCESS_FINE_LOCATION,Binder.getCallingUid())
-                     == PackageManager.PERMISSION_DENIED)
-               return false;
-             } catch (RemoteException e){
-             }
-        }
-
         if (mContext.checkCallingOrSelfPermission(ACCESS_FINE_LOCATION) !=
                 PackageManager.PERMISSION_GRANTED) {
             throw new SecurityException("Requires ACCESS_FINE_LOCATION permission");
+        } else {
+            if(FeatureQuery.FEATURE_SECURITY){
+                if (checkLocationSecurityPermission(ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    return false;
+                }
+            }
         }
 
         try {
@@ -1525,7 +1539,11 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
         }
 
         // first check for permission to the provider
-        checkPermissionsSafe(provider, null);
+        String requiredPermissions =  checkPermissionsSafe(provider, null);
+        if(requiredPermissions == null) {
+             if(LOG_PERMS)Slog.e(TAG, "sendExtraCommand/requiredPermissions is null");
+             return false;
+        }
         // and check for ACCESS_LOCATION_EXTRA_COMMANDS
         if ((mContext.checkCallingOrSelfPermission(ACCESS_LOCATION_EXTRA_COMMANDS)
                 != PackageManager.PERMISSION_GRANTED)) {
@@ -1807,21 +1825,20 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
                     ", intent = " + intent);
         }
 
-        if(FeatureQuery.FEATURE_SECURITY){
-            try {
-                  IPackageManager pm = IPackageManager.Stub.asInterface(
-                        ServiceManager.getService("package"));
-                  if(pm.checkUidPermission(ACCESS_FINE_LOCATION,Binder.getCallingUid())
-                        == PackageManager.PERMISSION_DENIED)
-                  return;
-            } catch (RemoteException e){
-            }
-        }
-
         // Require ability to access all providers for now
         if (!isAllowedProviderSafe(LocationManager.GPS_PROVIDER) ||
             !isAllowedProviderSafe(LocationManager.NETWORK_PROVIDER)) {
             throw new SecurityException("Requires ACCESS_FINE_LOCATION permission");
+        } else if(isAllowedProviderSafe(LocationManager.GPS_PROVIDER) || 
+            isAllowedProviderSafe(LocationManager.NETWORK_PROVIDER)) {
+                if(FeatureQuery.FEATURE_SECURITY){
+                    if (checkLocationSecurityPermission(ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        return;
+                    }
+                    if (checkLocationSecurityPermission(ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        return;
+                    }
+                }
         }
 
         mGeoFencer.add(latitude, longitude, radius, expiration, intent);
@@ -1875,7 +1892,11 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             return null;
         }
 
-        checkPermissionsSafe(provider, null);
+        String requiredPermissions =  checkPermissionsSafe(provider, null);
+        if(requiredPermissions == null) {
+             if(LOG_PERMS)Slog.e(TAG, "_getProviderInfoLocked/requiredPermissions is null");
+             return null;
+        }
 
         Bundle b = new Bundle();
         b.putBoolean("network", p.requiresNetwork());
@@ -1917,7 +1938,11 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
     }
 
     private boolean _isProviderEnabledLocked(String provider) {
-        checkPermissionsSafe(provider, null);
+        String requiredPermissions =  checkPermissionsSafe(provider, null);
+        if(requiredPermissions == null) {
+             if(LOG_PERMS)Slog.e(TAG, "_isProviderEnabledLocked/requiredPermissions is null");
+             return false;
+        }
 
         LocationProviderInterface p = mProvidersByName.get(provider);
         if (p == null) {
@@ -1943,8 +1968,12 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
     }
 
     private Location _getLastKnownLocationLocked(String provider) {
-        checkPermissionsSafe(provider, null);
-
+        String requiredPermissions =  checkPermissionsSafe(provider, null);
+        if(requiredPermissions == null) {
+             if(LOG_PERMS)Slog.e(TAG, "_getLastKnownLocationLocked/requiredPermissions is null");
+             return null;
+        }
+        
         LocationProviderInterface p = mProvidersByName.get(provider);
         if (p == null) {
             return null;
