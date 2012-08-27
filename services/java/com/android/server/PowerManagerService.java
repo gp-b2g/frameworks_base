@@ -565,7 +565,7 @@ public class PowerManagerService extends IPowerManager.Stub
                 mScreenOffTimeoutSetting = getInt(SCREEN_OFF_TIMEOUT, DEFAULT_SCREEN_OFF_TIMEOUT);
 
                 // DIM_SCREEN
-                //mDimScreen = getInt(DIM_SCREEN) != 0;
+                mDimScreen = getInt(DIM_SCREEN, 1) != 0;
 
                 // SCREEN_BRIGHTNESS_MODE, default to manual
                 setScreenBrightnessMode(getInt(SCREEN_BRIGHTNESS_MODE,
