@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,8 +67,8 @@ SoftMPEG4::SoftMPEG4(
       mMode(MODE_MPEG4),
       mHandle(new tagvideoDecControls),
       mInputBufferCount(0),
-      mWidth(352),
-      mHeight(288),
+      mWidth(864),
+      mHeight(480),
       mCropLeft(0),
       mCropTop(0),
       mCropRight(mWidth - 1),
