@@ -98,8 +98,6 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
     private PathPermission[] mPathPermissions;
     private boolean mExported;
 
-    private String wperm2;
-
     private Transport mTransport = new Transport();
 
     /**
@@ -276,18 +274,19 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
 
         public ParcelFileDescriptor openFile(Uri uri, String mode)
                 throws FileNotFoundException {
-            if (mode != null && mode.startsWith("rw")) enforceWritePermission(uri);
-            else enforceReadPermission(uri);
-
-            if(FeatureQuery.FEATURE_SECURITY){
-                if (checkWriteSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
-                    return null;
+            if (mode != null && mode.startsWith("rw")) {
+                 enforceWritePermission(uri);
+                 if(FeatureQuery.FEATURE_SECURITY){
+                    if (checkWriteSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                        return null;
+                    }
                 }
-            }
-
-            if(FeatureQuery.FEATURE_SECURITY){
-                if (checkReadSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
-                    return null;
+            } else {
+                enforceReadPermission(uri);
+                if(FeatureQuery.FEATURE_SECURITY){
+                    if (checkReadSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                        return null;
+                    }
                 }
             }
 
@@ -296,18 +295,19 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
 
         public AssetFileDescriptor openAssetFile(Uri uri, String mode)
                 throws FileNotFoundException {
-            if (mode != null && mode.startsWith("rw")) enforceWritePermission(uri);
-            else enforceReadPermission(uri);
-
-            if(FeatureQuery.FEATURE_SECURITY){
-                if (checkWriteSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
-                    return null;
+            if (mode != null && mode.startsWith("rw")) {
+                 enforceWritePermission(uri);
+                 if(FeatureQuery.FEATURE_SECURITY){
+                    if (checkWriteSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                        return null;
+                    }
                 }
-            }
-
-            if(FeatureQuery.FEATURE_SECURITY){
-                if (checkReadSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
-                    return null;
+            } else {
+                enforceReadPermission(uri);
+                if(FeatureQuery.FEATURE_SECURITY){
+                    if (checkReadSecurityPermission() != PackageManager.PERMISSION_GRANTED) {
+                        return null;
+                    }
                 }
             }
 
