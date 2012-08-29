@@ -796,7 +796,12 @@ public abstract class SMSDispatcher extends Handler {
 
             // if IMS not registered on data and voice is not available...
             if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
-                handleNotInService(ss, tracker);
+                Intent intent = new Intent();
+                intent.putExtra("sub", mPhone.getSubscription());
+                handleNotInService(mContext, ss, tracker, intent);
+                if (mSyncronousSending) {
+                    processNextPendingMessage();
+                }
             } else if ((((CommandException)(ar.exception)).getCommandError()
                     == CommandException.Error.SMS_FAIL_RETRY) &&
                    tracker.mRetryCount < MAX_SEND_RETRIES) {
@@ -851,13 +856,13 @@ public abstract class SMSDispatcher extends Handler {
      *                  POWER_OFF
      * @param tracker   An SmsTracker for the current message.
      */
-    protected static void handleNotInService(int ss, SmsTracker tracker) {
+    protected static void handleNotInService(Context context, int ss, SmsTracker tracker, Intent intent) {
         if (tracker.mSentIntent != null) {
             try {
                 if (ss == ServiceState.STATE_POWER_OFF) {
-                    tracker.mSentIntent.send(RESULT_ERROR_RADIO_OFF);
+                    tracker.mSentIntent.send(context, RESULT_ERROR_RADIO_OFF, intent);
                 } else {
-                    tracker.mSentIntent.send(RESULT_ERROR_NO_SERVICE);
+                    tracker.mSentIntent.send(context, RESULT_ERROR_NO_SERVICE, intent);
                 }
             } catch (CanceledException ex) {}
         }
@@ -1368,7 +1373,7 @@ public abstract class SMSDispatcher extends Handler {
 
         // if IMS not registered on data and voice is not available...
         if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
-            handleNotInService(ss, tracker);
+            handleNotInService(mContext, ss, tracker, null);
         } else {
             String appName = getAppNameByIntent(sentIntent);
             if (mUsageMonitor.check(appName, SINGLE_PART_SMS)) {
@@ -1518,7 +1523,7 @@ public abstract class SMSDispatcher extends Handler {
                 }
                 SmsTracker newTracker = SmsTrackerFactory(null, sentIntent, null,
                         getFormat());
-                handleNotInService(ss, newTracker);
+                handleNotInService(mContext, ss, newTracker, null);
             }
             return;
         }
