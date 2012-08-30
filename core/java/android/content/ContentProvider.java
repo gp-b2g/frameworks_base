@@ -396,6 +396,11 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
             
             final Context context = getContext();
             final String wperm = getWritePermission();
+
+            if(FeatureQuery.FEATURE_SECURITY){
+               wperm2 = wperm;
+            }
+
             final int pid = Binder.getCallingPid();
             if (mExported && (wperm == null
                     || context.checkPermission(wperm, pid, uid)
@@ -424,10 +429,6 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     == PackageManager.PERMISSION_GRANTED) {
                 return true;
-            }
-
-            if(FeatureQuery.FEATURE_SECURITY){
-               wperm2 = wperm;
             }
 
             return false;

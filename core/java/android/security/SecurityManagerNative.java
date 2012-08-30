@@ -164,6 +164,16 @@ public abstract class SecurityManagerNative extends Binder implements ISecurityM
                 return true;
             }
 
+            case GET_POWER_SAVER_MODE_TRANSACTION: {
+                data.enforceInterface(ISecurityManager.descriptor);
+                IBinder token = data.readStrongBinder();
+
+                int mode = getPowerSaverMode(token);
+                reply.writeNoException();
+                reply.writeInt(mode);
+                return true;
+            }
+
             case APPLY_PERMISSION_TOKEN_TRANSACTION: {
                 data.enforceInterface(ISecurityManager.descriptor);
                 IBinder token = data.readStrongBinder();
@@ -368,7 +378,12 @@ public abstract class SecurityManagerNative extends Binder implements ISecurityM
 
                 FirewallEntry result = getFirewall(token, uid);
                 reply.writeNoException();
-                result.writeToParcel(reply, 0);
+                if (result != null) {
+                    reply.writeInt(1);
+                    result.writeToParcel(reply, 0);
+                } else {
+                    reply.writeInt(0);
+                }
                 return true;
             }
 
@@ -379,7 +394,12 @@ public abstract class SecurityManagerNative extends Binder implements ISecurityM
 
                 PermissionEntry result = getPermission(token, packageName);
                 reply.writeNoException();
-                result.writeToParcel(reply, 0);
+                if (result != null) {
+                    reply.writeInt(1);
+                    result.writeToParcel(reply, 0);
+                } else {
+                    reply.writeInt(0);
+                }
                 return true;
             }
 
@@ -390,7 +410,12 @@ public abstract class SecurityManagerNative extends Binder implements ISecurityM
 
                 ActionReceiverEntry result = getActionReceiver(token, packageName);
                 reply.writeNoException();
-                result.writeToParcel(reply, 0);
+                if (result != null) {
+                    reply.writeInt(1);
+                    result.writeToParcel(reply, 0);
+                } else {
+                    reply.writeInt(0);
+                }
                 return true;
             }
 
@@ -505,7 +530,7 @@ public abstract class SecurityManagerNative extends Binder implements ISecurityM
                 return true;
             }
 
-            case CLEAR_SINGLE_SETTINGS: {
+            case CLEAR_SINGLE_SETTINGS_TRANSACTION: {
                 data.enforceInterface(ISecurityManager.descriptor);
                 IBinder token = data.readStrongBinder();
                 String packageName = data.readString();
@@ -642,6 +667,20 @@ class SecurityManagerProxy implements ISecurityManager
         data.writeInt(mode);
 
         mRemote.transact(SET_POWER_SAVER_MODE_TRANSACTION, data, reply, 0);
+        reply.readException();
+        int result = reply.readInt();
+        reply.recycle();
+        data.recycle();
+        return result;
+    }
+
+    public int getPowerSaverMode(IBinder token) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(ISecurityManager.descriptor);
+        data.writeStrongBinder(token);
+
+        mRemote.transact(GET_POWER_SAVER_MODE_TRANSACTION, data, reply, 0);
         reply.readException();
         int result = reply.readInt();
         reply.recycle();
@@ -918,7 +957,10 @@ class SecurityManagerProxy implements ISecurityManager
 
         mRemote.transact(GET_FIREWALL_POLICY_TRANSACTION, data, reply, 0);
         reply.readException();
-        FirewallEntry result = FirewallEntry.CREATOR.createFromParcel(reply); 
+        FirewallEntry result = null;
+        if (reply.readInt() != 0) {
+            result = FirewallEntry.CREATOR.createFromParcel(reply);
+        }
         reply.recycle();
         data.recycle();
         return result;
@@ -933,7 +975,10 @@ class SecurityManagerProxy implements ISecurityManager
 
         mRemote.transact(GET_PERMISSION_TRANSACTION, data, reply, 0);
         reply.readException();
-        PermissionEntry result = PermissionEntry.CREATOR.createFromParcel(reply); 
+        PermissionEntry result = null;
+        if (reply.readInt() != 0) {
+            result = PermissionEntry.CREATOR.createFromParcel(reply);
+        }
         reply.recycle();
         data.recycle();
         return result;
@@ -948,7 +993,10 @@ class SecurityManagerProxy implements ISecurityManager
 
         mRemote.transact(GET_ACTION_RECEIVER_TRANSACTION, data, reply, 0);
         reply.readException();
-        ActionReceiverEntry result = ActionReceiverEntry.CREATOR.createFromParcel(reply); 
+        ActionReceiverEntry result = null;
+        if (reply.readInt() != 0) {
+            result = ActionReceiverEntry.CREATOR.createFromParcel(reply); 
+        }
         reply.recycle();
         data.recycle();
         return result;
@@ -1113,7 +1161,7 @@ class SecurityManagerProxy implements ISecurityManager
         data.writeString(packageName);
         data.writeInt(uid);
 
-        mRemote.transact(CLEAR_SINGLE_SETTINGS, data, reply, 0);
+        mRemote.transact(CLEAR_SINGLE_SETTINGS_TRANSACTION, data, reply, 0);
         reply.readException();
         reply.recycle();
         data.recycle();

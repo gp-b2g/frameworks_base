@@ -166,6 +166,8 @@ public interface ISecurityManager extends IInterface {
 
     public void clearSingleSettings(IBinder token, String packageName, int uid) throws RemoteException;
 
+    public int getPowerSaverMode(IBinder token) throws RemoteException;
+
     String descriptor = "android.security.ISecurityManager";
 
     int CHECK_AUTHORITY_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION;
@@ -210,5 +212,6 @@ public interface ISecurityManager extends IInterface {
     int CHECK_FIREWALL_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 39;
     int CHECK_PERMISSION_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 40;
     int CHECK_ACTION_RECEIVER_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 41;
-    int CLEAR_SINGLE_SETTINGS = IBinder.FIRST_CALL_TRANSACTION + 42;
+    int CLEAR_SINGLE_SETTINGS_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 42;
+    int GET_POWER_SAVER_MODE_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION + 43;
 }

@@ -32,6 +32,8 @@ package com.android.server.sm;
 import android.content.Context;
 import android.os.RemoteException;
 import android.security.IPermissionToken;
+import android.security.SecurityRecordBase;
+import android.security.SecurityRecord;
 import android.security.SecurityResult;
 import android.util.Log;
 
@@ -137,6 +139,16 @@ public final class PermissionController {
         if (DEBUG) {
             Log.d(TAG, "[" + function + "] " + msg);
         }
+    }
+
+    private class systemReadyCallback implements SecurityRecordBase.Callback {
+        public void apply(String pkg, String perm) {
+            revokePermission(perm, pkg, 0);
+        }
+    }
+
+    public void systemReady(SecurityRecordBase r) {
+        r.forEach(new systemReadyCallback());
     }
 }
 

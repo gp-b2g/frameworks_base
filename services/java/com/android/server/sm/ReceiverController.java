@@ -33,7 +33,7 @@ import android.content.Context;
 import android.os.RemoteException;
 import android.security.IReceiverToken;
 import android.security.SecurityRecord;
-import android.security.SecurityRecord.ReceiverRecordCallback;
+import android.security.SecurityRecordBase;
 import android.security.SecurityResult;
 
 /** {@hide} */
@@ -88,15 +88,14 @@ public final class ReceiverController {
         return SecurityResult.REMOTE_NO_ERROR;
     }
 
-    private class BlockActionReceiver implements ReceiverRecordCallback {
-        public void apply(String action, String pkgName) {
+    private class systemReadyCallback implements SecurityRecordBase.Callback {
+        public void apply(String pkgName, String action) {
             blockActionReceiver(action, pkgName);
         }
     }
 
-    public void systemReady() {
-        SecurityRecord r = new SecurityRecord();
-        r.forEachReceiverRecord(new BlockActionReceiver());
+    public void systemReady(SecurityRecordBase r) {
+        r.forEach(new systemReadyCallback());
     }
 
     public int enableReceiverController(boolean enable) {
