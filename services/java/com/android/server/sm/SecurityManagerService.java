@@ -62,14 +62,15 @@ import java.util.HashMap;
 
 /** {@hide} */
 public final class SecurityManagerService extends SecurityManagerNative {
-    static final String TAG = "SecurityManagerService";
+    static final String TAG = "SecurityManager";
     static final boolean DEBUG = true;
 
     private static boolean mSystemReady = false;
 
     private static RadioSecurityController mRadioController;
 
-    static HashMap<IBinder, SecurityRecord> mSecurityRecords = new HashMap<IBinder, SecurityRecord>();
+    private SecurityRecord mSecurityRecord = null;
+    private static boolean isGuardAvailable = false;
 
 
     class ClientDeathRecipient implements IBinder.DeathRecipient {
@@ -93,11 +94,11 @@ public final class SecurityManagerService extends SecurityManagerNative {
         // the last record is removed.
         mRadioController.unMonitorMessage(record);
         mRadioController.unMonitorCall(record);
-        mSecurityRecords.remove(token);
+        isGuardAvailable = false;
     }
 
     public int isGuardAvailable() {
-        if(mSecurityRecords.isEmpty()) {
+        if (!isGuardAvailable) {
            return SecurityResult.GUARD_IS_NOT_AVAILABLE;
         } else {
            return SecurityResult.GUARD_IS_AVAILABLE;
@@ -107,16 +108,19 @@ public final class SecurityManagerService extends SecurityManagerNative {
     public int checkAuthority(IBinder token, String packageName) {
         LOG("checkAuthority", "PKG: " + packageName);
         int result = SecurityResult.NOT_AUTHORIZED_PACKAGE;
+        int version = SystemProperties.getInt("ro.security.version", 0);
+        Slog.e(TAG, "====== ro.security.version is " + version + " =====");
+
         if("eng".equals(SystemProperties.get("ro.build.type"))) {
             result = SecurityResult.AUTHORIZED_PACKAGE;
         } else {    
             result = SecurityRecord.verifyPackage(packageName);
         }
         if (result == SecurityResult.AUTHORIZED_PACKAGE) {
-            SecurityRecord r = new SecurityRecord(token, true);
-            mSecurityRecords.put(token, r);
             try {
+                mSecurityRecord.setCallback(token);     
                 token.linkToDeath(new ClientDeathRecipient(token), 0);
+                isGuardAvailable = true;
             } catch (RemoteException e) {
                 Slog.e(TAG, "checkAuthority - remote error", e);
             }
@@ -219,6 +223,11 @@ public final class SecurityManagerService extends SecurityManagerNative {
             return mPowerController.setPowerSaverMode(record);
         }
         return SecurityResult.SET_POWERMODE_UNSUPPORTED;
+    }
+
+    public int getPowerSaverMode(IBinder token) {
+        LOG("getPowerSaverMode", "token: " + token);
+        return mPowerController.getPowerSaverMode();
     }
 
     public int applyPermissionToken(IPermissionToken token) {
@@ -476,17 +485,7 @@ public final class SecurityManagerService extends SecurityManagerNative {
     }
     
     SecurityRecord getSecurityRecord(IBinder token) {
-        if(token == null) {
-            Collection<SecurityRecord> s = mSecurityRecords.values(); 
-            Iterator<SecurityRecord> it = s.iterator();
-            while(it.hasNext()){ 
-                   //only one Guard is available.
-                   return it.next(); 
-            }
-            return null;
-        } else {
-            return mSecurityRecords.get(token);
-        }
+        return mSecurityRecord;
     }
 
     private static SecurityManagerService mSelf;
@@ -516,8 +515,10 @@ public final class SecurityManagerService extends SecurityManagerNative {
 
     public void systemReady() {
         mSystemReady = true;
-        mRadioController.systemReady();
-        mReceiverController.systemReady();
+        mSecurityRecord = new SecurityRecord();
+        mReceiverController.systemReady(mSecurityRecord.getReceiverRecord());
+        mPermController.systemReady(mSecurityRecord.getPermissionRecord());
+        mRadioController.systemReady(mSecurityRecord.getFirewallRecord());
     }
 
     private void LOG(String function, String msg) {

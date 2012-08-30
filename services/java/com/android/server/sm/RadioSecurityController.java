@@ -31,6 +31,7 @@ package com.android.server.sm;
 
 import com.android.server.Watchdog;
 import com.android.server.NativeDaemonConnector;
+import com.android.server.NativeDaemonConnectorException;
 import com.android.server.INativeDaemonConnectorCallbacks;
 import android.util.Log;
 import android.util.Slog;
@@ -48,6 +49,7 @@ import android.security.ISecurityManager;
 import android.security.SecurityManager;
 import android.security.SecurityManagerNative;
 import android.security.SecurityRecord;
+import android.security.SecurityRecordBase;
 import android.security.SecurityResult;
 
 import java.util.concurrent.CountDownLatch;
@@ -127,16 +129,28 @@ public final class RadioSecurityController implements Watchdog.Monitor {
     public void setFirewallPolicy(int uid, boolean enable, int type) {
         LOG("setFirewallPolicy", "uid: " + uid + "/enable: " + enable + "/type: " + type);
         String status = enable ? "enable" : "disable";
-        mConnector.doCommand("netctrl " + status + " " + uid + " " + type);
+        try {
+            mConnector.doCommand("netctrl " + status + " " + uid + " " + type);
+        } catch (NativeDaemonConnectorException e) {
+            LOG("setFirewallPolicy", "error: " + e);
+        }
     }
 
     public void clearFirewallPolicy() {
-        mConnector.doCommand("netctrl radio cleanup");
+        try {
+            mConnector.doCommand("netctrl radio cleanup");
+        } catch (NativeDaemonConnectorException e) {
+            LOG("clearFirewallPolicy", "error: " + e);
+        }
     }
 
     public void clearFirewallPolicyByUid(int uid) {
-        mConnector.doCommand("netctrl " + "enable" + " " + uid + " " + SecurityManager.FIREWALL_TYPE_WIFI);
-        mConnector.doCommand("netctrl " + "enable" + " " + uid + " " + SecurityManager.FIREWALL_TYPE_MOBILE);
+        try {
+            mConnector.doCommand("netctrl " + "enable" + " " + uid + " " + SecurityManager.FIREWALL_TYPE_WIFI);
+            mConnector.doCommand("netctrl " + "enable" + " " + uid + " " + SecurityManager.FIREWALL_TYPE_MOBILE);
+        } catch (NativeDaemonConnectorException e) {
+            LOG("clearFirewallPolicyByUid", "error: " + e);
+        }
     }
 
     final RemoteCallbackList<ISecurityCallback> mSendingMessageCallbacks = new RemoteCallbackList<ISecurityCallback>();
@@ -224,11 +238,6 @@ public final class RadioSecurityController implements Watchdog.Monitor {
             mMessageToken.onInterceptMessage(ident, action);
         } catch (RemoteException e) {
         }
-    }
-
-    public void systemReady() {
-        LOG("systemReady", "make the rule");
-        mConnector.doCommand("netctrl radio enable");
     }
 
     private RemoteCallbackList<ISecurityCallback> mCallBlackListCallbacks;
@@ -323,5 +332,21 @@ public final class RadioSecurityController implements Watchdog.Monitor {
     private void LOG(String function, String msg) {
         if(DBG)
             Slog.d(TAG, "(" + function + ")" + ": " + msg);
+    }
+
+    private class systemReadyCallback implements SecurityRecordBase.Callback {
+        public void apply(String uid, String type) {
+            setFirewallPolicy(Integer.parseInt(uid), false, Integer.parseInt(type));
+        }
+    }
+
+    public void systemReady(SecurityRecordBase r) {
+        LOG("systemReady", "make the rule");
+        try {
+            mConnector.doCommand("netctrl radio enable");
+        } catch (NativeDaemonConnectorException e) {
+            LOG("systemReady", "error: " + e);
+        }
+        r.forEach(new systemReadyCallback());
     }
 }

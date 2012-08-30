@@ -57,6 +57,7 @@ public final class PowerSaverController {
     private boolean isHighTemperateFlag = false;
     private boolean isLowBatteryFlag = false;
     private boolean isInitCompleted = false;
+    private int currMode = -1;
     final PowerSaver mPowerSaver = new PowerSaver();
     HashMap<Integer, String> mAvailModes = new HashMap<Integer, String>();
 
@@ -90,7 +91,7 @@ public final class PowerSaverController {
 
     private void handleChargingConnect() {
         int res = SecurityResult.SET_POWERMODE_SUCCESS;
-        res |= mPowerSaver.setCpuMode(PowerSaver.SCREEN_ON_MODE);
+        res |= setCpuMode(PowerSaver.SCREEN_ON_MODE);
     }
 
     private void handleChargingDisconnect() {
@@ -108,7 +109,7 @@ public final class PowerSaverController {
                 || status == BatteryManager.BATTERY_STATUS_FULL);
         if (!isCharging && !isLowBatteryFlag && !isHighTemperateFlag
                 && !mCurCtrl.isLightComputingMode()) {
-            res |= mPowerSaver.setCpuMode(PowerSaver.SCREEN_ON_MODE);
+            res |= setCpuMode(PowerSaver.SCREEN_ON_MODE);
         }
     }
 
@@ -119,7 +120,7 @@ public final class PowerSaverController {
                 || status == BatteryManager.BATTERY_STATUS_FULL);
         if (!isCharging && !isLowBatteryFlag && !isHighTemperateFlag
                 && !mCurCtrl.isLightComputingMode()) {
-            res |= mPowerSaver.setCpuMode(PowerSaver.SCREEN_OFF_MODE);
+            res |= setCpuMode(PowerSaver.SCREEN_OFF_MODE);
         }
     }
 
@@ -133,7 +134,7 @@ public final class PowerSaverController {
                 int batterylevel = mBatteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);
                  if(batterylevel < BATTERY_LEVEL_THRESHOLD){
                     isLowBatteryFlag = true;
-                    res |= mPowerSaver.setCpuMode(PowerSaver.LOW_BATTERY_MODE);
+                    res |= setCpuMode(PowerSaver.LOW_BATTERY_MODE);
                 } else {
                     isLowBatteryFlag = false;
                 }
@@ -144,7 +145,7 @@ public final class PowerSaverController {
                  if(temperature > TEMPERATURE_THRESHOLD){
                     isHighTemperateFlag = true;
                     if (!isLowBatteryFlag && !mCurCtrl.isLightComputingMode())
-                        res |= mPowerSaver.setCpuMode(PowerSaver.HIGH_TEMPERATURE_MODE);
+                        res |= setCpuMode(PowerSaver.HIGH_TEMPERATURE_MODE);
                 } else {
                     isHighTemperateFlag = false;
                 }
@@ -160,6 +161,7 @@ public final class PowerSaverController {
         mContext.registerReceiver(mModeReceiver, mFilter);
         isInitCompleted = true;
     };
+
     public int setPowerSaverMode(SecurityRecord r) {
         mCurCtrl = r;
         int result = SecurityResult.SET_POWERMODE_SUCCESS;
@@ -251,11 +253,11 @@ public final class PowerSaverController {
         boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING
                 || status == BatteryManager.BATTERY_STATUS_FULL);
         if(isCharging){
-            return mPowerSaver.setCpuMode(PowerSaver.SCREEN_ON_MODE);
+            return setCpuMode(PowerSaver.SCREEN_ON_MODE);
         }else if (!isHighTemperateFlag && !mCurCtrl.isLightComputingMode()) {
-            return mPowerSaver.setCpuMode(PowerSaver.SCREEN_ON_MODE);
+            return setCpuMode(PowerSaver.SCREEN_ON_MODE);
         }else if(mCurCtrl.isLightComputingMode()){
-            return mPowerSaver.setCpuMode(PowerSaver.LIGHT_COMPUTING_MODE);
+            return setCpuMode(PowerSaver.LIGHT_COMPUTING_MODE);
         }
         return SecurityResult.SET_POWERMODE_SUCCESS;
     }
@@ -272,9 +274,9 @@ public final class PowerSaverController {
         boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING
                 || status == BatteryManager.BATTERY_STATUS_FULL);
         if(isCharging){
-            return mPowerSaver.setCpuMode(PowerSaver.SCREEN_ON_MODE);
+            return setCpuMode(PowerSaver.SCREEN_ON_MODE);
         }else if (!isLowBatteryFlag && !mCurCtrl.isLightComputingMode()) {
-            return mPowerSaver.setCpuMode(PowerSaver.SCREEN_ON_MODE);
+            return setCpuMode(PowerSaver.SCREEN_ON_MODE);
         }
         return SecurityResult.SET_POWERMODE_SUCCESS;
     }
@@ -285,7 +287,7 @@ public final class PowerSaverController {
         boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING
                 || status == BatteryManager.BATTERY_STATUS_FULL);
         if (!isCharging && !isLowBatteryFlag) {
-            return mPowerSaver.setCpuMode(PowerSaver.LIGHT_COMPUTING_MODE);
+            return setCpuMode(PowerSaver.LIGHT_COMPUTING_MODE);
         }
         return SecurityResult.SET_POWERMODE_SUCCESS;
     }
@@ -296,10 +298,23 @@ public final class PowerSaverController {
         boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING
                 || status == BatteryManager.BATTERY_STATUS_FULL);
         if(isCharging){
-            return mPowerSaver.setCpuMode(PowerSaver.SCREEN_ON_MODE);
+            return setCpuMode(PowerSaver.SCREEN_ON_MODE);
         }else if (!isLowBatteryFlag && !isHighTemperateFlag) {
-            return mPowerSaver.setCpuMode(PowerSaver.SCREEN_ON_MODE);
+            return setCpuMode(PowerSaver.SCREEN_ON_MODE);
         }
         return SecurityResult.SET_POWERMODE_SUCCESS;
+    }
+
+    private void updateCurrMode(int mode) {
+        currMode = mode;
+    }
+
+    public int getPowerSaverMode() {
+        return currMode;
+    }
+
+    private int setCpuMode(int mode) {
+       updateCurrMode(mode);
+       return mPowerSaver.setCpuMode(mode);
     }
 }

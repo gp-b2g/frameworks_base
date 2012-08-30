@@ -19051,6 +19051,7 @@ package android.security {
     method public static android.security.SecurityManager getInstance(android.content.Context);
     method public android.security.PermissionEntry getPermission(java.lang.String);
     method public java.util.List<android.security.PermissionEntry> getPermissionList();
+    method public int getPowerSaverMode();
     method public int grantPermission(java.lang.String, java.lang.String);
     method public int grantPermission(java.util.List<java.lang.String>, java.lang.String);
     method public int interceptCall(int, int);
@@ -19094,6 +19095,23 @@ package android.security {
     field public static final int PERM_STATIC = 0; // 0x0
     field public static final int RECEVIED_MESSAGE_WATCHER = 2; // 0x2
     field public static final int SENDING_MESSAGE_WATCHER = 1; // 0x1
+  }
+
+  public class SecurityRecordBase {
+    ctor public SecurityRecordBase(android.database.sqlite.SQLiteOpenHelper, java.lang.String, java.lang.String, java.lang.String);
+    method public boolean add(java.lang.String, java.lang.String);
+    method public boolean contains(java.lang.String, java.lang.String);
+    method public void forEach(android.security.SecurityRecordBase.Callback);
+    method public void forKey(java.lang.String, android.security.SecurityRecordBase.Callback);
+    method protected void loadDatabase();
+    method public boolean remove(java.lang.String, java.lang.String);
+    method public void removeAll();
+    method public boolean removeKey(java.lang.String);
+    field protected java.util.HashMap mRecords;
+  }
+
+  public static abstract interface SecurityRecordBase.Callback {
+    method public abstract void apply(java.lang.String, java.lang.String);
   }
 
   public final class SecurityResult {
