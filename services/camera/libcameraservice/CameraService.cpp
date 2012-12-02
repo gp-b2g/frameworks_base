@@ -360,6 +360,9 @@ CameraService::Client::Client(const sp<CameraService>& cameraService,
     mburstCnt = 0;
     mSurface = 0;
     mPreviewWindow = 0;
+	//zxj ++
+	mstopPreview = true;
+	//zxj --
     mHardware->setCallbacks(notifyCallback,
                             dataCallback,
                             dataCallbackTimestamp,
@@ -625,6 +628,9 @@ void CameraService::Client::setPreviewCallbackFlag(int callback_flag) {
 // start preview mode
 status_t CameraService::Client::startPreview() {
     LOG1("startPreview (pid %d)", getCallingPid());
+	//zxj ++
+	mstopPreview = false;
+	//zxj --
     if (mFaceDetection) {
       enableMsgType(CAMERA_MSG_PREVIEW_METADATA);
     }
@@ -720,7 +726,9 @@ void CameraService::Client::stopPreview() {
     disableMsgType(CAMERA_MSG_PREVIEW_METADATA);
     Mutex::Autolock lock(mLock);
     if (checkPidAndHardware() != NO_ERROR) return;
-
+	//zxj ++
+	mstopPreview = true;
+	//zxj --
 
     disableMsgType(CAMERA_MSG_PREVIEW_FRAME);
     mHardware->stopPreview();
@@ -802,7 +810,9 @@ status_t CameraService::Client::takePicture(int msgType) {
     Mutex::Autolock lock(mLock);
     status_t result = checkPidAndHardware();
     if (result != NO_ERROR) return result;
-
+	//zxj ++
+	mstopPreview = true;
+	//zxj --
     if ((msgType & CAMERA_MSG_RAW_IMAGE) &&
         (msgType & CAMERA_MSG_RAW_IMAGE_NOTIFY)) {
         LOGE("CAMERA_MSG_RAW_IMAGE and CAMERA_MSG_RAW_IMAGE_NOTIFY"
@@ -1017,6 +1027,12 @@ void CameraService::Client::notifyCallback(int32_t msgType, int32_t ext1,
 
     sp<Client> client = getClientFromCookie(user);
     if (client == 0) return;
+	//zxj ++
+	if (msgType == CAMERA_MSG_FOCUS && client->mstopPreview == true) {
+		LOGE("##### %s: step preview !\n",__func__);
+		return;
+	}
+	//zxj --
     if (!client->lockIfMessageWanted(msgType)) return;
 
     switch (msgType) {
@@ -1264,11 +1280,11 @@ int CameraService::Client::getOrientation(int degrees, bool mirror) {
         if (degrees == 0) {           // FLIP_H and ROT_0
             return HAL_TRANSFORM_FLIP_H;
         } else if (degrees == 90) {   // FLIP_H and ROT_90
-            return HAL_TRANSFORM_FLIP_V  | HAL_TRANSFORM_ROT_90;
+            return HAL_TRANSFORM_FLIP_H  | HAL_TRANSFORM_ROT_90;
         } else if (degrees == 180) {  // FLIP_H and ROT_180
             return HAL_TRANSFORM_FLIP_V;
         } else if (degrees == 270) {  // FLIP_H and ROT_270
-            return HAL_TRANSFORM_FLIP_H | HAL_TRANSFORM_ROT_90;
+            return HAL_TRANSFORM_FLIP_V | HAL_TRANSFORM_ROT_90;
         }
     }
     LOGE("Invalid setDisplayOrientation degrees=%d", degrees);

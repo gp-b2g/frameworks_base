@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,6 +99,8 @@ private:
 
     MPEG4Source(const MPEG4Source &);
     MPEG4Source &operator=(const MPEG4Source &);
+
+    bool mNeedFirstVideoBuffer;
 };
 
 // This custom data source wraps an existing one and satisfies requests
@@ -113,6 +115,7 @@ struct MPEG4DataSource : public DataSource {
 
     virtual status_t initCheck() const;
     virtual ssize_t readAt(off64_t offset, void *data, size_t size);
+    virtual ssize_t readAt(off64_t offset, void *data, size_t size, int buffer_flag);
     virtual status_t getSize(off64_t *size);
     virtual uint32_t flags();
 
@@ -161,6 +164,10 @@ status_t MPEG4DataSource::initCheck() const {
 }
 
 ssize_t MPEG4DataSource::readAt(off64_t offset, void *data, size_t size) {
+    return readAt(offset, data, size, DataSource::kNewBufferDefault);
+}
+
+ssize_t MPEG4DataSource::readAt(off64_t offset, void *data, size_t size, int buffer_flag) {
     Mutex::Autolock autoLock(mLock);
 
     if (offset >= mCachedOffset
@@ -169,7 +176,7 @@ ssize_t MPEG4DataSource::readAt(off64_t offset, void *data, size_t size) {
         return size;
     }
 
-    return mSource->readAt(offset, data, size);
+    return mSource->readAt(offset, data, size, buffer_flag);
 }
 
 status_t MPEG4DataSource::getSize(off64_t *size) {
@@ -204,6 +211,7 @@ status_t MPEG4DataSource::setCachedRange(off64_t offset, size_t size) {
 
     return OK;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2076,7 +2084,8 @@ MPEG4Source::MPEG4Source(
       mWantsNALFragments(false),
       mSrcBuffer(NULL),
       mNumSamplesReadError(0),
-      mCurrentSampleDescIndex(0) {
+      mCurrentSampleDescIndex(0),
+      mNeedFirstVideoBuffer(true) {
     const char *mime;
     bool success = mFormat->findCString(kKeyMIMEType, &mime);
     CHECK(success);
@@ -2215,6 +2224,11 @@ status_t MPEG4Source::read(
 
     int64_t seekTimeUs;
     ReadOptions::SeekMode mode;
+
+    int buffer_flag = DataSource::kNewBufferDefault;
+    const char *mime;
+    mFormat->findCString(kKeyMIMEType, &mime);
+
     if (options && options->getSeekTo(&seekTimeUs, &mode)) {
         uint32_t findFlags = 0;
         switch (mode) {
@@ -2231,6 +2245,12 @@ status_t MPEG4Source::read(
             default:
                 CHECK(!"Should not be here.");
                 break;
+        }
+
+        if (!strncmp(mime, "video", 5)) {
+            buffer_flag = DataSource::kVideoBufferOther;
+        } else if (!strncmp(mime, "audio", 5)) {
+            buffer_flag = DataSource::kAudioBufferSeek;
         }
 
         uint32_t sampleIndex;
@@ -2292,6 +2312,17 @@ status_t MPEG4Source::read(
         }
 
         // fall through
+    } else {
+        if (!strncmp(mime, "video", 5)) {
+            if (mNeedFirstVideoBuffer) {
+                buffer_flag = DataSource::kVideoBufferFirst;
+                mNeedFirstVideoBuffer = false;
+            } else {
+                buffer_flag = DataSource::kVideoBufferOther;
+            }
+        } else if (!strncmp(mime, "audio", 5)) {
+            buffer_flag = DataSource::kAudioBufferNoneSeek;
+        }
     }
 
     off64_t offset;
@@ -2343,7 +2374,7 @@ status_t MPEG4Source::read(
                 return ERROR_IO;
             }
             ssize_t num_bytes_read =
-                mDataSource->readAt(offset, (uint8_t *)mBuffer->data(), size);
+                mDataSource->readAt(offset, (uint8_t *)mBuffer->data(), size, buffer_flag);
 
             if (num_bytes_read < (ssize_t)size) {
                 mBuffer->release();
@@ -2422,9 +2453,9 @@ status_t MPEG4Source::read(
         bool usesDRM = (mFormat->findInt32(kKeyIsDRM, &drm) && drm != 0);
         if (usesDRM) {
             num_bytes_read =
-                mDataSource->readAt(offset, (uint8_t*)mBuffer->data(), size);
+                mDataSource->readAt(offset, (uint8_t*)mBuffer->data(), size, buffer_flag);
         } else {
-            num_bytes_read = mDataSource->readAt(offset, mSrcBuffer, size);
+            num_bytes_read = mDataSource->readAt(offset, mSrcBuffer, size, buffer_flag);
         }
 
         if (num_bytes_read < (ssize_t)size) {

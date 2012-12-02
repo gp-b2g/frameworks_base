@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -191,6 +192,8 @@ NuCachedSource2::NuCachedSource2(
       mLastAccessPos(0),
       mFetching(true),
       mLastFetchTimeUs(-1),
+      mHaveVideoSeek(false),
+      mVideoFirstBuffer(false),
       mNumRetriesLeft(kMaxNumRetries),
       mHighwaterThresholdBytes(kDefaultHighWaterThreshold),
       mLowwaterThresholdBytes(kDefaultLowWaterThreshold),
@@ -465,24 +468,63 @@ void NuCachedSource2::restartPrefetcherIfNecessary_l(
 }
 
 ssize_t NuCachedSource2::readAt(off64_t offset, void *data, size_t size) {
+    return readAt(offset, data, size, DataSource::kNewBufferDefault);
+}
+
+ssize_t NuCachedSource2::readAt(off64_t offset, void *data, size_t size, int buffer_flag) {
     Mutex::Autolock autoSerializer(mSerializer);
 
     LOGV("readAt offset %lld, size %d", offset, size);
 
-    Mutex::Autolock autoLock(mLock);
+    //Cached Data is enought
+    {
+        Mutex::Autolock autoLock(mLock);
 
-    // If the request can be completely satisfied from the cache, do so.
+        // If the request can be completely satisfied from the cache, do so.
 
-    if (offset >= mCacheOffset
-            && offset + size <= mCacheOffset + mCache->totalSize()) {
+        if (offset >= mCacheOffset
+                && offset + size <= mCacheOffset + mCache->totalSize()) {
+            size_t delta = offset - mCacheOffset;
+            mCache->copy(delta, data, size);
+
+            mLastAccessPos = offset + size;
+            if (buffer_flag == DataSource::kVideoBufferOther) {
+                mHaveVideoSeek = true;
+            } else if (buffer_flag == DataSource::kVideoBufferFirst) {
+                mVideoFirstBuffer = true;
+            }
+            return size;
+        }
+    }
+
+    if (offset >= mCacheOffset && (offset + size <= mCacheOffset + mHighwaterThresholdBytes)
+            && ((buffer_flag == DataSource::kAudioBufferSeek && mHaveVideoSeek) || (buffer_flag == DataSource::kAudioBufferNoneSeek && mVideoFirstBuffer))) {
+        //Cached Data isn't enough, and don't want to read from a new offset, just wait for buffering
+        if (buffer_flag == DataSource::kAudioBufferSeek) {
+            mHaveVideoSeek = false;
+        }
+        while (offset + size > mCacheOffset + mCache->totalSize()) {
+            sleep(1);
+        }
+        Mutex::Autolock autoLock(mLock);
         size_t delta = offset - mCacheOffset;
         mCache->copy(delta, data, size);
-
         mLastAccessPos = offset + size;
-
         return size;
     }
 
+    if (buffer_flag == DataSource::kAudioBufferNoneSeek && mHaveVideoSeek) {
+        return 0;
+    }
+
+    if (buffer_flag == DataSource::kVideoBufferOther) {
+        mHaveVideoSeek = true;
+    } else if (buffer_flag == DataSource::kVideoBufferFirst) {
+        mVideoFirstBuffer = true;
+    }
+
+    //Need new buffer from the given offset
+    Mutex::Autolock autoLock(mLock);
     sp<AMessage> msg = new AMessage(kWhatRead, mReflector->id());
     msg->setInt64("offset", offset);
     msg->setPointer("data", data);

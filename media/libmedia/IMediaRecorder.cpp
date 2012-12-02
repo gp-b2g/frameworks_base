@@ -35,6 +35,7 @@ enum {
     CLOSE,
     QUERY_SURFACE_MEDIASOURCE,
     RESET,
+    PAUSE,
     STOP,
     START,
     PREPARE,
@@ -245,6 +246,15 @@ public:
         return reply.readInt32();
     }
 
+    status_t pause()
+    {
+        LOGV("pause");
+        Parcel data, reply;
+        data.writeInterfaceToken(IMediaRecorder::getInterfaceDescriptor());
+        remote()->transact(PAUSE, data, &reply);
+        return reply.readInt32();
+    }
+
     status_t stop()
     {
         LOGV("stop");
@@ -312,6 +322,12 @@ status_t BnMediaRecorder::onTransact(
             LOGV("RESET");
             CHECK_INTERFACE(IMediaRecorder, data, reply);
             reply->writeInt32(reset());
+            return NO_ERROR;
+        } break;
+        case PAUSE: {
+            LOGV("PAUSE");
+            CHECK_INTERFACE(IMediaRecorder, data, reply);
+            reply->writeInt32(pause());
             return NO_ERROR;
         } break;
         case STOP: {

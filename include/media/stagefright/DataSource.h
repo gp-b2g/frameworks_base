@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- * Copyright (C) 2010-2012 Code Aurora Forum
+ * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,14 @@ public:
         kIsHTTPBasedSource     = 8,
     };
 
+    enum {
+        kNewBufferDefault,
+        kVideoBufferFirst,
+        kVideoBufferOther,
+        kAudioBufferSeek,
+        kAudioBufferNoneSeek,
+    };
+
     static sp<DataSource> CreateFromURI(
             const char *uri,
             const KeyedVector<String8, String8> *headers = NULL);
@@ -52,6 +60,7 @@ public:
     virtual status_t initCheck() const = 0;
 
     virtual ssize_t readAt(off64_t offset, void *data, size_t size) = 0;
+    virtual ssize_t readAt(off64_t offset, void *data, size_t size, int buffer_flag) { return readAt(offset, data, size); }
 
     // Convenience methods:
     bool getUInt16(off64_t offset, uint16_t *x);

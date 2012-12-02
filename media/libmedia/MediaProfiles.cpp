@@ -661,22 +661,51 @@ MediaProfiles::getInstance()
 /*static*/ MediaProfiles::VideoEncoderCap*
 MediaProfiles::createDefaultH263VideoEncoderCap()
 {
+// delete by lzj 
+/*
     return new MediaProfiles::VideoEncoderCap(
         VIDEO_ENCODER_H263, 192000, 6000000, 176, 800, 144, 480, 1, 30);
+*/
+//delete end
+
+    // change qcif to qvga as default setting for video , modify by lzj
+    return new MediaProfiles::VideoEncoderCap(
+        VIDEO_ENCODER_H263, 512000, 6000000, 320, 800, 240, 480, 1, 30);
+    // modify end
 }
 
 /*static*/ MediaProfiles::VideoEncoderCap*
 MediaProfiles::createDefaultM4vVideoEncoderCap()
 {
+
+// delete by lzj 
+/*
     return new MediaProfiles::VideoEncoderCap(
         VIDEO_ENCODER_MPEG_4_SP, 192000, 20 * 1000 * 1000, 176, 1920, 144, 1088, 1, 30);
+*/
+//delete end
+
+   // change qcif to qvga as default setting for video , modify by lzj
+    return new MediaProfiles::VideoEncoderCap(
+        VIDEO_ENCODER_MPEG_4_SP, 512000, 20 * 1000 * 1000, 320, 1920, 240, 1088, 1, 30);
+    // modify end
 }
 
 /*static*/ MediaProfiles::VideoEncoderCap*
 MediaProfiles::createDefaultH264VideoEncoderCap()
 {
+// delete by lzj 
+/*
     return new MediaProfiles::VideoEncoderCap(
         VIDEO_ENCODER_H264, 192000, 20 * 1000 * 1000, 176, 1920, 144, 1088, 1, 30);
+*/
+//delete end
+
+    // change qcif to qvga as default setting for video , modify by lzj
+    return new MediaProfiles::VideoEncoderCap(
+        VIDEO_ENCODER_H264, 512000, 20 * 1000 * 1000, 320, 1920, 240, 1088, 1, 30);
+    // modify end
+    
 }
 
 /*static*/ void
@@ -865,8 +894,16 @@ MediaProfiles::createDefaultAmrNBEncoderCap()
 /*static*/ MediaProfiles::AudioEncoderCap*
 MediaProfiles::createDefaultAacEncoderCap()
 {
+// delete by lzj
+/*
     return new MediaProfiles::AudioEncoderCap(
         AUDIO_ENCODER_AAC, 64000, 156000, 8000, 48000, 1, 2);
+*/
+// delete end
+    // modify acc default video setting from qcif to qvga, modify by lzj
+    return new MediaProfiles::AudioEncoderCap(
+        AUDIO_ENCODER_AAC, 96000, 156000, 16000, 48000, 1, 2);
+    // modify end
 }
 
 /*static*/ MediaProfiles::AudioEncoderCap*

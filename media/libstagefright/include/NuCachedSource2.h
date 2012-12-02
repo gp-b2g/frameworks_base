@@ -36,6 +36,7 @@ struct NuCachedSource2 : public DataSource {
     virtual status_t initCheck() const;
 
     virtual ssize_t readAt(off64_t offset, void *data, size_t size);
+    virtual ssize_t readAt(off64_t offset, void *data, size_t size, int buffer_flag);
 
     virtual status_t getSize(off64_t *size);
     virtual uint32_t flags();
@@ -109,6 +110,8 @@ private:
     sp<AMessage> mAsyncResult;
     bool mFetching;
     int64_t mLastFetchTimeUs;
+    bool mHaveVideoSeek;
+    bool mVideoFirstBuffer;
 
     int32_t mNumRetriesLeft;
 

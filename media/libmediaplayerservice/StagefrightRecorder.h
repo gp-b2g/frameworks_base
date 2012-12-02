@@ -103,6 +103,9 @@ private:
     int32_t mLatitudex10000;
     int32_t mLongitudex10000;
     int32_t mStartTimeOffsetMs;
+    // Added by tiger.su for recorder pause
+    int32_t mTotalBitRate;
+    // Added end
 
     bool mCaptureTimeLapse;
     int64_t mTimeBetweenTimeLapseFrameCaptureUs;
@@ -115,6 +118,9 @@ private:
     MediaProfiles *mEncoderProfiles;
 
     bool mStarted;
+    // Added by tiger.su for recorder pause
+    bool mPause;
+    // Added end
     // Needed when GLFrames are encoded.
     // An <ISurfaceTexture> pointer
     // will be sent to the client side using which the

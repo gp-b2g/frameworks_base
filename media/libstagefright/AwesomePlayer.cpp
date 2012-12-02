@@ -514,10 +514,11 @@ status_t AwesomePlayer::setDataSource_l(const sp<MediaExtractor> &extractor) {
 
 void AwesomePlayer::reset() {
     //Disconnect datasource
+    Mutex::Autolock autoLock(mLock);
     if (mConnectingDataSource != NULL) {
         mConnectingDataSource->disconnect();
     }
-    Mutex::Autolock autoLock(mLock);
+
     reset_l();
 }
 
@@ -1029,7 +1030,8 @@ status_t AwesomePlayer::play_l() {
                 mpqAudioObjetcsAlive = (MPQAudioPlayer::getMPQAudioObjectsAlive());
 #endif
                 char lpaDecode[128];
-                property_get("lpa.decode",lpaDecode,"0");
+				/*Modify by zhanyingyang, for music backdate fluency duo to player type has been changed by Manufacture in 2012-7-30
+				property_get("lpa.decode",lpaDecode,"0");*/                
                 if((strcmp("true",lpaDecode) == 0) && (mAudioPlayer == NULL) && (tunnelObjectsAlive == 0) && !is_mpq)
                 {
                     LOGV("LPAPlayer::getObjectsAlive() %d",LPAPlayer::objectsAlive);
@@ -1673,7 +1675,8 @@ status_t AwesomePlayer::initAudioDecoder() {
         char *matchComponentName = NULL;
 #ifndef NON_QCOM_TARGET
         char lpaDecode[128];
-        property_get("lpa.decode",lpaDecode,"0");
+		/*Modify by zhanyingyang, for music backdate fluency duo to player type has been changed by Manufacture in 2012-7-30
+		property_get("lpa.decode",lpaDecode,"0");*/
         if(strcmp("true",lpaDecode) == 0 && mVideoSource == NULL) {
             const char *mime;
             bool success = meta->findCString(kKeyMIMEType, &mime);

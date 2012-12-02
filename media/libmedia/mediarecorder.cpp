@@ -484,10 +484,13 @@ status_t MediaRecorder::start()
         LOGE("media recorder is not initialized yet");
         return INVALID_OPERATION;
     }
-    if (!(mCurrentState & MEDIA_RECORDER_PREPARED)) {
+    // Modified by tiger.su for recorder pause
+    if ((!(mCurrentState & MEDIA_RECORDER_PREPARED)) &&
+        (!(mCurrentState & MEDIA_RECORDER_PAUSE))) {
         LOGE("start called in an invalid state: %d", mCurrentState);
         return INVALID_OPERATION;
     }
+    // Modified end
 
     status_t ret = mMediaRecorder->start();
     if (OK != ret) {
@@ -499,6 +502,28 @@ status_t MediaRecorder::start()
     return ret;
 }
 
+status_t MediaRecorder::pause()
+{
+    LOGV("pause");
+    if (mMediaRecorder == NULL) {
+        LOGE("media recorder is not initialized yet");
+        return INVALID_OPERATION;
+    }
+    if (!(mCurrentState & MEDIA_RECORDER_RECORDING)) {
+        LOGE("pause called in an invalid state: %d", mCurrentState);
+        return INVALID_OPERATION;
+    }
+
+    status_t ret = mMediaRecorder->pause();
+    if (OK != ret) {
+        LOGE("pause failed: %d", ret);
+        mCurrentState = MEDIA_RECORDER_ERROR;
+        return ret;
+    }
+    mCurrentState = MEDIA_RECORDER_PAUSE;
+    return ret;
+}
+
 status_t MediaRecorder::stop()
 {
     LOGV("stop");
@@ -506,7 +531,8 @@ status_t MediaRecorder::stop()
         LOGE("media recorder is not initialized yet");
         return INVALID_OPERATION;
     }
-    if (!(mCurrentState & MEDIA_RECORDER_RECORDING)) {
+    if ((!(mCurrentState & MEDIA_RECORDER_RECORDING)) &&
+		(!(mCurrentState & MEDIA_RECORDER_PAUSE))) {
         LOGE("stop called in an invalid state: %d", mCurrentState);
         return INVALID_OPERATION;
     }

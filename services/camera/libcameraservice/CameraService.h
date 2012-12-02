@@ -212,7 +212,9 @@ private:
         // is found to be disabled. It returns true if mLock is grabbed.
         bool                    lockIfMessageWanted(int32_t msgType);
         int                     mburstCnt;
-		
+		//zxj ++
+		bool					mstopPreview;
+		//zxj --
     };
 
     camera_module_t *mModule;

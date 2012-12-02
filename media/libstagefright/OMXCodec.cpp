@@ -593,7 +593,7 @@ uint32_t OMXCodec::getComponentQuirks(
         quirks |= kRequiresLoadedToIdleAfterAllocation;
     }
     if (!strncmp(componentName, "OMX.ittiam.video.decoder.", 25)) {
-        quirks |= kRequiresAllocateBufferOnOutputPorts;
+        //quirks |= kRequiresAllocateBufferOnOutputPorts;
         quirks |= kDefersOutputBufferAllocation;
     }
     if (!strncmp(componentName, "OMX.qcom.7x30.video.decoder.", 28)) {
