@@ -61,7 +61,7 @@ bool checkCallingPermission(const String16& permission, int32_t* outPid, int32_t
     uid_t uid = ipcState->getCallingUid();
     if (outPid) *outPid = pid;
     if (outUid) *outUid = uid;
-    return true;
+    return checkPermission(permission, pid, uid);
 }
 
 bool checkPermission(const String16& permission, pid_t pid, uid_t uid)
