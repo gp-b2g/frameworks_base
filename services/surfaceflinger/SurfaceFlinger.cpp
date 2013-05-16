@@ -101,7 +101,9 @@ SurfaceFlinger::SurfaceFlinger()
         mDebugInTransaction(0),
         mLastTransactionTime(0),
         mBootFinished(false),
+#ifdef QCOM_HDMI_OUT
         mExtDispOutput(EXT_TYPE_NONE),
+#endif
         mCanSkipComposition(false),
         mConsoleSignals(0),
         mSecureFrameBuffer(0)
@@ -420,11 +422,15 @@ bool SurfaceFlinger::threadLoop()
         handleConsoleEvents();
     }
 
+#ifdef QCOM_HDMI_OUT
     //Serializes HDMI event handling and drawing.
     //Necessary for race-free overlay channel management.
     //Must always be held only after handleConsoleEvents() since
     //that could enable / disable HDMI based on suspend resume
     Mutex::Autolock _l(mExtDispLock);
+#else
+    // if we're in a global transaction, don't do anything.
+#endif
 
     const uint32_t mask = eTransactionNeeded | eTraversalNeeded;
     uint32_t transactionFlags = peekTransactionFlags(mask);
@@ -508,19 +514,22 @@ void SurfaceFlinger::postFramebuffer()
     LOGW_IF(mSwapRegion.isEmpty(), "mSwapRegion is empty");
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
     const nsecs_t now = systemTime();
+#ifdef QCOM_HDMI_OUT
     const GraphicPlane& plane(graphicPlane(0));
     const Transform& planeTransform(plane.transform());
+#endif
     mDebugInSwapBuffers = now;
+#ifdef QCOM_HDMI_OUT
     //If orientation has changed, inform gralloc for HDMI mirroring
     if(mOrientationChanged) {
         mOrientationChanged = false;
         hw.perform(EVENT_ORIENTATION_CHANGE, planeTransform.getOrientation());
     }
+#endif
     hw.flip(mSwapRegion);
     mLastSwapBufferTime = systemTime() - now;
     mDebugInSwapBuffers = 0;
     mSwapRegion.clear();
-    debugShowFPS();
 }
 
 void SurfaceFlinger::handleConsoleEvents()
@@ -531,7 +540,9 @@ void SurfaceFlinger::handleConsoleEvents()
     int what = android_atomic_and(0, &mConsoleSignals);
     if (what & eConsoleAcquired) {
         hw.acquireScreen();
+#ifdef QCOM_HDMI_OUT
         updateHwcExternalDisplay(mExtDispOutput);
+#endif
         // this is a temporary work-around, eventually this should be called
         // by the power-manager
         SurfaceFlinger::turnElectronBeamOn(mElectronBeamAnimationMode);
@@ -540,7 +551,9 @@ void SurfaceFlinger::handleConsoleEvents()
     if (what & eConsoleReleased) {
         if (hw.isScreenAcquired()) {
             hw.releaseScreen();
+#ifdef QCOM_HDMI_OUT
             updateHwcExternalDisplay(false);
+#endif
         }
     }
 
@@ -606,7 +619,9 @@ void SurfaceFlinger::handleTransactionLocked(uint32_t transactionFlags)
             // Currently unused: const uint32_t flags = mCurrentState.orientationFlags;
             GraphicPlane& plane(graphicPlane(dpy));
             plane.setOrientation(orientation);
+#ifdef QCOM_HDMI_OUT
             mOrientationChanged = true;
+#endif
 
             // update the shared control block
             const DisplayHardware& hw(plane.displayHardware());
@@ -1206,18 +1221,13 @@ void SurfaceFlinger::debugShowFPS() const
     static int mLastFrameCount = 0;
     static nsecs_t mLastFpsTime = 0;
     static float mFps = 0;
-    char value[PROPERTY_VALUE_MAX];
-
     mFrameCount++;
     nsecs_t now = systemTime();
     nsecs_t diff = now - mLastFpsTime;
-    if (diff > ms2ns(1000)) {
+    if (diff > ms2ns(250)) {
         mFps =  ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
         mLastFpsTime = now;
         mLastFrameCount = mFrameCount;
-
-        sprintf(value, "%f", mFps);
-        property_set("hw.sf.fps", value);
     }
     // XXX: mFPS has the value we want
  }
@@ -1382,6 +1392,7 @@ int SurfaceFlinger::setOrientation(DisplayID dpy,
     return orientation;
 }
 
+#ifdef QCOM_HDMI_OUT
 void SurfaceFlinger::updateHwcExternalDisplay(int externaltype)
 {
     invalidateHwcGeometry();
@@ -1408,6 +1419,7 @@ void SurfaceFlinger::enableExternalDisplay(int disp_type, int value)
         signalEvent();
     }
 }
+#endif
 
 /*
  * Qcom specific. Handles events from clients.
@@ -1501,10 +1513,14 @@ sp<Layer> SurfaceFlinger::createNormalSurface(
         format = PIXEL_FORMAT_RGBA_8888;
         break;
     case PIXEL_FORMAT_OPAQUE:
-#ifdef NO_RGBX_8888
+#ifdef USE_16BPPSURFACE_FOR_OPAQUE
         format = PIXEL_FORMAT_RGB_565;
-#else
-        format = PIXEL_FORMAT_RGBX_8888;
+#else /* USE_16BPPSURFACE_FOR_OPAQUE */
+	#ifdef NO_RGBX_8888
+	        format = PIXEL_FORMAT_RGB_565;
+	#else
+	        format = PIXEL_FORMAT_RGBX_8888;
+	#endif
 #endif
         break;
     }

@@ -43,7 +43,6 @@ void LayerRenderer::prepareDirty(float left, float top, float right, float botto
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, (GLint*) &previousFbo);
     LAYER_RENDERER_LOGD("Rendering into layer, fbo = %d", mLayer->getFbo());
 
-    TILERENDERING_END(previousFbo);
     glBindFramebuffer(GL_FRAMEBUFFER, mLayer->getFbo());
 
     const float width = mLayer->layer.getWidth();
@@ -59,11 +58,8 @@ void LayerRenderer::prepareDirty(float left, float top, float right, float botto
         android::Rect r(dirty.left, dirty.top, dirty.right, dirty.bottom);
         mLayer->region.subtractSelf(r);
     }
-    TILERENDERING_START(mLayer->getFbo(), dirty.left, dirty.top,
-                        dirty.right, dirty.bottom, width, height);
     OpenGLRenderer::prepareDirty(dirty.left, dirty.top, dirty.right, dirty.bottom, opaque);
 #else
-    TILERENDERING_START(mLayer->getFbo(), 0, 0, width, height, width, height);
     OpenGLRenderer::prepareDirty(0.0f, 0.0f, width, height, opaque);
 #endif
 }
@@ -212,7 +208,6 @@ Layer* LayerRenderer::createLayer(uint32_t width, uint32_t height, bool isOpaque
     GLuint previousFbo;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, (GLint*) &previousFbo);
 
-    TILERENDERING_END(previousFbo);
     glBindFramebuffer(GL_FRAMEBUFFER, layer->getFbo());
     layer->bindTexture();
 
@@ -225,9 +220,9 @@ Layer* LayerRenderer::createLayer(uint32_t width, uint32_t height, bool isOpaque
             LOGD("Could not allocate texture for layer (fbo=%d %dx%d)",
                     fbo, width, height);
             glBindFramebuffer(GL_FRAMEBUFFER, previousFbo);
-            TILERENDERING_START(previousFbo);
-            TILERENDERING_CLEARCACHE(fbo);
             Caches::getInstance().fboCache.put(fbo);
+            layer->setFbo(0);
+
             layer->deleteTexture();
             delete layer;
 
@@ -244,7 +239,6 @@ Layer* LayerRenderer::createLayer(uint32_t width, uint32_t height, bool isOpaque
     glEnable(GL_SCISSOR_TEST);
 
     glBindFramebuffer(GL_FRAMEBUFFER, previousFbo);
-    TILERENDERING_START(previousFbo);
 
     return layer;
 }
@@ -316,8 +310,8 @@ void LayerRenderer::destroyLayer(Layer* layer) {
                 layer->getWidth(), layer->getHeight(), layer->getFbo());
 
         if (layer->getFbo()) {
-            TILERENDERING_CLEARCACHE(layer->getFbo());
             Caches::getInstance().fboCache.put(layer->getFbo());
+            layer->setFbo(0);
         }
 
         if (!Caches::getInstance().layerCache.put(layer)) {
@@ -391,10 +385,7 @@ bool LayerRenderer::copyLayer(Layer* layer, SkBitmap* bitmap) {
         layer->setFbo(fbo);
 
         glGetIntegerv(GL_FRAMEBUFFER_BINDING, (GLint*) &previousFbo);
-        TILERENDERING_END(previousFbo);
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        TILERENDERING_START(fbo, 0, 0, bitmap->width(), bitmap->height(),
-                            bitmap->width(), bitmap->height());
         glGenTextures(1, &texture);
         if ((error = glGetError()) != GL_NO_ERROR) goto error;
 
@@ -456,9 +447,7 @@ error:
         }
 #endif
 
-        TILERENDERING_END(fbo, true);
         glBindFramebuffer(GL_FRAMEBUFFER, previousFbo);
-        TILERENDERING_START(previousFbo);
         layer->setAlpha(alpha, mode);
         layer->setFbo(0);
         glDeleteTextures(1, &texture);

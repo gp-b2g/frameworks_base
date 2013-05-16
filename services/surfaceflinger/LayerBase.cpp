@@ -412,6 +412,7 @@ void LayerBase::clearWithOpenGL(const Region& clip, GLclampf red,
     glDisable(GL_TEXTURE_EXTERNAL_OES);
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_BLEND);
+    glDisable(GL_DITHER);
 
     Region::const_iterator it = clip.begin();
     Region::const_iterator const end = clip.end();

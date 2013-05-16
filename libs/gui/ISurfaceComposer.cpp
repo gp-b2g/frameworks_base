@@ -175,6 +175,7 @@ public:
         return result != 0;
     }
 
+#ifdef QCOM_HDMI_OUT
     virtual void enableExternalDisplay(int disp_type, int enable)
     {
         Parcel data, reply;
@@ -183,6 +184,7 @@ public:
         data.writeInt32(enable);
         remote()->transact(BnSurfaceComposer::EXTERNAL_DISPLAY, data, &reply);
     }
+#endif
 
     virtual void perform(int event, int info)
     {
@@ -273,12 +275,14 @@ status_t BnSurfaceComposer::onTransact(
             int32_t result = authenticateSurfaceTexture(surfaceTexture) ? 1 : 0;
             reply->writeInt32(result);
         } break;
+#ifdef QCOM_HDMI_OUT
         case EXTERNAL_DISPLAY: {
             CHECK_INTERFACE(ISurfaceComposer, data, reply);
             int disp_type = data.readInt32();
             int enable = data.readInt32();
             enableExternalDisplay(disp_type, enable);
         } break;
+#endif
         case PERFORM: {
             CHECK_INTERFACE(ISurfaceComposer, data, reply);
             int event = data.readInt32();

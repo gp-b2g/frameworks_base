@@ -360,6 +360,8 @@ public class ZygoteInit {
                 N = preloadColorStateLists(runtime, ar);
                 Log.i(TAG, "...preloaded " + N + " resources in "
                         + (SystemClock.uptimeMillis()-startTime) + "ms.");
+            } else {
+                Log.i(TAG, "Preload resources disabled, skipped.");
             }
             mResources.finishPreloading();
         } catch (RuntimeException e) {

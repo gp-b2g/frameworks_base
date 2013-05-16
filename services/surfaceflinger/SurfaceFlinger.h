@@ -180,9 +180,10 @@ public:
     virtual int                         setOrientation(DisplayID dpy, int orientation, uint32_t flags);
     virtual bool                        authenticateSurfaceTexture(const sp<ISurfaceTexture>& surface) const;
 
+#ifdef QCOM_HDMI_OUT
     //HDMI Specific
     virtual void                        enableExternalDisplay(int disp_type, int externaltype);
-    //Qcom specific
+#endif    //Qcom specific
     virtual void                        perform(int event, int info);
 
     virtual status_t captureScreen(DisplayID dpy,
@@ -347,9 +348,10 @@ private:
             void        debugFlashRegions();
             void        debugShowFPS() const;
             void        drawWormhole() const;
-
+#ifdef QCOM_HDMI_OUT
             //HDMI Specific
             void updateHwcExternalDisplay(int externaltype);
+#endif
             bool isGPULayerPresent();
 
     mutable     MessageQueue    mEventQueue;
@@ -404,10 +406,12 @@ private:
                 nsecs_t                     mLastTransactionTime;
                 bool                        mBootFinished;
 
+#ifdef QCOM_HDMI_OUT
                 //HDMI specific
                 int                         mExtDispOutput;
                 Mutex                       mExtDispLock;
                 bool                        mOrientationChanged;
+#endif
                 bool                        mCanSkipComposition;
 
                 // these are thread safe

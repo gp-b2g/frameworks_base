@@ -73,4 +73,12 @@ LOCAL_C_INCLUDES += hardware/libhardware/modules/gralloc \
 
 LOCAL_MODULE:= libsurfaceflinger
 
+ifeq ($(TARGET_USES_16BPPSURFACE_FOR_OPAQUE),true)
+	LOCAL_CFLAGS += -DUSE_16BPPSURFACE_FOR_OPAQUE
+endif
+
+ifeq ($(TARGET_QCOM_HDMI_OUT),true)
+LOCAL_CFLAGS += -DQCOM_HDMI_OUT
+endif
+
 include $(BUILD_SHARED_LIBRARY)

@@ -108,6 +108,7 @@ public:
         data.writeInterfaceToken(ISurfaceTexture::getInterfaceDescriptor());
         data.writeInt32(buf);
         data.writeInt64(timestamp);
+        data.writeInt32(*outTransform);
         status_t result = remote()->transact(QUEUE_BUFFER, data, &reply);
         if (result != NO_ERROR) {
             return result;

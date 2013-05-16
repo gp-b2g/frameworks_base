@@ -200,7 +200,7 @@ void Layer::setGeometry(hwc_layer_t* hwcl)
         }
     }
 
-    hwcl->alpha = s.alpha;
+    //hwcl->alpha = s.alpha;
 
     /*
      * Transformations are applied in this order:
@@ -599,7 +599,12 @@ uint32_t Layer::getEffectiveUsage(uint32_t usage) const
         // need a hardware-protected path to external video sink
         usage |= GraphicBuffer::USAGE_PROTECTED;
     }
+#ifdef MISSING_GRALLOC_BUFFERS
+    usage |= GraphicBuffer::USAGE_HW_TEXTURE;
+#else
     usage |= GraphicBuffer::USAGE_HW_COMPOSER;
+#endif
+
     return usage;
 }
 

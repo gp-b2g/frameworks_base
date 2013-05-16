@@ -45,7 +45,7 @@ MemoryHeapIon::MemoryHeapIon(const char* device, size_t size,
 {
     int open_flags = O_RDWR;
     if (flags & NO_CACHING)
-         open_flags |= O_DSYNC;
+         open_flags |= O_SYNC;
 
     int fd = open(device, open_flags);
     if (fd >= 0) {
