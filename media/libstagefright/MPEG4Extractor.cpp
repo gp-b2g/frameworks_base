@@ -115,7 +115,6 @@ struct MPEG4DataSource : public DataSource {
 
     virtual status_t initCheck() const;
     virtual ssize_t readAt(off64_t offset, void *data, size_t size);
-    virtual ssize_t readAt(off64_t offset, void *data, size_t size, int buffer_flag);
     virtual status_t getSize(off64_t *size);
     virtual uint32_t flags();
 
@@ -164,10 +163,6 @@ status_t MPEG4DataSource::initCheck() const {
 }
 
 ssize_t MPEG4DataSource::readAt(off64_t offset, void *data, size_t size) {
-    return readAt(offset, data, size, DataSource::kNewBufferDefault);
-}
-
-ssize_t MPEG4DataSource::readAt(off64_t offset, void *data, size_t size, int buffer_flag) {
     Mutex::Autolock autoLock(mLock);
 
     if (offset >= mCachedOffset
@@ -176,7 +171,7 @@ ssize_t MPEG4DataSource::readAt(off64_t offset, void *data, size_t size, int buf
         return size;
     }
 
-    return mSource->readAt(offset, data, size, buffer_flag);
+    return mSource->readAt(offset, data, size);
 }
 
 status_t MPEG4DataSource::getSize(off64_t *size) {
@@ -817,96 +812,6 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
             break;
         }
 
-        case FOURCC('e', 'l', 's', 't' ):
-        {
-            if (chunk_data_size < 4){
-                return ERROR_MALFORMED;
-            }
-
-            uint8_t version;
-            if (mDataSource->readAt(data_offset, &version, 1) < 1){
-                return ERROR_IO;
-            }
-
-            uint8_t buffer[8];
-            if (mDataSource->readAt(data_offset,
-                buffer,
-                sizeof(buffer)) < (ssize_t)sizeof(buffer)) {
-                return ERROR_IO;
-            }
-
-            uint32_t entry_count = U32_AT(&buffer[4]);
-            int64_t timeUs = 0;
-
-            if( version == 1 ){
-                uint8_t buffer[8 + entry_count * 20];
-                if (mDataSource->readAt(data_offset,
-                    buffer,
-                    sizeof(buffer)) < (ssize_t)sizeof(buffer)) {
-                    return ERROR_IO;
-                }
-
-                int64_t mvhdTimeScale = 0;
-                mFileMetaData->findInt64( kKeyEditOffset, &mvhdTimeScale );
-
-                uint64_t segment_duration[entry_count];
-                int64_t media_time[entry_count];
-                for (uint32_t i = 0; i < entry_count; i++ ){
-                    segment_duration[i] = U64_AT(&buffer[8 + i * 20]);
-                    media_time[i] = U64_AT(&buffer[8 + 8 + i * 20]);
-
-                    if( media_time[i] == -1 ){
-                        if( mvhdTimeScale != 0 ){
-                            int64_t editTime = (int64_t)(segment_duration[i] * 1000000 )/mvhdTimeScale;
-                            mLastTrack->meta->setInt64( kKeyEditOffset, editTime );
-                            if (mLastTrack->meta->findInt64(kKeyDuration,&timeUs))
-                            {
-                                mLastTrack->meta->setInt64(kKeyDuration,(editTime + timeUs));
-                            }
-                        }
-                    }
-                }
-
-                int16_t media_rate_integer;
-                int16_t media_rate_fraction = 0;
-            }
-            else { //version == 0
-                uint8_t buffer[8 + entry_count * 12];
-                if (mDataSource->readAt(data_offset,
-                    buffer,
-                    sizeof(buffer)) < (ssize_t)sizeof(buffer)) {
-                    return ERROR_IO;
-                }
-
-                uint32_t segment_duration[entry_count];
-                int32_t media_time[entry_count];
-
-                int32_t mvhdTimeScale = 0;
-                mFileMetaData->findInt32( kKeyEditOffset, &mvhdTimeScale );
-
-                for (uint32_t i = 0; i < entry_count; i++ ){
-                    segment_duration[i] = U32_AT(&buffer[8 + i * 12]);
-                    media_time[i] = U32_AT(&buffer[8 + 4 + i * 20]);
-
-                    if( media_time[i] == -1 ){
-                        if( mvhdTimeScale != 0 ){
-                            int64_t editTime = (int64_t)(segment_duration[i] * 1000000 )/mvhdTimeScale;
-                            mLastTrack->meta->setInt64( kKeyEditOffset, editTime );
-                            if (mLastTrack->meta->findInt64(kKeyDuration,&timeUs))
-                            {
-                                mLastTrack->meta->setInt64(kKeyDuration,(editTime + timeUs));
-                            }
-                        }
-                    }
-                }
-                int16_t media_rate_integer;
-                int16_t media_rate_fraction = 0;
-            }
-
-            *offset += chunk_size;
-            break;
-        }
-
         case FOURCC('m', 'd', 'h', 'd'):
         {
             if (chunk_data_size < 4) {
@@ -1018,61 +923,28 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
 
             uint32_t entry_count = U32_AT(&buffer[4]);
 
-            off64_t stop_offset = *offset + chunk_size;
-            *offset = data_offset + 8;
-
             if (entry_count > 1) {
                 // For 3GPP timed text, there could be multiple tx3g boxes contain
                 // multiple text display formats. These formats will be used to
                 // display the timed text.
                 const char *mime;
                 CHECK(mLastTrack->meta->findCString(kKeyMIMEType, &mime));
-                if (!strcasecmp(mime, MEDIA_MIMETYPE_TEXT_3GPP)) {
-                     LOGV("Text track found");
-                     for (uint32_t i = 0; i < entry_count; ++i) {
-                     status_t err = parseChunk(offset, depth + 1);
-                        if (err != OK) {
-                            return err;
-                        }
-                     }
+                if (strcasecmp(mime, MEDIA_MIMETYPE_TEXT_3GPP)) {
                     // For now we only support a single type of media per track.
+                    mLastTrack->skipTrack = true;
+                    *offset += chunk_size;
+                    break;
                 }
-                else {
-                     LOGI("This clip has multiple avcc atoms ");
-                     status_t err = mLastTrack->sampleTable->setSampleDescParams(entry_count, *offset, chunk_data_size);
-                     if (err != OK) {
-                         return ERROR_IO;
-                     }
-                     //Initialize width, height parameters with first avc1 atom
-                     mHasVideo = true;
-                     uint8_t avc1[86];//(avc1-avcc) which is fixed
-                     if (mDataSource->readAt(*offset, avc1, sizeof(avc1)) < (ssize_t)sizeof(avc1)) {
-                         return ERROR_IO;
-                     }
-                     uint32_t chunk_type = U32_AT(&avc1[4]);
-                     uint16_t data_ref_index = U16_AT(&avc1[14]);
-                     uint16_t width = U16_AT(&avc1[32]);
-                     uint16_t height = U16_AT(&avc1[34]);
+            }
 
-                     mLastTrack->meta->setCString(kKeyMIMEType, FourCC2MIME(chunk_type));
-                     mLastTrack->meta->setInt32(kKeyWidth, width);
-                     mLastTrack->meta->setInt32(kKeyHeight, height);
-
-                     uint8_t *avcc;
-                     uint32_t avccSize;
-                     mLastTrack->sampleTable->getSampleDescAtIndex(1, &avcc, &avccSize);
-                     mLastTrack->meta->setData(kKeyAVCC, kTypeAVCC, avcc, avccSize);
-                     *offset = stop_offset;
+            off64_t stop_offset = *offset + chunk_size;
+            *offset = data_offset + 8;
+            for (uint32_t i = 0; i < entry_count; ++i) {
+                status_t err = parseChunk(offset, depth + 1);
+                if (err != OK) {
+                    return err;
                 }
-            } else {
-                 for (uint32_t i = 0; i < entry_count; ++i) {
-                     status_t err = parseChunk(offset, depth + 1);
-                     if (err != OK) {
-                        return err;
-                     }
-                 } // end of for
-
-            }//end of entry count 1
+            }
 
             if (*offset != stop_offset) {
                 return ERROR_MALFORMED;
@@ -1555,23 +1427,6 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
             break;
         }
 
-         case FOURCC('d', 'q', 'c', 'p'):
-         case FOURCC('d', 'e', 'v', 'c'):
-         {
-            uint8_t buffer[20];
-
-            if (mDataSource->readAt(
-                 data_offset, buffer, sizeof(buffer)) < (ssize_t)sizeof(buffer)) {
-                 LOGE("Buffered returned error \n");
-                 return ERROR_IO;
-            }
-
-            uint32_t vendor = U32_AT(&buffer[0]);
-            uint8_t decoder_version = ((U16_AT(&buffer[4])) & 0xff00) >>8;
-            uint8_t frames_per_sample = (U16_AT(&buffer[4])) & 0x00ff;
-            *offset += chunk_size;
-            break;
-        }
         case FOURCC('m', 'd', 'a', 't'):
         {
             if (!mIsDrm) {
@@ -2374,7 +2229,7 @@ status_t MPEG4Source::read(
                 return ERROR_IO;
             }
             ssize_t num_bytes_read =
-                mDataSource->readAt(offset, (uint8_t *)mBuffer->data(), size, buffer_flag);
+                mDataSource->readAt(offset, (uint8_t *)mBuffer->data(), size);
 
             if (num_bytes_read < (ssize_t)size) {
                 mBuffer->release();
@@ -2453,9 +2308,9 @@ status_t MPEG4Source::read(
         bool usesDRM = (mFormat->findInt32(kKeyIsDRM, &drm) && drm != 0);
         if (usesDRM) {
             num_bytes_read =
-                mDataSource->readAt(offset, (uint8_t*)mBuffer->data(), size, buffer_flag);
+                mDataSource->readAt(offset, (uint8_t*)mBuffer->data(), size);
         } else {
-            num_bytes_read = mDataSource->readAt(offset, mSrcBuffer, size, buffer_flag);
+            num_bytes_read = mDataSource->readAt(offset, mSrcBuffer, size);
         }
 
         if (num_bytes_read < (ssize_t)size) {

@@ -60,7 +60,6 @@ public:
     virtual status_t initCheck() const = 0;
 
     virtual ssize_t readAt(off64_t offset, void *data, size_t size) = 0;
-    virtual ssize_t readAt(off64_t offset, void *data, size_t size, int buffer_flag) { return readAt(offset, data, size); }
 
     // Convenience methods:
     bool getUInt16(off64_t offset, uint16_t *x);
