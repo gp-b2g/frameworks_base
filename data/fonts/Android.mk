@@ -17,39 +17,6 @@
 
 LOCAL_PATH := $(call my-dir)
 
-##########################################
-# We may only afford small font footprint.
-##########################################
-# Use only symlinks.
-# Symlink: DroidSans.ttf -> Roboto-Regular.ttf
-LOCAL_MODULE := DroidSans.ttf
-font_symlink_src := $(PRODUCT_OUT)/system/fonts/Roboto-Regular.ttf
-font_symlink := $(dir $(font_symlink_src))$(LOCAL_MODULE)
-$(font_symlink) : $(font_symlink_src)
-	@echo "Symlink: $@ -> $<"
-	@mkdir -p $(dir $@)
-	@rm -rf $@
-	$(hide) ln -sf $(notdir $<) $@
-
-# this magic makes LOCAL_REQUIRED_MODULES work
-ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
-    $(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(font_symlink)
-
-################################
-# Symlink: DroidSans-Bold.ttf -> Roboto-Bold.ttf
-LOCAL_MODULE := DroidSans-Bold.ttf
-font_symlink_src := $(PRODUCT_OUT)/system/fonts/Roboto-Bold.ttf
-font_symlink := $(dir $(font_symlink_src))$(LOCAL_MODULE)
-$(font_symlink) : $(font_symlink_src)
-	@echo "Symlink: $@ -> $<"
-	@mkdir -p $(dir $@)
-	@rm -rf $@
-	$(hide) ln -sf $(notdir $<) $@
-
-# this magic makes LOCAL_REQUIRED_MODULES work
-ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
-    $(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(font_symlink)
-
 ################################
 include $(CLEAR_VARS)
 LOCAL_MODULE := DroidSansEthiopic-Regular.ttf
